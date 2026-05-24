@@ -1,0 +1,28 @@
+{
+  "name": "@hooksjam/pixi-lab-core",
+  "version": "0.1.0",
+  "description": "Core engine: loop, input, scene lifecycle, render, physics, AI, performance",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "dev": "tsc --watch --project tsconfig.json"
+  },
+  "peerDependencies": {
+    "pixi.js": ">=8.0.0",
+    "planck": ">=1.0.0"
+  },
+  "devDependencies": {
+    "pixi.js": "^8.18.1",
+    "planck": "^1.0.0",
+    "typescript": "^5.4.0"
+  }
+}

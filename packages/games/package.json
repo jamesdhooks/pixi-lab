@@ -1,0 +1,28 @@
+{
+  "name": "@hooksjam/pixi-lab-games",
+  "version": "0.1.0",
+  "description": "Game and simulation content for pixi-lab",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@hooksjam/pixi-lab-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@hooksjam/pixi-lab-core": "workspace:*",
+    "pixi.js": "^8.0.0",
+    "planck": "^1.0.0",
+    "typescript": "^5.4.0"
+  }
+}

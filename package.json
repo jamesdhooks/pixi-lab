@@ -1,0 +1,26 @@
+{
+  "name": "@hooksjam/pixi-lab",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Game & Simulation Lab — core engine, React integration, content packages",
+  "scripts": {
+    "dev": "pnpm --filter @hooksjam/pixi-lab-demo dev",
+    "build": "pnpm --recursive --filter './packages/*' build",
+    "typecheck": "pnpm --recursive typecheck",
+    "lint": "eslint 'packages/*/src/**/*.{ts,tsx}'",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "@hooksjam/pixi-lab-react",
+  "version": "0.1.0",
+  "description": "React integration: GameRuntime, GameTile, GameLauncher, UI primitives",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "dev": "tsc --watch --project tsconfig.json"
+  },
+  "peerDependencies": {
+    "framer-motion": ">=11.0.0",
+    "lucide-react": ">=0.400.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0",
+    "@hooksjam/pixi-lab-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@hooksjam/pixi-lab-core": "workspace:*",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "framer-motion": "^11.0.0",
+    "lucide-react": "^0.400.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "typescript": "^5.4.0"
+  }
+}
