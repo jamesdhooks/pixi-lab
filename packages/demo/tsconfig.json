@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "paths": {
+      "@hooksjam/pixi-lab-core": ["../core/src/index.ts"],
+      "@hooksjam/pixi-lab-react": ["../react/src/index.ts"],
+      "@hooksjam/pixi-lab-games": ["../games/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "dist"]
+}
