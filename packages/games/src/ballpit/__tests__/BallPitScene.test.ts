@@ -32,6 +32,29 @@ function makeInput(snap: InputSnapshot): Input {
   } as unknown as Input;
 }
 
+function setSnapshot(input: Input, snap: InputSnapshot): void {
+  (input as { snapshot: InputSnapshot }).snapshot = snap;
+}
+
+function runTap(scene: BallPitScene, input: Input, id: number, x: number, y: number): void {
+  const ptr = {
+    id,
+    x,
+    y,
+    type: 'down' as const,
+    source: 'human' as const,
+    timestamp: Date.now(),
+  };
+  setSnapshot(input, makeSnapshot([id], new Map([[id, ptr]])));
+  scene.update(1 / 60);
+  setSnapshot(input, {
+    pointers: new Map(),
+    justDown: new Set(),
+    justUp: new Set([id]),
+  });
+  scene.update(1 / 60);
+}
+
 const mockBody = {
   getPosition: () => ({ x: 0.5, y: 0.5 }),
   getAngle: () => 0,
@@ -87,6 +110,7 @@ function makeCtx(overrides: Partial<Record<string, unknown>> = {}): GameContext 
     systems: {
       world: {
         step: vi.fn(),
+        setGravity: vi.fn(),
         onBeginCollision: vi.fn(),
         onEndCollision: vi.fn(),
         destroy: vi.fn(),
@@ -141,24 +165,11 @@ describe('BallPitScene', () => {
     expect(ctx.emit).not.toHaveBeenCalled();
   });
 
-  it('spawns a ball when a human tap justDown event fires', () => {
-    const ptr = {
-      id: 1,
-      x: 100,
-      y: 100,
-      type: 'down' as const,
-      source: 'human' as const,
-      timestamp: Date.now(),
-    };
-    const snap = makeSnapshot([1], new Map([[1, ptr]]));
-    scene.update.bind(scene);
-
-    // Inject tap via update
-    const input = makeInput(snap);
-    // We need to reassign internal input — call onEnter again with new input
+  it('spawns a ball when a human tap completes', () => {
+    const input = makeInput(makeSnapshot());
     scene.onExit();
     scene.onEnter(ctx, input);
-    scene.update(1 / 60);
+    runTap(scene, input, 1, 100, 100);
 
     expect(ctx.emit).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'score_update', value: 1 }),
@@ -168,40 +179,23 @@ describe('BallPitScene', () => {
   it('does not spawn more balls than maxBalls setting', () => {
     // maxBalls = 5 in our ctx
     const emit = vi.mocked(ctx.emit);
+    const input = makeInput(makeSnapshot());
+    scene.onExit();
+    scene.onEnter(ctx, input);
     for (let i = 0; i < 10; i++) {
-      const ptr = {
-        id: i,
-        x: 50 + i * 10,
-        y: 50,
-        type: 'down' as const,
-        source: 'human' as const,
-        timestamp: Date.now(),
-      };
-      const snap = makeSnapshot([i], new Map([[i, ptr]]));
-      const input = makeInput(snap);
-      scene.onExit();
-      scene.onEnter(ctx, input);
-      scene.update(1 / 60);
+      runTap(scene, input, i, 50 + i * 10, 50);
     }
     // Score from spawns should cap out at maxBalls (5), rest are particle bursts (+0 score)
     const lastScoreCall = emit.mock.calls.filter((c) => c[0].kind === 'score_update').at(-1);
     expect(lastScoreCall?.[0].value).toBeLessThanOrEqual(5);
   });
 
-  it('emits score updates (score increases) when a ball drains', async () => {
+  it('resets score after spawned balls drain during reset', async () => {
     // Spawn one ball
-    const ptr = {
-      id: 1,
-      x: 100,
-      y: 100,
-      type: 'down' as const,
-      source: 'human' as const,
-      timestamp: Date.now(),
-    };
-    const snap = makeSnapshot([1], new Map([[1, ptr]]));
+    const input = makeInput(makeSnapshot());
     scene.onExit();
-    scene.onEnter(ctx, makeInput(snap));
-    scene.update(1 / 60);
+    scene.onEnter(ctx, input);
+    runTap(scene, input, 1, 100, 100);
 
     const emit = vi.mocked(ctx.emit);
     const beforeDrainScore =
@@ -212,7 +206,8 @@ describe('BallPitScene', () => {
     const { createCircleBody } = await import('@hooksjam/pixi-lab-core');
     const createdHandle = vi.mocked(createCircleBody).mock.results[0]?.value as typeof mockHandle;
     if (createdHandle) {
-      createdHandle.body.getPosition = () => ({ x: 0, y: (ctx.height + 100) * 0.01 });
+      createdHandle.body.getPosition = () => ({ x: 0, y: (ctx.height + 101) * 0.01 });
+      scene.reset();
       scene.update(1 / 60);
       const afterDrainScore =
         (
@@ -220,7 +215,8 @@ describe('BallPitScene', () => {
             value: number;
           }
         )?.value ?? 0;
-      expect(afterDrainScore).toBeGreaterThan(beforeDrainScore);
+      expect(beforeDrainScore).toBe(1);
+      expect(afterDrainScore).toBe(0);
     }
   });
 });
