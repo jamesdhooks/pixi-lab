@@ -228,7 +228,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 1 | Harmonic Sand Plate | IN_PROGRESS | palette + particles | Implemented with GPU field texture upload + ParticleContainer batching; automated checks pass; manual visual/Pi validation still required before COMPLETE. |
 | 2 | Mycelium Prism | IN_PROGRESS | triangle grid | Model/scene/preview/demo AI implemented with triangular-grid growth projected through the shared scalar-field renderer; full gate pending. |
 | 3 | Amoeba Lamp | IN_PROGRESS | density metaballs | Model/scene/preview/demo AI implemented with low-res density-field metaballs through the shared renderer; full gate pending. |
-| 4 | Orbital Shrapnel Field | NOT_STARTED | custom mesh + trails | foundational particle mesh |
+| 4 | Orbital Shrapnel Field | IN_PROGRESS | custom mesh + trails | Model/scene/preview/demo AI implemented with deterministic orbital debris and a shared low-res trail field renderer; full automated gate passes under temporary Node 22/pnpm 10 toolchain. |
 | 5 | Plasma Branch Terrarium | NOT_STARTED | charge field | arc rendering |
 | 6 | Ant Signal Civilization | NOT_STARTED | trail field | emergence showcase |
 | 7 | Crystal Plasma Storm | NOT_STARTED | triangle grid + stress | crystal renderer |
@@ -889,7 +889,186 @@ Deferred before marking COMPLETE:
 
 ---
 
-# 9. Remaining Simulation Tracking Sections
+# 9. Orbital Shrapnel Field
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoBot
+LAST_UPDATED: 2026-05-25
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates particle orbit systems
+- validates trail-field rendering and shockwave metadata
+- establishes first space/field simulation for the gallery
+
+---
+
+## Dependencies
+
+- particle renderer
+- trail field
+- shockwave/bloom pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- central gravity approximation
+- bounded debris particles
+- transient gravity wells
+- swipe shockwaves
+- dust trail deposition/fade
+
+---
+
+## Required Render Layers
+
+```txt
+particles
+trails
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+trailFeedback
+paletteMap
+bloom
+shockwave
+chromaticAberration
+```
+
+---
+
+## Required Styles
+
+### Ice Ring
+Cold blue debris and dust trails.
+
+### Solar Debris
+Amber-hot asteroid shards and ember trails.
+
+### Black Hole Lens
+Violet/green high-contrast gravity-lens palette.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | soft shockwave |
+| drag | swish debris |
+| hold | temporary gravity well |
+| swipe | strong shockwave |
+
+---
+
+## Director Mode Events
+
+- meteor shower
+- gravity pulse
+- dust shear
+
+---
+
+## Stagnation Recovery
+
+If:
+- ring loses velocity
+- radial variation collapses
+- trails become uniform/dead
+
+Then:
+- inject central shockwave
+- add tangential velocity variation
+- heat/deposit fresh trails
+
+---
+
+## Performance Targets
+
+```txt
+particles:
+  120-1200 first-playable budget
+
+trail field:
+  32x18 to 128x72
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses shared `SimulationCanvasLayer.renderField()` and `renderParticles()` rather than a custom debris mesh
+- all forces are O(n) with capped wells/shockwaves
+- no particle growth occurs during gestures
+
+Do NOT:
+- add all-pairs gravity
+- create one Pixi object per debris shard
+
+---
+
+## Validation Checklist
+
+- [x] debris orbits deterministically in model behavior
+- [x] drag/hold/swipe gestures alter orbital motion
+- [x] trails are bounded and fade over time
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] full automated gate in current environment
+
+---
+
+## Known Risks
+
+- shared particle renderer does not yet render true triangular shards/custom mesh silhouettes
+- trail feedback is a CPU-side low-resolution field projection for the first playable pass
+- shockwave/chromatic/distortion effects are declared in style metadata but await reusable GPU compositor implementation
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/orbital-shrapnel/OrbitalShrapnelModel.ts`
+- `packages/simulations/src/orbital-shrapnel/OrbitalShrapnelScene.ts`
+- `packages/simulations/src/orbital-shrapnel/OrbitalShrapnelPreviewScene.ts`
+- `packages/simulations/src/orbital-shrapnel/OrbitalShrapnelDemoAI.ts`
+- `packages/simulations/src/orbital-shrapnel/orbital-shrapnel.config.ts`
+- `packages/simulations/src/orbital-shrapnel/orbital-shrapnel.definition.ts`
+- `packages/simulations/src/orbital-shrapnel/styles/*.ts`
+- `packages/simulations/src/orbital-shrapnel/__tests__/OrbitalShrapnelModel.test.ts`
+
+Implementation notes:
+- Uses deterministic seeded debris particles, central inverse-radius gravity approximation, capped transient gravity wells, capped shockwaves, and a bounded `TrailField`.
+- Scene renders the trail field through the shared GPU field upload path and particles through the shared particle layer for a first playable pass.
+- Model tests were authored before implementation; initial RED validation exposed a stagnation-recovery radial-variance failure, then the model was fixed and the full automated gate passed under a temporary Node 22/pnpm 10 toolchain.
+
+Deferred before marking COMPLETE:
+- install/restore persistent pnpm/node in the cron environment so future runs do not need a temporary toolchain bootstrap
+- dedicated custom triangular debris mesh renderer
+- real reusable trail feedback/shockwave/chromatic GPU compositor pass
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 10. Remaining Simulation Tracking Sections
 
 IMPORTANT:
 Every remaining simulation should follow EXACTLY the same structure:
@@ -934,7 +1113,7 @@ The remaining simulations must be added using this exact format:
 
 ---
 
-# 10. Agent Update Rules
+# 11. Agent Update Rules
 
 When an agent completes work:
 
@@ -970,7 +1149,7 @@ The agent must:
 
 ---
 
-# 11. Recommended Git Workflow
+# 12. Recommended Git Workflow
 
 Recommended commit structure:
 
@@ -986,7 +1165,7 @@ Avoid giant multi-simulation commits.
 
 ---
 
-# 12. Final Guidance for Agents
+# 13. Final Guidance for Agents
 
 The project succeeds if:
 - simulations feel alive
