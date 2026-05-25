@@ -5,7 +5,7 @@
  * Human and AI both produce the same PointerEvent records.
  * AI intents are injected via injectIntent().
  */
-import type { InputSnapshot, PointerEvent as GamePointerEvent, Intent } from './types';
+import type { InputSnapshot, PointerEvent as GamePointerEvent, Intent } from './types.js';
 
 export class Input {
   private canvas: HTMLElement | null = null;

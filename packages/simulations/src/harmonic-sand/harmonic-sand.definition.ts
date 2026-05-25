@@ -1,8 +1,8 @@
 import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
-import { HARMONIC_SAND_DEFAULTS, HARMONIC_SAND_SETTINGS_FIELDS } from './harmonic-sand.config';
-import { HarmonicSandPreviewScene } from './HarmonicSandPreviewScene';
-import { HarmonicSandScene, harmonicSandStyleManifest } from './HarmonicSandScene';
-import { HarmonicSandDemoAI } from './HarmonicSandDemoAI';
+import { HARMONIC_SAND_DEFAULTS, HARMONIC_SAND_SETTINGS_FIELDS } from './harmonic-sand.config.js';
+import { HarmonicSandPreviewScene } from './HarmonicSandPreviewScene.js';
+import { HarmonicSandScene, harmonicSandStyleManifest } from './HarmonicSandScene.js';
+import { HarmonicSandDemoAI } from './HarmonicSandDemoAI.js';
 
 export const harmonicSandDefinition: SimulationDefinition = {
   id: 'harmonic-sand',

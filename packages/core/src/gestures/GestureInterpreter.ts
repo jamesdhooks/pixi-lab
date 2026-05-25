@@ -1,4 +1,4 @@
-import type { GestureEvent, InputSnapshot, PointerEvent } from '../types';
+import type { GestureEvent, InputSnapshot, PointerEvent } from '../types.js';
 
 interface PointerState {
   start: PointerEvent;

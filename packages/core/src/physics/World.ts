@@ -7,7 +7,7 @@
  * - collision listener routing
  */
 import * as planck from 'planck';
-import type { BodyUserData } from '../types';
+import type { BodyUserData } from '../types.js';
 
 export type CollisionCallback = (
   dataA: BodyUserData,

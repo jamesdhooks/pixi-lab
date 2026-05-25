@@ -1,5 +1,5 @@
-import type { Input } from '../Input';
-import { Scene } from '../Scene';
+import type { Input } from '../Input.js';
+import { Scene } from '../Scene.js';
 import type {
   GameContext,
   GestureEvent,
@@ -7,7 +7,7 @@ import type {
   SimRenderLayers,
   SimStyleManifest,
   StagnationReport,
-} from '../types';
+} from '../types.js';
 
 export abstract class SimulationScene extends Scene {
   protected ctx_!: GameContext;

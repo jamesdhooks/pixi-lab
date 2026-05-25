@@ -1,1 +1,1 @@
-export { ScalarField as DensityField } from './ScalarField';
+export { ScalarField as DensityField } from './ScalarField.js';

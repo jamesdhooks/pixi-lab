@@ -1,5 +1,5 @@
 import { Container, Text, type Application } from 'pixi.js';
-import type { RenderQuality } from '../types';
+import type { RenderQuality } from '../types.js';
 
 export interface DebugOverlayState {
   fps: number;

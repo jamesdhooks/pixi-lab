@@ -5,7 +5,7 @@
  * Engine subsystems are stubbed — no real Pixi or planck needed.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BallPitScene } from '../BallPitScene';
+import { BallPitScene } from '../BallPitScene.js';
 import type { GameContext, Input, InputSnapshot } from '@hooksjam/pixi-lab-core';
 
 // ── Minimal stubs ──────────────────────────────────────────────────────────────

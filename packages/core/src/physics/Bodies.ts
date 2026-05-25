@@ -8,10 +8,10 @@
  * - restitution / friction defaults
  */
 import * as planck from 'planck';
-import { nanoid } from '../utils/nanoid';
-import { Categories, Masks } from './Categories';
-import type { BodyUserData, BodyHandle, PixiDisplayObject } from '../types';
-import type { PhysicsWorld } from './World';
+import { nanoid } from '../utils/nanoid.js';
+import { Categories, Masks } from './Categories.js';
+import type { BodyUserData, BodyHandle, PixiDisplayObject } from '../types.js';
+import type { PhysicsWorld } from './World.js';
 
 // planck uses a scale factor: 1 planck unit = SCALE px
 export const PHYSICS_SCALE = 0.01; // 1 game-pixel = 0.01 planck units

@@ -1,4 +1,4 @@
-import { ScalarField } from './ScalarField';
+import { ScalarField } from './ScalarField.js';
 
 export class TrailField extends ScalarField {
   fade(amount: number): void {

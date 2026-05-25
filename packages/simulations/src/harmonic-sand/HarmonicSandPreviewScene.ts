@@ -1,5 +1,5 @@
 import type { GameContext, Input } from '@hooksjam/pixi-lab-core';
-import { HarmonicSandScene, harmonicSandStyleManifest } from './HarmonicSandScene';
+import { HarmonicSandScene, harmonicSandStyleManifest } from './HarmonicSandScene.js';
 
 const PREVIEW_FREQS = [1.2, 2.0, 3.0, 4.2, 6.0];
 

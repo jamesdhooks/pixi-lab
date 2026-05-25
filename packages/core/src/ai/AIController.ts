@@ -6,7 +6,7 @@
  * The engine calls think() each update tick, then injects returned intents
  * into Input — so game logic sees no difference between human and AI input.
  */
-import type { Intent } from '../types';
+import type { Intent } from '../types.js';
 
 export interface AIContext {
   /** Current game-world width in pixels */

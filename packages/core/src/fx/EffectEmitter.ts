@@ -1,5 +1,5 @@
-import type { BurstEffect, BurstEffectKind } from '../types';
-import type { BurstEmitterSystem } from './BurstEmitterSystem';
+import type { BurstEffect, BurstEffectKind } from '../types.js';
+import type { BurstEmitterSystem } from './BurstEmitterSystem.js';
 
 export interface EffectEmitter {
   readonly kind: BurstEffectKind;

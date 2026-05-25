@@ -1,5 +1,5 @@
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
-import { PreviewTile } from './GameTile';
+import { PreviewTile } from './GameTile.js';
 
 export interface GalleryProps {
   experiences: readonly LabExperience[];

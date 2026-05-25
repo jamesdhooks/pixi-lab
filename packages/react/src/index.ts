@@ -4,27 +4,27 @@
  * Public API for @hooksjam/pixi-lab-react.
  */
 
-export { ExperienceRuntime, GameRuntime, SimulationRuntime, type ExperienceRuntimeProps, type GameRuntimeProps } from './GameRuntime';
-export { GameTile, PreviewTile, type GameTileProps, type PreviewTileProps } from './GameTile';
-export { GameLauncher, type GameLauncherProps } from './GameLauncher';
-export { Gallery, type GalleryProps } from './Gallery';
-export { AmbientLayer, type AmbientLayerProps } from './AmbientLayer';
-export { ForegroundAmbientOverlay, type ForegroundAmbientOverlayProps } from './ForegroundAmbientOverlay';
+export { ExperienceRuntime, GameRuntime, SimulationRuntime, type ExperienceRuntimeProps, type GameRuntimeProps } from './GameRuntime.js';
+export { GameTile, PreviewTile, type GameTileProps, type PreviewTileProps } from './GameTile.js';
+export { GameLauncher, type GameLauncherProps } from './GameLauncher.js';
+export { Gallery, type GalleryProps } from './Gallery.js';
+export { AmbientLayer, type AmbientLayerProps } from './AmbientLayer.js';
+export { ForegroundAmbientOverlay, type ForegroundAmbientOverlayProps } from './ForegroundAmbientOverlay.js';
 
 // UI primitives (for host-app customisation)
-export { HUD } from './ui/HUD';
-export { QuitButton } from './ui/QuitButton';
-export { IntroCard } from './ui/IntroCard';
-export { TutorialOverlay } from './ui/TutorialOverlay';
-export { PauseModal } from './ui/PauseModal';
-export { GameOverModal } from './ui/GameOverModal';
-export { PressHint } from './ui/PressHint';
-export { StartCard } from './ui/StartCard';
-export { SettingsDrawer } from './ui/SettingsDrawer';
-export { StylePicker, type StylePickerProps } from './ui/StylePicker';
-export { QualitySelector, type QualitySelectorProps } from './ui/QualitySelector';
-export { DebugToggle, type DebugToggleProps } from './ui/DebugToggle';
-export { DebugPanel, type DebugPanelProps } from './ui/DebugPanel';
-export { ModeToggle, type ModeToggleProps } from './ui/ModeToggle';
-export { ShaderTuningDrawer, type ShaderTuningDrawerProps } from './ui/ShaderTuningDrawer';
-export { SimControlPanel, type SimControlPanelProps } from './ui/SimControlPanel';
+export { HUD } from './ui/HUD.js';
+export { QuitButton } from './ui/QuitButton.js';
+export { IntroCard } from './ui/IntroCard.js';
+export { TutorialOverlay } from './ui/TutorialOverlay.js';
+export { PauseModal } from './ui/PauseModal.js';
+export { GameOverModal } from './ui/GameOverModal.js';
+export { PressHint } from './ui/PressHint.js';
+export { StartCard } from './ui/StartCard.js';
+export { SettingsDrawer } from './ui/SettingsDrawer.js';
+export { StylePicker, type StylePickerProps } from './ui/StylePicker.js';
+export { QualitySelector, type QualitySelectorProps } from './ui/QualitySelector.js';
+export { DebugToggle, type DebugToggleProps } from './ui/DebugToggle.js';
+export { DebugPanel, type DebugPanelProps } from './ui/DebugPanel.js';
+export { ModeToggle, type ModeToggleProps } from './ui/ModeToggle.js';
+export { ShaderTuningDrawer, type ShaderTuningDrawerProps } from './ui/ShaderTuningDrawer.js';
+export { SimControlPanel, type SimControlPanelProps } from './ui/SimControlPanel.js';

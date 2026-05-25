@@ -1,4 +1,4 @@
-import type { GestureEvent } from '../types';
+import type { GestureEvent } from '../types.js';
 
 export interface SimAIContext {
   width: number;

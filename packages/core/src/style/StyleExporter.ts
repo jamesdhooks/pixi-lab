@@ -1,4 +1,4 @@
-import type { RenderQuality, StyleExportSnapshot } from '../types';
+import type { RenderQuality, StyleExportSnapshot } from '../types.js';
 
 export class StyleExporter {
   static export(snapshot: StyleExportSnapshot): string {

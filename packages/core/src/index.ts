@@ -5,13 +5,13 @@
  */
 
 // Core runtime
-export { GameApp, type GameAppOptions } from './GameApp';
-export { Scene } from './Scene';
-export { Ticker, PHYSICS_HZ } from './Ticker';
-export { Input } from './Input';
-export { Audio } from './Audio';
-export { Settings } from './Settings';
-export { Telemetry } from './Telemetry';
+export { GameApp, type GameAppOptions } from './GameApp.js';
+export { Scene } from './Scene.js';
+export { Ticker, PHYSICS_HZ } from './Ticker.js';
+export { Input } from './Input.js';
+export { Audio } from './Audio.js';
+export { Settings } from './Settings.js';
+export { Telemetry } from './Telemetry.js';
 
 // Experience definition
 export type {
@@ -27,7 +27,7 @@ export type {
   SimulationExperience,
   ToyExperience,
   TutorialPage,
-} from './LabExperience';
+} from './LabExperience.js';
 
 // Types
 export type {
@@ -78,13 +78,13 @@ export type {
   StagnationReport,
   DirectorEvent,
   StyleExportSnapshot,
-} from './types';
-export { DEFAULT_AMBIENT_BEHAVIOR, DEFAULT_FOREGROUND_BEHAVIOR } from './types';
+} from './types.js';
+export { DEFAULT_AMBIENT_BEHAVIOR, DEFAULT_FOREGROUND_BEHAVIOR } from './types.js';
 
 // Physics
-export { PhysicsWorld } from './physics/World';
-export { Categories, Masks } from './physics/Categories';
-export { Pool } from './physics/Pool';
+export { PhysicsWorld } from './physics/World.js';
+export { Categories, Masks } from './physics/Categories.js';
+export { Pool } from './physics/Pool.js';
 export {
   createCircleBody,
   createBoxBody,
@@ -94,63 +94,63 @@ export {
   PHYSICS_SCALE,
   PX_TO_M,
   M_TO_PX,
-} from './physics/Bodies';
+} from './physics/Bodies.js';
 
 // Render
-export { PixiApp } from './render/PixiApp';
+export { PixiApp } from './render/PixiApp.js';
 export { Graphics } from 'pixi.js';
-export { SpriteFactory } from './render/Sprites';
-export { ParticleSystem } from './render/Particles';
-export { styleRegistry, PALETTES, DEFAULT_STYLE } from './render/Styles';
-export { RenderTargetPool, type RenderTargetRequest, type RenderTargetStats } from './render/RenderTargetPool';
-export { PingPong } from './render/PingPong';
-export { RenderStyleManager } from './render/RenderStyleManager';
-export { SimulationCanvasLayer } from './render/SimulationCanvasLayer';
-export type { EmitterMarker } from './render/SimulationCanvasLayer';
-export { ProceduralTextureLibrary, type ProceduralTextureId } from './render/procedural/ProceduralTextureLibrary';
-export { createSharedPass, SHARED_RENDER_PASS_IDS } from './render/passes/SharedPasses';
-export { NoopRenderPass, type RenderPass, type RenderPassContext } from './render/passes/RenderPass';
+export { SpriteFactory } from './render/Sprites.js';
+export { ParticleSystem } from './render/Particles.js';
+export { styleRegistry, PALETTES, DEFAULT_STYLE } from './render/Styles.js';
+export { RenderTargetPool, type RenderTargetRequest, type RenderTargetStats } from './render/RenderTargetPool.js';
+export { PingPong } from './render/PingPong.js';
+export { RenderStyleManager } from './render/RenderStyleManager.js';
+export { SimulationCanvasLayer } from './render/SimulationCanvasLayer.js';
+export type { EmitterMarker } from './render/SimulationCanvasLayer.js';
+export { ProceduralTextureLibrary, type ProceduralTextureId } from './render/procedural/ProceduralTextureLibrary.js';
+export { createSharedPass, SHARED_RENDER_PASS_IDS } from './render/passes/SharedPasses.js';
+export { NoopRenderPass, type RenderPass, type RenderPassContext } from './render/passes/RenderPass.js';
 
 // Simulation primitives
-export { SimulationScene } from './sim/SimulationScene';
-export { ScalarField } from './sim/fields/ScalarField';
-export { DensityField } from './sim/fields/DensityField';
-export { TrailField } from './sim/fields/TrailField';
-export { VectorField } from './sim/fields/VectorField';
-export { TriangularGrid, type TriangularGridCell } from './sim/grids/TriangularGrid';
-export { SpringSystem, type SpringEdge, type SpringNode } from './sim/springs/SpringSystem';
-export { SimParticleSystem, type SimParticle } from './sim/particles/SimParticleSystem';
-export { GestureInterpreter, type GestureInterpreterOptions } from './gestures/GestureInterpreter';
-export { PerformanceGovernor, type PerformanceGovernorOptions } from './performance/PerformanceGovernor';
-export { DirectorMode } from './director/DirectorMode';
-export { StagnationRecovery, type StagnationAware } from './stagnation/StagnationRecovery';
-export { DebugOverlay, type DebugOverlayState } from './debug/DebugOverlay';
-export { StyleExporter } from './style/StyleExporter';
-export { SeededRng } from './utils/SeededRng';
+export { SimulationScene } from './sim/SimulationScene.js';
+export { ScalarField } from './sim/fields/ScalarField.js';
+export { DensityField } from './sim/fields/DensityField.js';
+export { TrailField } from './sim/fields/TrailField.js';
+export { VectorField } from './sim/fields/VectorField.js';
+export { TriangularGrid, type TriangularGridCell } from './sim/grids/TriangularGrid.js';
+export { SpringSystem, type SpringEdge, type SpringNode } from './sim/springs/SpringSystem.js';
+export { SimParticleSystem, type SimParticle } from './sim/particles/SimParticleSystem.js';
+export { GestureInterpreter, type GestureInterpreterOptions } from './gestures/GestureInterpreter.js';
+export { PerformanceGovernor, type PerformanceGovernorOptions } from './performance/PerformanceGovernor.js';
+export { DirectorMode } from './director/DirectorMode.js';
+export { StagnationRecovery, type StagnationAware } from './stagnation/StagnationRecovery.js';
+export { DebugOverlay, type DebugOverlayState } from './debug/DebugOverlay.js';
+export { StyleExporter } from './style/StyleExporter.js';
+export { SeededRng } from './utils/SeededRng.js';
 
 // Ambient and reusable effects
-export { AmbientDataManager } from './ambient/AmbientDataManager';
-export { BurstEmitterSystem } from './fx/BurstEmitterSystem';
-export type { EffectEmitter } from './fx/EffectEmitter';
-export { BaseEffectEmitter } from './fx/EffectEmitter';
-export { SparkEmitter } from './fx/emitters/SparkEmitter';
-export { FireworkEmitter } from './fx/emitters/FireworkEmitter';
-export { EmberEmitter } from './fx/emitters/EmberEmitter';
-export { ConfettiEmitter } from './fx/emitters/ConfettiEmitter';
-export { FireflyEmitter } from './fx/emitters/FireflyEmitter';
-export { SmokeEmitter } from './fx/emitters/SmokeEmitter';
-export { ArcSparkEmitter } from './fx/emitters/ArcSparkEmitter';
+export { AmbientDataManager } from './ambient/AmbientDataManager.js';
+export { BurstEmitterSystem } from './fx/BurstEmitterSystem.js';
+export type { EffectEmitter } from './fx/EffectEmitter.js';
+export { BaseEffectEmitter } from './fx/EffectEmitter.js';
+export { SparkEmitter } from './fx/emitters/SparkEmitter.js';
+export { FireworkEmitter } from './fx/emitters/FireworkEmitter.js';
+export { EmberEmitter } from './fx/emitters/EmberEmitter.js';
+export { ConfettiEmitter } from './fx/emitters/ConfettiEmitter.js';
+export { FireflyEmitter } from './fx/emitters/FireflyEmitter.js';
+export { SmokeEmitter } from './fx/emitters/SmokeEmitter.js';
+export { ArcSparkEmitter } from './fx/emitters/ArcSparkEmitter.js';
 
 // AI
-export type { AIController, AIContext } from './ai/AIController';
-export type { SimulationAI, SimAIContext } from './ai/SimulationAI';
-export { BasicAI } from './ai/BasicAI';
-export { DemoAI } from './ai/DemoAI';
+export type { AIController, AIContext } from './ai/AIController.js';
+export type { SimulationAI, SimAIContext } from './ai/SimulationAI.js';
+export { BasicAI } from './ai/BasicAI.js';
+export { DemoAI } from './ai/DemoAI.js';
 
 // Screensaver
-export { ScreensaverManager } from './screensaver/ScreensaverManager';
+export { ScreensaverManager } from './screensaver/ScreensaverManager.js';
 
 // Scoring
-export type { HighScoreProvider, SubmitScoreInput } from './scoring/HighScoreProvider';
-export { ApiHighScoreProvider, NoopHighScoreProvider } from './scoring/HighScoreProvider';
-export { NameSuggestions, nameSuggestions } from './scoring/NameSuggestions';
+export type { HighScoreProvider, SubmitScoreInput } from './scoring/HighScoreProvider.js';
+export { ApiHighScoreProvider, NoopHighScoreProvider } from './scoring/HighScoreProvider.js';
+export { NameSuggestions, nameSuggestions } from './scoring/NameSuggestions.js';

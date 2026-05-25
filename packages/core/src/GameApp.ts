@@ -10,36 +10,36 @@
  * - Emit GameEvents upward to the React shell via the provided callback
  * - Clean shutdown on destroy()
  */
-import type { AmbientDataAdapter, BurstEffect, GameContext, GameEvent, GameMode, RenderQuality } from './types';
-import type { Scene } from './Scene';
-import { Ticker } from './Ticker';
-import { Input } from './Input';
-import { Audio } from './Audio';
-import { Settings } from './Settings';
-import { Telemetry } from './Telemetry';
-import { PixiApp } from './render/PixiApp';
-import { SpriteFactory } from './render/Sprites';
-import { ParticleSystem } from './render/Particles';
-import { styleRegistry } from './render/Styles';
-import { PhysicsWorld } from './physics/World';
-import { ScreensaverManager } from './screensaver/ScreensaverManager';
-import type { AIController } from './ai/AIController';
-import type { SimulationAI, SimAIContext } from './ai/SimulationAI';
-import type { SimulationExperience } from './LabExperience';
-import type { HighScoreProvider } from './scoring/HighScoreProvider';
-import { ApiHighScoreProvider } from './scoring/HighScoreProvider';
-import type { LabExperience } from './LabExperience';
-import { RenderTargetPool } from './render/RenderTargetPool';
-import { RenderStyleManager } from './render/RenderStyleManager';
-import { ProceduralTextureLibrary } from './render/procedural/ProceduralTextureLibrary';
-import { GestureInterpreter } from './gestures/GestureInterpreter';
-import { PerformanceGovernor } from './performance/PerformanceGovernor';
-import { DirectorMode } from './director/DirectorMode';
-import { StagnationRecovery } from './stagnation/StagnationRecovery';
-import { DebugOverlay } from './debug/DebugOverlay';
-import { SimulationScene } from './sim/SimulationScene';
-import { BurstEmitterSystem } from './fx/BurstEmitterSystem';
-import { AmbientDataManager } from './ambient/AmbientDataManager';
+import type { AmbientDataAdapter, BurstEffect, GameContext, GameEvent, GameMode, RenderQuality } from './types.js';
+import type { Scene } from './Scene.js';
+import { Ticker } from './Ticker.js';
+import { Input } from './Input.js';
+import { Audio } from './Audio.js';
+import { Settings } from './Settings.js';
+import { Telemetry } from './Telemetry.js';
+import { PixiApp } from './render/PixiApp.js';
+import { SpriteFactory } from './render/Sprites.js';
+import { ParticleSystem } from './render/Particles.js';
+import { styleRegistry } from './render/Styles.js';
+import { PhysicsWorld } from './physics/World.js';
+import { ScreensaverManager } from './screensaver/ScreensaverManager.js';
+import type { AIController } from './ai/AIController.js';
+import type { SimulationAI, SimAIContext } from './ai/SimulationAI.js';
+import type { SimulationExperience } from './LabExperience.js';
+import type { HighScoreProvider } from './scoring/HighScoreProvider.js';
+import { ApiHighScoreProvider } from './scoring/HighScoreProvider.js';
+import type { LabExperience } from './LabExperience.js';
+import { RenderTargetPool } from './render/RenderTargetPool.js';
+import { RenderStyleManager } from './render/RenderStyleManager.js';
+import { ProceduralTextureLibrary } from './render/procedural/ProceduralTextureLibrary.js';
+import { GestureInterpreter } from './gestures/GestureInterpreter.js';
+import { PerformanceGovernor } from './performance/PerformanceGovernor.js';
+import { DirectorMode } from './director/DirectorMode.js';
+import { StagnationRecovery } from './stagnation/StagnationRecovery.js';
+import { DebugOverlay } from './debug/DebugOverlay.js';
+import { SimulationScene } from './sim/SimulationScene.js';
+import { BurstEmitterSystem } from './fx/BurstEmitterSystem.js';
+import { AmbientDataManager } from './ambient/AmbientDataManager.js';
 
 export interface GameAppOptions {
   container: HTMLElement;

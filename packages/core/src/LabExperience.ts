@@ -19,10 +19,10 @@ import type {
   SettingsField,
   SimStyleManifest,
   StagnationReport,
-} from './types';
-import type { Scene } from './Scene';
-import type { AIController } from './ai/AIController';
-import type { SimulationAI } from './ai/SimulationAI';
+} from './types.js';
+import type { Scene } from './Scene.js';
+import type { AIController } from './ai/AIController.js';
+import type { SimulationAI } from './ai/SimulationAI.js';
 
 export interface TutorialPage {
   icon: string;

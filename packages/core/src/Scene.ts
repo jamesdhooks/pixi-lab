@@ -8,8 +8,8 @@
  * Lifecycle:
  *   onEnter → [update* + fixedUpdate* + resize*] → onExit
  */
-import type { GameContext } from './types';
-import type { Input } from './Input';
+import type { GameContext } from './types.js';
+import type { Input } from './Input.js';
 
 export abstract class Scene {
   /** Display name shown in the dev overlay */

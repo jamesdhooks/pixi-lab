@@ -4,7 +4,7 @@
  * Style registry: palettes and shader preset configs.
  * Each game can register custom palettes or use the built-ins.
  */
-import type { GamePalette, StyleConfig, ShaderPreset } from '../types';
+import type { GamePalette, StyleConfig, ShaderPreset } from '../types.js';
 
 export const PALETTES: Record<string, GamePalette> = {
   rainbow: {

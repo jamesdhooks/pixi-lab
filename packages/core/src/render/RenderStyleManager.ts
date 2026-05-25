@@ -1,4 +1,4 @@
-import type { RenderQuality, SimStyle, SimStyleManifest } from '../types';
+import type { RenderQuality, SimStyle, SimStyleManifest } from '../types.js';
 
 export class RenderStyleManager {
   private manifest: SimStyleManifest | null = null;

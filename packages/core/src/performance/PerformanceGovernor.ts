@@ -1,4 +1,4 @@
-import type { RenderQuality } from '../types';
+import type { RenderQuality } from '../types.js';
 
 export interface PerformanceGovernorOptions {
   targetFps?: number;

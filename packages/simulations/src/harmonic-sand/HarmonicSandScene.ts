@@ -8,15 +8,15 @@ import {
   type SimStyleManifest,
   type StagnationReport,
 } from '@hooksjam/pixi-lab-core';
-import { HARMONIC_SAND_DEFAULTS } from './harmonic-sand.config';
-import { HarmonicSandModel, type HarmonicSandModelOptions } from './HarmonicSandModel';
-import { biolumOceanStyle } from './styles/biolum-ocean';
-import { chladniGoldStyle } from './styles/chladni-gold';
-import { deepVoidStyle } from './styles/deep-void';
-import { emberPulseStyle } from './styles/ember-pulse';
-import { ghostFrequencyStyle } from './styles/ghost-frequency';
-import { laserPlateStyle } from './styles/laser-plate';
-import { neonCoralStyle } from './styles/neon-coral';
+import { HARMONIC_SAND_DEFAULTS } from './harmonic-sand.config.js';
+import { HarmonicSandModel, type HarmonicSandModelOptions } from './HarmonicSandModel.js';
+import { biolumOceanStyle } from './styles/biolum-ocean.js';
+import { chladniGoldStyle } from './styles/chladni-gold.js';
+import { deepVoidStyle } from './styles/deep-void.js';
+import { emberPulseStyle } from './styles/ember-pulse.js';
+import { ghostFrequencyStyle } from './styles/ghost-frequency.js';
+import { laserPlateStyle } from './styles/laser-plate.js';
+import { neonCoralStyle } from './styles/neon-coral.js';
 
 export const harmonicSandStyleManifest: SimStyleManifest = {
   defaultStyleId: 'chladni-gold',

@@ -4,7 +4,7 @@
  * Per-game settings store backed by localStorage.
  * Zod schema validates the shape; a reactive proxy notifies listeners on change.
  */
-import type { SettingsField, SettingsValue } from './types';
+import type { SettingsField, SettingsValue } from './types.js';
 
 type SettingsMap = Record<string, SettingsValue>;
 type ChangeListener<T extends SettingsMap> = (key: keyof T, value: SettingsValue) => void;

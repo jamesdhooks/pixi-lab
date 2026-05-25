@@ -6,7 +6,7 @@
  * Suitable for: trails, splashes, confetti, background chaos, tiny balls.
  */
 import { Container, Sprite, type Application } from 'pixi.js';
-import type { SpriteFactory } from './Sprites';
+import type { SpriteFactory } from './Sprites.js';
 
 export interface ParticleConfig {
   x: number;

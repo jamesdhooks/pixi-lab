@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HarmonicSandModel } from '../HarmonicSandModel';
+import { HarmonicSandModel } from '../HarmonicSandModel.js';
 
 function createModel(seed = 42) {
   return new HarmonicSandModel({

@@ -1,4 +1,4 @@
-import type { StagnationReport } from '../types';
+import type { StagnationReport } from '../types.js';
 
 export interface StagnationAware {
   detectStagnation(): StagnationReport;

@@ -1,5 +1,5 @@
-import type { DirectorEvent } from '../types';
-import { SeededRng } from '../utils/SeededRng';
+import type { DirectorEvent } from '../types.js';
+import { SeededRng } from '../utils/SeededRng.js';
 
 export class DirectorMode {
   private elapsedMs = 0;

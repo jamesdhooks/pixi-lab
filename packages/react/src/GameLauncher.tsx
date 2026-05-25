@@ -7,21 +7,21 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EyeOff, HelpCircle, Play, Settings as SettingsIcon, X } from 'lucide-react';
-import { GameRuntime } from './GameRuntime';
-import { IntroCard } from './ui/IntroCard';
-import { GameOverModal } from './ui/GameOverModal';
-import { HUD } from './ui/HUD';
-import { ModeToggle } from './ui/ModeToggle';
-import { SettingsDrawer } from './ui/SettingsDrawer';
-import { StylePicker } from './ui/StylePicker';
-import { QualitySelector } from './ui/QualitySelector';
-import { DebugPanel } from './ui/DebugPanel';
-import { SimControlPanel } from './ui/SimControlPanel';
+import { GameRuntime } from './GameRuntime.js';
+import { IntroCard } from './ui/IntroCard.js';
+import { GameOverModal } from './ui/GameOverModal.js';
+import { HUD } from './ui/HUD.js';
+import { ModeToggle } from './ui/ModeToggle.js';
+import { SettingsDrawer } from './ui/SettingsDrawer.js';
+import { StylePicker } from './ui/StylePicker.js';
+import { QualitySelector } from './ui/QualitySelector.js';
+import { DebugPanel } from './ui/DebugPanel.js';
+import { SimControlPanel } from './ui/SimControlPanel.js';
 import { nameSuggestions } from '@hooksjam/pixi-lab-core';
 import type { LabExperience, SimulationExperience } from '@hooksjam/pixi-lab-core';
 import type { GameEvent, RenderQuality, ScoreEntry } from '@hooksjam/pixi-lab-core';
 import type { GameApp } from '@hooksjam/pixi-lab-core';
-import type { IntroHint } from './ui/IntroCard';
+import type { IntroHint } from './ui/IntroCard.js';
 
 type Shell = 'playing' | 'gameover';
 

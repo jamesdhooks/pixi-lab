@@ -1,5 +1,5 @@
-import type { RenderPassId } from '../../types';
-import { NoopRenderPass } from './RenderPass';
+import type { RenderPassId } from '../../types.js';
+import { NoopRenderPass } from './RenderPass.js';
 
 class SharedNoopPass extends NoopRenderPass {
   constructor(readonly id: RenderPassId) {

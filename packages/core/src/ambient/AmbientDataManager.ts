@@ -1,4 +1,4 @@
-import type { AmbientDataAdapter, AmbientDataSnapshot, AmbientDataSource } from '../types';
+import type { AmbientDataAdapter, AmbientDataSnapshot, AmbientDataSource } from '../types.js';
 
 export class AmbientDataManager {
   private readonly adapters = new Map<AmbientDataSource, AmbientDataAdapter>();

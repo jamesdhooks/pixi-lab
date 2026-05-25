@@ -1,5 +1,5 @@
-import type { Vec2 } from '../../types';
-import { SeededRng } from '../../utils/SeededRng';
+import type { Vec2 } from '../../types.js';
+import { SeededRng } from '../../utils/SeededRng.js';
 
 export interface SimParticle {
   position: Vec2;

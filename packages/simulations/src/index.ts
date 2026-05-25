@@ -1,10 +1,10 @@
 import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
-import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition';
+import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 
-export { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition';
-export { HarmonicSandScene, harmonicSandStyleManifest } from './harmonic-sand/HarmonicSandScene';
-export { HarmonicSandPreviewScene } from './harmonic-sand/HarmonicSandPreviewScene';
-export { HarmonicSandModel, type HarmonicEmitter, type HarmonicSandModelOptions } from './harmonic-sand/HarmonicSandModel';
+export { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
+export { HarmonicSandScene, harmonicSandStyleManifest } from './harmonic-sand/HarmonicSandScene.js';
+export { HarmonicSandPreviewScene } from './harmonic-sand/HarmonicSandPreviewScene.js';
+export { HarmonicSandModel, type HarmonicEmitter, type HarmonicSandModelOptions } from './harmonic-sand/HarmonicSandModel.js';
 
 export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [harmonicSandDefinition] as const;
 

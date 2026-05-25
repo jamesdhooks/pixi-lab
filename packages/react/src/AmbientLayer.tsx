@@ -1,7 +1,7 @@
 import type { AmbientDataAdapter, AmbientExperience, GameEvent, RenderQuality } from '@hooksjam/pixi-lab-core';
 import type { GameApp } from '@hooksjam/pixi-lab-core';
 import { useEffect, useRef } from 'react';
-import { GameRuntime } from './GameRuntime';
+import { GameRuntime } from './GameRuntime.js';
 
 export interface AmbientLayerProps {
   definition: AmbientExperience;

@@ -12,9 +12,10 @@
     }
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json",
+    "build": "tsc --build --clean tsconfig.json && tsc --project tsconfig.json",
     "typecheck": "tsc --noEmit --project tsconfig.json",
-    "dev": "tsc --watch --project tsconfig.json"
+    "dev": "tsc --watch --project tsconfig.json",
+    "prepack": "pnpm build"
   },
   "peerDependencies": {
     "pixi.js": ">=8.0.0",
@@ -24,5 +25,17 @@
     "pixi.js": "^8.18.1",
     "planck": "^1.0.0",
     "typescript": "^5.4.0"
+  },
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/jamesdhooks/pixi-lab.git"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

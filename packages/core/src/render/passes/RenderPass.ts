@@ -1,5 +1,5 @@
 import type { RenderTexture } from 'pixi.js';
-import type { RenderPassId } from '../../types';
+import type { RenderPassId } from '../../types.js';
 
 export interface RenderPassContext {
   dt: number;

@@ -8,9 +8,9 @@ import {
   Texture,
   type Application,
 } from 'pixi.js';
-import type { SimParticle } from '../sim/particles/SimParticleSystem';
-import type { RenderQuality, SimRenderLayers, SimStyle } from '../types';
-import type { ScalarField } from '../sim/fields/ScalarField';
+import type { SimParticle } from '../sim/particles/SimParticleSystem.js';
+import type { RenderQuality, SimRenderLayers, SimStyle } from '../types.js';
+import type { ScalarField } from '../sim/fields/ScalarField.js';
 
 export interface EmitterMarker {
   position: { x: number; y: number };

@@ -4,9 +4,9 @@
  * Public API for @hooksjam/pixi-lab-games.
  */
 import type { GameDefinition } from '@hooksjam/pixi-lab-core';
-import { ballPitDefinition } from './ballpit/ballpit.definition';
+import { ballPitDefinition } from './ballpit/ballpit.definition.js';
 
-export { ballPitDefinition } from './ballpit/ballpit.definition';
+export { ballPitDefinition } from './ballpit/ballpit.definition.js';
 
 /** All registered games in this package */
 export const GAME_REGISTRY: readonly GameDefinition[] = [ballPitDefinition] as const;

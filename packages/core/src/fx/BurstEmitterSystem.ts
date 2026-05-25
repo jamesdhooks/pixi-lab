@@ -1,6 +1,6 @@
 import { Container, Particle, ParticleContainer, Texture, type Application } from 'pixi.js';
-import type { BurstEffect, BurstEffectKind, BurstEffectMode, RenderQuality } from '../types';
-import { SeededRng } from '../utils/SeededRng';
+import type { BurstEffect, BurstEffectKind, BurstEffectMode, RenderQuality } from '../types.js';
+import { SeededRng } from '../utils/SeededRng.js';
 
 interface BurstParticleState {
   view: Particle;

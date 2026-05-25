@@ -4,10 +4,10 @@
  * Ball Pit GameDefinition — register this in components/games/registry.ts.
  */
 import type { GameDefinition, SimStyleManifest } from '@hooksjam/pixi-lab-core';
-import { BallPitScene } from './BallPitScene';
-import { BallPitAutoScene } from './BallPitPreviewScene';
-import { BallPitAI } from './BallPitAI';
-import { BALLPIT_SETTINGS_FIELDS, BALLPIT_DEFAULTS } from './ballpit.config';
+import { BallPitScene } from './BallPitScene.js';
+import { BallPitAutoScene } from './BallPitPreviewScene.js';
+import { BallPitAI } from './BallPitAI.js';
+import { BALLPIT_SETTINGS_FIELDS, BALLPIT_DEFAULTS } from './ballpit.config.js';
 
 /** StyleManifest built from the ball pit's built-in palettes so StylePicker can render swatches. */
 export const ballPitStyleManifest: SimStyleManifest = {

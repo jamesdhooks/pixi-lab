@@ -1,4 +1,4 @@
-import type { Vec2 } from '../../types';
+import type { Vec2 } from '../../types.js';
 
 export class VectorField {
   readonly values: Float32Array;

@@ -6,12 +6,12 @@
  * Subsystem references use `import type` (erased at runtime, no circular dep).
  */
 import type { Body as PlanckBody } from 'planck';
-import type { PhysicsWorld } from './physics/World';
-import type { PixiApp } from './render/PixiApp';
-import type { SpriteFactory } from './render/Sprites';
-import type { ParticleSystem } from './render/Particles';
-import type { Audio } from './Audio';
-import type { Settings } from './Settings';
+import type { PhysicsWorld } from './physics/World.js';
+import type { PixiApp } from './render/PixiApp.js';
+import type { SpriteFactory } from './render/Sprites.js';
+import type { ParticleSystem } from './render/Particles.js';
+import type { Audio } from './Audio.js';
+import type { Settings } from './Settings.js';
 
 // ── Primitives ────────────────────────────────────────────────────────────────
 

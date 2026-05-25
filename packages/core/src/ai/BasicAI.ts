@@ -6,8 +6,8 @@
  *
  * Games extend this and override actionWeights / buildActions.
  */
-import type { AIController, AIContext } from './AIController';
-import type { Intent } from '../types';
+import type { AIController, AIContext } from './AIController.js';
+import type { Intent } from '../types.js';
 
 type ActionKind = 'tap' | 'drag' | 'hold_release';
 
