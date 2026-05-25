@@ -2,10 +2,13 @@
 
 A standalone, publishable **PixiJS v8** game engine and interactive experience library — built as a pnpm monorepo with TypeScript 5.4+ strict mode throughout.
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-0f62fe?logo=github&logoColor=white)](https://jamesdhooks.github.io/pixi-lab/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4+-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![PixiJS](https://img.shields.io/badge/PixiJS-v8-e72264?logo=data:image/svg+xml;base64,)](https://pixijs.com/)
 [![React](https://img.shields.io/badge/React-18-61dafb?logo=react&logoColor=white)](https://react.dev/)
 [![pnpm](https://img.shields.io/badge/pnpm-workspace-f69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
+
+**[▶ Open live demo →](https://jamesdhooks.github.io/pixi-lab/)**
 
 ---
 

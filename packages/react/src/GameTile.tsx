@@ -165,7 +165,7 @@ function FallbackTile({ definition, size }: { definition: LabExperience; size: n
         background: `linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)`,
       }}
     >
-      <span style={{ fontSize: size * 0.5, lineHeight: 1 }}>{definition.icon}</span>
+      <span style={{ fontSize: size * 0.5, lineHeight: 1, color: 'white' }}>{definition.icon}</span>
     </div>
   );
 }

@@ -96,229 +96,254 @@ export function App() {
     });
   }, [carouselOpen, activeCarouselIndex]);
 
-  if (active) {
-    const isBottom = carouselSide === 'bottom';
-    const isLeft = carouselSide === 'left';
-    const panelBorderClass = isBottom ? 'border-t' : isLeft ? 'border-r' : 'border-l';
-    const panelPositionClass = isBottom
-      ? 'bottom-0 left-0 right-0'
-      : isLeft ? 'top-0 left-0 bottom-0 w-[196px]' : 'top-0 right-0 bottom-0 w-[196px]';
-    const panelInitialAnim = isBottom ? { y: '100%' } : isLeft ? { x: '-100%' } : { x: '100%' };
-    const chevronPositionClass = isBottom
-      ? 'bottom-1 left-1/2 -translate-x-1/2 h-8 w-12'
-      : isLeft ? 'left-1 top-1/2 -translate-y-1/2 h-12 w-8' : 'right-1 top-1/2 -translate-y-1/2 h-12 w-8';
-    const ChevronOpenIcon = isBottom ? ChevronUp : isLeft ? ChevronRight : ChevronLeft;
-    const ChevronCloseIcon = isBottom ? ChevronDown : isLeft ? ChevronLeft : ChevronRight;
+  const isBottom = carouselSide === 'bottom';
+  const isLeft = carouselSide === 'left';
+  const panelBorderClass = isBottom ? 'border-t' : isLeft ? 'border-r' : 'border-l';
+  const panelPositionClass = isBottom
+    ? 'bottom-0 left-0 right-0'
+    : isLeft ? 'top-0 left-0 bottom-0 w-[196px]' : 'top-0 right-0 bottom-0 w-[196px]';
+  const panelInitialAnim = isBottom ? { y: '100%' } : isLeft ? { x: '-100%' } : { x: '100%' };
+  const chevronPositionClass = isBottom
+    ? 'bottom-1 left-1/2 -translate-x-1/2 h-8 w-12'
+    : isLeft ? 'left-1 top-1/2 -translate-y-1/2 h-12 w-8' : 'right-1 top-1/2 -translate-y-1/2 h-12 w-8';
+  const ChevronOpenIcon = isBottom ? ChevronUp : isLeft ? ChevronRight : ChevronLeft;
+  const ChevronCloseIcon = isBottom ? ChevronDown : isLeft ? ChevronLeft : ChevronRight;
 
-    // When docked, shrink the experience area to leave real space for the carousel.
-    const docked = carouselDocked && carouselOpen;
-    const dockedInset = docked
-      ? (isBottom ? { bottom: 164 } : isLeft ? { left: 196 } : { right: 196 })
-      : {};
-
-    return (
-      <div className="w-screen h-screen bg-black">
-        {/* Experience wrapper — transform creates a containing block so the
-            GameLauncher's fixed children are constrained when docked. */}
-        <div
-          className="fixed inset-0"
-          style={{ ...dockedInset, transform: 'translateZ(0)' }}
-        >
-          <GameLauncher
-            definition={active}
-            onQuit={() => { setActive(null); setCarouselOpen(false); }}
-          />
-        </div>
-
-        {/* Chevron toggle — visible when carousel is closed */}
-        <AnimatePresence>
-          {!carouselOpen && (
-            <motion.button
-              key="chevron-open"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              onClick={() => setCarouselOpen(true)}
-              aria-label="Show experience picker"
-              className={`fixed z-[60] flex items-center justify-center ${chevronPositionClass} text-white/20 transition-colors hover:text-white/50`}
-            >
-              <ChevronOpenIcon size={16} />
-            </motion.button>
-          )}
-        </AnimatePresence>
-
-        {/* Carousel panel */}
-        <AnimatePresence>
-          {carouselOpen && (
-            <motion.div
-              key={`carousel-${carouselSide}`}
-              initial={panelInitialAnim}
-              animate={isBottom ? { y: 0 } : { x: 0 }}
-              exit={panelInitialAnim}
-              transition={{ type: 'spring', stiffness: 400, damping: 40, mass: 0.7 }}
-              className={`fixed z-[60] flex flex-col ${panelBorderClass} border-white/10 bg-black/90 backdrop-blur-xl ${panelPositionClass}`}
-            >
-              {/* Header */}
-              <div className="flex shrink-0 items-center gap-1 border-b border-white/[0.07] px-3 py-1.5">
-                <span className="mr-auto text-[10px] font-semibold uppercase tracking-widest text-white/30">
-                  Experiences
-                </span>
-                {(['left', 'bottom', 'right'] as const).map((s) => {
-                  const SideIcon = s === 'left' ? PanelLeft : s === 'bottom' ? PanelBottom : PanelRight;
-                  return (
-                    <button
-                      key={s}
-                      onClick={() => setCarouselSide(s)}
-                      aria-label={`Move to ${s}`}
-                      className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
-                        carouselSide === s ? 'text-white/70' : 'text-white/20 hover:text-white/50'
-                      }`}
-                    >
-                      <SideIcon size={12} />
-                    </button>
-                  );
-                })}
-                <button
-                  onClick={() => setCarouselDocked((d) => !d)}
-                  aria-label={carouselDocked ? 'Undock' : 'Dock'}
-                  className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
-                    carouselDocked ? 'text-white/70' : 'text-white/20 hover:text-white/50'
-                  }`}
-                >
-                  {carouselDocked ? <PinOff size={12} /> : <Pin size={12} />}
-                </button>
-                <button
-                  onClick={() => setCarouselOpen(false)}
-                  aria-label="Close carousel"
-                  className="flex h-6 w-6 items-center justify-center rounded text-white/20 transition-colors hover:text-white/50"
-                >
-                  <ChevronCloseIcon size={14} />
-                </button>
-              </div>
-
-              {isBottom ? (
-                /* ── Bottom layout: horizontal scroll ── */
-                <div className="flex h-[132px] items-stretch">
-                  {/* Filters */}
-                  <div className="flex shrink-0 flex-col justify-center gap-0.5 border-r border-white/[0.07] px-2 py-1.5">
-                    {availableKinds.map((kind) => (
-                      <button
-                        key={kind}
-                        onClick={() => setCarouselFilter(kind)}
-                        className={[
-                          'whitespace-nowrap rounded-md px-2 py-0.5 text-[9px] font-semibold transition-colors',
-                          carouselFilter === kind ? 'bg-white/15 text-white' : 'text-white/30 hover:text-white/60',
-                        ].join(' ')}
-                      >
-                        {KIND_LABELS[kind] ?? kind}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Prev */}
-                  <button
-                    onClick={goPrev}
-                    disabled={!carouselItems.length}
-                    aria-label="Previous"
-                    className="flex shrink-0 items-center justify-center px-1.5 text-white/25 transition-colors hover:text-white/60 disabled:opacity-0"
-                  >
-                    <ChevronLeft size={15} />
-                  </button>
-                  {/* Tiles */}
-                  <div
-                    ref={scrollerRef}
-                    className="flex flex-1 items-center gap-2 overflow-x-auto px-1"
-                    style={{ scrollbarWidth: 'none' }}
-                  >
-                    {carouselItems.map((exp, i) => (
-                      <CarouselTile
-                        key={exp.id}
-                        exp={exp}
-                        index={i}
-                        isActive={active?.id === exp.id}
-                        size={80}
-                        onClick={() => selectExperience(exp, i)}
-                      />
-                    ))}
-                  </div>
-                  {/* Next */}
-                  <button
-                    onClick={goNext}
-                    disabled={!carouselItems.length}
-                    aria-label="Next"
-                    className="flex shrink-0 items-center justify-center px-1.5 text-white/25 transition-colors hover:text-white/60 disabled:opacity-0"
-                  >
-                    <ChevronRight size={15} />
-                  </button>
-                </div>
-              ) : (
-                /* ── Side layout: vertical scroll ── */
-                <div className="flex flex-1 flex-col overflow-hidden">
-                  {/* Filter pills */}
-                  <div
-                    className="flex shrink-0 gap-1 overflow-x-auto border-b border-white/[0.07] px-2 py-1.5"
-                    style={{ scrollbarWidth: 'none' }}
-                  >
-                    {availableKinds.map((kind) => (
-                      <button
-                        key={kind}
-                        onClick={() => setCarouselFilter(kind)}
-                        className={[
-                          'shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 text-[9px] font-semibold transition-colors',
-                          carouselFilter === kind ? 'bg-white/15 text-white' : 'text-white/30 hover:text-white/60',
-                        ].join(' ')}
-                      >
-                        {KIND_LABELS[kind] ?? kind}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Prev */}
-                  <button
-                    onClick={goPrev}
-                    disabled={!carouselItems.length}
-                    aria-label="Previous"
-                    className="flex shrink-0 items-center justify-center py-1 text-white/25 transition-colors hover:text-white/60 disabled:opacity-0"
-                  >
-                    <ChevronUp size={15} />
-                  </button>
-                  {/* Tiles — vertical scroll */}
-                  <div
-                    ref={scrollerRef}
-                    className="flex flex-col items-center gap-2 overflow-y-auto px-2 py-1"
-                    style={{ scrollbarWidth: 'none' }}
-                  >
-                    {carouselItems.map((exp, i) => (
-                      <CarouselTile
-                        key={exp.id}
-                        exp={exp}
-                        index={i}
-                        isActive={active?.id === exp.id}
-                        size={74}
-                        onClick={() => selectExperience(exp, i)}
-                        labelRight
-                      />
-                    ))}
-                  </div>
-                  {/* Next */}
-                  <button
-                    onClick={goNext}
-                    disabled={!carouselItems.length}
-                    aria-label="Next"
-                    className="flex shrink-0 items-center justify-center py-1 text-white/25 transition-colors hover:text-white/60 disabled:opacity-0"
-                  >
-                    <ChevronDown size={15} />
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  }
+  // When docked, shrink the experience area to leave real space for the carousel.
+  const docked = carouselDocked && carouselOpen;
+  const dockedInset = docked
+    ? (isBottom ? { bottom: 164 } : isLeft ? { left: 196 } : { right: 196 })
+    : {};
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#080810] text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <div className="relative w-screen h-screen overflow-hidden bg-white dark:bg-[#080810]">
+
+      {/* ── Experience layer — keyed by id so it fades when switching ── */}
+      <AnimatePresence>
+        {active && (
+          <motion.div
+            key={active.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="absolute inset-0"
+          >
+            {/* transform creates a containing block so GameLauncher's fixed
+                children are constrained to this element when docked. */}
+            <div
+              className="fixed inset-0"
+              style={{ ...dockedInset, transform: 'translateZ(0)' }}
+            >
+              <GameLauncher
+                definition={active}
+                onQuit={() => { setActive(null); setCarouselOpen(false); }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Carousel — outside the experience key so it persists across switches ── */}
+      {active && (
+        <>
+          {/* Chevron toggle — visible when carousel is closed */}
+          <AnimatePresence>
+            {!carouselOpen && (
+              <motion.button
+                key="chevron-open"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                onClick={() => setCarouselOpen(true)}
+                aria-label="Show experience picker"
+                className={`fixed z-[60] flex items-center justify-center ${chevronPositionClass} text-white/20 transition-colors hover:text-white/50`}
+              >
+                <ChevronOpenIcon size={16} />
+              </motion.button>
+            )}
+          </AnimatePresence>
+
+          {/* Carousel panel */}
+          <AnimatePresence>
+            {carouselOpen && (
+              <motion.div
+                key={`carousel-${carouselSide}`}
+                initial={panelInitialAnim}
+                animate={isBottom ? { y: 0 } : { x: 0 }}
+                exit={panelInitialAnim}
+                transition={{ type: 'spring', stiffness: 400, damping: 40, mass: 0.7 }}
+                className={`fixed z-[60] flex flex-col ${panelBorderClass} border-white/10 bg-black/90 backdrop-blur-xl ${panelPositionClass}`}
+              >
+                {/* Header */}
+                <div className="flex shrink-0 items-center gap-1 border-b border-white/[0.07] px-3 py-1.5">
+                  <span className="mr-auto text-[10px] font-semibold uppercase tracking-widest text-white/30">
+                    Experiences
+                  </span>
+                  {(['left', 'bottom', 'right'] as const).map((s) => {
+                    const SideIcon = s === 'left' ? PanelLeft : s === 'bottom' ? PanelBottom : PanelRight;
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => setCarouselSide(s)}
+                        aria-label={`Move to ${s}`}
+                        className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+                          carouselSide === s ? 'text-white/70' : 'text-white/20 hover:text-white/50'
+                        }`}
+                      >
+                        <SideIcon size={12} />
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setCarouselDocked((d) => !d)}
+                    aria-label={carouselDocked ? 'Undock' : 'Dock'}
+                    className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+                      carouselDocked ? 'text-white/70' : 'text-white/20 hover:text-white/50'
+                    }`}
+                  >
+                    {carouselDocked ? <PinOff size={12} /> : <Pin size={12} />}
+                  </button>
+                  <button
+                    onClick={() => setCarouselOpen(false)}
+                    aria-label="Close carousel"
+                    className="flex h-6 w-6 items-center justify-center rounded text-white/20 transition-colors hover:text-white/50"
+                  >
+                    <ChevronCloseIcon size={14} />
+                  </button>
+                </div>
+
+                {isBottom ? (
+                  /* ── Bottom layout: horizontal scroll ── */
+                  <div className="flex h-[132px] items-stretch">
+                    {/* Filters */}
+                    <div className="flex shrink-0 flex-col justify-center gap-0.5 border-r border-white/[0.07] px-2 py-1.5">
+                      {availableKinds.map((kind) => (
+                        <button
+                          key={kind}
+                          onClick={() => setCarouselFilter(kind)}
+                          className={[
+                            'whitespace-nowrap rounded-md px-2 py-0.5 text-[9px] font-semibold transition-colors',
+                            carouselFilter === kind ? 'bg-white/15 text-white' : 'text-white/30 hover:text-white/60',
+                          ].join(' ')}
+                        >
+                          {KIND_LABELS[kind] ?? kind}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Prev */}
+                    <button
+                      onClick={goPrev}
+                      disabled={!carouselItems.length}
+                      aria-label="Previous"
+                      className="flex shrink-0 items-center justify-center px-1.5 text-white/25 transition-colors hover:text-white/60 disabled:opacity-0"
+                    >
+                      <ChevronLeft size={15} />
+                    </button>
+                    {/* Tiles */}
+                    <div
+                      ref={scrollerRef}
+                      className="flex flex-1 items-center gap-2 overflow-x-auto px-1"
+                      style={{ scrollbarWidth: 'none' }}
+                    >
+                      {carouselItems.map((exp, i) => (
+                        <CarouselTile
+                          key={exp.id}
+                          exp={exp}
+                          index={i}
+                          isActive={active?.id === exp.id}
+                          size={80}
+                          onClick={() => selectExperience(exp, i)}
+                        />
+                      ))}
+                    </div>
+                    {/* Next */}
+                    <button
+                      onClick={goNext}
+                      disabled={!carouselItems.length}
+                      aria-label="Next"
+                      className="flex shrink-0 items-center justify-center px-1.5 text-white/25 transition-colors hover:text-white/60 disabled:opacity-0"
+                    >
+                      <ChevronRight size={15} />
+                    </button>
+                  </div>
+                ) : (
+                  /* ── Side layout: vertical scroll ── */
+                  <div className="flex flex-1 flex-col overflow-hidden">
+                    {/* Filter pills */}
+                    <div
+                      className="flex shrink-0 gap-1 overflow-x-auto border-b border-white/[0.07] px-2 py-1.5"
+                      style={{ scrollbarWidth: 'none' }}
+                    >
+                      {availableKinds.map((kind) => (
+                        <button
+                          key={kind}
+                          onClick={() => setCarouselFilter(kind)}
+                          className={[
+                            'shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 text-[9px] font-semibold transition-colors',
+                            carouselFilter === kind ? 'bg-white/15 text-white' : 'text-white/30 hover:text-white/60',
+                          ].join(' ')}
+                        >
+                          {KIND_LABELS[kind] ?? kind}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Prev */}
+                    <button
+                      onClick={goPrev}
+                      disabled={!carouselItems.length}
+                      aria-label="Previous"
+                      className="flex shrink-0 items-center justify-center py-1 text-white/25 transition-colors hover:text-white/60 disabled:opacity-0"
+                    >
+                      <ChevronUp size={15} />
+                    </button>
+                    {/* Tiles — vertical scroll */}
+                    <div
+                      ref={scrollerRef}
+                      className="flex flex-col items-center gap-2 overflow-y-auto px-2 py-1"
+                      style={{ scrollbarWidth: 'none' }}
+                    >
+                      {carouselItems.map((exp, i) => (
+                        <CarouselTile
+                          key={exp.id}
+                          exp={exp}
+                          index={i}
+                          isActive={active?.id === exp.id}
+                          size={74}
+                          onClick={() => selectExperience(exp, i)}
+                          labelRight
+                        />
+                      ))}
+                    </div>
+                    {/* Next */}
+                    <button
+                      onClick={goNext}
+                      disabled={!carouselItems.length}
+                      aria-label="Next"
+                      className="flex shrink-0 items-center justify-center py-1 text-white/25 transition-colors hover:text-white/60 disabled:opacity-0"
+                    >
+                      <ChevronDown size={15} />
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      )}
+
+      {/* ── Gallery layer ── */}
+      <AnimatePresence>
+        {!active && (
+          <motion.div
+            key="gallery"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="absolute inset-0 overflow-y-auto text-slate-900 dark:text-slate-100"
+          >
       <main className="max-w-5xl mx-auto px-8 pt-24 pb-32">
 
         {/* Title */}
@@ -381,6 +406,9 @@ export function App() {
       >
         {dark ? '☀️' : '🌙'}
       </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
