@@ -10,7 +10,7 @@
  * - Emit GameEvents upward to the React shell via the provided callback
  * - Clean shutdown on destroy()
  */
-import type { GameContext, GameEvent, GameMode } from './types';
+import type { GameContext, GameEvent, GameMode, RenderQuality } from './types';
 import type { Scene } from './Scene';
 import { Ticker } from './Ticker';
 import { Input } from './Input';
@@ -26,11 +26,20 @@ import { ScreensaverManager } from './screensaver/ScreensaverManager';
 import type { AIController } from './ai/AIController';
 import type { HighScoreProvider } from './scoring/HighScoreProvider';
 import { ApiHighScoreProvider } from './scoring/HighScoreProvider';
-import type { GameDefinition } from './LabExperience';
+import type { LabExperience } from './LabExperience';
+import { RenderTargetPool } from './render/RenderTargetPool';
+import { RenderStyleManager } from './render/RenderStyleManager';
+import { ProceduralTextureLibrary } from './render/procedural/ProceduralTextureLibrary';
+import { GestureInterpreter } from './gestures/GestureInterpreter';
+import { PerformanceGovernor } from './performance/PerformanceGovernor';
+import { DirectorMode } from './director/DirectorMode';
+import { StagnationRecovery } from './stagnation/StagnationRecovery';
+import { DebugOverlay } from './debug/DebugOverlay';
+import { SimulationScene } from './sim/SimulationScene';
 
 export interface GameAppOptions {
   container: HTMLElement;
-  definition: GameDefinition;
+  definition: LabExperience;
   userId?: string;
   /** Override score provider (e.g. noop for preview mode) */
   scoreProvider?: HighScoreProvider;
@@ -38,6 +47,8 @@ export interface GameAppOptions {
   mode?: GameMode;
   /** Palette name from Styles registry */
   palette?: string;
+  seed?: number;
+  quality?: RenderQuality;
   /** Emit events upward to React shell */
   onEvent?: (event: GameEvent) => void;
 }
@@ -56,12 +67,21 @@ export class GameApp {
   private aiController: AIController | null = null;
   private scoreProvider: HighScoreProvider;
   private onEvent: (event: GameEvent) => void;
+  private renderTargets!: RenderTargetPool;
+  private styleManager!: RenderStyleManager;
+  private procedural!: ProceduralTextureLibrary;
+  private gestures!: GestureInterpreter;
+  private governor!: PerformanceGovernor;
+  private director!: DirectorMode;
+  private stagnation!: StagnationRecovery;
+  private debug!: DebugOverlay;
 
   private currentScene: Scene | null = null;
   private _mode: GameMode;
-  private definition: GameDefinition;
+  private definition: LabExperience;
   private ctx!: GameContext;
   private ready = false;
+  private quality: RenderQuality;
 
   // Track if any human input happened this frame
   private hasHumanInputThisFrame = false;
@@ -69,6 +89,7 @@ export class GameApp {
   constructor(private opts: GameAppOptions) {
     this.definition = opts.definition;
     this._mode = opts.mode ?? 'play';
+    this.quality = opts.quality ?? 'basic';
     this.scoreProvider = opts.scoreProvider ?? new ApiHighScoreProvider();
     this.onEvent = opts.onEvent ?? (() => undefined);
 
@@ -105,9 +126,29 @@ export class GameApp {
     this.spriteFactory = new SpriteFactory(this.pixi.app);
     this.particleSystem = new ParticleSystem(this.pixi.app, this.spriteFactory);
     this.physicsWorld = new PhysicsWorld();
+    this.renderTargets = new RenderTargetPool(this.pixi.renderer);
+    this.styleManager = new RenderStyleManager();
+    this.procedural = new ProceduralTextureLibrary(this.pixi.renderer);
+    this.gestures = new GestureInterpreter();
+    this.governor = new PerformanceGovernor({
+      onQualityChange: (quality) => {
+        this.quality = quality;
+        this.ctx.quality = quality;
+        this.styleManager.setQuality(quality);
+        if (this.currentScene instanceof SimulationScene) {
+          this.currentScene.setQuality(quality);
+        }
+        this.onEvent({ kind: 'quality_change', payload: { quality } });
+      },
+    });
+    this.director = new DirectorMode(definition.directorEvents ?? [], opts.seed ?? definition.defaultSeed ?? 1);
+    this.stagnation = new StagnationRecovery();
+    this.debug = new DebugOverlay(this.pixi.app);
 
     this.ctx = {
       mode: this._mode,
+      seed: opts.seed ?? definition.defaultSeed ?? 1,
+      quality: this.quality,
       width: this.pixi.width,
       height: this.pixi.height,
       systems: {
@@ -117,6 +158,14 @@ export class GameApp {
         particles: this.particleSystem,
         audio: this.audio,
         settings: this._settings,
+        renderTargets: this.renderTargets,
+        styleManager: this.styleManager,
+        gestures: this.gestures,
+        governor: this.governor,
+        director: this.director,
+        stagnation: this.stagnation,
+        debug: this.debug,
+        procedural: this.procedural,
       },
       emit: this.onEvent,
     };
@@ -125,7 +174,7 @@ export class GameApp {
     this.telemetry.mount(container);
 
     // AI controller
-    if (definition.capabilities.aiAutoplay && definition.aiFactory) {
+    if (definition.kind === 'game' && definition.capabilities.aiAutoplay && definition.aiFactory) {
       this.aiController = definition.aiFactory(this.ctx);
     }
 
@@ -176,6 +225,28 @@ export class GameApp {
     this.ctx.mode = mode;
   }
 
+  setQuality(quality: RenderQuality) {
+    this.quality = quality;
+    this.ctx.quality = quality;
+    this.governor.setQuality(quality);
+    this.styleManager.setQuality(quality);
+    if (this.currentScene instanceof SimulationScene) {
+      this.currentScene.setQuality(quality);
+    }
+  }
+
+  setStyle(styleId: string) {
+    this.styleManager.setStyle(styleId);
+    if (this.currentScene instanceof SimulationScene) {
+      this.currentScene.setStyle(styleId);
+    }
+    this.onEvent({ kind: 'style_change', payload: { styleId } });
+  }
+
+  setDebugEnabled(enabled: boolean) {
+    this.debug.setEnabled(enabled);
+  }
+
   get scoreHandler(): HighScoreProvider {
     return this.scoreProvider;
   }
@@ -204,7 +275,7 @@ export class GameApp {
   setAIEnabled(enabled: boolean) {
     if (!enabled) {
       this.aiController = null;
-    } else if (!this.aiController && this.definition.aiFactory) {
+    } else if (!this.aiController && this.definition.kind === 'game' && this.definition.aiFactory) {
       this.aiController = this.definition.aiFactory(this.ctx);
     }
   }
@@ -223,6 +294,9 @@ export class GameApp {
     this.physicsWorld.destroy();
     this.spriteFactory?.destroyAll();
     this.particleSystem?.destroy();
+    this.debug?.destroy();
+    this.renderTargets?.destroy();
+    this.procedural?.destroy();
     this.pixi?.destroy();
     this.audio.dispose();
   }
@@ -242,6 +316,13 @@ export class GameApp {
     this.input.flush();
     const snap = this.input.snapshot;
     this.hasHumanInputThisFrame = snap.justDown.size > 0;
+    const gestureEvents = this.gestures.update(snap);
+    if (gestureEvents.length > 0) {
+      this.hasHumanInputThisFrame = true;
+      if (this.currentScene instanceof SimulationScene) {
+        this.currentScene.pushGestures(gestureEvents);
+      }
+    }
 
     // AI tick — inject intents before scene update so scene sees them
     if (
@@ -261,8 +342,30 @@ export class GameApp {
 
     // Screensaver manager
     this.screensaverManager.tick(dt, this.hasHumanInputThisFrame);
+    const directorEvent = this.director.update(dt, !this.hasHumanInputThisFrame);
+    if (directorEvent) {
+      this.onEvent({ kind: 'director_event', payload: { id: directorEvent.id } });
+    }
 
     this.currentScene?.update(dt);
+
+    const newQuality = this.governor.update(dt);
+    if (newQuality) {
+      this.onEvent({ kind: 'quality_change', payload: { quality: newQuality } });
+    }
+
+    if (this.currentScene instanceof SimulationScene) {
+      const report = this.stagnation.update(dt, this.currentScene);
+      if (report) {
+        this.onEvent({ kind: 'stagnation_recovery', payload: { reason: report.reason } });
+      }
+    }
+
+    this.debug.update({
+      fps: this.ticker.fps,
+      quality: this.quality,
+      renderTargets: JSON.stringify(this.renderTargets.stats()),
+    });
 
     // Update telemetry
     this.telemetry.update({
@@ -279,6 +382,7 @@ export class GameApp {
 
   private handleResize = (width: number, height: number) => {
     this.pixi.resize(width, height);
+    this.renderTargets.resizePersistent(width, height);
     this.ctx.width = width;
     this.ctx.height = height;
     this.currentScene?.resize(width, height);
@@ -287,7 +391,7 @@ export class GameApp {
   private handleScreensaverEnter = () => {
     this._mode = 'screensaver';
     this.ctx.mode = 'screensaver';
-    if (this.definition.capabilities.screensaver && this.definition.screensaverFactory) {
+    if (this.definition.kind === 'game' && this.definition.capabilities.screensaver && this.definition.screensaverFactory) {
       const scene = this.definition.screensaverFactory(this.ctx);
       this.switchScene(scene);
     }

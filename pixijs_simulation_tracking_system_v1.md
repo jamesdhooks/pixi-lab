@@ -2,6 +2,32 @@
 
 This document is a companion to the main master architecture/specification document.
 
+---
+
+# 0. Plan Execution Log
+
+## 2026-05-24 — Engine Simulation Foundation + Harmonic Sand Plate
+
+Scope:
+- unify games and simulations under the shared `LabExperience` contract
+- add the core simulation primitives required by the master plan
+- add `packages/simulations` as a sibling content package to `packages/games`
+- implement Harmonic Sand Plate as the first complete simulation
+- update the demo app into a game/simulation gallery
+- add an `/add-simulation` skill for future simulation additions
+
+Completion target:
+- Harmonic Sand Plate must satisfy the Definition of Done in this document before it is marked `COMPLETE`
+- shared infrastructure rows below should be updated with concrete implementation notes as each system lands
+
+Decisions:
+- `packages/core` owns shared engine, rendering, gestures, style, director, performance, and debug systems
+- `packages/games` owns game content
+- `packages/simulations` owns simulation content
+- `packages/react` owns kind-agnostic React integration components
+
+---
+
 Purpose:
 - provide a clean agent-oriented implementation queue
 - define simulation implementation workflow
@@ -84,6 +110,18 @@ Agents should NEVER:
 | Debug Overlay | NOT_STARTED | |
 | Style Export System | NOT_STARTED | |
 | Shader Uniform Tuning UI | NOT_STARTED | |
+
+Acceptance notes:
+- RenderTargetPool is complete when scenes can acquire/release transient targets and persistent targets are disposed on scene/app shutdown.
+- RenderStyleManager is complete when an experience can switch style and quality without recreating simulation state.
+- Shared shader systems are complete for this pass when Harmonic Sand Plate uses palette mapping, contour bands, trail feedback, and bloom-style glow through shared pass/config abstractions.
+- PerformanceGovernor is complete when it samples frame timing and can downgrade a simulation's quality and particle budget.
+- DirectorMode is complete when idle simulations can trigger declared ambient events.
+- Gesture Interpreter is complete when tap, drag, hold, fast swipe, double tap, pinch, and spread events are emitted from shared input state.
+- ProceduralTextureLibrary is complete when reusable radial, spark, noise, blue-noise, palette strip, caustic, grain, and scanline textures can be requested lazily.
+- Debug Overlay is complete when FPS, quality, gestures, field stats, and render-target stats can be visualized without DOM dependencies.
+- Style Export System is complete when style id, seed, uniforms, and quality can be serialized from the active experience.
+- Shader Uniform Tuning UI is complete when React can render style uniform controls from a manifest without hardcoded simulation-specific panels.
 
 Status values:
 - NOT_STARTED

@@ -37,6 +37,8 @@ export interface RGBA {
 // ── Runtime mode ──────────────────────────────────────────────────────────────
 
 export type GameMode = 'play' | 'screensaver' | 'demo' | 'paused';
+export type RenderQuality = 'basic' | 'enhanced' | 'ultra';
+export type ExperienceKind = 'game' | 'simulation' | 'toy';
 
 // ── Input ─────────────────────────────────────────────────────────────────────
 
@@ -56,6 +58,32 @@ export interface InputSnapshot {
   justDown: Set<number>;
   justUp: Set<number>;
 }
+
+export type GestureKind =
+  | 'tap'
+  | 'drag'
+  | 'hold'
+  | 'fast_swipe'
+  | 'double_tap'
+  | 'pinch'
+  | 'spread';
+
+export interface GestureEvent {
+  kind: GestureKind;
+  x: number;
+  y: number;
+  id?: number;
+  x2?: number;
+  y2?: number;
+  dx?: number;
+  dy?: number;
+  velocity?: number;
+  durationMs?: number;
+  strength?: number;
+  timestamp: number;
+}
+
+export type GestureActionMap = Partial<Record<GestureKind, string>>;
 
 // ── Physics ───────────────────────────────────────────────────────────────────
 
@@ -110,10 +138,92 @@ export interface GamePalette {
 
 export type ShaderPreset = 'none' | 'bloom' | 'crt' | 'scanlines';
 
+export type RenderPassId =
+  | 'primitive'
+  | 'paletteMap'
+  | 'densityMetaball'
+  | 'edgeGlow'
+  | 'trailFeedback'
+  | 'fieldVisualize'
+  | 'bloom'
+  | 'distortion'
+  | 'chromaticAberration'
+  | 'normalLighting'
+  | 'contourBands'
+  | 'shockwave'
+  | 'colorGrade'
+  | 'composite';
+
 export interface StyleConfig {
   palette: GamePalette;
   shader: ShaderPreset;
   particleOpacity: number; // 0-1
+}
+
+export interface StyleUniform {
+  key: string;
+  label: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  default: number | string | boolean;
+}
+
+export interface SimStyle {
+  id: string;
+  name: string;
+  description?: string;
+  palette: number[];
+  background: number;
+  passes: RenderPassId[];
+  uniforms: Record<string, number | string | boolean>;
+  uniformSchema?: StyleUniform[];
+}
+
+export interface SimRenderCapabilities {
+  renderLayers: Array<keyof SimRenderLayers>;
+  passes: RenderPassId[];
+  qualities: RenderQuality[];
+}
+
+export interface SimStyleManifest {
+  defaultStyleId: string;
+  capabilities: SimRenderCapabilities;
+  styles: SimStyle[];
+}
+
+export interface SimRenderLayers {
+  primitive?: unknown;
+  particles?: unknown;
+  density?: unknown;
+  trails?: unknown;
+  field?: unknown;
+  mask?: unknown;
+  glow?: unknown;
+  debug?: unknown;
+}
+
+export interface DirectorEvent {
+  id: string;
+  label: string;
+  minIntervalMs: number;
+  maxIntervalMs: number;
+  intensity?: number;
+}
+
+export interface StagnationReport {
+  stagnant: boolean;
+  reason?: string;
+  severity: number;
+  observedForMs?: number;
+}
+
+export interface StyleExportSnapshot {
+  experienceId: string;
+  styleId: string;
+  seed: number;
+  quality: RenderQuality;
+  uniforms: Record<string, number | string | boolean>;
 }
 
 // ── Score ─────────────────────────────────────────────────────────────────────
@@ -150,7 +260,19 @@ export interface GameCapabilities {
   aiAutoplay: boolean;
   screensaver: boolean;
   tutorial: boolean;
+  interactive?: boolean;
+  ambient?: boolean;
+  gestures?: boolean;
+  directorMode?: boolean;
+  stagnationRecovery?: boolean;
+  debugOverlay?: boolean;
+  styleExport?: boolean;
+  proceduralTextures?: boolean;
+  renderTargetPool?: boolean;
+  qualityModes?: RenderQuality[];
 }
+
+export type ExperienceCapabilities = GameCapabilities;
 
 export interface UISlot {
   topLeft?: React.ReactNode;
@@ -172,10 +294,20 @@ export interface GameSystems {
   particles: ParticleSystem;
   audio: Audio;
   settings: Settings;
+  renderTargets?: import('./render/RenderTargetPool').RenderTargetPool;
+  styleManager?: import('./render/RenderStyleManager').RenderStyleManager;
+  gestures?: import('./gestures/GestureInterpreter').GestureInterpreter;
+  governor?: import('./performance/PerformanceGovernor').PerformanceGovernor;
+  director?: import('./director/DirectorMode').DirectorMode;
+  stagnation?: import('./stagnation/StagnationRecovery').StagnationRecovery;
+  debug?: import('./debug/DebugOverlay').DebugOverlay;
+  procedural?: import('./render/procedural/ProceduralTextureLibrary').ProceduralTextureLibrary;
 }
 
 export interface GameContext {
   mode: GameMode;
+  seed: number;
+  quality: RenderQuality;
   /** Canvas dimensions in logical pixels */
   width: number;
   height: number;
@@ -193,6 +325,10 @@ export type GameEventKind =
   | 'resumed'
   | 'screensaver_enter'
   | 'screensaver_exit'
+  | 'quality_change'
+  | 'style_change'
+  | 'director_event'
+  | 'stagnation_recovery'
   | 'error';
 
 export interface GameEvent {

@@ -29,6 +29,7 @@ export const tutorialPages = [
 
 export const ballPitDefinition: GameDefinition = {
   id: 'ball-pit',
+  kind: 'game',
   name: 'Ball Pit',
   short: 'Spawn bouncy balls!',
   long: 'Tap to drop colourful physics balls. Drag to attract them. Rack up a high score!',

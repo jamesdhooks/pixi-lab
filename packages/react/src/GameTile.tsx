@@ -13,7 +13,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { GameApp } from '@hooksjam/pixi-lab-core';
 import { NoopHighScoreProvider } from '@hooksjam/pixi-lab-core';
-import type { GameDefinition } from '@hooksjam/pixi-lab-core';
+import type { LabExperience } from '@hooksjam/pixi-lab-core';
 
 const PERF_WINDOW_S = 2; // measure perf for 2 seconds
 const FPS_THRESHOLD = 20; // fall back if avg below this
@@ -40,11 +40,13 @@ function recordFailure(gameId: string) {
 }
 
 export interface GameTileProps {
-  definition: GameDefinition;
+  definition: LabExperience;
   onPress?: () => void;
   size?: number;
   index?: number;
 }
+
+export type PreviewTileProps = GameTileProps;
 
 export function GameTile({ definition, onPress, size = 180, index = 0 }: GameTileProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -144,7 +146,9 @@ export function GameTile({ definition, onPress, size = 180, index = 0 }: GameTil
   );
 }
 
-function FallbackTile({ definition, size }: { definition: GameDefinition; size: number }) {
+export const PreviewTile = GameTile;
+
+function FallbackTile({ definition, size }: { definition: LabExperience; size: number }) {
   if (definition.previewFallback) {
     return (
       <img

@@ -13,15 +13,18 @@ import { PauseModal } from './ui/PauseModal';
 import { GameOverModal } from './ui/GameOverModal';
 import { HUD } from './ui/HUD';
 import { SettingsDrawer } from './ui/SettingsDrawer';
+import { StylePicker } from './ui/StylePicker';
+import { QualitySelector } from './ui/QualitySelector';
+import { DebugToggle } from './ui/DebugToggle';
 import { nameSuggestions } from '@hooksjam/pixi-lab-core';
-import type { GameDefinition } from '@hooksjam/pixi-lab-core';
-import type { GameEvent, ScoreEntry } from '@hooksjam/pixi-lab-core';
+import type { LabExperience } from '@hooksjam/pixi-lab-core';
+import type { GameEvent, RenderQuality, ScoreEntry } from '@hooksjam/pixi-lab-core';
 import type { GameApp } from '@hooksjam/pixi-lab-core';
 
 type Shell = 'intro' | 'tutorial' | 'playing' | 'paused' | 'gameover';
 
 export interface GameLauncherProps {
-  definition: GameDefinition;
+  definition: LabExperience;
   userId?: string;
   /** Top scores for the leaderboard — fetched by the host app */
   topScores?: ScoreEntry[];
@@ -42,6 +45,9 @@ export function GameLauncher({
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState<number | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [styleId, setStyleId] = useState(definition.styleManifest?.defaultStyleId ?? '');
+  const [quality, setQuality] = useState<RenderQuality>('basic');
+  const [debugEnabled, setDebugEnabled] = useState(false);
   const appRef = useRef<GameApp | null>(null);
 
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -98,6 +104,7 @@ export function GameLauncher({
   );
 
   const tutorialPages = definition.tutorialPages ?? [];
+  const isSimulation = definition.kind === 'simulation';
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-black">
@@ -139,7 +146,40 @@ export function GameLauncher({
       {shell === 'playing' && (
         <>
           <QuitButton onQuit={handleQuit} />
-          <HUD score={score} lives={lives} onPause={handlePause} />
+          {isSimulation ? (
+            <div style={{ position: 'absolute', left: 16, top: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+              {definition.styleManifest && (
+                <StylePicker
+                  manifest={definition.styleManifest}
+                  value={styleId}
+                  onChange={(nextStyleId) => {
+                    setStyleId(nextStyleId);
+                    appRef.current?.setStyle(nextStyleId);
+                  }}
+                />
+              )}
+              <QualitySelector
+                value={quality}
+                options={definition.capabilities.qualityModes ?? ['basic', 'enhanced']}
+                onChange={(nextQuality) => {
+                  setQuality(nextQuality);
+                  appRef.current?.setQuality(nextQuality);
+                }}
+              />
+              <DebugToggle
+                value={debugEnabled}
+                onChange={(enabled) => {
+                  setDebugEnabled(enabled);
+                  appRef.current?.setDebugEnabled(enabled);
+                }}
+              />
+              <button type="button" onClick={handlePause} style={{ background: '#111827', color: '#f8fafc', border: '1px solid #334155', borderRadius: 6, padding: '0.35rem 0.5rem' }}>
+                Pause
+              </button>
+            </div>
+          ) : (
+            <HUD score={score} lives={lives} onPause={handlePause} />
+          )}
         </>
       )}
 
@@ -154,14 +194,16 @@ export function GameLauncher({
       )}
 
       {shell === 'gameover' && (
-        <GameOverModal
-          score={score}
-          suggestions={suggestions}
-          topScores={topScores}
-          onSubmit={handleScoreSubmit}
-          onRestart={handleRestart}
-          onQuit={handleQuit}
-        />
+        definition.kind === 'game' ? (
+          <GameOverModal
+            score={score}
+            suggestions={suggestions}
+            topScores={topScores}
+            onSubmit={handleScoreSubmit}
+            onRestart={handleRestart}
+            onQuit={handleQuit}
+          />
+        ) : null
       )}
 
       {appRef.current && (

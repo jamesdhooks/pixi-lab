@@ -6,11 +6,11 @@
  */
 import { useEffect, useRef, useCallback } from 'react';
 import { GameApp, type GameAppOptions } from '@hooksjam/pixi-lab-core';
-import type { GameDefinition } from '@hooksjam/pixi-lab-core';
+import type { LabExperience } from '@hooksjam/pixi-lab-core';
 import type { GameEvent } from '@hooksjam/pixi-lab-core';
 
 export interface GameRuntimeProps {
-  definition: GameDefinition;
+  definition: LabExperience;
   userId?: string;
   palette?: string;
   mode?: 'play' | 'screensaver' | 'demo';
@@ -19,6 +19,8 @@ export interface GameRuntimeProps {
   /** Called when the GameApp instance is ready */
   onReady?: (app: GameApp) => void;
 }
+
+export type ExperienceRuntimeProps = GameRuntimeProps;
 
 export function GameRuntime({
   definition,
@@ -75,3 +77,6 @@ export function GameRuntime({
     />
   );
 }
+
+export const ExperienceRuntime = GameRuntime;
+export const SimulationRuntime = GameRuntime;

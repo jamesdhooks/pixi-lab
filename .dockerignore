@@ -1,0 +1,9 @@
+node_modules
+packages/*/node_modules
+dist
+packages/*/dist
+.git
+.github
+*.log
+coverage
+.DS_Store

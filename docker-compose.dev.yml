@@ -1,0 +1,22 @@
+name: ${NEOLOCAL_DOCKER_PREFIX:-neolocal}-pixi-lab
+
+services:
+  demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${NEOLOCAL_DOCKER_PREFIX:-neolocal}-pixi-lab-demo
+    ports:
+      - "${PIXI_LAB_DEMO_PORT:-5173}:5173"
+    environment:
+      NODE_ENV: development
+      VITE_HOST: 0.0.0.0
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/packages/core/node_modules
+      - /app/packages/react/node_modules
+      - /app/packages/games/node_modules
+      - /app/packages/demo/node_modules
+    command: pnpm --filter @hooksjam/pixi-lab-demo dev -- --host 0.0.0.0 --port 5173
+    restart: unless-stopped
