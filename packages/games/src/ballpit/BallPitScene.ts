@@ -420,7 +420,7 @@ export class BallPitScene extends Scene {
 
   private spawnBall(x: number, y: number, vxPxS = 0, vyPxS = 0) {
     const { world, sprites, particles, audio, settings } = this.ctx_.systems;
-    const maxBalls = 1000;
+    const maxBalls = (settings.get('maxBalls') as number | undefined) ?? 1000;
     const ballSize = (settings.get('ballSize') as number) ?? 19;
     const half = ballSize * 0.45;
     const radius = Math.max(4, Math.round(ballSize - half + Math.random() * half * 2));

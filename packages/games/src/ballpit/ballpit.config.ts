@@ -16,6 +16,15 @@ export const BALLPIT_SETTINGS_FIELDS: SettingsField[] = [
     default: 19,
   },
   {
+    key: 'maxBalls',
+    label: 'Ball Limit',
+    type: 'number',
+    min: 25,
+    max: 1000,
+    step: 25,
+    default: 1000,
+  },
+  {
     key: 'rapidSpeed',
     label: 'Spawn Rate',
     type: 'number',
@@ -76,6 +85,7 @@ export const BALLPIT_SETTINGS_FIELDS: SettingsField[] = [
 
 export const BALLPIT_DEFAULTS: Record<string, unknown> = {
   ballSize: 19,
+  maxBalls: 1000,
   rapidSpeed: 10,
   explodeStrength: 50,
   gravity: 1.0,

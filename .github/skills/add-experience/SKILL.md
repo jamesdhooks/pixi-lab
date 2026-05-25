@@ -69,13 +69,26 @@ You **do not** need to build these UI elements — the launcher handles them:
 - **Quality selector** — shown in HUD controls when `qualityModes` is set. Calls `app.setQuality()`.
 - **Settings modal** — centered card (desktop) / bottom-sheet (mobile). Renders `definition.settingsFields` automatically.
 
+## Standard Implementation Loop
+
+For every new game, simulation, ambient, effect, or toy:
+
+1. Read `AGENTS.md`, the relevant master-plan section, and the tracking-system section.
+2. Identify reusable engine primitives before writing content-specific code. Prefer extending `packages/core` over duplicating render/model systems in an experience folder.
+3. Write or update behavior tests first, then implement the smallest code change that makes them pass.
+4. Keep deterministic model/state logic separate from Pixi scene rendering whenever practical.
+5. Add a cheap deterministic preview scene with reduced budgets.
+6. Register the experience through the package registry so the demo discovers it automatically.
+7. Update the tracking document with status, validation notes, deferred gaps, and implementation notes.
+8. Run the full quality gate from a built workspace before considering the task complete.
+
 ## Quality gates
 
 ```bash
-pnpm --filter @hooksjam/pixi-lab-core build   # rebuild core first if you touched it
-pnpm --filter @hooksjam/pixi-lab-games typecheck
-pnpm --filter @hooksjam/pixi-lab-games build
+pnpm build                         # package exports point at dist, so build before tests
+pnpm --recursive typecheck
 pnpm test
 pnpm --filter @hooksjam/pixi-lab-demo dev
 ```
+
 

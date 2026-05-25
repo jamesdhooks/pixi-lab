@@ -7,7 +7,7 @@ function createModel(seed = 42) {
     width: 400,
     height: 240,
     quality: 'basic',
-    particleCount: 500,
+    fieldColumns: 32,
     emitterCount: 2,
     baseFrequency: 2.4,
   });
@@ -20,12 +20,15 @@ describe('HarmonicSandModel', () => {
     expect(a.emitters).toEqual(b.emitters);
   });
 
-  it('updates the field and particles', () => {
+  it('updates the scalar field with finite wave values', () => {
     const model = createModel();
-    const before = model.field.stats().variance;
     model.update(1 / 60);
-    expect(model.field.stats().variance).toBeGreaterThanOrEqual(before);
-    expect(model.particles.particles.length).toBe(500);
+    const stats = model.field.stats();
+    expect(Number.isFinite(stats.mean)).toBe(true);
+    expect(Number.isFinite(stats.variance)).toBe(true);
+    expect(stats.variance).toBeGreaterThan(0);
+    expect(model.field.columns).toBe(32);
+    expect(model.field.rows).toBe(19);
   });
 
   it('adds an emitter from tap gestures', () => {
@@ -45,11 +48,15 @@ describe('HarmonicSandModel', () => {
     expect(model.emitters.length).toBeGreaterThanOrEqual(before);
   });
 
-  it('soft reset is deterministic for the same seed', () => {
+  it('reset is deterministic for the same seed', () => {
     const a = createModel(77);
     const b = createModel(77);
+    a.handleGesture({ kind: 'tap', x: 250, y: 120, timestamp: 0 });
+    a.update(1 / 60);
+    a.reset(77);
     a.update(1 / 60);
     b.update(1 / 60);
-    expect(a.particles.particles.slice(0, 10)).toEqual(b.particles.particles.slice(0, 10));
+    expect(a.emitters).toEqual(b.emitters);
+    expect(Array.from(a.field.values.slice(0, 32))).toEqual(Array.from(b.field.values.slice(0, 32)));
   });
 });

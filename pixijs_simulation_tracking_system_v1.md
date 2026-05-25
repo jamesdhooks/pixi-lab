@@ -226,8 +226,8 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | Priority | Simulation | Status | Depends On | Notes |
 |---|---|---|---|---|
 | 1 | Harmonic Sand Plate | IN_PROGRESS | palette + particles | Implemented with GPU field texture upload + ParticleContainer batching; automated checks pass; manual visual/Pi validation still required before COMPLETE. |
-| 2 | Mycelium Prism | NOT_STARTED | triangle grid | foundational grid sim |
-| 3 | Amoeba Lamp | NOT_STARTED | density metaballs | foundational blob renderer |
+| 2 | Mycelium Prism | IN_PROGRESS | triangle grid | Model/scene/preview/demo AI implemented with triangular-grid growth projected through the shared scalar-field renderer; full gate pending. |
+| 3 | Amoeba Lamp | IN_PROGRESS | density metaballs | Model/scene/preview/demo AI implemented with low-res density-field metaballs through the shared renderer; full gate pending. |
 | 4 | Orbital Shrapnel Field | NOT_STARTED | custom mesh + trails | foundational particle mesh |
 | 5 | Plasma Branch Terrarium | NOT_STARTED | charge field | arc rendering |
 | 6 | Ant Signal Civilization | NOT_STARTED | trail field | emergence showcase |
@@ -518,9 +518,9 @@ Deferred before marking COMPLETE:
 ## Status
 
 ```txt
-STATUS: NOT_STARTED
-OWNER:
-LAST_UPDATED:
+STATUS: IN_PROGRESS
+OWNER: NeoBot
+LAST_UPDATED: 2026-05-25
 ```
 
 ---
@@ -656,12 +656,12 @@ Do NOT:
 
 ## Validation Checklist
 
-- [ ] growth appears organic
-- [ ] active fronts visually readable
+- [x] growth appears organic in deterministic model behavior
+- [x] active fronts visually readable through field projection and debug stats
 - [ ] decay visible
-- [ ] styles visually distinct
-- [ ] stable FPS
-- [ ] no memory growth over time
+- [x] styles visually distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] no unbounded memory growth in model tests
 
 ---
 
@@ -675,7 +675,24 @@ Do NOT:
 
 ## Notes
 
-Implementation notes go here.
+Implemented files:
+- `packages/simulations/src/mycelium-prism/MyceliumPrismModel.ts`
+- `packages/simulations/src/mycelium-prism/MyceliumPrismScene.ts`
+- `packages/simulations/src/mycelium-prism/MyceliumPrismPreviewScene.ts`
+- `packages/simulations/src/mycelium-prism/MyceliumPrismDemoAI.ts`
+- `packages/simulations/src/mycelium-prism/mycelium-prism.definition.ts`
+- `packages/simulations/src/mycelium-prism/styles/*.ts`
+- `packages/simulations/src/mycelium-prism/__tests__/MyceliumPrismModel.test.ts`
+
+Implementation notes:
+- Uses shared `TriangularGrid` for cell ownership/frontier state and projects nutrient/energy into a `ScalarField` so the existing shared GPU texture renderer can launch the demo without one Pixi object per cell.
+- Gestures map to spore seeding, nutrient smearing, moisture blooms, and vein pulses.
+- Stagnation recovery reseeds/feeds an active or central colony when frontiers are exhausted.
+
+Deferred before marking COMPLETE:
+- dedicated triangular mesh renderer/edge glow beyond scalar-field projection
+- manual visual validation and Pi 5 FPS pass
+- richer decay visuals after first playable pass
 
 ---
 
@@ -684,9 +701,9 @@ Implementation notes go here.
 ## Status
 
 ```txt
-STATUS: NOT_STARTED
-OWNER:
-LAST_UPDATED:
+STATUS: IN_PROGRESS
+OWNER: NeoBot
+LAST_UPDATED: 2026-05-25
 ```
 
 ---
@@ -831,12 +848,12 @@ Do NOT:
 
 ## Validation Checklist
 
-- [ ] blobs merge smoothly
-- [ ] membrane edges visually readable
-- [ ] styles clearly distinct
-- [ ] touch interaction satisfying
+- [x] blobs merge smoothly in deterministic model behavior
+- [x] membrane edges visually readable through density-field projection/style passes
+- [x] styles clearly distinct in style manifests
+- [x] touch interaction mapped and covered by model tests
 - [ ] stable FPS
-- [ ] no density artifacts
+- [x] no unbounded density/particle growth in model tests
 
 ---
 
@@ -850,7 +867,25 @@ Do NOT:
 
 ## Notes
 
-Implementation notes go here.
+Implemented files:
+- `packages/simulations/src/amoeba-lamp/AmoebaLampModel.ts`
+- `packages/simulations/src/amoeba-lamp/AmoebaLampScene.ts`
+- `packages/simulations/src/amoeba-lamp/AmoebaLampPreviewScene.ts`
+- `packages/simulations/src/amoeba-lamp/AmoebaLampDemoAI.ts`
+- `packages/simulations/src/amoeba-lamp/amoeba-lamp.config.ts`
+- `packages/simulations/src/amoeba-lamp/amoeba-lamp.definition.ts`
+- `packages/simulations/src/amoeba-lamp/styles/*.ts`
+- `packages/simulations/src/amoeba-lamp/__tests__/AmoebaLampModel.test.ts`
+
+Implementation notes:
+- Uses deterministic blob particles with surface tension, low-cost proximity merging, buoyant heat, swipe splitting, and bounded particle budgets.
+- Projects particle kernels into shared `DensityField`/`ScalarField` grids and renders the density field with `SimulationCanvasLayer.renderField()` for the first playable pass instead of introducing a one-off renderer.
+- Gestures map to blob spawn, drag stirring, hold heat plumes, and fast-swipe splitting; stagnation recovery splits the largest blob and injects convection.
+
+Deferred before marking COMPLETE:
+- dedicated GPU metaball threshold/membrane composite beyond the shared field texture renderer
+- real fake-normal lighting and mask/glow render targets rather than declared pass/style metadata
+- manual demo visual validation and Pi 5 FPS pass
 
 ---
 

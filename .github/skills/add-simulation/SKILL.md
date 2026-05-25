@@ -162,10 +162,11 @@ Update `pixijs_simulation_tracking_system_v1.md`:
 
 ## Quality Gates
 
+Run from a built workspace because package exports point at `dist`:
+
 ```bash
-pnpm --filter @hooksjam/pixi-lab-core typecheck
-pnpm --filter @hooksjam/pixi-lab-simulations typecheck
-pnpm --filter @hooksjam/pixi-lab-simulations build
+pnpm build
+pnpm --recursive typecheck
 pnpm test
 pnpm --filter @hooksjam/pixi-lab-demo dev
 ```
