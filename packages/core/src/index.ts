@@ -14,7 +14,20 @@ export { Settings } from './Settings';
 export { Telemetry } from './Telemetry';
 
 // Experience definition
-export type { GameDefinition, TutorialPage } from './LabExperience';
+export type {
+  GameDefinition,
+  GameExperience,
+  LabExperience,
+  LabExperienceBase,
+  AmbientDefinition,
+  AmbientExperience,
+  EffectDefinition,
+  EffectExperience,
+  SimulationDefinition,
+  SimulationExperience,
+  ToyExperience,
+  TutorialPage,
+} from './LabExperience';
 
 // Types
 export type {
@@ -22,6 +35,9 @@ export type {
   Rect,
   RGBA,
   GameMode,
+  RenderQuality,
+  ExperienceKind,
+  ExperienceRenderMode,
   GameEvent,
   GameEventKind,
   GameContext,
@@ -40,7 +56,30 @@ export type {
   SettingsValue,
   SettingsField,
   GameCapabilities,
+  ExperienceCapabilities,
+  ExperienceMode,
+  AmbientDataSource,
+  AmbientDataBinding,
+  AmbientBehaviorConfig,
+  AmbientStyle,
+  AmbientDataSnapshot,
+  AmbientDataAdapter,
+  BurstEffectKind,
+  BurstEffectMode,
+  BurstEffect,
+  GestureActionMap,
+  GestureEvent,
+  GestureKind,
+  RenderPassId,
+  SimRenderCapabilities,
+  SimRenderLayers,
+  SimStyle,
+  SimStyleManifest,
+  StagnationReport,
+  DirectorEvent,
+  StyleExportSnapshot,
 } from './types';
+export { DEFAULT_AMBIENT_BEHAVIOR, DEFAULT_FOREGROUND_BEHAVIOR } from './types';
 
 // Physics
 export { PhysicsWorld } from './physics/World';
@@ -59,12 +98,52 @@ export {
 
 // Render
 export { PixiApp } from './render/PixiApp';
+export { Graphics } from 'pixi.js';
 export { SpriteFactory } from './render/Sprites';
 export { ParticleSystem } from './render/Particles';
 export { styleRegistry, PALETTES, DEFAULT_STYLE } from './render/Styles';
+export { RenderTargetPool, type RenderTargetRequest, type RenderTargetStats } from './render/RenderTargetPool';
+export { PingPong } from './render/PingPong';
+export { RenderStyleManager } from './render/RenderStyleManager';
+export { SimulationCanvasLayer } from './render/SimulationCanvasLayer';
+export type { EmitterMarker } from './render/SimulationCanvasLayer';
+export { ProceduralTextureLibrary, type ProceduralTextureId } from './render/procedural/ProceduralTextureLibrary';
+export { createSharedPass, SHARED_RENDER_PASS_IDS } from './render/passes/SharedPasses';
+export { NoopRenderPass, type RenderPass, type RenderPassContext } from './render/passes/RenderPass';
+
+// Simulation primitives
+export { SimulationScene } from './sim/SimulationScene';
+export { ScalarField } from './sim/fields/ScalarField';
+export { DensityField } from './sim/fields/DensityField';
+export { TrailField } from './sim/fields/TrailField';
+export { VectorField } from './sim/fields/VectorField';
+export { TriangularGrid, type TriangularGridCell } from './sim/grids/TriangularGrid';
+export { SpringSystem, type SpringEdge, type SpringNode } from './sim/springs/SpringSystem';
+export { SimParticleSystem, type SimParticle } from './sim/particles/SimParticleSystem';
+export { GestureInterpreter, type GestureInterpreterOptions } from './gestures/GestureInterpreter';
+export { PerformanceGovernor, type PerformanceGovernorOptions } from './performance/PerformanceGovernor';
+export { DirectorMode } from './director/DirectorMode';
+export { StagnationRecovery, type StagnationAware } from './stagnation/StagnationRecovery';
+export { DebugOverlay, type DebugOverlayState } from './debug/DebugOverlay';
+export { StyleExporter } from './style/StyleExporter';
+export { SeededRng } from './utils/SeededRng';
+
+// Ambient and reusable effects
+export { AmbientDataManager } from './ambient/AmbientDataManager';
+export { BurstEmitterSystem } from './fx/BurstEmitterSystem';
+export type { EffectEmitter } from './fx/EffectEmitter';
+export { BaseEffectEmitter } from './fx/EffectEmitter';
+export { SparkEmitter } from './fx/emitters/SparkEmitter';
+export { FireworkEmitter } from './fx/emitters/FireworkEmitter';
+export { EmberEmitter } from './fx/emitters/EmberEmitter';
+export { ConfettiEmitter } from './fx/emitters/ConfettiEmitter';
+export { FireflyEmitter } from './fx/emitters/FireflyEmitter';
+export { SmokeEmitter } from './fx/emitters/SmokeEmitter';
+export { ArcSparkEmitter } from './fx/emitters/ArcSparkEmitter';
 
 // AI
 export type { AIController, AIContext } from './ai/AIController';
+export type { SimulationAI, SimAIContext } from './ai/SimulationAI';
 export { BasicAI } from './ai/BasicAI';
 export { DemoAI } from './ai/DemoAI';
 

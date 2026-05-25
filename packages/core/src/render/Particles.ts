@@ -5,7 +5,7 @@
  * Particles have no physics — they're purely visual.
  * Suitable for: trails, splashes, confetti, background chaos, tiny balls.
  */
-import { ParticleContainer, Sprite, type Application } from 'pixi.js';
+import { Container, Sprite, type Application } from 'pixi.js';
 import type { SpriteFactory } from './Sprites';
 
 export interface ParticleConfig {
@@ -23,15 +23,13 @@ export interface ParticleConfig {
 }
 
 export class ParticleSystem {
-  readonly container: ParticleContainer;
+  readonly container: Container;
   private particles: Array<{ cfg: ParticleConfig; sprite: Sprite }> = [];
   private spriteFactory: SpriteFactory;
 
   constructor(app: Application, spriteFactory: SpriteFactory, _maxCount = 2000) {
     this.spriteFactory = spriteFactory;
-    this.container = new ParticleContainer({
-      dynamicProperties: { position: true, alpha: true },
-    });
+    this.container = new Container();
     app.stage.addChild(this.container);
   }
 

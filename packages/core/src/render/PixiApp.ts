@@ -14,6 +14,7 @@ export interface PixiAppOptions {
   maxDpr?: number;
   antialias?: boolean;
   background?: number;
+  backgroundAlpha?: number;
 }
 
 export class PixiApp {
@@ -21,27 +22,24 @@ export class PixiApp {
   private _width: number;
   private _height: number;
 
-  constructor(opts: PixiAppOptions) {
+  private constructor(opts: PixiAppOptions) {
     this._width = opts.width;
     this._height = opts.height;
-
     this.app = new Application();
-    // Pixi v8 init is async but we expose a factory for convenience
-    void this.app.init({
-      resizeTo: opts.container,
-      background: opts.background ?? 0x1a1a2e,
-      antialias: opts.antialias ?? false, // off by default for Pi 5 perf
-      resolution: Math.min(window.devicePixelRatio, opts.maxDpr ?? 2),
-      autoDensity: true,
-    });
   }
 
-  /** Async factory — preferred entry point */
+  /** Async factory — only supported entry point */
   static async create(opts: PixiAppOptions): Promise<PixiApp> {
     const instance = new PixiApp(opts);
+    // Use explicit dimensions instead of resizeTo. The caller's ResizeObserver
+    // (in GameApp) handles future resizes. resizeTo was causing a feedback loop
+    // where Pixi's internal observer could measure the container at an invalid
+    // time (e.g. during layout) and produce absurd canvas dimensions (2^25+1).
     await instance.app.init({
-      resizeTo: opts.container,
+      width: Math.max(opts.width, 1),
+      height: Math.max(opts.height, 1),
       background: opts.background ?? 0x1a1a2e,
+      backgroundAlpha: opts.backgroundAlpha ?? 1,
       antialias: opts.antialias ?? false,
       resolution: Math.min(window.devicePixelRatio, opts.maxDpr ?? 2),
       autoDensity: true,
@@ -76,6 +74,10 @@ export class PixiApp {
   }
 
   destroy() {
-    this.app.destroy(true, { children: true });
+    // Use { removeView: true } instead of bare `true` to avoid triggering
+    // GlobalResourceRegistry.release(), which clears the shared batch pool and
+    // corrupts any other Pixi Application instances still running in the same tab
+    // (e.g. GameTile preview apps on the home screen behind the GameLauncher).
+    this.app.destroy({ removeView: true }, { children: true });
   }
 }

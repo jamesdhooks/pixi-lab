@@ -9,6 +9,7 @@ export default defineConfig({
       '@hooksjam/pixi-lab-core': resolve(__dirname, '../core/src/index.ts'),
       '@hooksjam/pixi-lab-react': resolve(__dirname, '../react/src/index.ts'),
       '@hooksjam/pixi-lab-games': resolve(__dirname, '../games/src/index.ts'),
+      '@hooksjam/pixi-lab-simulations': resolve(__dirname, '../simulations/src/index.ts'),
     },
   },
   base: '/pixi-lab/',

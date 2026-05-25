@@ -1,12 +1,13 @@
 /**
  * components/games/ui/SettingsDrawer.tsx
  *
- * Auto-renders SettingsField[] from the engine Settings instance.
- * Slide-up drawer shown when the user taps the settings button.
+ * Game/simulation settings panel — a compact dropdown anchored to the top-right
+ * controls bar. Opens below the settings button with a slide-down animation.
+ * Less blur, less dramatic than a full modal.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, ChevronDown, Check } from 'lucide-react';
 import type { Settings } from '@hooksjam/pixi-lab-core';
 import type { SettingsField } from '@hooksjam/pixi-lab-core';
 
@@ -38,30 +39,35 @@ export function SettingsDrawer({ open, onClose, settings, fields }: SettingsDraw
     <AnimatePresence>
       {open && (
         <>
+          {/* Transparent click-catcher for outside-dismiss */}
+          <div className="absolute inset-0 z-40" onClick={onClose} />
+
+          {/* Dropdown panel — slides in from top-right */}
           <motion.div
-            key="backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-40 bg-black/50"
-            onClick={onClose}
-          />
-          <motion.div
-            key="drawer"
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-            className="absolute inset-x-0 bottom-0 z-50 max-h-[70%] overflow-y-auto rounded-t-3xl border-t border-white/10 bg-gray-900/95 p-6 backdrop-blur-xl"
+            key="panel"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute right-3 top-12 z-50 w-80 max-h-[70vh] overflow-y-auto rounded-2xl bg-black/80 shadow-xl backdrop-blur-md ring-1 ring-white/12"
           >
-            <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">Settings</h3>
-              <button onClick={onClose} className="text-white/50 hover:text-white">
-                <X size={20} />
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <h3 className="text-sm font-bold text-white">Settings</h3>
+              <button
+                onClick={onClose}
+                className="text-white/40 transition-colors hover:text-white"
+                aria-label="Close settings"
+              >
+                <X size={14} />
               </button>
             </div>
 
-            <div className="space-y-5">
+            {/* Divider */}
+            <div className="mx-4 h-px bg-white/8" />
+
+            {/* Fields */}
+            <div className="space-y-0.5 p-3">
               {fields.map((field) => (
                 <FieldRow
                   key={field.key}
@@ -78,6 +84,8 @@ export function SettingsDrawer({ open, onClose, settings, fields }: SettingsDraw
   );
 }
 
+// ── Field row ──────────────────────────────────────────────────────────────────
+
 function FieldRow({
   field,
   value,
@@ -88,57 +96,175 @@ function FieldRow({
   onChange: (v: unknown) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div>
-        <p className="text-sm font-medium text-white">{field.label}</p>
-        {field.description && <p className="mt-0.5 text-xs text-white/50">{field.description}</p>}
+    <div className="flex items-center justify-between gap-4 rounded-xl px-2 py-2.5">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-white">{field.label}</p>
+        {field.description && (
+          <p className="mt-0.5 text-xs leading-snug text-white/45">{field.description}</p>
+        )}
       </div>
 
-      {field.type === 'boolean' && (
-        <button
-          onClick={() => onChange(!value)}
-          className={`relative h-6 w-10 rounded-full transition-colors ${value ? 'bg-green-500' : 'bg-white/20'}`}
-          role="switch"
-          aria-checked={Boolean(value)}
-        >
+      <div className="shrink-0">
+        {field.type === 'boolean' && (
+          <ToggleSwitch value={Boolean(value)} onChange={onChange} />
+        )}
+        {field.type === 'number' && (
+          <NumberSlider field={field} value={value} onChange={onChange} />
+        )}
+        {field.type === 'select' && (
+          <CustomSelect field={field} value={value} onChange={onChange} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Toggle switch ─────────────────────────────────────────────────────────────
+
+function ToggleSwitch({ value, onChange }: { value: boolean; onChange: (v: unknown) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={value}
+      onClick={() => onChange(!value)}
+      className={`relative h-7 w-12 rounded-full transition-colors duration-200 ${
+        value ? 'bg-emerald-500' : 'bg-white/15'
+      }`}
+    >
+      <motion.div
+        className="absolute top-1 h-5 w-5 rounded-full bg-white shadow-md"
+        animate={{ x: value ? 22 : 2 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      />
+    </button>
+  );
+}
+
+// ── Number slider ─────────────────────────────────────────────────────────────
+
+function NumberSlider({
+  field,
+  value,
+  onChange,
+}: {
+  field: SettingsField;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const num = typeof value === 'number' ? value : (field.min ?? 0);
+  return (
+    <div className="flex items-center gap-3">
+      <input
+        type="range"
+        min={field.min}
+        max={field.max}
+        step={field.step ?? 1}
+        value={num}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="h-1.5 w-28 cursor-pointer appearance-none rounded-full bg-white/20 accent-white"
+      />
+      <span className="w-9 text-right text-sm tabular-nums text-white/60">{num}</span>
+    </div>
+  );
+}
+
+// ── Custom select ─────────────────────────────────────────────────────────────
+
+function CustomSelect({
+  field,
+  value,
+  onChange,
+}: {
+  field: SettingsField;
+  value: unknown;
+  onChange: (v: unknown) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  // Capture button position at open time so the fixed dropdown aligns correctly
+  // even inside a scroll container (overflow-y: auto clips absolute children).
+  const [btnRect, setBtnRect] = useState<{ top: number; bottom: number; right: number; width: number } | null>(null);
+  const current = field.options?.find((o) => o.value === String(value));
+
+  const handleToggle = () => {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setBtnRect({ top: r.top, bottom: r.bottom, right: window.innerWidth - r.right, width: r.width });
+    }
+    setOpen((o) => !o);
+  };
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // Determine whether to open upward if near the bottom of the viewport
+  const openUpward = btnRect ? btnRect.bottom > window.innerHeight * 0.65 : false;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={handleToggle}
+        className="flex min-w-[110px] items-center justify-between gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm text-white ring-1 ring-white/15 transition-colors hover:bg-white/15"
+      >
+        <span className="truncate">{current?.label ?? String(value)}</span>
+        <ChevronDown
+          size={13}
+          className={`shrink-0 text-white/50 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && btnRect && (
           <motion.div
-            className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow"
-            animate={{ x: value ? 18 : 2 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-          />
-        </button>
-      )}
-
-      {field.type === 'number' && (
-        <div className="flex items-center gap-2">
-          <span className="w-8 text-right text-xs text-white/60">
-            {typeof value === 'number' ? value : field.min}
-          </span>
-          <input
-            type="range"
-            min={field.min}
-            max={field.max}
-            step={field.step ?? 1}
-            value={typeof value === 'number' ? value : (field.min ?? 0)}
-            onChange={(e) => onChange(Number(e.target.value))}
-            className="w-24 accent-white"
-          />
-        </div>
-      )}
-
-      {field.type === 'select' && (
-        <select
-          value={String(value)}
-          onChange={(e) => onChange(e.target.value)}
-          className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs text-white"
-        >
-          {field.options?.map((opt) => (
-            <option key={opt.value} value={opt.value} className="bg-gray-800">
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      )}
+            initial={{ opacity: 0, y: openUpward ? 4 : -4, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: openUpward ? 4 : -4, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            style={{
+              position: 'fixed',
+              ...(openUpward
+                ? { bottom: window.innerHeight - btnRect.top + 6 }
+                : { top: btnRect.bottom + 6 }),
+              right: btnRect.right,
+              minWidth: Math.max(btnRect.width, 130),
+            }}
+            className="z-[9999] overflow-hidden rounded-xl bg-black/90 p-1 shadow-2xl ring-1 ring-white/20 backdrop-blur-xl"
+          >
+            {field.options?.map((opt) => {
+              const active = opt.value === String(value);
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                    active
+                      ? 'bg-white/15 text-white'
+                      : 'text-white/65 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <span>{opt.label}</span>
+                  {active && <Check size={12} className="shrink-0 text-emerald-400" />}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -11,7 +11,8 @@
 - **Structure:**
   - `packages/core` → `@hooksjam/pixi-lab-core` — engine types, GameApp, scenes, physics, AI, scoring
   - `packages/react` → `@hooksjam/pixi-lab-react` — React shell (GameRuntime, GameLauncher, GameTile, UI)
-  - `packages/games` → `@hooksjam/pixi-lab-games` — game/simulation content (Ball Pit, etc.)
+  - `packages/games` → `@hooksjam/pixi-lab-games` — game content (Ball Pit, etc.)
+  - `packages/simulations` → `@hooksjam/pixi-lab-simulations` — simulation content (Harmonic Sand Plate, etc.)
   - `packages/demo` → demo app (Vite SPA, not published)
 
 ## Non-Negotiable Rules
@@ -19,18 +20,18 @@
 1. **TypeScript strict** — no `any`, no `@ts-ignore` without an explanatory comment
 2. **No `console.log`** in library code — use a logger or remove debug logging before commit
 3. **`@hooksjam/pixi-lab-core` is the single import** for all engine types — never import directly from `pixi.js` or `planck` in `packages/react` or `packages/games`
-4. **`GameDefinition` lives in `packages/core`** (`LabExperience.ts`) — this is the contract between packages
+4. **`LabExperience` lives in `packages/core`** (`LabExperience.ts`) — this is the shared contract between games, simulations, and toys
 5. **`GameLauncher` in packages/react is app-agnostic** — no routing, no fetch calls. Host apps inject `onQuit`, `onSubmitScore`, `topScores` props
 6. **Each game is a self-contained folder** under `packages/games/src/<game-name>/`
 7. **Conventional Commits enforced.** Format: `type(scope): subject`
-   - Valid scopes: `core`, `react`, `games`, `demo`, `ci`, `deps`, `config`
+  - Valid scopes: `core`, `react`, `games`, `sims`, `demo`, `ci`, `deps`, `config`
 
 ## Architecture
 
 ```
 packages/core/src/
   types.ts            — all primitive types (Vec2, GameEvent, ScoreEntry, …)
-  LabExperience.ts    — GameDefinition interface (the LabExperience contract)
+  LabExperience.ts    — LabExperience interface/union (the shared contract)
   GameApp.ts          — main runtime orchestrator
   Scene.ts            — base scene class
   physics/            — planck wrappers
@@ -50,6 +51,10 @@ packages/react/src/
 packages/games/src/
   <game-name>/        — one folder per game (see add-experience skill)
   index.ts            — GAME_REGISTRY, getGame()
+
+packages/simulations/src/
+  <simulation-name>/  — one folder per simulation (see add-simulation skill)
+  index.ts            — SIMULATION_REGISTRY, getSimulation()
 ```
 
 ## Common Commands
@@ -65,7 +70,7 @@ pnpm test                                 # run all tests (Vitest)
 
 ## Adding a New Game or Simulation
 
-Use the `/add-experience` skill (`.github/skills/add-experience/SKILL.md`).
+Use the `/add-experience` skill (`.github/skills/add-experience/SKILL.md`). It routes to game or simulation scaffolding.
 
 ## What NOT to Do
 
@@ -79,6 +84,6 @@ import { useNavigate } from 'react-router'; // belongs in the host app wrapper
 // ❌ Never call GameApp directly from a game definition file
 import { GameApp } from '@hooksjam/pixi-lab-core'; // only in packages/react
 
-// ❌ Never add a game directly to GAME_REGISTRY without a definition file
-// Add to packages/games/src/<name>/<name>.definition.ts first
+// ❌ Never add a game or simulation directly to a registry without a definition file
+// Add to packages/games/src/<name>/<name>.definition.ts or packages/simulations/src/<name>/<name>.definition.ts first
 ```

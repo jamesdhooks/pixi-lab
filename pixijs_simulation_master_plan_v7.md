@@ -9,16 +9,18 @@
 4. Rendering and Style System
 5. Performance, Quality, and GPU Management
 6. Shared UX Systems
-7. Simulation Definition Template
-8. Simulation Catalog
-9. Shared Shader Technique Library
-10. Shared Engine Primitive Systems
-11. Procedural Texture Library
-12. PixiJS Rendering Rules
-13. Development and Debugging Tooling
-14. Build Order and Implementation Milestones
-15. Definition of Done
-16. Final Recommendations
+7. Ambient Experience System
+8. Reusable FX / Burst Emitter System
+9. Simulation Definition Template
+10. Simulation Catalog
+11. Shared Shader Technique Library
+12. Shared Engine Primitive Systems
+13. Procedural Texture Library
+14. PixiJS Rendering Rules
+14. Development and Debugging Tooling
+15. Build Order and Implementation Milestones
+16. Definition of Done
+17. Final Recommendations
 
 
 ---
@@ -514,7 +516,202 @@ Examples:
 
 ---
 
-# 7. Simulation Definition Template
+# 7. Ambient Experience System
+
+Ambient experiences are first-class `LabExperience` entries with `kind: "ambient"`.
+
+They are passive or lightly interactive living visual layers used for:
+- dashboard backgrounds
+- foreground overlays
+- seasonal effects
+- weather-reactive ambience
+- home/status-reactive visual states
+- widgets and preview tiles
+
+Ambient experiences must extend the existing game/simulation architecture rather than becoming unrelated React components.
+
+## 7.1 Experience Kinds
+
+The lab supports four content categories:
+
+```ts
+type LabExperienceKind =
+  | "game"
+  | "simulation"
+  | "ambient"
+  | "effect";
+```
+
+Definitions:
+- game: a goal-driven interactive experience
+- simulation: an interactive emergent system
+- ambient: a passive or lightly interactive living visual layer
+- effect: a short-lived reusable visual event
+
+## 7.2 Render Modes
+
+Every lab experience can declare supported render modes:
+
+```ts
+type ExperienceRenderMode =
+  | "fullscreen"
+  | "background"
+  | "foregroundOverlay"
+  | "widget"
+  | "previewTile";
+```
+
+Rules:
+- fullscreen owns the screen
+- background renders behind UI and must preserve readability
+- foregroundOverlay renders above UI and defaults to `pointer-events: none`
+- widget is a low-cost embedded canvas
+- previewTile is the cheapest deterministic gallery rendering path
+
+## 7.3 Ambient Contract
+
+```ts
+type AmbientExperience = LabExperienceBase & {
+  kind: "ambient";
+  renderModes: ExperienceRenderMode[];
+  dataBindings: AmbientDataBinding[];
+  behavior: AmbientBehaviorConfig;
+  styles: AmbientStyle[];
+};
+```
+
+Ambient data sources:
+
+```ts
+type AmbientDataSource =
+  | "time"
+  | "weather"
+  | "calendar"
+  | "homeAssistant"
+  | "media"
+  | "photos"
+  | "tasks"
+  | "presence"
+  | "synthetic";
+```
+
+Ambients should support real data, but must not require it. The demo app uses synthetic adapters; host apps may inject real adapters.
+
+## 7.4 Ambient Behavior Requirements
+
+Every ambient declares:
+- idle safety
+- low-motion support
+- sleep-mode support
+- transparency support
+- maximum brightness
+- maximum particle count
+- maximum update Hz
+- background/foreground permission
+
+Background ambients must preserve UI readability, support opacity/dimming, avoid flashing, and degrade gracefully.
+
+Foreground overlays must default to `pointer-events: none`, stay subtle, avoid obscuring important UI, avoid heavy shaders, and respect sleep/quiet mode.
+
+Sleep mode reduces brightness, saturation, motion, particle count, and disables fireworks/confetti or harsh flashes.
+
+## 7.5 Ambient Experience Catalog
+
+Deferred content queue:
+- Day Rhythm Field
+- Home Weather Glass
+- Sleep Aquarium
+- Music Dream Field
+- House Pulse Map
+- Task Garden
+- Family Orbit
+- Memory Drift
+
+These ambient implementations are deferred until the supporting engine, React layer, synthetic data adapters, and emitter systems are complete.
+
+---
+
+# 8. Reusable FX / Burst Emitter System
+
+Short-lived effects are reusable across games, simulations, ambients, and UI events. They must not be implemented separately per experience.
+
+## 8.1 Burst Effect Definition
+
+```ts
+type BurstEffectKind =
+  | "spark"
+  | "firework"
+  | "ember"
+  | "confetti"
+  | "plasma"
+  | "ash"
+  | "smoke"
+  | "firefly"
+  | "arcSpark";
+
+type BurstEffect = {
+  id?: string;
+  kind: BurstEffectKind;
+  x: number;
+  y: number;
+  count: number;
+  energy: number;
+  duration?: number;
+  paletteId?: string;
+  seed?: number;
+  mode?: "foreground" | "background" | "simulationLayer";
+  options?: Record<string, number | string | boolean>;
+};
+```
+
+## 8.2 BurstEmitterSystem
+
+```ts
+class BurstEmitterSystem {
+  emit(effect: BurstEffect): void;
+  update(dt: number): void;
+  clear(): void;
+  setQuality(quality: RenderQuality): void;
+  setSleepMode(enabled: boolean): void;
+  setGlobalIntensity(value: number): void;
+}
+```
+
+Every emitter supports:
+- seeded randomness
+- quality scaling
+- max particle cap
+- sleep mode reduction
+- pause/resume
+- automatic cleanup
+- foreground/background/simulation layer mode
+
+## 8.3 Required Emitters
+
+Initial engine support must include reusable emitters for:
+- SparkEmitter
+- FireworkEmitter
+- EmberEmitter
+- ConfettiEmitter
+- FireflyEmitter
+- SmokeEmitter
+- ArcSparkEmitter
+
+Fireworks and confetti are disabled or heavily reduced in sleep mode and low-motion foreground overlays.
+
+## 8.4 Event Integration
+
+Common app/game/simulation events should route through `BurstEmitterSystem`:
+- task completed -> confetti/sparkle
+- birthday -> fireworks/confetti
+- voice assistant wake -> ring ripple
+- game collision -> spark burst
+- game win -> firework/confetti
+- simulation rupture/fracture/discharge -> smoke, sparks, arc sparks
+
+---
+
+# 9. Simulation Definition Template
 
 Every simulation definition follows the same structure.
 
@@ -567,7 +764,7 @@ Overall implementation complexity.
 
 
 ---
-# 8. Simulation Catalog
+# 10. Simulation Catalog
 
 ---
 
@@ -1618,7 +1815,7 @@ Medium-High
 
 ---
 
-# 9. Shared Shader Technique Library
+# 11. Shared Shader Technique Library
 
 ## Palette Mapping
 Maps scalar values into reusable palettes.
@@ -1652,7 +1849,7 @@ Screen-space ripple distortions.
 
 ---
 
-# 10. Procedural Texture Library
+# 12. Procedural Texture Library
 
 Generate reusable textures at startup.
 
@@ -1668,7 +1865,7 @@ Includes:
 
 ---
 
-# 11. PixiJS Rendering Rules
+# 13. PixiJS Rendering Rules
 
 ## Use ParticleContainer For
 
@@ -1698,7 +1895,7 @@ ui/debug
 
 ---
 
-# 12. Development and Debugging Tooling
+# 14. Development and Debugging Tooling
 
 ## Live Shader Tuning
 
@@ -1730,7 +1927,7 @@ screenshots.
 
 ---
 
-# 13. Build Order and Implementation Milestones
+# 15. Build Order and Implementation Milestones
 
 ## Phase 1
 
@@ -1739,6 +1936,13 @@ screenshots.
 - trail feedback
 - bloom compositor
 - procedural textures
+- AmbientExperience / EffectExperience contracts
+- AmbientDataManager with host-injected adapters and synthetic fallback data
+- BurstEmitterSystem with shared GPU-batched particle layers
+- AmbientLayer and ForegroundAmbientOverlay React wrappers
+- reusable spark, firework, ember, confetti, firefly, smoke, and arc spark emitter facades
+
+Ambient catalog implementations and foreground overlay content remain deferred until the engine support above is validated.
 
 ## Phase 2
 
@@ -1763,7 +1967,7 @@ screenshots.
 
 ---
 
-# 14. Definition of Done
+# 16. Definition of Done
 
 A simulation is complete when:
 
@@ -1780,7 +1984,7 @@ A simulation is complete when:
 
 ---
 
-# 15. Final Recommendations
+# 17. Final Recommendations
 
 The most important architectural principle is:
 

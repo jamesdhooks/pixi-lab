@@ -7,13 +7,23 @@ import type { SettingsField } from '@hooksjam/pixi-lab-core';
 
 export const BALLPIT_SETTINGS_FIELDS: SettingsField[] = [
   {
-    key: 'maxBalls',
-    label: 'Max Balls',
+    key: 'ballSize',
+    label: 'Ball Size',
     type: 'number',
-    min: 50,
-    max: 300,
-    step: 10,
-    default: 200,
+    min: 5,
+    max: 200,
+    step: 1,
+    default: 19,
+  },
+  {
+    key: 'rapidSpeed',
+    label: 'Spawn Rate',
+    type: 'number',
+    min: 5,
+    max: 100,
+    step: 5,
+    default: 10,
+    visibleModes: ['rapid'],
   },
   {
     key: 'gravity',
@@ -32,6 +42,16 @@ export const BALLPIT_SETTINGS_FIELDS: SettingsField[] = [
     max: 1,
     step: 0.05,
     default: 0.6,
+  },
+  {
+    key: 'explodeStrength',
+    label: 'Explode Force',
+    type: 'number',
+    min: 10,
+    max: 200,
+    step: 10,
+    default: 50,
+    visibleModes: ['explode'],
   },
   {
     key: 'style',
@@ -55,7 +75,9 @@ export const BALLPIT_SETTINGS_FIELDS: SettingsField[] = [
 ];
 
 export const BALLPIT_DEFAULTS: Record<string, unknown> = {
-  maxBalls: 200,
+  ballSize: 19,
+  rapidSpeed: 10,
+  explodeStrength: 50,
   gravity: 1.0,
   bounciness: 0.6,
   style: 'rainbow',

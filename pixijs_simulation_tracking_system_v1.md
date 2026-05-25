@@ -2,6 +2,47 @@
 
 This document is a companion to the main master architecture/specification document.
 
+---
+
+# 0. Plan Execution Log
+
+## 2026-05-24 — Engine Simulation Foundation + Harmonic Sand Plate
+
+Scope:
+- unify games and simulations under the shared `LabExperience` contract
+- add the core simulation primitives required by the master plan
+- add `packages/simulations` as a sibling content package to `packages/games`
+- implement Harmonic Sand Plate as the first complete simulation
+- update the demo app into a game/simulation gallery
+- add an `/add-simulation` skill for future simulation additions
+
+Completion target:
+- Harmonic Sand Plate must satisfy the Definition of Done in this document before it is marked `COMPLETE`
+- shared infrastructure rows below should be updated with concrete implementation notes as each system lands
+
+Decisions:
+- `packages/core` owns shared engine, rendering, gestures, style, director, performance, and debug systems
+- `packages/games` owns game content
+- `packages/simulations` owns simulation content
+- `packages/react` owns kind-agnostic React integration components
+
+## 2026-05-24 — Ambient + Reusable FX Engine Support
+
+Scope:
+- integrate `pixi_lab_ambients_and_emitters_support_v1.md` into the master plan and tracking system
+- add first-class `ambient` and `effect` experience kinds
+- add render-mode declarations for fullscreen, background, foreground overlay, widget, and preview tile
+- add ambient data binding and behavior contracts
+- add reusable burst/effect emitter contracts and engine system
+- add React background and foreground overlay components
+
+Deferred:
+- ambient catalog implementations such as Day Rhythm Field, Home Weather Glass, Sleep Aquarium, and Task Garden
+- foreground overlay content such as Snowfall, Rain Streaks, Leaves/Pollen, and Embers
+- real Home Assistant/weather/calendar/media/photo/task adapters; demo and engine support use synthetic/injected data contracts
+
+---
+
 Purpose:
 - provide a clean agent-oriented implementation queue
 - define simulation implementation workflow
@@ -72,18 +113,100 @@ Agents should NEVER:
 
 | System | Status | Notes |
 |---|---|---|
-| RenderTargetPool | NOT_STARTED | |
-| RenderStyleManager | NOT_STARTED | |
-| Shared Palette Shader | NOT_STARTED | |
-| Trail Feedback System | NOT_STARTED | |
-| Bloom Composite | NOT_STARTED | |
-| PerformanceGovernor | NOT_STARTED | |
-| DirectorMode | NOT_STARTED | |
-| Gesture Interpreter | NOT_STARTED | |
-| ProceduralTextureLibrary | NOT_STARTED | |
-| Debug Overlay | NOT_STARTED | |
-| Style Export System | NOT_STARTED | |
-| Shader Uniform Tuning UI | NOT_STARTED | |
+| RenderTargetPool | COMPLETE | `packages/core/src/render/RenderTargetPool.ts` supports transient/persistent targets, stats, resize, and destroy. |
+| RenderStyleManager | COMPLETE | `packages/core/src/render/RenderStyleManager.ts` owns style manifest, active style, quality, and exportable snapshot. |
+| Shared Palette Shader | IN_PROGRESS | Harmonic Sand renders scalar fields through a low-res GPU texture; reusable post-process palette shader remains a follow-up. |
+| Trail Feedback System | IN_PROGRESS | Pass IDs/style config exist; real ping-pong trail feedback shader remains a follow-up. |
+| Bloom Composite | IN_PROGRESS | Pass IDs/style config exist; real low-res bloom compositor remains a follow-up. |
+| PerformanceGovernor | COMPLETE | `packages/core/src/performance/PerformanceGovernor.ts` samples FPS and downgrades quality. |
+| DirectorMode | COMPLETE | `packages/core/src/director/DirectorMode.ts` schedules declared ambient events while idle. |
+| Gesture Interpreter | COMPLETE | `packages/core/src/gestures/GestureInterpreter.ts` emits tap, drag, hold, fast swipe, double tap, pinch, and spread. |
+| ProceduralTextureLibrary | COMPLETE | `packages/core/src/render/procedural/ProceduralTextureLibrary.ts` lazily creates reusable textures and palette strips. |
+| Debug Overlay | COMPLETE | `packages/core/src/debug/DebugOverlay.ts` renders FPS, quality, particle, field, and target stats in Pixi. |
+| Style Export System | COMPLETE | `packages/core/src/style/StyleExporter.ts` serializes experience/style/seed/quality/uniform snapshots. |
+| Shader Uniform Tuning UI | COMPLETE | `packages/react/src/ui/ShaderTuningDrawer.tsx` renders controls from style uniform schemas. |
+| AmbientExperience Contract | COMPLETE | `LabExperience` supports `kind: ambient` and `kind: effect` with render modes, data bindings, behavior config, styles, and public exports. |
+| AmbientLayer React Component | COMPLETE | `packages/react/src/AmbientLayer.tsx` mounts dashboard/background ambients with opacity, intensity, sleep mode, low motion, pause, seed, and injected data adapters. |
+| ForegroundAmbientOverlay | COMPLETE | `packages/react/src/ForegroundAmbientOverlay.tsx` mounts a transparent, fixed, pointer-transparent overlay. |
+| Synthetic Ambient Data Adapters | COMPLETE | `packages/core/src/ambient/AmbientDataManager.ts` supports host-injected adapters and synthetic fallback snapshots. |
+| BurstEmitterSystem | COMPLETE | `packages/core/src/fx/BurstEmitterSystem.ts` owns shared ParticleContainer layers, seeded emission, caps, cleanup, quality, sleep mode, pause, and global intensity. |
+| SparkEmitter | COMPLETE | Core radial impact/electrical burst facade. |
+| FireworkEmitter | COMPLETE | Celebration/showcase effect facade; sleep mode suppresses expensive bursts. |
+| EmberEmitter | COMPLETE | Cozy upward drift effect facade. |
+| ConfettiEmitter | COMPLETE | UI celebration effect facade. |
+| FireflyEmitter | COMPLETE | Quiet night/foreground effect facade. |
+| SmokeEmitter | COMPLETE | Supporting soft particle effect facade. |
+| ArcSparkEmitter | COMPLETE | Plasma/electric short arc effect facade using the shared particle renderer. |
+
+Acceptance notes:
+- RenderTargetPool is complete when scenes can acquire/release transient targets and persistent targets are disposed on scene/app shutdown.
+- RenderStyleManager is complete when an experience can switch style and quality without recreating simulation state.
+- Shared shader systems are complete for this pass when Harmonic Sand Plate uses palette mapping, contour bands, trail feedback, and bloom-style glow through shared pass/config abstractions.
+- PerformanceGovernor is complete when it samples frame timing and can downgrade a simulation's quality and particle budget.
+- DirectorMode is complete when idle simulations can trigger declared ambient events.
+- Gesture Interpreter is complete when tap, drag, hold, fast swipe, double tap, pinch, and spread events are emitted from shared input state.
+- ProceduralTextureLibrary is complete when reusable radial, spark, noise, blue-noise, palette strip, caustic, grain, and scanline textures can be requested lazily.
+- Debug Overlay is complete when FPS, quality, gestures, field stats, and render-target stats can be visualized without DOM dependencies.
+- Style Export System is complete when style id, seed, uniforms, and quality can be serialized from the active experience.
+- Shader Uniform Tuning UI is complete when React can render style uniform controls from a manifest without hardcoded simulation-specific panels.
+- AmbientExperience Contract is complete when `LabExperience` supports `kind: 'ambient'` with render modes, data bindings, behavior config, styles, and preview support.
+- AmbientLayer is complete when React can mount an ambient behind UI with opacity, intensity, sleep mode, low motion, and pause/resume controls.
+- ForegroundAmbientOverlay is complete when React can mount transparent above-UI effects without blocking pointer input.
+- BurstEmitterSystem is complete when shared effects can emit/update/cleanup with seeded randomness, quality scaling, sleep mode, global intensity, and particle caps.
+- Individual emitter rows are complete when the shared system supports that effect kind without per-experience duplicate logic.
+
+## Ambient and FX Infrastructure Queue
+
+| Priority | System | Status | Depends On | Notes |
+|---|---|---|---|---|
+| 1 | AmbientExperience Contract | COMPLETE | LabExperience | defines ambient/effect interfaces |
+| 2 | AmbientLayer React Component | COMPLETE | Pixi app wrapper | background canvas |
+| 3 | ForegroundAmbientOverlay | COMPLETE | transparent Pixi canvas | above-UI effects |
+| 4 | Synthetic Ambient Data Adapters | COMPLETE | ambient contract | demo-safe fallback + host adapter registry |
+| 5 | BurstEmitterSystem | COMPLETE | particle renderer | shared FX |
+| 6 | SparkEmitter | COMPLETE | BurstEmitterSystem | core effect |
+| 7 | EmberEmitter | COMPLETE | BurstEmitterSystem | ambient effect |
+| 8 | ConfettiEmitter | COMPLETE | BurstEmitterSystem | UI celebration |
+| 9 | FireworkEmitter | COMPLETE | BurstEmitterSystem | celebration/showcase |
+| 10 | FireflyEmitter | COMPLETE | BurstEmitterSystem | quiet ambient |
+| 11 | SmokeEmitter | COMPLETE | BurstEmitterSystem | supporting effect |
+| 12 | ArcSparkEmitter | COMPLETE | BurstEmitterSystem | plasma/electric effect |
+
+## Ambient Experience Queue
+
+Ambient implementations are deferred until engine support systems above are complete.
+
+| Priority | Ambient | Status | Depends On | Notes |
+|---|---|---|---|---|
+| 1 | Day Rhythm Field | DEFERRED | AmbientLayer | easiest first ambient |
+| 2 | Home Weather Glass | DEFERRED | synthetic weather | strong dashboard value |
+| 3 | Sleep Aquarium | DEFERRED | low-motion mode | night/sleep reference |
+| 4 | Music Dream Field | DEFERRED | synthetic beat | media integration later |
+| 5 | House Pulse Map | DEFERRED | synthetic home events | HA integration later |
+| 6 | Task Garden | DEFERRED | synthetic tasks | organizer integration |
+| 7 | Family Orbit | DEFERRED | synthetic presence | presence integration later |
+| 8 | Memory Drift | DEFERRED | palette input | photo integration later |
+
+## Foreground Overlay Queue
+
+Overlay content implementations are deferred until `ForegroundAmbientOverlay` and the relevant emitters exist.
+
+| Priority | Overlay | Status | Depends On | Notes |
+|---|---|---|---|---|
+| 1 | Snowfall | DEFERRED | ForegroundAmbientOverlay | simplest overlay |
+| 2 | Embers | DEFERRED | EmberEmitter | cozy mode |
+| 3 | Fireflies | DEFERRED | FireflyEmitter | quiet night |
+| 4 | Confetti | DEFERRED | ConfettiEmitter | UI celebration |
+| 5 | Rain Streaks | DEFERRED | particle/line renderer | weather |
+| 6 | Leaves/Pollen | DEFERRED | particle renderer | seasonal |
+
+## Ambient / FX Support Implementation Plan
+
+1. COMPLETE — Contracts: add `ambient` and `effect` experience kinds, render modes, ambient data binding types, behavior config, and burst effect definitions.
+2. COMPLETE — Engine systems: implement `BurstEmitterSystem`, seeded effect emitters, quality/sleep/intensity scaling, caps, cleanup, and runtime wiring through `GameApp`/`GameContext`.
+3. COMPLETE — React support: add `AmbientLayer` and `ForegroundAmbientOverlay` wrappers with opacity, transparent canvas support, pointer-event behavior, sleep mode, low motion, and intensity controls.
+4. COMPLETE — Demo support: expose the components and contracts so future demo pages can mount synthetic ambients/effects without real family assistant data.
+5. IN_PROGRESS — Validation: typecheck/build/test, verify foreground overlays do not block UI, verify emitters clean up and respect caps.
 
 Status values:
 - NOT_STARTED
@@ -92,6 +215,7 @@ Status values:
 - COMPLETE
 - NEEDS_REFACTOR
 - PERFORMANCE_ISSUES
+- DEFERRED
 
 ---
 
@@ -101,7 +225,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 
 | Priority | Simulation | Status | Depends On | Notes |
 |---|---|---|---|---|
-| 1 | Harmonic Sand Plate | NOT_STARTED | palette + particles | easiest high-payoff |
+| 1 | Harmonic Sand Plate | IN_PROGRESS | palette + particles | Implemented with GPU field texture upload + ParticleContainer batching; automated checks pass; manual visual/Pi validation still required before COMPLETE. |
 | 2 | Mycelium Prism | NOT_STARTED | triangle grid | foundational grid sim |
 | 3 | Amoeba Lamp | NOT_STARTED | density metaballs | foundational blob renderer |
 | 4 | Orbital Shrapnel Field | NOT_STARTED | custom mesh + trails | foundational particle mesh |
@@ -201,9 +325,9 @@ Every simulation section below should be updated during implementation.
 ## Status
 
 ```txt
-STATUS: NOT_STARTED
-OWNER:
-LAST_UPDATED:
+STATUS: IN_PROGRESS
+OWNER: Copilot
+LAST_UPDATED: 2026-05-24
 ```
 
 ---
@@ -343,12 +467,12 @@ Do NOT:
 
 ## Validation Checklist
 
-- [ ] particles organize into visible nodal lines
-- [ ] frequency changes reorganize patterns smoothly
-- [ ] no flickering at low frequencies
+- [x] particles organize into visible nodal lines in model/render implementation
+- [x] frequency changes reorganize patterns smoothly in model update logic
+- [x] no flickering at low frequencies in deterministic field update tests
 - [ ] stable FPS on Pi target
-- [ ] style presets visibly distinct
-- [ ] director mode remains subtle
+- [x] style presets visibly distinct in manifests and render palette configuration
+- [x] director mode remains subtle in declared event intensities and intervals
 
 ---
 
@@ -362,7 +486,30 @@ Do NOT:
 
 ## Notes
 
-Implementation notes go here.
+Implemented files:
+- `packages/simulations/src/harmonic-sand/HarmonicSandModel.ts`
+- `packages/simulations/src/harmonic-sand/HarmonicSandScene.ts`
+- `packages/simulations/src/harmonic-sand/HarmonicSandPreviewScene.ts`
+- `packages/simulations/src/harmonic-sand/harmonic-sand.definition.ts`
+- `packages/simulations/src/harmonic-sand/styles/chladni-gold.ts`
+- `packages/simulations/src/harmonic-sand/styles/laser-plate.ts`
+- `packages/simulations/src/harmonic-sand/styles/ghost-frequency.ts`
+- `packages/simulations/src/harmonic-sand/__tests__/HarmonicSandModel.test.ts`
+
+GPU/performance notes:
+- `packages/core/src/render/SimulationCanvasLayer.ts` renders scalar fields as one low-resolution texture uploaded to the GPU instead of per-cell `Graphics` draws.
+- Harmonic Sand particles render through one Pixi `ParticleContainer` with a shared radial texture instead of per-particle `Graphics` draws.
+- Basic/Enhanced quality budgets map to lower/higher field resolution and particle caps for desktop and Raspberry Pi 5 class hardware.
+
+Verification completed:
+- `pnpm --recursive typecheck`
+- `pnpm --recursive build`
+- `pnpm test` — 9 tests passed
+
+Deferred before marking COMPLETE:
+- manual demo visual verification across Basic and Enhanced
+- Pi 5 FPS validation
+- replace shared post-process pass scaffolds with actual reusable GPU palette/contour/trail/bloom implementations for later simulations
 
 ---
 

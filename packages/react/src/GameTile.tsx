@@ -13,7 +13,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { GameApp } from '@hooksjam/pixi-lab-core';
 import { NoopHighScoreProvider } from '@hooksjam/pixi-lab-core';
-import type { GameDefinition } from '@hooksjam/pixi-lab-core';
+import type { LabExperience } from '@hooksjam/pixi-lab-core';
 
 const PERF_WINDOW_S = 2; // measure perf for 2 seconds
 const FPS_THRESHOLD = 20; // fall back if avg below this
@@ -21,14 +21,6 @@ const PREVIEW_FPS_CAP = 30; // cap preview rendering
 
 function failureKey(gameId: string) {
   return `fao:game:tile-perf-fail:${gameId}`;
-}
-
-function hasRecentFailure(gameId: string): boolean {
-  try {
-    return sessionStorage.getItem(failureKey(gameId)) === '1';
-  } catch {
-    return false;
-  }
 }
 
 function recordFailure(gameId: string) {
@@ -40,18 +32,20 @@ function recordFailure(gameId: string) {
 }
 
 export interface GameTileProps {
-  definition: GameDefinition;
+  definition: LabExperience;
   onPress?: () => void;
   size?: number;
   index?: number;
 }
 
-export function GameTile({ definition, onPress, size = 180, index = 0 }: GameTileProps) {
+export type PreviewTileProps = GameTileProps;
+
+export function GameTile({ definition, onPress, size = 180, index: _index = 0 }: GameTileProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<GameApp | null>(null);
-  const [useFallback, setUseFallback] = useState(
-    !definition.previewFactory || hasRecentFailure(definition.id),
-  );
+  // Always attempt the live preview — clear any stale failure recorded by a previous bug.
+  // The in-session FPS check below will still fall back on genuinely slow devices.
+  const [useFallback, setUseFallback] = useState(!definition.previewFactory);
   const frameCountRef = useRef(0);
   const elapsedRef = useRef(0);
   const measuringRef = useRef(true);
@@ -65,18 +59,24 @@ export function GameTile({ definition, onPress, size = 180, index = 0 }: GameTil
     const overrideDef = {
       ...definition,
       factory: definition.previewFactory,
-      capabilities: { ...definition.capabilities, screensaver: false, aiAutoplay: false },
+      // Disable all AI so the demo AI can't change fieldResolution and spike CPU
+      demoAiFactory: undefined,
+      aiFactory: undefined,
+      capabilities: { ...definition.capabilities, screensaver: false, aiAutoplay: false, demo: false },
     };
 
     const app = new GameApp({
       container,
       definition: overrideDef,
       scoreProvider: new NoopHighScoreProvider(),
-      mode: 'demo',
+      mode: 'screensaver',
     });
     appRef.current = app;
 
     void app.init().then(() => {
+      // Guard: cleanup may have fired while init was in-flight (React StrictMode
+      // double-invoke). appRef is nulled by cleanup, so this catches that case.
+      if (appRef.current !== app) return;
       app.start();
     });
 
@@ -117,16 +117,10 @@ export function GameTile({ definition, onPress, size = 180, index = 0 }: GameTil
     };
   }, [startPreview]);
 
-  // Deterministic float animation per tile
-  const floatDur = 4.5 + (index % 5) * 0.6;
-  const floatAmp = 3 + (index % 3);
-
   return (
     <motion.button
       onClick={onPress}
       whileTap={{ scale: 0.95 }}
-      animate={{ y: [0, -floatAmp, 0, floatAmp, 0] }}
-      transition={{ duration: floatDur, repeat: Infinity, ease: 'easeInOut', delay: index * 0.3 }}
       className="relative cursor-pointer select-none overflow-hidden rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
       style={{ width: size, height: size }}
       aria-label={`Play ${definition.name}`}
@@ -134,17 +128,25 @@ export function GameTile({ definition, onPress, size = 180, index = 0 }: GameTil
       {useFallback ? (
         <FallbackTile definition={definition} size={size} />
       ) : (
-        <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+        <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#1a1a2e' }} />
       )}
-      {/* Name badge */}
-      <div className="absolute inset-x-0 bottom-0 bg-black/50 px-2 py-1.5 backdrop-blur-sm">
-        <p className="truncate text-center text-xs font-semibold text-white">{definition.name}</p>
-      </div>
+      {/* Glass border overlay */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-2xl"
+        style={{
+          background:
+            'linear-gradient(135deg, rgba(255,255,255,0.13) 0%, transparent 42%, transparent 58%, rgba(0,0,0,0.2) 100%)',
+          boxShadow:
+            'inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.2), inset 1px 0 rgba(255,255,255,0.13), inset -1px 0 rgba(0,0,0,0.08)',
+        }}
+      />
     </motion.button>
   );
 }
 
-function FallbackTile({ definition, size }: { definition: GameDefinition; size: number }) {
+export const PreviewTile = GameTile;
+
+function FallbackTile({ definition, size }: { definition: LabExperience; size: number }) {
   if (definition.previewFallback) {
     return (
       <img
@@ -163,7 +165,7 @@ function FallbackTile({ definition, size }: { definition: GameDefinition; size: 
         background: `linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)`,
       }}
     >
-      <span style={{ fontSize: size * 0.38, lineHeight: 1 }}>{definition.icon}</span>
+      <span style={{ fontSize: size * 0.5, lineHeight: 1 }}>{definition.icon}</span>
     </div>
   );
 }

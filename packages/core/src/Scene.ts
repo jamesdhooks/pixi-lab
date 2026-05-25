@@ -61,4 +61,38 @@ export abstract class Scene {
   resize(_width: number, _height: number): void {
     // Optional override
   }
+
+  /**
+   * Called when the shell requests a scene reset (e.g. user taps the Reset button).
+   * Override to drain/clear content and restart the scene cycle.
+   * Default: no-op.
+   */
+  reset(): void {
+    // Optional override
+  }
+
+  /**
+   * Soft-clear simulation entities (e.g. emitters) without resetting visual or
+   * field state. Override in simulation scenes to avoid black-flash on config
+   * transitions. Default: no-op.
+   */
+  clearEmitters(): void {
+    // Optional override
+  }
+
+  /**
+   * Called when the active interaction mode changes (e.g. single → rapid → explode).
+   * Default: no-op. Override to switch scene behaviour.
+   */
+  setMode(_id: string): void {
+    // Optional override
+  }
+
+  /**
+   * Called when the active style changes (e.g. rainbow → neon).
+   * Default: no-op. Override to recolour content.
+   */
+  setStyle(_id: string): void {
+    // Optional override
+  }
 }

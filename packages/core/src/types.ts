@@ -37,6 +37,14 @@ export interface RGBA {
 // ── Runtime mode ──────────────────────────────────────────────────────────────
 
 export type GameMode = 'play' | 'screensaver' | 'demo' | 'paused';
+export type RenderQuality = 'basic' | 'enhanced';
+export type ExperienceKind = 'game' | 'simulation' | 'ambient' | 'effect' | 'toy';
+export type ExperienceRenderMode =
+  | 'fullscreen'
+  | 'background'
+  | 'foregroundOverlay'
+  | 'widget'
+  | 'previewTile';
 
 // ── Input ─────────────────────────────────────────────────────────────────────
 
@@ -56,6 +64,32 @@ export interface InputSnapshot {
   justDown: Set<number>;
   justUp: Set<number>;
 }
+
+export type GestureKind =
+  | 'tap'
+  | 'drag'
+  | 'hold'
+  | 'fast_swipe'
+  | 'double_tap'
+  | 'pinch'
+  | 'spread';
+
+export interface GestureEvent {
+  kind: GestureKind;
+  x: number;
+  y: number;
+  id?: number;
+  x2?: number;
+  y2?: number;
+  dx?: number;
+  dy?: number;
+  velocity?: number;
+  durationMs?: number;
+  strength?: number;
+  timestamp: number;
+}
+
+export type GestureActionMap = Partial<Record<GestureKind, string>>;
 
 // ── Physics ───────────────────────────────────────────────────────────────────
 
@@ -110,10 +144,190 @@ export interface GamePalette {
 
 export type ShaderPreset = 'none' | 'bloom' | 'crt' | 'scanlines';
 
+export type RenderPassId =
+  | 'primitive'
+  | 'paletteMap'
+  | 'densityMetaball'
+  | 'edgeGlow'
+  | 'trailFeedback'
+  | 'fieldVisualize'
+  | 'bloom'
+  | 'distortion'
+  | 'chromaticAberration'
+  | 'normalLighting'
+  | 'contourBands'
+  | 'shockwave'
+  | 'colorGrade'
+  | 'composite';
+
 export interface StyleConfig {
   palette: GamePalette;
   shader: ShaderPreset;
   particleOpacity: number; // 0-1
+}
+
+export interface StyleUniform {
+  key: string;
+  label: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  default: number | string | boolean;
+}
+
+export interface SimStyle {
+  id: string;
+  name: string;
+  description?: string;
+  palette: number[];
+  background: number;
+  passes: RenderPassId[];
+  uniforms: Record<string, number | string | boolean>;
+  uniformSchema?: StyleUniform[];
+}
+
+export interface SimRenderCapabilities {
+  renderLayers: Array<keyof SimRenderLayers>;
+  passes: RenderPassId[];
+  qualities: RenderQuality[];
+}
+
+export interface SimStyleManifest {
+  defaultStyleId: string;
+  capabilities: SimRenderCapabilities;
+  styles: SimStyle[];
+}
+
+export interface SimRenderLayers {
+  primitive?: unknown;
+  particles?: unknown;
+  density?: unknown;
+  trails?: unknown;
+  field?: unknown;
+  mask?: unknown;
+  glow?: unknown;
+  debug?: unknown;
+}
+
+export interface DirectorEvent {
+  id: string;
+  label: string;
+  minIntervalMs: number;
+  maxIntervalMs: number;
+  intensity?: number;
+}
+
+export interface StagnationReport {
+  stagnant: boolean;
+  reason?: string;
+  severity: number;
+  observedForMs?: number;
+}
+
+export interface StyleExportSnapshot {
+  experienceId: string;
+  styleId: string;
+  seed: number;
+  quality: RenderQuality;
+  uniforms: Record<string, number | string | boolean>;
+}
+
+// ── Ambient Experiences ──────────────────────────────────────────────────────
+
+export type AmbientDataSource =
+  | 'time'
+  | 'weather'
+  | 'calendar'
+  | 'homeAssistant'
+  | 'media'
+  | 'photos'
+  | 'tasks'
+  | 'presence'
+  | 'synthetic';
+
+export interface AmbientDataBinding {
+  source: AmbientDataSource;
+  optional: boolean;
+  fallback: 'synthetic' | 'idle' | 'disabled';
+}
+
+export interface AmbientBehaviorConfig {
+  idleSafe: boolean;
+  supportsLowMotion: boolean;
+  supportsSleepMode: boolean;
+  supportsTransparency: boolean;
+  maxBrightness: number;
+  maxParticleCount: number;
+  maxUpdateHz: number;
+  allowForeground: boolean;
+  allowBackground: boolean;
+}
+
+export type AmbientStyle = SimStyle;
+
+export interface AmbientDataSnapshot {
+  source: AmbientDataSource;
+  timestamp: number;
+  values: Record<string, number | string | boolean>;
+}
+
+export interface AmbientDataAdapter {
+  readonly source: AmbientDataSource;
+  getSnapshot(): AmbientDataSnapshot;
+}
+
+export const DEFAULT_AMBIENT_BEHAVIOR: AmbientBehaviorConfig = {
+  idleSafe: true,
+  supportsLowMotion: true,
+  supportsSleepMode: true,
+  supportsTransparency: true,
+  maxBrightness: 0.65,
+  maxParticleCount: 3000,
+  maxUpdateHz: 30,
+  allowForeground: false,
+  allowBackground: true,
+};
+
+export const DEFAULT_FOREGROUND_BEHAVIOR: AmbientBehaviorConfig = {
+  idleSafe: true,
+  supportsLowMotion: true,
+  supportsSleepMode: true,
+  supportsTransparency: true,
+  maxBrightness: 0.45,
+  maxParticleCount: 1000,
+  maxUpdateHz: 30,
+  allowForeground: true,
+  allowBackground: false,
+};
+
+// ── Reusable FX / Burst Emitters ─────────────────────────────────────────────
+
+export type BurstEffectKind =
+  | 'spark'
+  | 'firework'
+  | 'ember'
+  | 'confetti'
+  | 'plasma'
+  | 'ash'
+  | 'smoke'
+  | 'firefly'
+  | 'arcSpark';
+
+export type BurstEffectMode = 'foreground' | 'background' | 'simulationLayer';
+
+export interface BurstEffect {
+  id?: string;
+  kind: BurstEffectKind;
+  x: number;
+  y: number;
+  count: number;
+  energy: number;
+  duration?: number;
+  paletteId?: string;
+  palette?: number[];
+  seed?: number;
+  mode?: BurstEffectMode;
+  options?: Record<string, number | string | boolean>;
 }
 
 // ── Score ─────────────────────────────────────────────────────────────────────
@@ -141,16 +355,52 @@ export interface SettingsField {
   step?: number;
   options?: { label: string; value: string }[];
   default: SettingsValue;
+  /** If set, the field is only shown when the active interaction mode is in this list. */
+  visibleModes?: string[];
 }
 
 // ── Game Definition ───────────────────────────────────────────────────────────
 
-export interface GameCapabilities {
-  score: boolean;
-  aiAutoplay: boolean;
-  screensaver: boolean;
-  tutorial: boolean;
+/** A named interaction mode advertised by a game or simulation. */
+export interface ExperienceMode {
+  id: string;
+  /** Short display label shown in the mode toggle pill */
+  label: string;
+  /** Emoji or unicode glyph shown in the pill button */
+  icon?: string;
+  /** Tooltip / aria description */
+  description?: string;
 }
+
+export interface GameCapabilities {
+  score?: boolean;
+  aiAutoplay?: boolean;
+  screensaver?: boolean;
+  tutorial?: boolean;
+  interactive?: boolean;
+  ambient?: boolean;
+  gestures?: boolean;
+  directorMode?: boolean;
+  stagnationRecovery?: boolean;
+  debugOverlay?: boolean;
+  styleExport?: boolean;
+  proceduralTextures?: boolean;
+  renderTargetPool?: boolean;
+  ambientLayer?: boolean;
+  foregroundOverlay?: boolean;
+  burstEmitters?: boolean;
+  lowMotion?: boolean;
+  sleepMode?: boolean;
+  qualityModes?: RenderQuality[];
+  /** Scene supports a reset action (drain + restart cycle). */
+  reset?: boolean;
+  /** Simulation supports a demo mode with an AI controller. */
+  demo?: boolean;
+  /** Set to false to hide the settings button (e.g. when all settings are visible in the top bar). */
+  settings?: boolean;
+}
+
+export type ExperienceCapabilities = GameCapabilities;
 
 export interface UISlot {
   topLeft?: React.ReactNode;
@@ -172,10 +422,22 @@ export interface GameSystems {
   particles: ParticleSystem;
   audio: Audio;
   settings: Settings;
+  renderTargets?: import('./render/RenderTargetPool').RenderTargetPool;
+  styleManager?: import('./render/RenderStyleManager').RenderStyleManager;
+  gestures?: import('./gestures/GestureInterpreter').GestureInterpreter;
+  governor?: import('./performance/PerformanceGovernor').PerformanceGovernor;
+  director?: import('./director/DirectorMode').DirectorMode;
+  stagnation?: import('./stagnation/StagnationRecovery').StagnationRecovery;
+  debug?: import('./debug/DebugOverlay').DebugOverlay;
+  procedural?: import('./render/procedural/ProceduralTextureLibrary').ProceduralTextureLibrary;
+  burstEmitters?: import('./fx/BurstEmitterSystem').BurstEmitterSystem;
+  ambientData?: import('./ambient/AmbientDataManager').AmbientDataManager;
 }
 
 export interface GameContext {
   mode: GameMode;
+  seed: number;
+  quality: RenderQuality;
   /** Canvas dimensions in logical pixels */
   width: number;
   height: number;
@@ -193,6 +455,12 @@ export type GameEventKind =
   | 'resumed'
   | 'screensaver_enter'
   | 'screensaver_exit'
+  | 'quality_change'
+  | 'style_change'
+  | 'setting_change'
+  | 'director_event'
+  | 'stagnation_recovery'
+  | 'burst_effect'
   | 'error';
 
 export interface GameEvent {
