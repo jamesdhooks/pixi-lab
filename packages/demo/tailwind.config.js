@@ -9,7 +9,10 @@ export default {
     '../simulations/src/**/*.{ts,tsx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      minHeight: { touch: '44px' },
+      minWidth: { touch: '44px' },
+    },
   },
   plugins: [],
 };

@@ -36,11 +36,16 @@ export interface GameTileProps {
   onPress?: () => void;
   size?: number;
   index?: number;
+  /**
+   * When false the live preview is not started (or destroyed if running).
+   * Defaults to true. Pass false for off-screen carousel tiles to save GPU.
+   */
+  active?: boolean;
 }
 
 export type PreviewTileProps = GameTileProps;
 
-export function GameTile({ definition, onPress, size = 180, index: _index = 0 }: GameTileProps) {
+export function GameTile({ definition, onPress, size = 180, index: _index = 0, active = true }: GameTileProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<GameApp | null>(null);
   // Always attempt the live preview — clear any stale failure recorded by a previous bug.
@@ -109,13 +114,20 @@ export function GameTile({ definition, onPress, size = 180, index: _index = 0 }:
   }, [definition, useFallback]);
 
   useEffect(() => {
+    if (!active) {
+      // Out of view — tear down to free GPU resources.
+      cancelAnimationFrame(rafRef.current);
+      appRef.current?.destroy();
+      appRef.current = null;
+      return;
+    }
     startPreview();
     return () => {
       cancelAnimationFrame(rafRef.current);
       appRef.current?.destroy();
       appRef.current = null;
     };
-  }, [startPreview]);
+  }, [active, startPreview]);
 
   return (
     <motion.button

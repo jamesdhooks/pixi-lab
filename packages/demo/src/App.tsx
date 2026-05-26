@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useLayoutEffect, useEffect, useCallback } fr
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff } from 'lucide-react';
 import { GameLauncher, PreviewTile } from '@hooksjam/pixi-lab-react';
+import { useViewport } from '@hooksjam/pixi-lab-react';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
 import { SIMULATION_REGISTRY } from '@hooksjam/pixi-lab-simulations';
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
@@ -27,7 +28,20 @@ const KIND_BADGE: Record<string, string> = {
   toy:        'bg-pink-100   text-pink-600   dark:bg-pink-500/15   dark:text-pink-300',
 };
 
+// [sizeRem, hexColor, cssLeft, cssTop, driftPx, durationSec, delaySec]
+const LOGO_PARTICLES: Array<[number, string, string, string, number, number, number]> = [
+  [0.55, '#a78bfa', '15%',   '30%',  10, 3.2, 0.0],
+  [0.38, '#38bdf8', '85%',   '25%',   8, 2.8, 0.6],
+  [0.60, '#818cf8', '18%',   '72%',  12, 3.5, 1.1],
+  [0.32, '#f472b6', '82%',   '68%',   9, 2.6, 0.3],
+  [0.44, '#34d399', '20%',   '15%',   7, 3.0, 1.7],
+  [0.34, '#60a5fa', '80%',   '20%',   9, 2.9, 0.9],
+  [0.28, '#c084fc', '22%',   '80%',   8, 3.3, 1.4],
+  [0.42, '#fb923c', '78%',   '65%',   6, 3.6, 0.5],
+];
+
 export function App() {
+  const { isMobile, isLandscape } = useViewport();
   const [active, setActive] = useState<LabExperience | null>(null);
   const [filter, setFilter] = useState<FilterKind>('all');
   const [dark, setDark] = useState(true);
@@ -36,6 +50,9 @@ export function App() {
   const [carouselSide, setCarouselSide] = useState<'bottom' | 'left' | 'right'>('bottom');
   const [carouselDocked, setCarouselDocked] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
+
+  // On portrait mobile, force carousel to bottom dock and hide side-picker buttons.
+  const effectiveCarouselSide = isMobile && !isLandscape ? 'bottom' : carouselSide;
 
   // Sync dark class on <html>
   useEffect(() => {
@@ -63,15 +80,29 @@ export function App() {
     [active, carouselItems],
   );
 
+  /** Scroll a tile into view by operating only on the scroller element itself.
+   * Never use scrollIntoView — it walks up and scrolls ALL ancestor containers. */
+  const scrollTileIntoView = useCallback((scroller: HTMLDivElement, idx: number) => {
+    const tile = scroller.children[idx] as HTMLElement | undefined;
+    if (!tile) return;
+    const isVertical = scroller.scrollHeight > scroller.clientHeight;
+    if (isVertical) {
+      const center = tile.offsetTop - (scroller.clientHeight - tile.offsetHeight) / 2;
+      scroller.scrollTo({ top: Math.max(0, center), behavior: 'smooth' });
+    } else {
+      const center = tile.offsetLeft - (scroller.clientWidth - tile.offsetWidth) / 2;
+      scroller.scrollTo({ left: Math.max(0, center), behavior: 'smooth' });
+    }
+  }, []);
+
   const selectExperience = useCallback((exp: LabExperience, idx: number) => {
     setActive(exp);
     requestAnimationFrame(() => {
       const scroller = scrollerRef.current;
       if (!scroller) return;
-      const tile = scroller.children[idx] as HTMLElement | undefined;
-      tile?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      scrollTileIntoView(scroller, idx);
     });
-  }, []);
+  }, [scrollTileIntoView]);
 
   const goPrev = useCallback(() => {
     if (!carouselItems.length) return;
@@ -91,13 +122,12 @@ export function App() {
     requestAnimationFrame(() => {
       const scroller = scrollerRef.current;
       if (!scroller) return;
-      const tile = scroller.children[activeCarouselIndex] as HTMLElement | undefined;
-      tile?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      scrollTileIntoView(scroller, activeCarouselIndex);
     });
-  }, [carouselOpen, activeCarouselIndex]);
+  }, [carouselOpen, activeCarouselIndex, scrollTileIntoView]);
 
-  const isBottom = carouselSide === 'bottom';
-  const isLeft = carouselSide === 'left';
+  const isBottom = effectiveCarouselSide === 'bottom';
+  const isLeft = effectiveCarouselSide === 'left';
   const panelBorderClass = isBottom ? 'border-t' : isLeft ? 'border-r' : 'border-l';
   const panelPositionClass = isBottom
     ? 'bottom-0 left-0 right-0'
@@ -127,12 +157,12 @@ export function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
-            className="absolute inset-0"
+            className="absolute inset-0 overflow-hidden"
           >
             {/* transform creates a containing block so GameLauncher's fixed
                 children are constrained to this element when docked. */}
             <div
-              className="fixed inset-0"
+              className="fixed inset-0 overflow-hidden"
               style={{ ...dockedInset, transform: 'translateZ(0)' }}
             >
               <GameLauncher
@@ -169,19 +199,41 @@ export function App() {
           <AnimatePresence>
             {carouselOpen && (
               <motion.div
-                key={`carousel-${carouselSide}`}
+                key={`carousel-${effectiveCarouselSide}`}
                 initial={panelInitialAnim}
                 animate={isBottom ? { y: 0 } : { x: 0 }}
                 exit={panelInitialAnim}
                 transition={{ type: 'spring', stiffness: 400, damping: 40, mass: 0.7 }}
-                className={`fixed z-[60] flex flex-col ${panelBorderClass} border-white/10 bg-black/90 backdrop-blur-xl ${panelPositionClass}`}
+                className={`fixed z-[60] flex flex-col ${panelBorderClass} border-white/10 bg-black/90 backdrop-blur-xl ${panelPositionClass}${isBottom && isMobile && !isLandscape ? ' max-h-[40vh]' : ''}`}
               >
                 {/* Header */}
                 <div className="flex shrink-0 items-center gap-1 border-b border-white/[0.07] px-3 py-1.5">
-                  <span className="mr-auto text-[10px] font-semibold uppercase tracking-widest text-white/30">
-                    Experiences
-                  </span>
-                  {(['left', 'bottom', 'right'] as const).map((s) => {
+                  {isMobile && !isLandscape ? (
+                    /* Mobile: filter pills replace the label */
+                    <div
+                      className="flex flex-1 gap-1 overflow-x-auto"
+                      style={{ scrollbarWidth: 'none' }}
+                    >
+                      {availableKinds.map((kind) => (
+                        <button
+                          key={kind}
+                          onClick={() => setCarouselFilter(kind)}
+                          className={[
+                            'shrink-0 whitespace-nowrap rounded-md px-2 py-0.5 text-[9px] font-semibold transition-colors',
+                            carouselFilter === kind ? 'bg-white/15 text-white' : 'text-white/30 hover:text-white/60',
+                          ].join(' ')}
+                        >
+                          {KIND_LABELS[kind] ?? kind}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="mr-auto text-[10px] font-semibold uppercase tracking-widest text-white/30">
+                      Experiences
+                    </span>
+                  )}
+                  {/* Side-picker buttons hidden on portrait mobile */}
+                  {(!isMobile || isLandscape) && (['left', 'bottom', 'right'] as const).map((s) => {
                     const SideIcon = s === 'left' ? PanelLeft : s === 'bottom' ? PanelBottom : PanelRight;
                     return (
                       <button
@@ -215,59 +267,85 @@ export function App() {
                 </div>
 
                 {isBottom ? (
-                  /* ── Bottom layout: horizontal scroll ── */
-                  <div className="flex h-[132px] items-stretch">
-                    {/* Filters */}
-                    <div className="flex shrink-0 flex-col justify-center gap-0.5 border-r border-white/[0.07] px-2 py-1.5">
-                      {availableKinds.map((kind) => (
-                        <button
-                          key={kind}
-                          onClick={() => setCarouselFilter(kind)}
-                          className={[
-                            'whitespace-nowrap rounded-md px-2 py-0.5 text-[9px] font-semibold transition-colors',
-                            carouselFilter === kind ? 'bg-white/15 text-white' : 'text-white/30 hover:text-white/60',
-                          ].join(' ')}
-                        >
-                          {KIND_LABELS[kind] ?? kind}
-                        </button>
-                      ))}
+                  isMobile && !isLandscape ? (
+                    /* ── Mobile portrait: full-width swipe tiles (filter is in header) ── */
+                    <div className="flex flex-col overflow-hidden">
+                      {/* Full-width swipe tile scroller — native momentum + scroll-snap.
+                          overflow-x-scroll implicitly clips overflow-y, so py-2 gives
+                          room for the 2px active ring and the label below tiles. */}
+                      <div
+                        ref={scrollerRef}
+                        className="flex items-center gap-2 overflow-x-scroll px-2 py-2 snap-x snap-mandatory"
+                        style={{ scrollbarWidth: 'none' }}
+                      >
+                        {carouselItems.map((exp, i) => (
+                          <div key={exp.id} className="shrink-0 snap-start py-0.5">
+                            <CarouselTile
+                              exp={exp}
+                              index={i}
+                              isActive={active?.id === exp.id}
+                              size={88}
+                              onClick={() => selectExperience(exp, i)}
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    {/* Prev */}
-                    <button
-                      onClick={goPrev}
-                      disabled={!carouselItems.length}
-                      aria-label="Previous"
-                      className="flex shrink-0 items-center justify-center px-1.5 text-white/25 transition-colors hover:text-white/60 disabled:opacity-0"
-                    >
-                      <ChevronLeft size={15} />
-                    </button>
-                    {/* Tiles */}
-                    <div
-                      ref={scrollerRef}
-                      className="flex flex-1 items-center gap-2 overflow-x-auto px-1"
-                      style={{ scrollbarWidth: 'none' }}
-                    >
-                      {carouselItems.map((exp, i) => (
-                        <CarouselTile
-                          key={exp.id}
-                          exp={exp}
-                          index={i}
-                          isActive={active?.id === exp.id}
-                          size={80}
-                          onClick={() => selectExperience(exp, i)}
-                        />
-                      ))}
+                  ) : (
+                    /* ── Desktop bottom: left filter column + prev/tiles/next ── */
+                    <div className="flex h-[132px] items-stretch">
+                      {/* Filters */}
+                      <div className="flex shrink-0 flex-col justify-center gap-0.5 border-r border-white/[0.07] px-2 py-1.5">
+                        {availableKinds.map((kind) => (
+                          <button
+                            key={kind}
+                            onClick={() => setCarouselFilter(kind)}
+                            className={[
+                              'whitespace-nowrap rounded-md px-2 py-0.5 text-[9px] font-semibold transition-colors',
+                              carouselFilter === kind ? 'bg-white/15 text-white' : 'text-white/30 hover:text-white/60',
+                            ].join(' ')}
+                          >
+                            {KIND_LABELS[kind] ?? kind}
+                          </button>
+                        ))}
+                      </div>
+                      {/* Prev */}
+                      <button
+                        onClick={goPrev}
+                        disabled={!carouselItems.length}
+                        aria-label="Previous"
+                        className="flex shrink-0 items-center justify-center px-1.5 text-white/25 transition-colors hover:text-white/60 disabled:opacity-0"
+                      >
+                        <ChevronLeft size={15} />
+                      </button>
+                      {/* Tiles */}
+                      <div
+                        ref={scrollerRef}
+                        className="flex flex-1 items-center gap-2 overflow-x-auto px-1"
+                        style={{ scrollbarWidth: 'none' }}
+                      >
+                        {carouselItems.map((exp, i) => (
+                          <CarouselTile
+                            key={exp.id}
+                            exp={exp}
+                            index={i}
+                            isActive={active?.id === exp.id}
+                            size={80}
+                            onClick={() => selectExperience(exp, i)}
+                          />
+                        ))}
+                      </div>
+                      {/* Next */}
+                      <button
+                        onClick={goNext}
+                        disabled={!carouselItems.length}
+                        aria-label="Next"
+                        className="flex shrink-0 items-center justify-center px-1.5 text-white/25 transition-colors hover:text-white/60 disabled:opacity-0"
+                      >
+                        <ChevronRight size={15} />
+                      </button>
                     </div>
-                    {/* Next */}
-                    <button
-                      onClick={goNext}
-                      disabled={!carouselItems.length}
-                      aria-label="Next"
-                      className="flex shrink-0 items-center justify-center px-1.5 text-white/25 transition-colors hover:text-white/60 disabled:opacity-0"
-                    >
-                      <ChevronRight size={15} />
-                    </button>
-                  </div>
+                  )
                 ) : (
                   /* ── Side layout: vertical scroll ── */
                   <div className="flex flex-1 flex-col overflow-hidden">
@@ -344,23 +422,37 @@ export function App() {
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="absolute inset-0 overflow-y-auto text-slate-900 dark:text-slate-100"
           >
-      <main className="max-w-5xl mx-auto px-8 pt-24 pb-32">
+      <main className="max-w-5xl mx-auto px-4 sm:px-8 pt-10 sm:pt-24 pb-16 sm:pb-32">
 
-        {/* Title */}
-        <h1 className="text-center text-6xl sm:text-7xl font-bold tracking-tight mb-14 text-slate-900 dark:text-white">
-          Pixi Lab
-        </h1>
+        {/* Title / Logo */}
+        {/* overflow:visible (default) lets particles float outside the h1 bounding box */}
+        <div className="relative mb-6 sm:mb-14 flex justify-center">
+          {LOGO_PARTICLES.map(([size, color, left, top, drift, duration, delay], i) => (
+            <motion.span
+              key={i}
+              aria-hidden
+              className="pointer-events-none absolute rounded-full"
+              style={{ width: `${size}rem`, height: `${size}rem`, background: color, left, top }}
+              initial={{ opacity: 0 }}
+              animate={{ y: [0, -drift, 0], opacity: [0.35, 0.7, 0.35] }}
+              transition={{ duration, repeat: Infinity, delay, ease: 'easeInOut' }}
+            />
+          ))}
+          <h1 className="relative text-center text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight bg-gradient-to-r from-violet-400 via-sky-300 to-cyan-400 bg-clip-text text-transparent">
+            Pixi Lab
+          </h1>
+        </div>
 
         {/* Segmented filter */}
-        <div className="flex justify-center mb-16">
-          <div className="inline-flex gap-0.5 p-1.5 rounded-2xl bg-slate-100 dark:bg-white/[0.06]">
+        <div className="flex justify-center mb-8 sm:mb-16">
+          <div className="inline-flex gap-0.5 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-white/[0.06]">
             {availableKinds.map((kind) => (
               <button
                 key={kind}
                 type="button"
                 onClick={() => setFilter(kind)}
                 className={[
-                  'px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150',
+                  'px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all duration-150',
                   filter === kind
                     ? 'bg-white dark:bg-slate-700 shadow-md text-slate-900 dark:text-white'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200',
@@ -470,17 +562,31 @@ interface CarouselTileProps {
 }
 
 function CarouselTile({ exp, index, isActive, size, onClick, labelRight }: CarouselTileProps) {
+  const tileRef = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = tileRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { threshold: 0.1 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   return (
     <div
+      ref={tileRef}
       className={[
         'flex shrink-0 items-center gap-1.5 transition-all duration-150 cursor-pointer',
         labelRight ? 'flex-row w-full' : 'flex-col',
-        isActive ? 'opacity-100' : 'opacity-40 hover:opacity-75',
       ].join(' ')}
     >
       {/* Ring wrapper — rounded-2xl matches GameTile's own rounded-2xl; flex removes inline baseline gap; no overflow-hidden so ring isn't clipped */}
       <div className={['shrink-0 flex rounded-2xl', isActive ? 'ring-2 ring-white/65' : ''].join(' ')}>
-        <PreviewTile definition={exp} index={index} size={size} onPress={onClick} />
+        <PreviewTile definition={exp} index={index} size={size} onPress={onClick} active={inView} />
       </div>
       <span
         className={[

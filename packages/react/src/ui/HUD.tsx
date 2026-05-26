@@ -6,6 +6,7 @@
 import { X, Settings, Heart, HelpCircle, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type React from 'react';
+import { useViewportContext } from '../ViewportProvider.js';
 
 interface HUDProps {
   score?: number;
@@ -19,12 +20,15 @@ interface HUDProps {
 }
 
 export function HUD({ score, lives, timeRemaining, controls, onQuit, onSettings, onTutorial }: HUDProps) {
+  const { safeArea } = useViewportContext();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: 'easeOut' }}
       className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 px-3 pt-3"
+      style={{ paddingTop: `${(safeArea.top || 0) + 12}px` }}
     >
       {/* Left: Quit */}
       {onQuit && (
@@ -38,16 +42,22 @@ export function HUD({ score, lives, timeRemaining, controls, onQuit, onSettings,
         </motion.button>
       )}
 
-      {/* Center: score or custom controls */}
-      <div className="pointer-events-auto flex min-w-0 flex-1 items-center justify-center gap-2">
-        {controls ?? (
-          score !== undefined ? (
-            <div className="rounded-xl bg-black/30 px-4 py-1.5 backdrop-blur-md">
-              <span className="text-sm font-bold tabular-nums text-white">{score.toLocaleString()}</span>
-            </div>
-          ) : null
-        )}
+      {/* Center: score or custom controls — absolutely centered so left/right slot widths don't skew alignment */}
+      <div className="pointer-events-none absolute inset-x-0 flex items-center justify-center"
+        style={{ top: `${(safeArea.top || 0) + 12}px`, height: '32px' }}
+      >
+        <div className="pointer-events-auto">
+          {controls ?? (
+            score !== undefined ? (
+              <div className="rounded-xl bg-black/30 px-4 py-1.5 backdrop-blur-md">
+                <span className="text-sm font-bold tabular-nums text-white">{score.toLocaleString()}</span>
+              </div>
+            ) : null
+          )}
+        </div>
       </div>
+      {/* Spacer keeps the right slot from consuming the absolute center's space */}
+      <div className="flex-1" />
 
       {/* Right: score (when controls are in center) / lives / timer / tutorial / pause */}
       <div className="flex shrink-0 items-center gap-1.5">

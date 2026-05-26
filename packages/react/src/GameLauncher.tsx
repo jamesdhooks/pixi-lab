@@ -17,6 +17,8 @@ import { StylePicker } from './ui/StylePicker.js';
 import { QualitySelector } from './ui/QualitySelector.js';
 import { DebugPanel } from './ui/DebugPanel.js';
 import { SimControlPanel } from './ui/SimControlPanel.js';
+import { OverflowMenu } from './ui/OverflowMenu.js';
+import { ViewportProvider, useViewportContext } from './ViewportProvider.js';
 import { nameSuggestions } from '@hooksjam/pixi-lab-core';
 import type { LabExperience, SimulationExperience } from '@hooksjam/pixi-lab-core';
 import type { GameEvent, RenderQuality, ScoreEntry } from '@hooksjam/pixi-lab-core';
@@ -36,13 +38,24 @@ export interface GameLauncherProps {
   onQuit?: () => void;
 }
 
-export function GameLauncher({
+export function GameLauncher(props: GameLauncherProps) {
+  return (
+    <ViewportProvider>
+      <GameLauncherInner {...props} />
+    </ViewportProvider>
+  );
+}
+
+function GameLauncherInner({
   definition,
   userId,
   topScores = [],
   onSubmitScore,
   onQuit,
 }: GameLauncherProps) {
+  // ViewportProvider is mounted by GameLauncher wrapper; child components read context directly.
+  const { isMobile, isLandscape } = useViewportContext();
+  const mobilePortrait = isMobile && !isLandscape;
   const [shell, setShell] = useState<Shell>('playing');
   const [infoCardVisible, setInfoCardVisible] = useState(true);
   const [infoAutoDismiss, setInfoAutoDismiss] = useState(true);
@@ -192,6 +205,27 @@ export function GameLauncher({
     (f) => f.type === 'number' && (!f.visibleModes || f.visibleModes.includes(modeId)),
   );
 
+  // On mobile portrait, style + mode are shown at the top of SimControlPanel instead of HUD/OverflowMenu.
+  const controlsHeaderSlot =
+    mobilePortrait && (definition.styleManifest || hasModes) ? (
+      <>
+        {definition.styleManifest && (
+          <StylePicker
+            manifest={definition.styleManifest}
+            value={styleId}
+            onChange={(nextStyleId) => {
+              setStyleId(nextStyleId);
+              appRef.current?.setStyle(nextStyleId);
+              if (!isSimulation) appRef.current?.settings.set('style', nextStyleId);
+            }}
+          />
+        )}
+        {hasModes && (
+          <ModeToggle modes={definition.modes!} value={modeId} onChange={handleModeChange} />
+        )}
+      </>
+    ) : undefined;
+
   // Build compact gesture → action hints for the IntroCard
   const gestureMap = isSimulation
     ? (definition as SimulationExperience).gestureMap
@@ -261,9 +295,9 @@ export function GameLauncher({
             lives={lives}
             onQuit={handleQuit}
             controls={
-              definition.styleManifest || hasModes ? (
-                <div className="flex flex-wrap items-center justify-center gap-1.5">
-                  {definition.styleManifest && (
+              (definition.styleManifest && !mobilePortrait) || (hasModes && !mobilePortrait) ? (
+                <div className="flex items-center gap-1.5">
+                  {definition.styleManifest && !mobilePortrait && (
                     <StylePicker
                       manifest={definition.styleManifest}
                       value={styleId}
@@ -282,77 +316,136 @@ export function GameLauncher({
             }
           />
 
-          {/* Top-right controls: quality, reset, settings, hide-ui, demo */}
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: 'easeOut', delay: 0.04 }}
-            className="pointer-events-none absolute right-3 top-3 z-30 flex items-center gap-1.5"
-          >
-            {hasQualityModes && (
-              <div className="pointer-events-auto">
-                <QualitySelector
-                  value={quality}
-                  renderedValue={renderedQuality}
-                  options={definition.capabilities.qualityModes!}
-                  onChange={handleQualityChange}
-                />
-              </div>
-            )}
-            {definition.capabilities.reset && (
-              <button
-                className="pointer-events-auto flex h-8 items-center rounded-xl bg-black/30 px-3 text-xs font-semibold text-white/70 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
-                onClick={() => appRef.current?.resetScene()}
-              >
-                Reset
-              </button>
-            )}
-            {hasSettings && (
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={handleOpenSettings}
-                aria-label="Settings"
-                className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-xl bg-black/30 text-white/70 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
-              >
-                <SettingsIcon size={15} />
-              </motion.button>
-            )}
-            {/* Hide UI — any tap on the canvas will restore it */}
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setUiHidden(true)}
-              aria-label="Hide UI"
-              className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-xl bg-black/30 text-white/40 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white/70"
-            >
-              <EyeOff size={14} />
-            </motion.button>
-            {/* Demo mode — AI operates the simulation, UI hides automatically */}
-            {definition.capabilities.demo && (
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => {
-                  setIsDemo(true);
-                  setUiHidden(true);
-                  appRef.current?.setInteractionMode('demo');
-                  appRef.current?.setMode('demo');
-                }}
-                aria-label="Demo mode"
-                className="pointer-events-auto flex h-8 items-center gap-1.5 rounded-xl bg-black/30 px-2.5 text-white/40 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white/70"
-              >
-                <Play size={11} />
-                <span className="text-[10px] uppercase tracking-widest">Demo</span>
-              </motion.button>
-            )}
-            {/* Info / recall intro card */}
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={openInfoCard}
-              aria-label="Info"
-              className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-xl bg-black/30 text-white/40 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white/70"
-            >
-              <HelpCircle size={15} />
-            </motion.button>
-          </motion.div>
+          {/* Top-right controls: quality, reset, settings, hide-ui, demo — adaptive via OverflowMenu */}
+          <OverflowMenu
+            items={[
+              // On mobile portrait, style + mode move from HUD center into the overflow sheet.
+              {
+                key: 'style',
+                label: 'Style',
+                hidden: !definition.styleManifest || !mobilePortrait || !!controlsHeaderSlot,
+                fullWidth: true,
+                sectionLabel: 'Style',
+                node: definition.styleManifest ? (
+                  <StylePicker
+                    manifest={definition.styleManifest}
+                    value={styleId}
+                    listMode
+                    onChange={(nextStyleId) => {
+                      setStyleId(nextStyleId);
+                      appRef.current?.setStyle(nextStyleId);
+                      if (!isSimulation) appRef.current?.settings.set('style', nextStyleId);
+                    }}
+                  />
+                ) : null,
+              },
+              {
+                key: 'modes',
+                label: 'Mode',
+                hidden: true, // ModeToggle is shown directly in the HUD center
+                fullWidth: true,
+                sectionLabel: 'Mode',
+                node: hasModes ? (
+                  <ModeToggle
+                    modes={definition.modes!}
+                    value={modeId}
+                    onChange={handleModeChange}
+                    listRows
+                  />
+                ) : null,
+              },
+              {
+                key: 'quality',
+                label: 'Quality',
+                hidden: !hasQualityModes,
+                node: (
+                  <QualitySelector
+                    value={quality}
+                    renderedValue={renderedQuality}
+                    options={definition.capabilities.qualityModes!}
+                    onChange={handleQualityChange}
+                  />
+                ),
+              },
+              {
+                key: 'reset',
+                label: 'Reset',
+                hidden: !definition.capabilities.reset,
+                node: (
+                  <button
+                    className="flex h-8 items-center rounded-xl bg-black/30 px-3 text-xs font-semibold text-white/70 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
+                    onClick={() => appRef.current?.resetScene()}
+                  >
+                    Reset
+                  </button>
+                ),
+              },
+              {
+                key: 'settings',
+                label: 'Settings',
+                hidden: !hasSettings,
+                node: (
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={handleOpenSettings}
+                    aria-label="Settings"
+                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-black/30 text-white/70 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
+                  >
+                    <SettingsIcon size={15} />
+                  </motion.button>
+                ),
+              },
+              {
+                key: 'hide-ui',
+                label: 'Hide UI',
+                node: (
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setUiHidden(true)}
+                    aria-label="Hide UI"
+                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-black/30 text-white/40 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white/70"
+                  >
+                    <EyeOff size={14} />
+                  </motion.button>
+                ),
+              },
+              {
+                key: 'demo',
+                label: 'Demo mode',
+                hidden: !definition.capabilities.demo,
+                node: (
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => {
+                      setIsDemo(true);
+                      setUiHidden(true);
+                      appRef.current?.setInteractionMode('demo');
+                      appRef.current?.setMode('demo');
+                    }}
+                    aria-label="Demo mode"
+                    className="flex h-8 items-center gap-1.5 rounded-xl bg-black/30 px-2.5 text-white/40 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white/70"
+                  >
+                    <Play size={11} />
+                    <span className="text-[10px] uppercase tracking-widest">Demo</span>
+                  </motion.button>
+                ),
+              },
+              {
+                key: 'info',
+                label: 'How to play',
+                node: (
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={openInfoCard}
+                    aria-label="Info"
+                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-black/30 text-white/40 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white/70"
+                  >
+                    <HelpCircle size={15} />
+                  </motion.button>
+                ),
+              },
+            ]}
+          />
 
           {hasSettings && appRef.current && (
             <SettingsDrawer
@@ -364,8 +457,13 @@ export function GameLauncher({
           )}
 
           {/* Top: numeric sliders for any experience that exposes number settings */}
-          {topNumericFields.length > 0 && (
-            <SimControlPanel app={appInstance} fields={topNumericFields} settingsVersion={settingsVersion} />
+          {(topNumericFields.length > 0 || controlsHeaderSlot) && (
+            <SimControlPanel
+              app={appInstance}
+              fields={topNumericFields}
+              settingsVersion={settingsVersion}
+              headerSlot={controlsHeaderSlot}
+            />
           )}
 
           {/* Bottom-right: debug panel — hidden with the rest of the UI */}

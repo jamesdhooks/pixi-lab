@@ -11,6 +11,10 @@ export { Gallery, type GalleryProps } from './Gallery.js';
 export { AmbientLayer, type AmbientLayerProps } from './AmbientLayer.js';
 export { ForegroundAmbientOverlay, type ForegroundAmbientOverlayProps } from './ForegroundAmbientOverlay.js';
 
+// Viewport infrastructure
+export { ViewportProvider, useViewportContext } from './ViewportProvider.js';
+export { useViewport, type ViewportState, type SafeAreaInsets } from './hooks/useViewport.js';
+
 // UI primitives (for host-app customisation)
 export { HUD } from './ui/HUD.js';
 export { QuitButton } from './ui/QuitButton.js';
@@ -28,3 +32,5 @@ export { DebugPanel, type DebugPanelProps } from './ui/DebugPanel.js';
 export { ModeToggle, type ModeToggleProps } from './ui/ModeToggle.js';
 export { ShaderTuningDrawer, type ShaderTuningDrawerProps } from './ui/ShaderTuningDrawer.js';
 export { SimControlPanel, type SimControlPanelProps } from './ui/SimControlPanel.js';
+export { BottomSheet, type BottomSheetProps } from './ui/BottomSheet.js';
+export { OverflowMenu, type OverflowMenuProps, type OverflowItem } from './ui/OverflowMenu.js';

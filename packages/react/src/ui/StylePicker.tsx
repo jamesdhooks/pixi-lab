@@ -8,6 +8,11 @@ export interface StylePickerProps {
   manifest: SimStyleManifest;
   value: string;
   onChange: (styleId: string) => void;
+  /**
+   * When true, renders a flat inline style list (no trigger button, no sheet).
+   * Use when embedding inside another sheet such as OverflowMenu.
+   */
+  listMode?: boolean;
 }
 
 /** Small horizontal swatch strip showing up to 4 palette colours. */
@@ -26,7 +31,7 @@ function PaletteSwatch({ style }: { style: SimStyle }) {
   );
 }
 
-export function StylePicker({ manifest, value, onChange }: StylePickerProps) {
+export function StylePicker({ manifest, value, onChange, listMode = false }: StylePickerProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -73,7 +78,37 @@ export function StylePicker({ manifest, value, onChange }: StylePickerProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  // Desktop: open upward when button is in lower 35% of screen
   const openUpward = btnRect ? btnRect.bottom > window.innerHeight * 0.65 : false;
+
+  const styleList = manifest.styles.map((style) => {
+    const active = style.id === value;
+    const isRandom = style.id === '__random__';
+    return (
+      <button
+        key={style.id}
+        type="button"
+        onClick={() => handleSelect(style.id)}
+        className={`flex w-full items-center justify-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+          active ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'
+        }`}
+      >
+        {!isRandom && <PaletteSwatch style={style} />}
+        {isRandom && (
+          <div className="flex h-3 w-8 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-white/10 text-[7px] font-bold tracking-wider text-white/50">
+            ?
+          </div>
+        )}
+        <span className="flex-1 text-left">{style.name}</span>
+        {active && <Check size={11} className="shrink-0 text-emerald-400" />}
+      </button>
+    );
+  });
+
+  // Inline list mode — renders flat inside a parent container (e.g. OverflowMenu sheet)
+  if (listMode) {
+    return <div className="px-1 pb-1">{styleList}</div>;
+  }
 
   return (
     <div ref={ref} className="relative flex items-center overflow-hidden rounded-xl bg-black/30 backdrop-blur-md">
@@ -129,29 +164,7 @@ export function StylePicker({ manifest, value, onChange }: StylePickerProps) {
               }}
               className="z-[9999] overflow-hidden rounded-xl bg-black/30 p-1 backdrop-blur-md"
             >
-              {manifest.styles.map((style) => {
-                const active = style.id === value;
-                const isRandom = style.id === '__random__';
-                return (
-                  <button
-                    key={style.id}
-                    type="button"
-                    onClick={() => handleSelect(style.id)}
-                    className={`flex w-full items-center justify-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                      active ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'
-                    }`}
-                  >
-                    {!isRandom && <PaletteSwatch style={style} />}
-                    {isRandom && (
-                      <div className="flex h-3 w-8 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-white/10 text-[7px] font-bold tracking-wider text-white/50">
-                        ?
-                      </div>
-                    )}
-                    <span className="flex-1 text-left">{style.name}</span>
-                    {active && <Check size={11} className="shrink-0 text-emerald-400" />}
-                  </button>
-                );
-              })}
+              {styleList}
             </motion.div>
           )}
         </AnimatePresence>,

@@ -11,9 +11,35 @@ export interface ModeToggleProps {
   modes: ExperienceMode[];
   value: string;
   onChange: (id: string) => void;
+  /** When true, renders as stacked list rows instead of pill buttons (used inside OverflowMenu). */
+  listRows?: boolean;
 }
 
-export function ModeToggle({ modes, value, onChange }: ModeToggleProps) {
+export function ModeToggle({ modes, value, onChange, listRows = false }: ModeToggleProps) {
+  if (listRows) {
+    return (
+      <div className="flex flex-col gap-1">
+        {modes.map((mode) => (
+          <button
+            key={mode.id}
+            onClick={() => onChange(mode.id)}
+            aria-pressed={mode.id === value}
+            aria-label={mode.description ?? mode.label}
+            className={[
+              'flex min-h-touch w-full items-center rounded-xl px-3 text-sm font-semibold transition-all',
+              mode.id === value
+                ? 'bg-white/20 text-white'
+                : 'text-white/50 hover:bg-white/10 hover:text-white',
+            ].join(' ')}
+          >
+            {mode.icon && <span className="mr-2">{mode.icon}</span>}
+            {mode.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}

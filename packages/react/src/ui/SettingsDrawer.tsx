@@ -10,6 +10,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronDown, Check } from 'lucide-react';
 import type { Settings } from '@hooksjam/pixi-lab-core';
 import type { SettingsField } from '@hooksjam/pixi-lab-core';
+import { BottomSheet } from './BottomSheet.js';
+import { useViewportContext } from '../ViewportProvider.js';
 
 interface SettingsDrawerProps {
   open: boolean;
@@ -19,6 +21,7 @@ interface SettingsDrawerProps {
 }
 
 export function SettingsDrawer({ open, onClose, settings, fields }: SettingsDrawerProps) {
+  const { isMobile, isLandscape } = useViewportContext();
   const [vals, setVals] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
@@ -35,6 +38,29 @@ export function SettingsDrawer({ open, onClose, settings, fields }: SettingsDraw
     setVals((prev) => ({ ...prev, [key]: value }));
   };
 
+  const content = (
+    <div className="space-y-0.5 p-3">
+      {fields.map((field) => (
+        <FieldRow
+          key={field.key}
+          field={field}
+          value={vals[field.key]}
+          onChange={(v) => apply(field.key, v)}
+        />
+      ))}
+    </div>
+  );
+
+  // Mobile portrait — render as a BottomSheet
+  if (isMobile && !isLandscape) {
+    return (
+      <BottomSheet open={open} onClose={onClose} title="Settings">
+        {content}
+      </BottomSheet>
+    );
+  }
+
+  // Desktop / landscape — existing dropdown anchored top-right
   return (
     <AnimatePresence>
       {open && (
@@ -66,17 +92,7 @@ export function SettingsDrawer({ open, onClose, settings, fields }: SettingsDraw
             {/* Divider */}
             <div className="mx-4 h-px bg-white/8" />
 
-            {/* Fields */}
-            <div className="space-y-0.5 p-3">
-              {fields.map((field) => (
-                <FieldRow
-                  key={field.key}
-                  field={field}
-                  value={vals[field.key]}
-                  onChange={(v) => apply(field.key, v)}
-                />
-              ))}
-            </div>
+            {content}
           </motion.div>
         </>
       )}

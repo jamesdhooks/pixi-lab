@@ -79,6 +79,15 @@ export interface LabExperienceBase {
   defaultSeed?: number;
   /** Tutorial pages shown before first play */
   tutorialPages?: TutorialPage[];
+  /**
+   * Optional mobile HUD override. When undefined, all controls move to the overflow
+   * menu on portrait phone. Use this only for experiences that need specific items
+   * pinned to the HUD regardless of screen size.
+   */
+  mobileHUD?: {
+    /** Items to keep in the HUD on portrait phone (default: all go to overflow menu). */
+    keepInHUD?: ('modes' | 'style' | 'quality' | 'reset')[];
+  };
 }
 
 export interface GameExperience extends LabExperienceBase {
