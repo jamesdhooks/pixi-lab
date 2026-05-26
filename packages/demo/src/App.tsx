@@ -421,109 +421,127 @@ export function App() {
         </>
       )}
 
-      {/* ── Settings panel — floating, always accessible ── */}
+      {/* ── Settings button — glass pill anchored top-right ── */}
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={() => setSettingsPanelOpen((o) => !o)}
+        aria-label="Open settings"
+        className={`fixed top-4 right-4 z-[101] flex h-8 w-8 items-center justify-center rounded-xl backdrop-blur-md transition-colors ${
+          settingsPanelOpen
+            ? 'bg-white/15 text-white/80'
+            : 'bg-black/30 text-white/30 hover:bg-black/50 hover:text-white/60'
+        }`}
+      >
+        <SettingsIcon size={15} />
+      </motion.button>
+
+      {/* ── Settings panel — glass dropdown below button ── */}
       <AnimatePresence>
         {settingsPanelOpen && (
-          <motion.div
-            key="settings"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="fixed top-4 right-4 z-[100] w-64 rounded-xl bg-black/90 backdrop-blur-xl border border-white/10 p-4 shadow-2xl"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-white">Render Settings</h3>
-              <button
-                onClick={() => setSettingsPanelOpen(false)}
-                className="flex h-6 w-6 items-center justify-center rounded text-white/40 transition-colors hover:text-white/70"
-                aria-label="Close settings"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Dark mode toggle */}
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-white/60">Dark Mode</label>
+          <>
+            {/* Click-outside dismiss */}
+            <div className="fixed inset-0 z-[99]" onClick={() => setSettingsPanelOpen(false)} />
+            <motion.div
+              key="settings"
+              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.97 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="fixed top-[52px] right-4 z-[100] w-60 rounded-2xl bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center border-b border-white/[0.07] px-3 py-1.5">
+                <span className="mr-auto text-[10px] font-semibold uppercase tracking-widest text-white/30">
+                  Render Settings
+                </span>
                 <button
-                  onClick={() => setDark((d) => !d)}
-                  className={`relative h-5 w-9 rounded-full transition-colors ${
-                    dark ? 'bg-blue-600' : 'bg-white/20'
-                  }`}
+                  onClick={() => setSettingsPanelOpen(false)}
+                  className="flex h-6 w-6 items-center justify-center rounded text-white/20 transition-colors hover:text-white/50"
+                  aria-label="Close settings"
                 >
-                  <span
-                    className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-                      dark ? 'translate-x-4' : ''
-                    }`}
-                  />
+                  <X size={14} />
                 </button>
               </div>
 
-              {/* Max pixels slider */}
-              <div>
-                <label className="text-xs font-medium text-white/60 block mb-2">
-                  Max Pixels {maxPixels ? `(${maxPixels.toLocaleString()})` : '(unlimited)'}
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="2073600"
-                  step="100000"
-                  value={maxPixels || 0}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value);
-                    setMaxPixels(val === 0 ? undefined : val);
-                  }}
-                  className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-blue-600"
-                />
-                <div className="flex justify-between text-[10px] text-white/40 mt-1">
-                  <span>Off</span>
-                  <span>1920×1080</span>
-                </div>
-              </div>
-
-              {/* Quick presets */}
-              <div>
-                <label className="text-xs font-medium text-white/60 block mb-2">Presets</label>
-                <div className="grid grid-cols-3 gap-1">
-                  {[
-                    { label: 'Off', value: undefined },
-                    { label: '720p', value: 921600 },
-                    { label: '1080p', value: 2073600 },
-                  ].map(({ label, value }) => (
-                    <button
-                      key={label}
-                      onClick={() => setMaxPixels(value)}
-                      className={`py-1 px-2 text-[11px] font-semibold rounded transition-colors ${
-                        maxPixels === value
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white/10 text-white/60 hover:text-white/90'
+              <div className="p-3 space-y-3">
+                {/* Dark mode row */}
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[11px] font-semibold text-white/60">Dark mode</span>
+                  <button
+                    onClick={() => setDark((d) => !d)}
+                    className={`relative h-[18px] w-8 rounded-full transition-colors ${
+                      dark ? 'bg-blue-500/80' : 'bg-white/15'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-[1px] left-[1px] h-4 w-4 rounded-full bg-white transition-transform shadow-sm ${
+                        dark ? 'translate-x-[14px]' : ''
                       }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                    />
+                  </button>
+                </div>
+
+                {/* Divider */}
+                <div className="h-px bg-white/[0.07]" />
+
+                {/* Resolution cap */}
+                <div>
+                  <div className="flex items-center justify-between px-1 mb-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">
+                      Pixel budget
+                    </span>
+                    <span className="text-[10px] tabular-nums text-white/40">
+                      {maxPixels ? maxPixels.toLocaleString() : 'unlimited'}
+                    </span>
+                  </div>
+
+                  {/* Presets — 2×2 grid */}
+                  <div className="grid grid-cols-2 gap-1 mb-2.5">
+                    {[
+                      { label: 'Off', sub: 'unlimited', value: undefined },
+                      { label: '360p', sub: '640×360', value: 230400 },
+                      { label: '720p', sub: '1280×720', value: 921600 },
+                      { label: '1080p', sub: '1920×1080', value: 2073600 },
+                    ].map(({ label, sub, value }) => (
+                      <button
+                        key={label}
+                        onClick={() => setMaxPixels(value)}
+                        className={`flex flex-col items-center py-1.5 rounded-xl transition-colors ${
+                          maxPixels === value
+                            ? 'bg-white/15 text-white'
+                            : 'bg-white/[0.05] text-white/40 hover:bg-white/10 hover:text-white/70'
+                        }`}
+                      >
+                        <span className="text-[11px] font-bold leading-none">{label}</span>
+                        <span className="text-[9px] mt-0.5 opacity-60">{sub}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Fine-tune slider */}
+                  <input
+                    type="range"
+                    min="0"
+                    max="2073600"
+                    step="50000"
+                    value={maxPixels || 0}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setMaxPixels(val === 0 ? undefined : val);
+                    }}
+                    className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-blue-500"
+                  />
+                  <div className="flex justify-between text-[9px] text-white/25 mt-1 px-0.5">
+                    <span>Off</span>
+                    <span>1080p</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
-
-      {/* ── Settings button — floating, top-right, always accessible ── */}
-      <motion.button
-        key="settings-button"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={() => setSettingsPanelOpen((o) => !o)}
-        aria-label="Open settings"
-        className="fixed top-4 right-4 z-[99] flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/60 transition-colors hover:bg-slate-200 dark:hover:bg-white/20"
-      >
-        <SettingsIcon size={18} />
-      </motion.button>
 
       {/* ── Gallery layer ── */}
       <AnimatePresence>
