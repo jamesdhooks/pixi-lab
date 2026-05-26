@@ -3,6 +3,7 @@ import { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 import { myceliumPrismDefinition } from './mycelium-prism/mycelium-prism.definition.js';
 import { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
+import { plasmaBranchDefinition } from './plasma-branch/plasma-branch.definition.js';
 
 export { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 export { AmoebaLampScene, amoebaLampStyleManifest } from './amoeba-lamp/AmoebaLampScene.js';
@@ -24,7 +25,12 @@ export { OrbitalShrapnelScene, orbitalShrapnelStyleManifest } from './orbital-sh
 export { OrbitalShrapnelPreviewScene } from './orbital-shrapnel/OrbitalShrapnelPreviewScene.js';
 export { OrbitalShrapnelModel, type OrbitalShrapnelModelOptions, type OrbitalShrapnelStats } from './orbital-shrapnel/OrbitalShrapnelModel.js';
 
-export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [harmonicSandDefinition, myceliumPrismDefinition, amoebaLampDefinition, orbitalShrapnelDefinition] as const;
+export { plasmaBranchDefinition } from './plasma-branch/plasma-branch.definition.js';
+export { PlasmaBranchScene, plasmaBranchStyleManifest } from './plasma-branch/PlasmaBranchScene.js';
+export { PlasmaBranchPreviewScene } from './plasma-branch/PlasmaBranchPreviewScene.js';
+export { PlasmaBranchModel, type PlasmaBranchModelOptions, type PlasmaBranchStats } from './plasma-branch/PlasmaBranchModel.js';
+
+export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [harmonicSandDefinition, myceliumPrismDefinition, amoebaLampDefinition, orbitalShrapnelDefinition, plasmaBranchDefinition] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
   return SIMULATION_REGISTRY.find((simulation) => simulation.id === id);
