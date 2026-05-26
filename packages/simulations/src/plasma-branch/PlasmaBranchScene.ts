@@ -30,6 +30,11 @@ export class PlasmaBranchScene extends SimulationScene {
   private model: PlasmaBranchModel | null = null;
   private modelOptions: PlasmaBranchModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
+  /** Cached settings values — detect changes each update tick and apply live. */
+  private lastMaxBranches = 0;
+  private lastFieldColumns = 0;
+  private lastChargeDecay = 0;
+  private lastBranchEnergy = 0;
 
   constructor(private readonly previewColumns?: number, private readonly previewBudget?: number) {
     super();
@@ -49,8 +54,10 @@ export class PlasmaBranchScene extends SimulationScene {
       rows: Math.max(12, Math.round(columns * ctx.height / Math.max(1, ctx.width))),
       maxBranches: this.previewBudget ?? ((settings.get('maxBranches') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.maxBranches as number)),
       chargeDecay: (settings.get('chargeDecay') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.chargeDecay as number),
+      branchEnergy: (settings.get('branchEnergy') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.branchEnergy as number),
     };
     this.model = new PlasmaBranchModel(this.modelOptions);
+    this.cacheLiveSettings();
     const style = settings.get('style') as string | undefined;
     if (style) this.setStyle(style);
     ctx.systems.debug?.setEnabled(false);
@@ -64,7 +71,8 @@ export class PlasmaBranchScene extends SimulationScene {
   }
 
   override update(dt: number): void {
-    if (!this.model) return;
+    if (!this.model || !this.modelOptions) return;
+    this.applyLiveSettings();
     for (const gesture of this.consumeGestures()) this.model.handleGesture(gesture);
     this.model.update(dt);
     this.stagnationReport = this.model.detectStagnation(dt);
@@ -86,17 +94,58 @@ export class PlasmaBranchScene extends SimulationScene {
     if (!this.modelOptions) return;
     this.modelOptions = { ...this.modelOptions, width, height, rows: Math.max(12, Math.round(this.modelOptions.columns * height / Math.max(1, width))), seed: this.modelOptions.seed + Math.floor(width + height) };
     this.model = new PlasmaBranchModel(this.modelOptions);
+    this.cacheLiveSettings();
   }
 
   override reset(): void {
     if (!this.modelOptions) return;
     this.modelOptions = { ...this.modelOptions, seed: this.modelOptions.seed + 1 };
     this.model = new PlasmaBranchModel(this.modelOptions);
+    this.cacheLiveSettings();
   }
 
   override setQuality(quality: RenderQuality): void {
     super.setQuality(quality);
     this.layer?.setQuality(quality);
+  }
+
+
+  private applyLiveSettings(): void {
+    if (!this.modelOptions) return;
+    const settings = this.ctx_.systems.settings;
+    const columns = this.previewColumns ?? ((settings.get('fieldColumns') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.fieldColumns as number));
+    const maxBranches = this.previewBudget ?? ((settings.get('maxBranches') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.maxBranches as number));
+    const chargeDecay = (settings.get('chargeDecay') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.chargeDecay as number);
+    const branchEnergy = (settings.get('branchEnergy') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.branchEnergy as number);
+
+    if (
+      columns === this.lastFieldColumns &&
+      maxBranches === this.lastMaxBranches &&
+      chargeDecay === this.lastChargeDecay &&
+      branchEnergy === this.lastBranchEnergy
+    ) {
+      return;
+    }
+
+    this.modelOptions = {
+      ...this.modelOptions,
+      columns,
+      rows: Math.max(12, Math.round(columns * this.ctx_.height / Math.max(1, this.ctx_.width))),
+      maxBranches,
+      chargeDecay,
+      branchEnergy,
+      seed: this.modelOptions.seed + 1,
+    };
+    this.model = new PlasmaBranchModel(this.modelOptions);
+    this.cacheLiveSettings();
+  }
+
+  private cacheLiveSettings(): void {
+    if (!this.modelOptions) return;
+    this.lastFieldColumns = this.modelOptions.columns;
+    this.lastMaxBranches = this.modelOptions.maxBranches;
+    this.lastChargeDecay = this.modelOptions.chargeDecay;
+    this.lastBranchEnergy = this.modelOptions.branchEnergy ?? (PLASMA_BRANCH_DEFAULTS.branchEnergy as number);
   }
 
   getRenderLayers(): SimRenderLayers {
@@ -121,6 +170,7 @@ export class PlasmaBranchScene extends SimulationScene {
     if (seed !== undefined && this.modelOptions) {
       this.modelOptions = { ...this.modelOptions, seed };
       this.model = new PlasmaBranchModel(this.modelOptions);
+      this.cacheLiveSettings();
       return;
     }
     this.reset();

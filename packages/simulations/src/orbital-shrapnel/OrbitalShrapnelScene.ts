@@ -30,6 +30,12 @@ export class OrbitalShrapnelScene extends SimulationScene {
   private model: OrbitalShrapnelModel | null = null;
   private modelOptions: OrbitalShrapnelModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
+  /** Cached settings values — detect changes each update tick and apply live. */
+  private lastParticleCount = 0;
+  private lastTrailColumns = 0;
+  private lastPlanetRadius = 0;
+  private lastGravity = 0;
+  private lastTrailFade = 0;
 
   constructor(private readonly previewColumns?: number, private readonly previewBudget?: number) {
     super();
@@ -55,6 +61,7 @@ export class OrbitalShrapnelScene extends SimulationScene {
       trailFade: (settings.get('trailFade') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailFade as number),
     };
     this.model = new OrbitalShrapnelModel(this.modelOptions);
+    this.cacheLiveSettings();
     const style = settings.get('style') as string | undefined;
     if (style) this.setStyle(style);
     ctx.systems.debug?.setEnabled(false);
@@ -68,7 +75,8 @@ export class OrbitalShrapnelScene extends SimulationScene {
   }
 
   override update(dt: number): void {
-    if (!this.model) return;
+    if (!this.model || !this.modelOptions) return;
+    this.applyLiveSettings();
     for (const gesture of this.consumeGestures()) this.model.handleGesture(gesture);
     this.model.update(dt);
     this.stagnationReport = this.model.detectStagnation(dt);
@@ -89,17 +97,62 @@ export class OrbitalShrapnelScene extends SimulationScene {
     if (!this.modelOptions) return;
     this.modelOptions = { ...this.modelOptions, width, height, trailRows: Math.max(12, Math.round(this.modelOptions.trailColumns * height / Math.max(1, width))), seed: this.modelOptions.seed + Math.floor(width + height) };
     this.model = new OrbitalShrapnelModel(this.modelOptions);
+    this.cacheLiveSettings();
   }
 
   override reset(): void {
     if (!this.modelOptions) return;
     this.modelOptions = { ...this.modelOptions, seed: this.modelOptions.seed + 1 };
     this.model = new OrbitalShrapnelModel(this.modelOptions);
+    this.cacheLiveSettings();
   }
 
   override setQuality(quality: RenderQuality): void {
     super.setQuality(quality);
     this.layer?.setQuality(quality);
+  }
+
+
+  private applyLiveSettings(): void {
+    if (!this.modelOptions) return;
+    const settings = this.ctx_.systems.settings;
+    const particleCount = this.previewBudget ?? ((settings.get('particleCount') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.particleCount as number));
+    const trailColumns = this.previewColumns ?? ((settings.get('trailColumns') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailColumns as number));
+    const planetRadius = (settings.get('planetRadius') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.planetRadius as number);
+    const gravity = (settings.get('gravity') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.gravity as number);
+    const trailFade = (settings.get('trailFade') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailFade as number);
+
+    if (
+      particleCount === this.lastParticleCount &&
+      trailColumns === this.lastTrailColumns &&
+      planetRadius === this.lastPlanetRadius &&
+      gravity === this.lastGravity &&
+      trailFade === this.lastTrailFade
+    ) {
+      return;
+    }
+
+    this.modelOptions = {
+      ...this.modelOptions,
+      particleCount,
+      trailColumns,
+      trailRows: Math.max(12, Math.round(trailColumns * this.ctx_.height / Math.max(1, this.ctx_.width))),
+      planetRadius,
+      gravity,
+      trailFade,
+      seed: this.modelOptions.seed + 1,
+    };
+    this.model = new OrbitalShrapnelModel(this.modelOptions);
+    this.cacheLiveSettings();
+  }
+
+  private cacheLiveSettings(): void {
+    if (!this.modelOptions) return;
+    this.lastParticleCount = this.modelOptions.particleCount;
+    this.lastTrailColumns = this.modelOptions.trailColumns;
+    this.lastPlanetRadius = this.modelOptions.planetRadius;
+    this.lastGravity = this.modelOptions.gravity;
+    this.lastTrailFade = this.modelOptions.trailFade ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailFade as number);
   }
 
   getRenderLayers(): SimRenderLayers {
@@ -124,6 +177,7 @@ export class OrbitalShrapnelScene extends SimulationScene {
     if (seed !== undefined && this.modelOptions) {
       this.modelOptions = { ...this.modelOptions, seed };
       this.model = new OrbitalShrapnelModel(this.modelOptions);
+      this.cacheLiveSettings();
       return;
     }
     this.reset();

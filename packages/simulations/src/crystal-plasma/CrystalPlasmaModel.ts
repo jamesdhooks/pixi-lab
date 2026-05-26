@@ -9,6 +9,7 @@ export interface CrystalPlasmaModelOptions {
   rows: number;
   maxCrystals: number;
   stressDecay: number;
+  growthBias?: number;
 }
 
 export interface CrystalPlasmaStats {
@@ -71,7 +72,7 @@ export class CrystalPlasmaModel {
       this.fractureField.set(crystal.column, crystal.row, Math.min(1, this.fractureField.get(crystal.column, crystal.row) + crystal.energy * 0.002));
       const cell = this.grid.get(crystal.column, crystal.row);
       if (cell) cell.value = Math.min(1, cell.value * 0.996 + crystal.energy * 0.01);
-      if (this.crystals.length < this.options.maxCrystals && this.rng.next() < dt * (0.55 + crystal.energy * 0.5)) this.growFrom(crystal);
+      if (this.crystals.length < this.options.maxCrystals && this.rng.next() < dt * (this.growthBias() + crystal.energy * 0.5)) this.growFrom(crystal);
       if (this.rng.next() < dt * Math.max(0, stress - 0.62) * 0.75) this.fractureAt(crystal.column, crystal.row, stress * 0.55);
     }
 
@@ -179,6 +180,10 @@ export class CrystalPlasmaModel {
       const d = Math.hypot(ox, oy);
       this.stressField.set(column + ox, row + oy, Math.min(1.8, this.stressField.get(column + ox, row + oy) + amount * Math.max(0, 1 - d / 2.8)));
     }
+  }
+
+  private growthBias(): number {
+    return this.options.growthBias ?? 0.75;
   }
 
   private chargeLine(x0: number, y0: number, x1: number, y1: number, amount: number): void {
