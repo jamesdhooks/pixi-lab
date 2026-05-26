@@ -229,7 +229,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 2 | Mycelium Prism | IN_PROGRESS | triangle grid | Model/scene/preview/demo AI implemented with triangular-grid growth projected through the shared scalar-field renderer; full gate pending. |
 | 3 | Amoeba Lamp | IN_PROGRESS | density metaballs | Model/scene/preview/demo AI implemented with low-res density-field metaballs through the shared renderer; full gate pending. |
 | 4 | Orbital Shrapnel Field | IN_PROGRESS | custom mesh + trails | Model/scene/preview/demo AI implemented with deterministic orbital debris and a shared low-res trail field renderer; full automated gate passes under temporary Node 22/pnpm 10 toolchain. |
-| 5 | Plasma Branch Terrarium | NOT_STARTED | charge field | arc rendering |
+| 5 | Plasma Branch Terrarium | IN_PROGRESS | charge field | Model/scene/preview/demo AI implemented with deterministic charge-grid branching and shared scalar/trail field rendering; full gate pending. |
 | 6 | Ant Signal Civilization | NOT_STARTED | trail field | emergence showcase |
 | 7 | Crystal Plasma Storm | NOT_STARTED | triangle grid + stress | crystal renderer |
 | 8 | Time Echo Particles | NOT_STARTED | history buffers | temporal system |
@@ -1068,7 +1068,185 @@ Deferred before marking COMPLETE:
 
 ---
 
-# 10. Remaining Simulation Tracking Sections
+# 10. Plasma Branch Terrarium
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoBot
+LAST_UPDATED: 2026-05-26
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates charge-field simulation behavior
+- validates branching discharge and scar trail rendering metadata
+- provides the first electric/plasma interaction showcase
+
+---
+
+## Dependencies
+
+- scalar charge field
+- trail field scars
+- edge-glow/bloom pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- bounded charge grid with deterministic decay
+- branching discharge tips with bounded branch budget
+- charge injection and directional swipe discharges
+- persistent scar trail deposition/fade
+- stagnation recovery when charge or branches drain out
+
+---
+
+## Required Render Layers
+
+```txt
+field
+trails
+particles
+stroke/glow
+```
+
+---
+
+## Required Shader Features
+
+```txt
+paletteMap
+edgeGlow
+bloom
+scars/trailFeedback
+```
+
+---
+
+## Required Styles
+
+### Lightning Garden
+White-blue branching arcs over violet charge.
+
+### Neon Circuit
+Green/magenta circuit-like plasma scars.
+
+### Blood Plasma
+Red-gold ion branches and smoky crimson scars.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | inject charge and seed a branch |
+| drag | paint ionized charge paths |
+| hold | build charge bloom |
+| swipe | directional discharge |
+
+---
+
+## Director Mode Events
+
+- ambient charge build-up
+- branch fork
+- scar glow pulse
+
+---
+
+## Stagnation Recovery
+
+If:
+- charge drains away
+- no active branches remain
+- charge field becomes uniform
+
+Then:
+- inject a central charge bloom
+- seed radial discharge tips
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+branches:
+  80-420 first-playable budget
+
+charge/scar field:
+  32x18 to 128x72
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses shared `SimulationCanvasLayer.renderField()` and `renderParticles()` rather than a custom arc mesh
+- branch growth is O(branches) with a capped branch budget
+- charge/scar fields are low-resolution and bounded
+
+Do NOT:
+- create one Pixi object per arc segment
+- add unbounded recursive branching
+- implement simulation-specific shader infrastructure before reusable compositor support exists
+
+---
+
+## Validation Checklist
+
+- [x] branching charge evolves deterministically in model behavior
+- [x] tap/drag/hold/swipe gestures alter charge and discharge motion
+- [x] scar trails are bounded and fade over time
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] full automated gate in current environment
+
+---
+
+## Known Risks
+
+- shared particle renderer does not yet draw true continuous lightning polylines or variable-width arc meshes
+- edge glow/bloom/scar effects are represented through shared field/particle render paths and style metadata until reusable GPU compositor work lands
+- visual richness depends on future line/arc renderer improvements
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/plasma-branch/PlasmaBranchModel.ts`
+- `packages/simulations/src/plasma-branch/PlasmaBranchScene.ts`
+- `packages/simulations/src/plasma-branch/PlasmaBranchPreviewScene.ts`
+- `packages/simulations/src/plasma-branch/PlasmaBranchDemoAI.ts`
+- `packages/simulations/src/plasma-branch/plasma-branch.config.ts`
+- `packages/simulations/src/plasma-branch/plasma-branch.definition.ts`
+- `packages/simulations/src/plasma-branch/styles/*.ts`
+- `packages/simulations/src/plasma-branch/__tests__/PlasmaBranchModel.test.ts`
+
+Implementation notes:
+- Tests were written first and initially failed on the missing model import, then passed after model implementation.
+- Uses deterministic seeded branch tips, a bounded scalar charge field, and a bounded `TrailField` for plasma scars.
+- Scene renders charge/scar fields through the shared GPU field upload path and branch tips through the shared particle layer for the first playable pass.
+
+Deferred before marking COMPLETE:
+- dedicated reusable arc/line mesh renderer for continuous lightning branches
+- real reusable edge-glow/bloom/scar compositor passes beyond declared style metadata
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 11. Remaining Simulation Tracking Sections
 
 IMPORTANT:
 Every remaining simulation should follow EXACTLY the same structure:
@@ -1113,7 +1291,7 @@ The remaining simulations must be added using this exact format:
 
 ---
 
-# 11. Agent Update Rules
+# 12. Agent Update Rules
 
 When an agent completes work:
 
@@ -1149,7 +1327,7 @@ The agent must:
 
 ---
 
-# 12. Recommended Git Workflow
+# 13. Recommended Git Workflow
 
 Recommended commit structure:
 
@@ -1165,7 +1343,7 @@ Avoid giant multi-simulation commits.
 
 ---
 
-# 13. Final Guidance for Agents
+# 14. Final Guidance for Agents
 
 The project succeeds if:
 - simulations feel alive
