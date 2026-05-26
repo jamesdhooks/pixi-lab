@@ -512,20 +512,18 @@ export function App() {
         )}
       </AnimatePresence>
 
-      {/* ── Settings button — floating, top-right when not in experience ── */}
-      {!active && (
-        <motion.button
-          key="settings-button"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setSettingsPanelOpen((o) => !o)}
-          aria-label="Open settings"
-          className="fixed top-4 right-4 z-[99] flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/60 transition-colors hover:bg-slate-200 dark:hover:bg-white/20"
-        >
-          <SettingsIcon size={18} />
-        </motion.button>
-      )}
+      {/* ── Settings button — floating, top-right, always accessible ── */}
+      <motion.button
+        key="settings-button"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={() => setSettingsPanelOpen((o) => !o)}
+        aria-label="Open settings"
+        className="fixed top-4 right-4 z-[99] flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/60 transition-colors hover:bg-slate-200 dark:hover:bg-white/20"
+      >
+        <SettingsIcon size={18} />
+      </motion.button>
 
       {/* ── Gallery layer ── */}
       <AnimatePresence>
