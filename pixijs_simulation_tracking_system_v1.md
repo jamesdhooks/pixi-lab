@@ -251,7 +251,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 10 | Jelly Web Resonator | IN_PROGRESS | spring system | Model/scene/preview/demo AI implemented with deterministic SpringSystem web rings, live tension/damping/resonance controls, shared field/particle rendering, and pluck/shear gestures; full automated gate pending. |
 | 11 | Cellular Ocean | IN_PROGRESS | spring membranes | Model/scene/preview/demo AI implemented with deterministic SpringSystem membrane cells, live tension/viscosity/drift controls, shared field/particle rendering, and pulse/shear gestures; full automated gate pending. |
 | 12 | Cosmic Ink Ocean | IN_PROGRESS | vector fields | Model/scene/preview/demo AI implemented with deterministic vector turbulence, bounded ink scalar field, live flow controls, shared field/particle rendering, and vortex/shear gestures; full automated gate pending. |
-| 13 | Turing Skin | NOT_STARTED | scalar fields | reaction diffusion |
+| 13 | Turing Skin | IN_PROGRESS | scalar fields | Model/scene/preview/demo AI implemented with deterministic Gray-Scott reaction diffusion, live chemistry controls, shared field rendering, and morphogen paint gestures; full automated gate pending. |
 | 14 | Oil-Water Universe | NOT_STARTED | phase separation | material domains |
 | 15 | Prism Pool | NOT_STARTED | fake normals | shader showcase |
 | 16 | Neon River Delta | NOT_STARTED | height field | erosion system |
@@ -2161,7 +2161,184 @@ Deferred before marking COMPLETE:
 
 ---
 
-# 16. Agent Update Rules
+# 16. Turing Skin
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-26
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates scalar-field reaction-diffusion as a reusable simulation pattern
+- adds a skin/pattern generator distinct from particle and membrane simulations
+- exercises live chemistry controls with structural resolution rebuilds
+
+---
+
+## Dependencies
+
+- scalar field renderer
+- seeded RNG
+- palette/bloom/contour style metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded Gray-Scott style reaction-diffusion model
+- low-resolution pigment projection through `ScalarField`
+- tap/hold/drag/fast-swipe morphogen painting gestures
+- live settings polling for resolution, feed rate, kill rate, diffusion A/B, and brush strength
+- stagnation recovery that injects seeded morphogen bursts
+
+---
+
+## Required Render Layers
+
+```txt
+field
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+paletteMap
+edgeGlow
+bloom
+contourBands
+distortion
+```
+
+---
+
+## Required Styles
+
+### Leopard Gold
+Ochre rosettes and black reaction islands like living animal skin.
+
+### Zebra Ghost
+Cold cyan stripes tearing through a charcoal morphogen field.
+
+### Coral Morph
+Pink and violet cells bloom into reef-like reaction islands.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | seed a morphogen bloom |
+| hold | erase inhibitor and open a pale scar |
+| drag | paint a reaction trail across the skin |
+| fast swipe | slash a high-energy stripe through the pattern |
+
+---
+
+## Director Mode Events
+
+- spot bloom
+- stripe shear
+- morphogen reset
+
+---
+
+## Stagnation Recovery
+
+If:
+- pigment field variance collapses
+- reaction energy falls below visible thresholds
+
+Then:
+- inject seeded morphogen bursts at bounded random positions
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+field:
+  32x18 to 160x90 typical, capped by shared resolution setting
+
+rendering:
+  shared FieldPaletteRenderer only; no per-cell Pixi objects
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses shared `FieldPaletteRenderer` and `ScalarField`
+- model updates remain bounded by field resolution
+- structural resolution changes rebuild the deterministic model; chemistry tuning mutates model options live
+
+Do NOT:
+- add custom reaction-diffusion shaders before reusable compositor support exists
+- create one Pixi object per cell
+- allow unbounded reagent/history buffers
+
+---
+
+## Validation Checklist
+
+- [x] morphogen fields initialize deterministically from seed
+- [x] update advances reaction state and keeps fields bounded
+- [x] tap/drag/hold/swipe gestures alter pigment state
+- [x] field budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [ ] full automated gate passes in current environment
+
+---
+
+## Known Risks
+
+- first-playable render uses CPU reaction diffusion projected through shared scalar rendering rather than a dedicated GPU reaction shader
+- visual chemistry parameters may need tuning after manual gallery/Pi validation
+- enhanced quality currently changes field gamma/style treatment rather than adding a new renderer family
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/turing-skin/TuringSkinModel.ts`
+- `packages/simulations/src/turing-skin/TuringSkinScene.ts`
+- `packages/simulations/src/turing-skin/TuringSkinPreviewScene.ts`
+- `packages/simulations/src/turing-skin/TuringSkinDemoAI.ts`
+- `packages/simulations/src/turing-skin/turing-skin.config.ts`
+- `packages/simulations/src/turing-skin/turing-skin.definition.ts`
+- `packages/simulations/src/turing-skin/styles/*.ts`
+- `packages/simulations/src/turing-skin/__tests__/TuringSkinModel.test.ts`
+
+Implementation notes:
+- Demo AI cycles styles plus every numeric setting so the settings panel and live scene polling are exercised.
+- Preview scene uses a reduced fixed resolution.
+- Registry exports include `turingSkinDefinition`, scene, preview, and model types.
+
+Deferred before marking COMPLETE:
+- manual demo visual validation and Pi 5 FPS pass
+- optional reusable GPU reaction-diffusion compositor if CPU budgets become too costly
+
+---
+
+# 17. Agent Update Rules
 
 When an agent completes work:
 

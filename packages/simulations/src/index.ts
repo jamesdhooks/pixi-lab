@@ -12,6 +12,7 @@ import { myceliumPrismDefinition } from './mycelium-prism/mycelium-prism.definit
 import { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
 import { plasmaBranchDefinition } from './plasma-branch/plasma-branch.definition.js';
 import { timeEchoDefinition } from './time-echo/time-echo.definition.js';
+import { turingSkinDefinition } from './turing-skin/turing-skin.definition.js';
 
 export { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 export { AmoebaLampScene, amoebaLampStyleManifest } from './amoeba-lamp/AmoebaLampScene.js';
@@ -78,6 +79,11 @@ export { TimeEchoScene, timeEchoStyleManifest } from './time-echo/TimeEchoScene.
 export { TimeEchoPreviewScene } from './time-echo/TimeEchoPreviewScene.js';
 export { TimeEchoModel, type TimeEchoModelOptions, type TimeEchoStats } from './time-echo/TimeEchoModel.js';
 
+export { turingSkinDefinition } from './turing-skin/turing-skin.definition.js';
+export { TuringSkinScene, turingSkinStyleManifest } from './turing-skin/TuringSkinScene.js';
+export { TuringSkinPreviewScene } from './turing-skin/TuringSkinPreviewScene.js';
+export { TuringSkinModel, type TuringSkinModelOptions, type TuringSkinStats } from './turing-skin/TuringSkinModel.js';
+
 export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   harmonicSandDefinition,
   myceliumPrismDefinition,
@@ -92,6 +98,7 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   jellyWebDefinition,
   cellularOceanDefinition,
   cosmicInkOceanDefinition,
+  turingSkinDefinition,
 ] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
