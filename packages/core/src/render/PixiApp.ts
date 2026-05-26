@@ -12,9 +12,23 @@ export interface PixiAppOptions {
   height: number;
   /** Cap DPR to avoid excessive resolution on high-DPR mobile screens */
   maxDpr?: number;
+  /**
+   * Cap the total rendered pixel count (width × height × resolution²).
+   * When the canvas exceeds this budget a sub-1 resolution is computed so the
+   * physical render target stays within the limit while CSS dimensions remain
+   * unchanged (autoDensity handles upscaling).
+   * Example: 921_600 ≈ 1280×720 — useful on fill-rate-constrained devices.
+   */
+  maxPixels?: number;
   antialias?: boolean;
   background?: number;
   backgroundAlpha?: number;
+  /**
+   * Force a specific renderer backend.
+   * Defaults to 'webgl' — skips WebGPU detection which can be slow or unstable
+   * on embedded GPU drivers (e.g. Raspberry Pi VideoCore).
+   */
+  preference?: 'webgl' | 'webgpu' | 'canvas';
 }
 
 export class PixiApp {
@@ -35,14 +49,27 @@ export class PixiApp {
     // (in GameApp) handles future resizes. resizeTo was causing a feedback loop
     // where Pixi's internal observer could measure the container at an invalid
     // time (e.g. during layout) and produce absurd canvas dimensions (2^25+1).
+    const w = Math.max(opts.width, 1);
+    const h = Math.max(opts.height, 1);
+    // If maxPixels is set, compute the largest resolution that keeps physical
+    // pixels (w × resolution) × (h × resolution) within budget.
+    const pixelScaleCap =
+      opts.maxPixels !== undefined
+        ? Math.sqrt(opts.maxPixels / (w * h))
+        : Infinity;
+    const resolution = Math.max(
+      0.25,
+      Math.min(window.devicePixelRatio, opts.maxDpr ?? 2, pixelScaleCap),
+    );
     await instance.app.init({
-      width: Math.max(opts.width, 1),
-      height: Math.max(opts.height, 1),
+      width: w,
+      height: h,
       background: opts.background ?? 0x1a1a2e,
       backgroundAlpha: opts.backgroundAlpha ?? 1,
       antialias: opts.antialias ?? false,
-      resolution: Math.min(window.devicePixelRatio, opts.maxDpr ?? 2),
+      resolution,
       autoDensity: true,
+      preference: opts.preference ?? 'webgl',
     });
     opts.container.appendChild(instance.app.canvas);
     return instance;
