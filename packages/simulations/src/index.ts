@@ -2,6 +2,7 @@ import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 import { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
 import { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definition.js';
+import { electroOsmoticAmoebaDefinition } from './electro-osmotic-amoeba/electro-osmotic-amoeba.definition.js';
 import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 import { myceliumLatticeDefinition } from './mycelium-lattice/mycelium-lattice.definition.js';
 import { myceliumPrismDefinition } from './mycelium-prism/mycelium-prism.definition.js';
@@ -23,6 +24,11 @@ export { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definit
 export { CrystalPlasmaScene, crystalPlasmaStyleManifest } from './crystal-plasma/CrystalPlasmaScene.js';
 export { CrystalPlasmaPreviewScene } from './crystal-plasma/CrystalPlasmaPreviewScene.js';
 export { CrystalPlasmaModel, type CrystalPlasmaModelOptions, type CrystalPlasmaStats } from './crystal-plasma/CrystalPlasmaModel.js';
+
+export { electroOsmoticAmoebaDefinition } from './electro-osmotic-amoeba/electro-osmotic-amoeba.definition.js';
+export { ElectroOsmoticAmoebaScene, electroOsmoticAmoebaStyleManifest } from './electro-osmotic-amoeba/ElectroOsmoticAmoebaScene.js';
+export { ElectroOsmoticAmoebaPreviewScene } from './electro-osmotic-amoeba/ElectroOsmoticAmoebaPreviewScene.js';
+export { ElectroOsmoticAmoebaModel, type ElectroOsmoticAmoebaModelOptions, type ElectroOsmoticAmoebaStats } from './electro-osmotic-amoeba/ElectroOsmoticAmoebaModel.js';
 
 export { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 export { HarmonicSandScene, harmonicSandStyleManifest } from './harmonic-sand/HarmonicSandScene.js';
@@ -64,6 +70,7 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   orbitalShrapnelDefinition,
   plasmaBranchDefinition,
   timeEchoDefinition,
+  electroOsmoticAmoebaDefinition,
 ] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
