@@ -26,6 +26,19 @@ Decisions:
 - `packages/simulations` owns simulation content
 - `packages/react` owns kind-agnostic React integration components
 
+## 2026-05-26 — Mycelium Prism Revert + Mycelium Lattice + Simulation Improvements
+
+Scope:
+- revert Mycelium Prism rendering from `MeshLatticeRenderer` back to `FieldPaletteRenderer` (scalar-field projection, square cells)
+- add new Mycelium Lattice simulation using `MeshLatticeRenderer` with tips-based triangular growth, probability sliders, and earth/arctic/volcanic palettes
+- implement Orbital Shrapnel Field, Plasma Branch Terrarium, Ant Signal Civilization, Crystal Plasma Storm, and Time Echo Particles scene/model/definition work
+- restore all 9 simulations to `packages/simulations/src/index.ts` barrel
+- fix simulations build script to `tsc --build --force` to eliminate tsbuildinfo cache problems
+- add `maxFps` cap to core Ticker/GameApp for preview tile thread sharing
+- improve GameLauncher, GameTile, and SettingsDrawer in packages/react
+
+---
+
 ## 2026-05-24 — Ambient + Reusable FX Engine Support
 
 Scope:
@@ -226,17 +239,14 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | Priority | Simulation | Status | Depends On | Notes |
 |---|---|---|---|---|
 | 1 | Harmonic Sand Plate | IN_PROGRESS | palette + particles | Implemented with GPU field texture upload + ParticleContainer batching; automated checks pass; manual visual/Pi validation still required before COMPLETE. |
-| 2 | Mycelium Prism | IN_PROGRESS | triangle grid | Model/scene/preview/demo AI implemented with triangular-grid growth projected through the shared scalar-field renderer; full gate pending. |
+| 2 | Mycelium Prism | IN_PROGRESS | triangle grid | Reverted to `FieldPaletteRenderer` square-cell projection; `MeshLatticeRenderer` rendering deferred. Full visual/Pi gate pending. |
+| 2a | Mycelium Lattice | IN_PROGRESS | MeshLatticeRenderer | Tips-based triangular growth with probability sliders; `MeshLatticeRenderer` rendering; 3 styles; DemoAI; 10 model tests pass. Full visual/Pi gate pending. |
 | 3 | Amoeba Lamp | IN_PROGRESS | density metaballs | Model/scene/preview/demo AI implemented with low-res density-field metaballs through the shared renderer; full gate pending. |
 | 4 | Orbital Shrapnel Field | IN_PROGRESS | custom mesh + trails | Model/scene/preview/demo AI implemented with deterministic orbital debris and a shared low-res trail field renderer; full automated gate passes under temporary Node 22/pnpm 10 toolchain. |
 | 5 | Plasma Branch Terrarium | IN_PROGRESS | charge field | Model/scene/preview/demo AI implemented with deterministic charge-grid branching and shared scalar/trail field rendering; full gate pending. |
 | 6 | Ant Signal Civilization | IN_PROGRESS | trail field | Model/scene/preview/demo AI implemented with deterministic pheromone-routing agents and shared trail/field rendering; full gate pending. |
 | 7 | Crystal Plasma Storm | IN_PROGRESS | triangle grid + stress | Model/scene/preview/demo AI implemented with deterministic crystal lattice growth, bounded stress/fracture fields, and shared scalar/trail field rendering; full gate pending. |
-<<<<<<< HEAD
-| 8 | Time Echo Particles | NOT_STARTED | history buffers | temporal system |
-=======
 | 8 | Time Echo Particles | IN_PROGRESS | history buffers | Model/scene/preview/demo AI implemented with deterministic bounded history buffers, live-polled echo controls, shared trail/particle rendering, and temporal anchor/freeze gestures; full automated gate pending. |
->>>>>>> d58d0082c6bb6ef583369823e3e836e2e4694e0c
 | 9 | Electro-Osmotic Amoeba | NOT_STARTED | Amoeba Lamp complete | charged membranes |
 | 10 | Jelly Web Resonator | NOT_STARTED | spring system | soft-body showcase |
 | 11 | Cellular Ocean | NOT_STARTED | spring membranes | advanced membrane rendering |
@@ -689,18 +699,144 @@ Implemented files:
 - `packages/simulations/src/mycelium-prism/__tests__/MyceliumPrismModel.test.ts`
 
 Implementation notes:
-- Uses shared `TriangularGrid` for cell ownership/frontier state and projects nutrient/energy into a `ScalarField` so the existing shared GPU texture renderer can launch the demo without one Pixi object per cell.
+- Uses shared `TriangularGrid` for cell ownership/frontier state and projects nutrient/energy into a `ScalarField` rendered via `FieldPaletteRenderer` (square-cell projection). The `MeshLatticeRenderer` path was removed; a companion simulation (Mycelium Lattice) now owns the triangular mesh rendering approach.
 - Gestures map to spore seeding, nutrient smearing, moisture blooms, and vein pulses.
 - Stagnation recovery reseeds/feeds an active or central colony when frontiers are exhausted.
 
 Deferred before marking COMPLETE:
-- dedicated triangular mesh renderer/edge glow beyond scalar-field projection
 - manual visual validation and Pi 5 FPS pass
 - richer decay visuals after first playable pass
 
 ---
 
-# 8. Amoeba Lamp / Metaball Biosoup
+# 8. Mycelium Lattice
+
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoBot
+LAST_UPDATED: 2026-05-26
+```
+
+---
+
+## Priority
+
+SHOWCASE
+
+Reason:
+- first simulation to use `MeshLatticeRenderer` triangular grid rendering
+- validates tips-based probabilistic growth architecture
+- earth/arctic/volcanic palette trio
+
+---
+
+## Dependencies
+
+- `MeshLatticeRenderer` (triangular grid, TriangularGrid type)
+- `SeededRng`
+- `SettingsField` resolution + probability sliders
+
+---
+
+## Core Requirements
+
+Implemented:
+- tips-based triangular growth with competing strains
+- 4-direction headings with forward/side branching
+- `growthProbability`, `branchChance`, `generationHueStep`, `resolution` live-polled sliders
+- hold gesture resets; tap/drag seed colonies
+- stagnation detection and `stabilize()` injects new spore
+- `projectGrid()` maps strain/generation/moisture to hue-shifted `cell.value`
+
+---
+
+## Required Styles
+
+### Earth Overgrowth
+
+10-entry moss/clay/dusk palette, dark background.
+
+### Arctic Lichen
+
+10-entry frost-blue/ice-white palette, near-black cold background.
+
+### Volcanic Spore
+
+10-entry charcoal/ember/orange palette, near-black warm background.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | seed colony at touch point |
+| drag | seed colony along drag path |
+| hold | reset simulation |
+
+---
+
+## Director Mode Events
+
+- `spore-scatter` — seed colony near random active tip
+- `tip-surge` — temporarily boost growth probability
+- `hue-drift` — nudge generationHueStep
+
+---
+
+## Stagnation Recovery
+
+If no active tips remain, `stabilize()` seeds a new colony at a random empty cell.
+
+---
+
+## Validation Checklist
+
+- [x] deterministic initialization from same seed
+- [x] living cells appear after initialization
+- [x] active tips present after initialization
+- [x] growth advances over multiple ticks
+- [x] tap/drag gestures increase living cells
+- [x] reset clears growth state
+- [x] live setters (`setGrowthProbability`, etc.) do not throw
+- [x] grid cell values stay in [0, 1]
+- [x] `stabilize()` adds new growth when stagnant
+- [ ] manual visual validation
+- [ ] Pi 5 FPS validation
+- [ ] stable loop with DemoAI for extended session
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/mycelium-lattice/mycelium-lattice.config.ts`
+- `packages/simulations/src/mycelium-lattice/mycelium-lattice.definition.ts`
+- `packages/simulations/src/mycelium-lattice/MyceliumLatticeModel.ts`
+- `packages/simulations/src/mycelium-lattice/MyceliumLatticeScene.ts`
+- `packages/simulations/src/mycelium-lattice/MyceliumLatticePreviewScene.ts`
+- `packages/simulations/src/mycelium-lattice/MyceliumLatticeDemoAI.ts`
+- `packages/simulations/src/mycelium-lattice/styles/earth-overgrowth.ts`
+- `packages/simulations/src/mycelium-lattice/styles/arctic-lichen.ts`
+- `packages/simulations/src/mycelium-lattice/styles/volcanic-spore.ts`
+- `packages/simulations/src/mycelium-lattice/__tests__/MyceliumLatticeModel.test.ts`
+
+Implementation notes:
+- Uses `MeshLatticeRenderer` directly — no scalar-field projection. Growth state is stored in a `TriangularGrid`; `renderGrid()` is called each frame.
+- `cell.value` is computed from strain, generation count, and moisture to produce hue-shifted colour bands through the renderer palette.
+- Preview scene uses 28 columns (reduced budget).
+- DemoAI defines 7 parameter presets covering the full slider range; overhaul cycle is 18–32 s.
+
+Deferred before marking COMPLETE:
+- manual visual validation and Pi 5 FPS pass
+- richer moisture/decay visuals
+- edge glow pass for active tips
+
+---
+
+# 9. Amoeba Lamp / Metaball Biosoup
 
 ## Status
 
