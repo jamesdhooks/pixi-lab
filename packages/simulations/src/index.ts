@@ -1,8 +1,9 @@
 import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
-import { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
 import { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
+import { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
 import { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definition.js';
 import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
+import { myceliumLatticeDefinition } from './mycelium-lattice/mycelium-lattice.definition.js';
 import { myceliumPrismDefinition } from './mycelium-prism/mycelium-prism.definition.js';
 import { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
 import { plasmaBranchDefinition } from './plasma-branch/plasma-branch.definition.js';
@@ -28,6 +29,11 @@ export { HarmonicSandScene, harmonicSandStyleManifest } from './harmonic-sand/Ha
 export { HarmonicSandPreviewScene } from './harmonic-sand/HarmonicSandPreviewScene.js';
 export { HarmonicSandModel, type HarmonicEmitter, type HarmonicSandModelOptions } from './harmonic-sand/HarmonicSandModel.js';
 
+export { myceliumLatticeDefinition } from './mycelium-lattice/mycelium-lattice.definition.js';
+export { MyceliumLatticeScene, myceliumLatticeStyleManifest } from './mycelium-lattice/MyceliumLatticeScene.js';
+export { MyceliumLatticePreviewScene } from './mycelium-lattice/MyceliumLatticePreviewScene.js';
+export { MyceliumLatticeModel, type MyceliumLatticeModelOptions, type MyceliumLatticeStats } from './mycelium-lattice/MyceliumLatticeModel.js';
+
 export { myceliumPrismDefinition } from './mycelium-prism/mycelium-prism.definition.js';
 export { MyceliumPrismScene, myceliumPrismStyleManifest } from './mycelium-prism/MyceliumPrismScene.js';
 export { MyceliumPrismPreviewScene } from './mycelium-prism/MyceliumPrismPreviewScene.js';
@@ -48,7 +54,17 @@ export { TimeEchoScene, timeEchoStyleManifest } from './time-echo/TimeEchoScene.
 export { TimeEchoPreviewScene } from './time-echo/TimeEchoPreviewScene.js';
 export { TimeEchoModel, type TimeEchoModelOptions, type TimeEchoStats } from './time-echo/TimeEchoModel.js';
 
-export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [harmonicSandDefinition, myceliumPrismDefinition, amoebaLampDefinition, orbitalShrapnelDefinition, plasmaBranchDefinition, antSignalDefinition, crystalPlasmaDefinition, timeEchoDefinition] as const;
+export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
+  harmonicSandDefinition,
+  myceliumPrismDefinition,
+  myceliumLatticeDefinition,
+  amoebaLampDefinition,
+  antSignalDefinition,
+  crystalPlasmaDefinition,
+  orbitalShrapnelDefinition,
+  plasmaBranchDefinition,
+  timeEchoDefinition,
+] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
   return SIMULATION_REGISTRY.find((simulation) => simulation.id === id);
