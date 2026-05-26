@@ -254,7 +254,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 13 | Turing Skin | IN_PROGRESS | scalar fields | Model/scene/preview/demo AI implemented with deterministic Gray-Scott reaction diffusion, live chemistry controls, shared field rendering, and morphogen paint gestures; full automated gate pending. |
 | 14 | Oil-Water Universe | IN_PROGRESS | phase separation | Model/scene/preview/demo AI implemented with deterministic bounded phase separation, live separation/tension/viscosity/stir controls, shared density metaball + scalar edge rendering, and droplet/shear gestures; full automated gate pending. |
 | 15 | Prism Pool | IN_PROGRESS | fake normals | Model/scene/preview/demo AI implemented with deterministic bounded ripple-height fields, fake-normal/caustic projections, live wave/refraction controls, shared field rendering, and ripple/rake gestures; full automated gate pending. |
-| 16 | Neon River Delta | NOT_STARTED | height field | erosion system |
+| 16 | Neon River Delta | IN_PROGRESS | height field | Model/scene/preview/demo AI implemented with deterministic bounded height-field erosion, live rainfall/erosion/sediment/flow controls, shared field rendering, and levee/channel gestures; full automated gate pending. |
 | 17 | Alien Vascular Tree | NOT_STARTED | line mesh | branching system |
 | 18 | Living Voronoi Tissue | NOT_STARTED | voronoi field | territory simulation |
 | 19 | Proto-Galaxy Forge | NOT_STARTED | gravity wells | advanced particles |
@@ -2701,7 +2701,186 @@ Deferred before marking COMPLETE:
 
 ---
 
-# 19. Agent Update Rules
+# 19. Neon River Delta
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-26
+```
+
+---
+
+## Priority
+
+SHOWCASE
+
+Reason:
+- validates a reusable height-field erosion model without adding a one-off renderer
+- exercises layered scalar fields for terrain, water, sediment glow, and flow debug overlays
+- proves live settings for resolution, rainfall, erosion, sediment brightness, and flow speed
+
+---
+
+## Dependencies
+
+- scalar height fields
+- field palette renderer
+- palette/bloom/edge/contour pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded terrain/water/sediment arrays seeded through `SeededRng`
+- O(field cells) downhill flow routing with erosion/deposition and sediment transport
+- tap, drag, hold, and fast-swipe gesture mapping for rain pools, distributary carving, levees, and flood cuts
+- live settings polling for resolution, rainfall, erosionRate, sedimentGlow, and flowSpeed
+- stagnation recovery that reseeds rain and carves fresh channels when variance/flow collapses
+
+---
+
+## Required Render Layers
+
+```txt
+field
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+paletteMap
+edgeGlow
+bloom
+contourBands
+distortion
+```
+
+---
+
+## Required Styles
+
+### Electric Estuary
+Cyan river braids cut through violet terrain with hot sediment veins.
+
+### Acid Dawn
+Chartreuse deltas and orange sediment clouds over a dark pre-sunrise basin.
+
+### Blacklight Alluvium
+Deep indigo landforms with ultraviolet water and pale alluvial fans.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | add a local rain pool that seeks a downhill channel |
+| drag | carve a glowing distributary across the terrain |
+| hold | raise a temporary levee that splits the flow |
+| fast swipe | cut a flood channel through the delta fan |
+
+---
+
+## Director Mode Events
+
+- monsoon pulse
+- sediment bloom
+- delta avulsion
+
+---
+
+## Stagnation Recovery
+
+If:
+- downhill flow energy collapses
+- water variance becomes too low
+- sediment variance fades out
+
+Then:
+- seed fresh rain
+- carve several deterministic channels
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+height/water/sediment fields:
+  32x18 to 128x72 typical, capped at 512 setting max
+
+rendering:
+  shared low-resolution field textures, no per-cell Pixi objects
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses `FieldPaletteRenderer` for terrain, water, sediment, and enhanced flow overlays
+- model updates remain bounded and O(field cells)
+- structural resolution changes rebuild the deterministic model; numeric tuning mutates model options live
+
+Do NOT:
+- add simulation-specific erosion/water shaders before reusable compositor support exists
+- create one Pixi object per cell
+- allow unbounded droplet, channel, or sediment buffers
+
+---
+
+## Validation Checklist
+
+- [x] terrain/water/sediment fields initialize deterministically from seed
+- [x] update advances erosion state and keeps values bounded
+- [x] tap/drag/hold/swipe gestures alter delta state
+- [x] field budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] full automated gate passes in current environment
+
+---
+
+## Known Risks
+
+- first-playable flow visualization is a CPU-projected scalar overlay, not a dedicated vector-field glyph/compositor
+- enhanced mode layers several shared field renderers and may need tuning after manual gallery validation
+- manual demo visual validation and Pi 5 FPS pass are still required before COMPLETE
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/neon-river-delta/NeonRiverDeltaModel.ts`
+- `packages/simulations/src/neon-river-delta/NeonRiverDeltaScene.ts`
+- `packages/simulations/src/neon-river-delta/NeonRiverDeltaPreviewScene.ts`
+- `packages/simulations/src/neon-river-delta/NeonRiverDeltaDemoAI.ts`
+- `packages/simulations/src/neon-river-delta/neon-river-delta.config.ts`
+- `packages/simulations/src/neon-river-delta/neon-river-delta.definition.ts`
+- `packages/simulations/src/neon-river-delta/styles/*.ts`
+- `packages/simulations/src/neon-river-delta/__tests__/NeonRiverDeltaModel.test.ts`
+
+Implementation notes:
+- Demo AI cycles styles plus every numeric setting so settings UI and scene live polling are exercised.
+- Preview scene uses reduced fixed resolution.
+- Registry exports include `neonRiverDeltaDefinition`, scene, preview, and model types.
+
+Deferred before marking COMPLETE:
+- reusable vector/flow compositor beyond scalar field overlays
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 20. Agent Update Rules
 
 When an agent completes work:
 
@@ -2737,7 +2916,7 @@ The agent must:
 
 ---
 
-# 20. Recommended Git Workflow
+# 21. Recommended Git Workflow
 
 Recommended commit structure:
 
@@ -2753,7 +2932,7 @@ Avoid giant multi-simulation commits.
 
 ---
 
-# 21. Final Guidance for Agents
+# 22. Final Guidance for Agents
 
 The project succeeds if:
 - simulations feel alive
