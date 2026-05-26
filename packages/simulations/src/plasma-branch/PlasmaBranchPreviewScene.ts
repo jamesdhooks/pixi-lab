@@ -5,7 +5,7 @@ export class PlasmaBranchPreviewScene extends PlasmaBranchScene {
   override readonly name = 'PlasmaBranchPreview';
 
   constructor() {
-    super(36, 90);
+    super(24, 64);
   }
 
   override onEnter(ctx: GameContext, input: Input): void {

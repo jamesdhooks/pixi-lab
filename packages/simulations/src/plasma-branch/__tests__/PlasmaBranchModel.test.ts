@@ -26,12 +26,11 @@ describe('PlasmaBranchModel', () => {
     expect(after.scarMax).toBeGreaterThan(0);
   });
 
-  it('tap, hold, and fast swipe gestures inject charge and discharge branches', () => {
+  it('tap and drag gestures add plasma branches', () => {
     const model = makeModel();
     model.handleGesture({ kind: 'tap', x: 320, y: 180, timestamp: 0 });
     const afterTap = model.stats();
-    model.handleGesture({ kind: 'hold', x: 330, y: 180, timestamp: 16 });
-    model.handleGesture({ kind: 'fast_swipe', x: 330, y: 180, dx: 160, dy: 20, velocity: 2, timestamp: 32 });
+    model.handleGesture({ kind: 'drag', x: 360, y: 190, dx: 80, dy: 20, timestamp: 16 });
     const afterGestures = model.stats();
     expect(afterGestures.totalCharge).toBeGreaterThan(afterTap.totalCharge);
     expect(afterGestures.branchCount).toBeGreaterThan(afterTap.branchCount);

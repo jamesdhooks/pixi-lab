@@ -47,11 +47,13 @@ export class AntSignalScene extends SimulationScene {
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
     this.signalRenderer = new FieldPaletteRenderer(ctx.systems.pixi.app);
-    this.trailRenderer = new TrailFeedbackRenderer(ctx.systems.pixi.app);
-    this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
     this.signalRenderer.setQuality(ctx.quality);
-    this.trailRenderer.setQuality(ctx.quality);
-    this.particleRenderer.setQuality(ctx.quality);
+    if (ctx.quality === 'enhanced') {
+      this.trailRenderer = new TrailFeedbackRenderer(ctx.systems.pixi.app);
+      this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
+      this.trailRenderer.setQuality(ctx.quality);
+      this.particleRenderer.setQuality(ctx.quality);
+    }
     const settings = ctx.systems.settings;
     const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (ANT_SIGNAL_DEFAULTS.resolution as number));
     this.modelOptions = {
@@ -92,15 +94,19 @@ export class AntSignalScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (!this.signalRenderer || !this.trailRenderer || !this.particleRenderer || !this.model) return;
+    if (!this.signalRenderer || !this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? neonColonyStyle;
     this.signalRenderer.clear();
-    this.trailRenderer.clear();
-    this.particleRenderer.clear();
     this.signalRenderer.renderField('food', this.model.foodSignalField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.24, gamma: 0.8, maxAlpha: 100, zIndex: 0 });
     this.signalRenderer.renderField('nest', this.model.nestSignalField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.16, gamma: 0.9, maxAlpha: 80, zIndex: 1 });
-    this.trailRenderer.renderTrail('pheromone', this.model.pheromoneField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.9, intensity: 1, zIndex: 2 });
-    this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.62, zIndex: 3 });
+    if (this.trailRenderer) {
+      this.trailRenderer.clear();
+      this.trailRenderer.renderTrail('pheromone', this.model.pheromoneField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.9, intensity: 1, zIndex: 2 });
+    }
+    if (this.particleRenderer) {
+      this.particleRenderer.clear();
+      this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.62, zIndex: 3 });
+    }
     const stats = this.model.stats();
     this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.antCount, fieldVariance: stats.trailVariance });
   }
@@ -120,10 +126,25 @@ export class AntSignalScene extends SimulationScene {
   }
 
   override setQuality(quality: RenderQuality): void {
+    const prev = this.quality;
     super.setQuality(quality);
     this.signalRenderer?.setQuality(quality);
     this.trailRenderer?.setQuality(quality);
     this.particleRenderer?.setQuality(quality);
+    // Dynamic renderer swap — only when scene is running and quality actually changed.
+    if (!this.model || prev === quality) return;
+    const pixi = this.ctx_.systems.pixi.app;
+    if (quality === 'enhanced') {
+      this.trailRenderer = new TrailFeedbackRenderer(pixi);
+      this.trailRenderer.setQuality(quality);
+      this.particleRenderer = new ParticlePointRenderer(pixi);
+      this.particleRenderer.setQuality(quality);
+    } else {
+      this.trailRenderer?.destroy();
+      this.trailRenderer = null;
+      this.particleRenderer?.destroy();
+      this.particleRenderer = null;
+    }
   }
 
 

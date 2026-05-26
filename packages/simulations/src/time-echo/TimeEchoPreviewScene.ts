@@ -5,7 +5,7 @@ export class TimeEchoPreviewScene extends TimeEchoScene {
   override readonly name = 'TimeEchoPreview';
 
   constructor() {
-    super(40, 140, 24);
+    super(24, 96, 16);
   }
 
   override onEnter(ctx: GameContext, input: Input): void {

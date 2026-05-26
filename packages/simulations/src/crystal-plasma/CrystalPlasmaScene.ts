@@ -49,13 +49,15 @@ export class CrystalPlasmaScene extends SimulationScene {
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
     this.stressRenderer = new FieldPaletteRenderer(ctx.systems.pixi.app);
-    this.fractureRenderer = new TrailFeedbackRenderer(ctx.systems.pixi.app);
-    this.latticeRenderer = new MeshLatticeRenderer(ctx.systems.pixi.app);
-    this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
     this.stressRenderer.setQuality(ctx.quality);
-    this.fractureRenderer.setQuality(ctx.quality);
-    this.latticeRenderer.setQuality(ctx.quality);
-    this.particleRenderer.setQuality(ctx.quality);
+    if (ctx.quality === 'enhanced') {
+      this.fractureRenderer = new TrailFeedbackRenderer(ctx.systems.pixi.app);
+      this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
+      this.latticeRenderer = new MeshLatticeRenderer(ctx.systems.pixi.app);
+      this.fractureRenderer.setQuality(ctx.quality);
+      this.particleRenderer.setQuality(ctx.quality);
+      this.latticeRenderer.setQuality(ctx.quality);
+    }
     const settings = ctx.systems.settings;
     const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.resolution as number));
     this.modelOptions = {
@@ -98,16 +100,24 @@ export class CrystalPlasmaScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (!this.stressRenderer || !this.fractureRenderer || !this.latticeRenderer || !this.particleRenderer || !this.model) return;
+    if (!this.stressRenderer || !this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? iceLightningStyle;
     this.stressRenderer.clear();
-    this.fractureRenderer.clear();
-    this.latticeRenderer.clear();
-    this.particleRenderer.clear();
-    this.stressRenderer.renderField('stress', this.model.stressField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.24, gamma: 0.72, maxAlpha: 110, zIndex: 0 });
-    this.latticeRenderer.renderGrid(this.model.grid, this.ctx_.width, this.ctx_.height, style, { field: this.model.stressField, zIndex: 1 });
-    this.fractureRenderer.renderTrail('fractures', this.model.fractureField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.8, gamma: 0.32, zIndex: 2 });
-    this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.64, zIndex: 3 });
+    if (this.latticeRenderer) {
+      this.latticeRenderer.clear();
+      this.stressRenderer.renderField('stress', this.model.stressField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.24, gamma: 0.72, maxAlpha: 110, zIndex: 0 });
+      this.latticeRenderer.renderGrid(this.model.grid, this.ctx_.width, this.ctx_.height, style, { field: this.model.stressField, zIndex: 1 });
+    } else {
+      this.stressRenderer.renderField('stress', this.model.stressField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.82, gamma: 0.62, maxAlpha: 200, zIndex: 0 });
+    }
+    if (this.fractureRenderer) {
+      this.fractureRenderer.clear();
+      this.fractureRenderer.renderTrail('fractures', this.model.fractureField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.8, gamma: 0.32, zIndex: 2 });
+    }
+    if (this.particleRenderer) {
+      this.particleRenderer.clear();
+      this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.64, zIndex: 3 });
+    }
     const stats = this.model.stats();
     this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.crystalCount, fieldVariance: stats.stressVariance });
   }
@@ -127,11 +137,30 @@ export class CrystalPlasmaScene extends SimulationScene {
   }
 
   override setQuality(quality: RenderQuality): void {
+    const prev = this.quality;
     super.setQuality(quality);
     this.stressRenderer?.setQuality(quality);
     this.fractureRenderer?.setQuality(quality);
     this.latticeRenderer?.setQuality(quality);
     this.particleRenderer?.setQuality(quality);
+    // Dynamic renderer swap — only when scene is running and quality actually changed.
+    if (!this.model || prev === quality) return;
+    const pixi = this.ctx_.systems.pixi.app;
+    if (quality === 'enhanced') {
+      this.fractureRenderer = new TrailFeedbackRenderer(pixi);
+      this.fractureRenderer.setQuality(quality);
+      this.latticeRenderer = new MeshLatticeRenderer(pixi);
+      this.latticeRenderer.setQuality(quality);
+      this.particleRenderer = new ParticlePointRenderer(pixi);
+      this.particleRenderer.setQuality(quality);
+    } else {
+      this.fractureRenderer?.destroy();
+      this.fractureRenderer = null;
+      this.latticeRenderer?.destroy();
+      this.latticeRenderer = null;
+      this.particleRenderer?.destroy();
+      this.particleRenderer = null;
+    }
   }
 
 
@@ -176,7 +205,7 @@ export class CrystalPlasmaScene extends SimulationScene {
   getRenderLayers(): SimRenderLayers {
     return {
       field: this.stressRenderer?.getLayer('stress'),
-      primitive: this.latticeRenderer?.layer,
+      primitive: this.latticeRenderer?.layer ?? this.stressRenderer?.getLayer('stress'),
       trails: this.fractureRenderer?.getLayer('fractures'),
       particles: this.particleRenderer?.particles,
       glow: this.fractureRenderer?.getLayer('fractures'),

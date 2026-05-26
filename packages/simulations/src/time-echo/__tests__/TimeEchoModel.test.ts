@@ -45,11 +45,13 @@ describe('TimeEchoModel', () => {
     expect(model.stats().anchorCount).toBeGreaterThan(before);
   });
 
-  it('hold gestures freeze local time without increasing particle count', () => {
+  it('hold and fast swipe gestures are no longer user-facing effects', () => {
     const model = createModel();
     model.handleGesture({ kind: 'hold', x: 320, y: 180, timestamp: 0 });
+    model.handleGesture({ kind: 'fast_swipe', x: 320, y: 180, dx: 200, dy: 40, velocity: 2, timestamp: 16 });
     const stats = model.stats();
-    expect(stats.freezeCount).toBeGreaterThan(0);
+    expect(stats.freezeCount).toBe(0);
+    expect(stats.anchorCount).toBe(0);
     expect(stats.particleCount).toBe(180);
   });
 
@@ -76,7 +78,7 @@ describe('TimeEchoModel', () => {
     const a = createModel(101);
     const b = createModel(101);
     a.update(1 / 20);
-    a.handleGesture({ kind: 'fast_swipe', x: 300, y: 160, dx: 260, dy: 30, velocity: 2.4, timestamp: 1 });
+    a.handleGesture({ kind: 'drag', x: 300, y: 160, dx: 260, dy: 30, timestamp: 1 });
     a.reset(101);
     expect(a.snapshot()).toEqual(b.snapshot());
   });

@@ -36,28 +36,28 @@ describe('OrbitalShrapnelModel', () => {
     expect(stats.meanRadius).toBeGreaterThan(42);
   });
 
-  it('drag gestures swish nearby debris and increase kinetic energy', () => {
+  it('drag gestures add shrapnel using pointer velocity', () => {
+    const model = createModel();
+    const before = model.stats();
+    model.handleGesture({ kind: 'drag', x: 360, y: 180, dx: 120, dy: -45, timestamp: 0 });
+    const after = model.stats();
+    expect(after.particleCount).toBeGreaterThan(before.particleCount);
+    expect(after.kineticEnergy).toBeGreaterThan(before.kineticEnergy);
+  });
+
+  it('influenceBody pushes debris aside and imparts momentum', () => {
     const model = createModel();
     const before = model.stats().kineticEnergy;
-    model.handleGesture({ kind: 'drag', x: 360, y: 180, dx: 120, dy: -45, timestamp: 0 });
+    model.influenceBody(320, 180, 140, -35, 1 / 30);
     expect(model.stats().kineticEnergy).toBeGreaterThan(before);
   });
 
-  it('hold gestures create a temporary gravity well that bends debris', () => {
+  it('tap add uses local orbital velocity without unbounded particle growth', () => {
     const model = createModel();
-    const before = model.stats().gravityWellCount;
-    model.handleGesture({ kind: 'hold', x: 500, y: 210, timestamp: 0 });
-    expect(model.stats().gravityWellCount).toBeGreaterThan(before);
-    model.update(1 / 10);
-    expect(model.stats().meanSpeed).toBeGreaterThan(0);
-  });
-
-  it('fast swipes trigger shockwaves without unbounded particle growth', () => {
-    const model = createModel();
-    model.handleGesture({ kind: 'fast_swipe', x: 320, y: 180, dx: 260, dy: 30, velocity: 2.6, timestamp: 0 });
+    model.handleGesture({ kind: 'tap', x: 320, y: 90, timestamp: 0 });
     const stats = model.stats();
-    expect(stats.shockwaveCount).toBeGreaterThan(0);
-    expect(stats.particleCount).toBe(180);
+    expect(stats.particleCount).toBe(181);
+    expect(stats.particleCount).toBeLessThanOrEqual(288);
   });
 
   it('detects collapsed low-energy rings and stabilizes them', () => {
@@ -76,7 +76,7 @@ describe('OrbitalShrapnelModel', () => {
     const a = createModel(101);
     const b = createModel(101);
     a.update(1 / 20);
-    a.handleGesture({ kind: 'drag', x: 320, y: 180, dx: 80, dy: 12, timestamp: 1 });
+    a.addShrapnel(320, 140, 80, 12);
     a.reset(101);
     expect(a.snapshot()).toEqual(b.snapshot());
   });

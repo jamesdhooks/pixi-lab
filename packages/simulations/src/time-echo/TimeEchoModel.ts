@@ -140,12 +140,7 @@ export class TimeEchoModel {
 
   handleGesture(event: GestureEvent): void {
     if (event.kind === 'tap') this.addAnchor(event.x, event.y, 1.1, 150, 2.8);
-    if (event.kind === 'hold') this.freezes.push({ x: event.x, y: event.y, radius: 170, ttl: 1.9 });
     if (event.kind === 'drag') this.swirl(event.x, event.y, event.dx ?? 0, event.dy ?? 0, 150);
-    if (event.kind === 'fast_swipe') {
-      this.swirl(event.x, event.y, event.dx ?? 180, event.dy ?? 0, 230);
-      this.addAnchor(event.x, event.y, -0.9, 220, 1.4);
-    }
     this.trimForces();
     this.depositTrails(0.9);
   }

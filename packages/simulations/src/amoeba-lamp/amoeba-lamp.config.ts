@@ -3,7 +3,7 @@ import type { SettingsField } from '@hooksjam/pixi-lab-core';
 export const AMOEBA_LAMP_SETTINGS_FIELDS: SettingsField[] = [
   { key: 'resolution', label: 'Resolution', type: 'number', min: 32, max: 512, step: 32, default: 64 },
   { key: 'blobCount', label: 'Seed Blobs', type: 'number', min: 3, max: 14, step: 1, default: 8 },
-  { key: 'particleBudget', label: 'Blob Particle Budget', type: 'number', min: 24, max: 96, step: 4, default: 56 },
+  { key: 'particleBudget', label: 'Blob Particle Budget', type: 'number', min: 24, max: 1000, step: 4, default: 56 },
   { key: 'surfaceTension', label: 'Surface Tension', type: 'number', min: 0.2, max: 1.4, step: 0.05, default: 0.72 },
   { key: 'buoyancy', label: 'Buoyancy', type: 'number', min: 10, max: 110, step: 5, default: 58 },
   { key: 'densityRadius', label: 'Metaball Radius', type: 'number', min: 2, max: 6, step: 0.25, default: 3.4 },

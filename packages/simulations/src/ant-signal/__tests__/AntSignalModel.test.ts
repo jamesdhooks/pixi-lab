@@ -21,13 +21,14 @@ describe('AntSignalModel', () => {
     expect(stats.trailMax).toBeLessThanOrEqual(1);
   });
 
-  it('tap gestures add food sources and drag gestures paint trail signals', () => {
+  it('tap and drag gestures add food sources', () => {
     const model = makeModel(11);
     const beforeFood = model.stats().foodCount;
     model.handleGesture({ kind: 'tap', x: 400, y: 225, timestamp: 0 });
     model.handleGesture({ kind: 'drag', x: 420, y: 230, dx: 80, dy: 12, timestamp: 16 });
+    expect(model.stats().foodCount).toBeGreaterThan(beforeFood);
+    model.update(1 / 30);
     const stats = model.stats();
-    expect(stats.foodCount).toBeGreaterThan(beforeFood);
     expect(stats.foodSignalMax).toBeGreaterThan(0);
     expect(stats.trailMax).toBeGreaterThan(0);
   });
@@ -35,7 +36,7 @@ describe('AntSignalModel', () => {
   it('fast swipe wipes trails without growing unbounded state', () => {
     const model = makeModel(13);
     model.handleGesture({ kind: 'drag', x: 300, y: 180, dx: 120, dy: 0, timestamp: 0 });
-    model.update(1 / 30);
+    for (let i = 0; i < 10; i++) model.update(1 / 30);
     const before = model.stats().trailTotal;
     model.handleGesture({ kind: 'fast_swipe', x: 320, y: 180, dx: 200, dy: 0, velocity: 2.4, timestamp: 40 });
     const after = model.stats();

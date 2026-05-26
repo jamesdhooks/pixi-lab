@@ -1,4 +1,5 @@
 import {
+  FieldPaletteRenderer,
   ParticlePointRenderer,
   SimulationScene,
   TrailFeedbackRenderer,
@@ -29,6 +30,8 @@ export class TimeEchoScene extends SimulationScene {
   readonly name: string = 'TimeEcho';
   private trailRenderer: TrailFeedbackRenderer | null = null;
   private particleRenderer: ParticlePointRenderer | null = null;
+  /** Basic-quality fallback — renders the trail density field without RTT overhead. */
+  private fieldRenderer: FieldPaletteRenderer | null = null;
   private model: TimeEchoModel | null = null;
   private modelOptions: TimeEchoModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
@@ -45,10 +48,15 @@ export class TimeEchoScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    this.trailRenderer = new TrailFeedbackRenderer(ctx.systems.pixi.app);
-    this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
-    this.trailRenderer.setQuality(ctx.quality);
-    this.particleRenderer.setQuality(ctx.quality);
+    if (ctx.quality === 'enhanced') {
+      this.trailRenderer = new TrailFeedbackRenderer(ctx.systems.pixi.app);
+      this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
+      this.trailRenderer.setQuality(ctx.quality);
+      this.particleRenderer.setQuality(ctx.quality);
+    } else {
+      this.fieldRenderer = new FieldPaletteRenderer(ctx.systems.pixi.app);
+      this.fieldRenderer.setQuality(ctx.quality);
+    }
     const settings = ctx.systems.settings;
     const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (TIME_ECHO_DEFAULTS.resolution as number));
     const historyLength = this.previewHistory ?? ((settings.get('historyLength') as number | undefined) ?? (TIME_ECHO_DEFAULTS.historyLength as number));
@@ -75,8 +83,10 @@ export class TimeEchoScene extends SimulationScene {
   override onExit(): void {
     this.trailRenderer?.destroy();
     this.particleRenderer?.destroy();
+    this.fieldRenderer?.destroy();
     this.trailRenderer = null;
     this.particleRenderer = null;
+    this.fieldRenderer = null;
     this.model = null;
     this.modelOptions = null;
   }
@@ -91,12 +101,17 @@ export class TimeEchoScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (!this.trailRenderer || !this.particleRenderer || !this.model) return;
+    if (!this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? ghostLoopStyle;
-    this.trailRenderer.clear();
-    this.particleRenderer.clear();
-    this.trailRenderer.renderTrail('echo', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.92, gamma: 0.34, zIndex: 0 });
-    this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.7, zIndex: 1 });
+    if (this.trailRenderer && this.particleRenderer) {
+      this.trailRenderer.clear();
+      this.particleRenderer.clear();
+      this.trailRenderer.renderTrail('echo', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.92, gamma: 0.34, zIndex: 0 });
+      this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.7, zIndex: 1 });
+    } else if (this.fieldRenderer) {
+      this.fieldRenderer.clear();
+      this.fieldRenderer.renderField('echo', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.92, gamma: 0.34, zIndex: 0 });
+    }
     const stats = this.model.stats();
     this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.particleCount, fieldVariance: stats.trailVariance });
   }
@@ -116,9 +131,29 @@ export class TimeEchoScene extends SimulationScene {
   }
 
   override setQuality(quality: RenderQuality): void {
+    const prev = this.quality;
     super.setQuality(quality);
     this.trailRenderer?.setQuality(quality);
     this.particleRenderer?.setQuality(quality);
+    this.fieldRenderer?.setQuality(quality);
+    // Dynamic renderer swap — only when scene is running and quality actually changed.
+    if (!this.model || prev === quality) return;
+    const pixi = this.ctx_.systems.pixi.app;
+    if (quality === 'enhanced') {
+      this.fieldRenderer?.destroy();
+      this.fieldRenderer = null;
+      this.trailRenderer = new TrailFeedbackRenderer(pixi);
+      this.trailRenderer.setQuality(quality);
+      this.particleRenderer = new ParticlePointRenderer(pixi);
+      this.particleRenderer.setQuality(quality);
+    } else {
+      this.trailRenderer?.destroy();
+      this.trailRenderer = null;
+      this.particleRenderer?.destroy();
+      this.particleRenderer = null;
+      this.fieldRenderer = new FieldPaletteRenderer(pixi);
+      this.fieldRenderer.setQuality(quality);
+    }
   }
 
   private applyLiveSettings(): void {
@@ -178,9 +213,9 @@ export class TimeEchoScene extends SimulationScene {
 
   getRenderLayers(): SimRenderLayers {
     return {
-      trails: this.trailRenderer?.getLayer('echo'),
+      trails: this.trailRenderer?.getLayer('echo') ?? this.fieldRenderer?.getLayer('echo'),
       particles: this.particleRenderer?.particles,
-      glow: this.trailRenderer?.getLayer('echo'),
+      glow: this.trailRenderer?.getLayer('echo') ?? this.fieldRenderer?.getLayer('echo'),
     };
   }
 

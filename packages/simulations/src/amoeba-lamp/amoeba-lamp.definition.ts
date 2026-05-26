@@ -8,8 +8,8 @@ export const amoebaLampDefinition: SimulationDefinition = {
   id: 'amoeba-lamp',
   kind: 'simulation',
   name: 'Amoeba Lamp',
-  short: 'Glowing lava-lamp organisms merge, split, and rise through heated metaball soup.',
-  long: 'A deterministic density-field biosoup made from blob particles with surface tension, buoyancy, heat plumes, and swipe-driven splitting rendered through the shared field layer.',
+  short: 'Glowing lava-lamp organisms merge and drift through metaball soup.',
+  long: 'A deterministic density-field biosoup made from blob particles with surface tension and buoyancy, with simple add and swish interaction modes rendered through the shared field layer.',
   tags: ['simulation', 'metaballs', 'fluid', 'ambient'],
   icon: '🫧',
   paletteHint: 'plasma',
@@ -32,11 +32,13 @@ export const amoebaLampDefinition: SimulationDefinition = {
   settingsFields: AMOEBA_LAMP_SETTINGS_FIELDS,
   configDefaults: AMOEBA_LAMP_DEFAULTS,
   styleManifest: amoebaLampStyleManifest,
+  modes: [
+    { id: 'add', label: 'Add', icon: '+', description: 'Tap or drag empty space to add amoebas' },
+    { id: 'swish', label: 'Swish', icon: '〰', description: 'Tap or drag to pull and swish particles' },
+  ],
   gestureMap: {
-    tap: 'spawn a small amoeba blob',
-    drag: 'stir nearby blob particles and membranes',
-    hold: 'inject a buoyant heat plume',
-    fast_swipe: 'split the nearest oversized blob',
+    tap: 'use the selected mode at the pointer',
+    drag: 'repeat the selected mode continuously',
   },
   directorEvents: [
     { id: 'heat-plume', label: 'Inject Heat Plume', minIntervalMs: 6000, maxIntervalMs: 13000, intensity: 0.45 },
@@ -53,8 +55,7 @@ export const amoebaLampDefinition: SimulationDefinition = {
   previewFactory: () => new AmoebaLampPreviewScene(),
   demoAiFactory: () => new AmoebaLampDemoAI(),
   tutorialPages: [
-    { icon: '〰', title: 'Stir the Soup', body: 'Drag through the lamp to shear and pull glowing blob membranes.' },
-    { icon: '♨', title: 'Heat Plumes', body: 'Hold to inject heat so organisms rise and stretch.' },
-    { icon: '✂', title: 'Split Blobs', body: 'Fast swipes divide oversized blobs into new drifting colonies.' },
+    { icon: '+', title: 'Add Mode', body: 'Tap or drag empty space to add new amoebas.' },
+    { icon: '〰', title: 'Swish Mode', body: 'Tap or drag to pull and swish existing particles.' },
   ],
 };

@@ -80,14 +80,13 @@ export class OrbitalShrapnelModel {
     for (let i = 0; i < this.options.particleCount; i++) {
       const radius = this.rng.range(this.options.planetRadius + 18, maxRadius);
       const angle = this.rng.range(0, Math.PI * 2);
-      const tangent = Math.sqrt(this.options.gravity / Math.max(1, radius)) * this.rng.range(0.82, 1.16);
-      const radialJitter = this.rng.range(-7, 7);
+      const tangent = this.orbitalSpeed(radius);
       const direction = this.rng.next() < 0.5 ? -1 : 1;
       this.particles.push({
         x: cx + Math.cos(angle) * radius,
         y: cy + Math.sin(angle) * radius * 0.62,
-        vx: Math.cos(angle) * radialJitter + -Math.sin(angle) * tangent * direction,
-        vy: Math.sin(angle) * radialJitter * 0.62 + Math.cos(angle) * tangent * direction * 0.62,
+        vx: -Math.sin(angle) * tangent * direction,
+        vy: Math.cos(angle) * tangent * direction * 0.62,
         size: this.rng.range(1.1, 3.8),
         heat: this.rng.range(0.15, 0.95),
         spin: this.rng.range(-1, 1),
@@ -123,15 +122,42 @@ export class OrbitalShrapnelModel {
   }
 
   handleGesture(event: GestureEvent): void {
-    if (event.kind === 'tap') this.addShockwave(event.x, event.y, 75, 0.6);
-    if (event.kind === 'drag') this.swish(event.x, event.y, event.dx ?? 0, event.dy ?? 0);
-    if (event.kind === 'hold') this.wells.push({ x: event.x, y: event.y, strength: 820, ttl: 2.2 });
-    if (event.kind === 'fast_swipe') {
-      this.swish(event.x, event.y, event.dx ?? 120, event.dy ?? 0);
-      this.addShockwave(event.x, event.y, 120, 1.1);
-    }
-    this.trimForces();
+    if (event.kind === 'tap') this.addShrapnel(event.x, event.y);
+    if (event.kind === 'drag') this.addShrapnel(event.x, event.y, event.dx ?? 0, event.dy ?? 0);
     this.depositTrails(0.7);
+  }
+
+  addShrapnel(x: number, y: number, vx?: number, vy?: number): void {
+    const orbital = this.velocityForOrbitAt(x, y);
+    const speed = Math.hypot(vx ?? 0, vy ?? 0);
+    const particle: DebrisParticle = {
+      x,
+      y,
+      vx: speed > 4 ? (vx ?? 0) * 0.8 : orbital.vx,
+      vy: speed > 4 ? (vy ?? 0) * 0.8 : orbital.vy,
+      size: this.rng.range(1.1, 3.8),
+      heat: this.rng.range(0.45, 1.25),
+      spin: this.rng.range(-1, 1),
+    };
+    this.particles.push(particle);
+    this.trimParticles();
+    this.depositTrails(0.9);
+  }
+
+  influenceBody(x: number, y: number, vx: number, vy: number, dt: number): void {
+    const radius = 150;
+    for (const p of this.particles) {
+      const dx = p.x - x;
+      const dy = p.y - y;
+      const distance = Math.max(1, Math.hypot(dx, dy));
+      const falloff = Math.max(0, 1 - distance / radius);
+      if (falloff <= 0) continue;
+      const shove = 620 * falloff * falloff * dt;
+      p.vx += (dx / distance) * shove + vx * 0.42 * falloff;
+      p.vy += (dy / distance) * shove + vy * 0.42 * falloff;
+      p.heat = Math.min(1.9, p.heat + 0.4 * falloff);
+    }
+    this.depositTrails(0.8);
   }
 
   detectStagnation(dt: number): StagnationReport {
@@ -220,14 +246,24 @@ export class OrbitalShrapnelModel {
     this.trailField.fill(0);
   }
 
-  private swish(x: number, y: number, dx: number, dy: number): void {
-    for (const p of this.particles) {
-      const distance = Math.hypot(p.x - x, p.y - y);
-      const falloff = Math.max(0, 1 - distance / 190);
-      p.vx += dx * 1.15 * falloff;
-      p.vy += dy * 1.15 * falloff;
-      p.heat = Math.min(1.8, p.heat + 0.45 * falloff);
-    }
+  private velocityForOrbitAt(x: number, y: number): { vx: number; vy: number } {
+    const cx = this.options.width * 0.5;
+    const cy = this.options.height * 0.5;
+    const dx = x - cx;
+    const dy = (y - cy) / 0.62;
+    const radius = Math.max(this.options.planetRadius + 1, Math.hypot(dx, dy));
+    const angle = Math.atan2(dy, dx);
+    const speed = this.orbitalSpeed(radius);
+    return { vx: -Math.sin(angle) * speed, vy: Math.cos(angle) * speed * 0.62 };
+  }
+
+  private orbitalSpeed(radius: number): number {
+    return Math.sqrt(this.options.gravity / Math.max(1, radius));
+  }
+
+  private trimParticles(): void {
+    const maxParticles = Math.max(this.options.particleCount, Math.floor(this.options.particleCount * 1.6));
+    while (this.particles.length > maxParticles) this.particles.shift();
   }
 
   private addShockwave(x: number, y: number, radius: number, strength: number): void {

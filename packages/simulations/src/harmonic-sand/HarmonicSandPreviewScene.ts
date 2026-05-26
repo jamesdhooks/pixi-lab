@@ -8,7 +8,7 @@ export class HarmonicSandPreviewScene extends HarmonicSandScene {
 
   constructor() {
     // Low-resolution field for a preview tile — keeps CPU low.
-    super(48);
+    super(32);
   }
 
   override onEnter(ctx: GameContext, input: Input): void {

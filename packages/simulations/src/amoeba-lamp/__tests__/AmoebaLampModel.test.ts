@@ -44,27 +44,20 @@ describe('AmoebaLampModel', () => {
     }
   });
 
-  it('drag gestures stir nearby blobs', () => {
+  it('drag gestures swish nearby blobs', () => {
     const model = createModel();
     const before = model.stats().meanSpeed;
     model.handleGesture({ kind: 'drag', x: 240, y: 150, dx: 90, dy: -35, timestamp: 0 });
     expect(model.stats().meanSpeed).toBeGreaterThan(before);
   });
 
-  it('hold gestures heat blobs and heat field', () => {
+  it('addAmoeba adds blobs in empty space without exceeding budget', () => {
     const model = createModel();
-    const before = model.stats().meanHeat;
-    model.handleGesture({ kind: 'hold', x: 240, y: 150, timestamp: 0 });
-    expect(model.stats().meanHeat).toBeGreaterThan(before);
-  });
-
-  it('fast swipe gestures split oversized blobs without exceeding budget', () => {
-    const model = createModel();
-    model.mergeAllForTest();
-    const before = model.stats().blobCount;
-    model.handleGesture({ kind: 'fast_swipe', x: 240, y: 150, dx: 220, dy: 12, velocity: 2.4, timestamp: 0 });
+    const before = model.stats();
+    model.addAmoeba(32, 32, 5);
     const after = model.stats();
-    expect(after.blobCount).toBeGreaterThan(before);
+    expect(after.particleCount).toBeGreaterThan(before.particleCount);
+    expect(after.blobCount).toBeGreaterThanOrEqual(before.blobCount);
     expect(after.particleCount).toBeLessThanOrEqual(42);
   });
 
@@ -83,7 +76,7 @@ describe('AmoebaLampModel', () => {
     const a = createModel(99);
     const b = createModel(99);
     a.update(1 / 30);
-    a.handleGesture({ kind: 'hold', x: 320, y: 100, timestamp: 3 });
+    a.handleGesture({ kind: 'drag', x: 320, y: 100, dx: 70, dy: 8, timestamp: 3 });
     a.reset(99);
     expect(a.snapshot()).toEqual(b.snapshot());
   });

@@ -106,11 +106,7 @@ export class AntSignalModel {
 
   handleGesture(event: GestureEvent): void {
     if (event.kind === 'tap') this.addFood(event.x, event.y, 1);
-    if (event.kind === 'hold') {
-      this.addFood(event.x, event.y, 0.75);
-      this.paintTrail(event.x - 18, event.y - 18, event.x + 18, event.y + 18, 0.8);
-    }
-    if (event.kind === 'drag') this.paintTrail(event.x - (event.dx ?? 0), event.y - (event.dy ?? 0), event.x, event.y, 0.55);
+    if (event.kind === 'drag') this.addFood(event.x, event.y, 0.72);
     if (event.kind === 'fast_swipe') this.wipeTrail(event.x, event.y, Math.max(35, Math.hypot(event.dx ?? 0, event.dy ?? 0) * 0.35));
   }
 

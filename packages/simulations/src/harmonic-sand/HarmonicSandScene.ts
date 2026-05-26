@@ -98,8 +98,9 @@ export class HarmonicSandScene extends SimulationScene {
     // adjusting a slider takes effect without restarting the simulation.
     const settings = this.ctx_.systems.settings;
 
-    const newRes = (settings.get('resolution') as number | undefined)
-      ?? (HARMONIC_SAND_DEFAULTS.resolution as number);
+    const newRes = this.previewFieldColumns
+      ?? ((settings.get('resolution') as number | undefined)
+      ?? (HARMONIC_SAND_DEFAULTS.resolution as number));
     if (newRes !== this.lastFieldResolution) {
       this.lastFieldResolution = newRes;
       this.modelOptions = { ...this.modelOptions, fieldColumns: newRes };

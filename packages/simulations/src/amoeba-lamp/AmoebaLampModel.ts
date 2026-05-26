@@ -88,11 +88,21 @@ export class AmoebaLampModel {
   }
 
   handleGesture(event: GestureEvent): void {
-    if (event.kind === 'tap') this.spawnBlob(event.x, event.y, 4);
-    if (event.kind === 'drag') this.stir(event.x, event.y, event.dx ?? 0, event.dy ?? 0);
-    if (event.kind === 'hold') this.injectHeat(event.x, event.y, 0.75);
-    if (event.kind === 'fast_swipe') this.splitNear(event.x, event.y, event.dx ?? 80, event.dy ?? 0);
+    if (event.kind === 'tap') this.addAmoeba(event.x, event.y, 4);
+    if (event.kind === 'drag') this.swish(event.x, event.y, event.dx ?? 0, event.dy ?? 0);
     this.trimToBudget();
+    this.projectFields();
+  }
+
+  addAmoeba(x: number, y: number, count = 4): void {
+    if (this.hasNearbyParticle(x, y, 22)) return;
+    this.spawnBlob(x, y, count);
+    this.trimToBudget();
+    this.projectFields();
+  }
+
+  swish(x: number, y: number, dx: number, dy: number): void {
+    this.stir(x, y, dx, dy);
     this.projectFields();
   }
 
@@ -210,11 +220,6 @@ export class AmoebaLampModel {
     this.paintHeat(x, y, amount);
   }
 
-  private splitNear(x: number, y: number, dx: number, dy: number): void {
-    const id = this.nearestBlobId(x, y) ?? this.largestBlobId();
-    if (id !== undefined) this.splitBlob(id, dx, dy);
-  }
-
   private splitBlob(blobId: number, dx: number, dy: number): void {
     const newId = this.nextBlobId++;
     let flip = false;
@@ -310,18 +315,12 @@ export class AmoebaLampModel {
     return best;
   }
 
-  private nearestBlobId(x: number, y: number): number | undefined {
-    let best: number | undefined;
-    let bestDistance = Number.POSITIVE_INFINITY;
-    for (const [id, c] of Array.from(this.groupCenters().entries())) {
-      const d = Math.hypot(c.x - x, c.y - y);
-      if (d < bestDistance) { best = id; bestDistance = d; }
-    }
-    return best;
-  }
-
   private radialFalloff(p: BlobParticle, x: number, y: number, radius: number): number {
     return Math.max(0, 1 - Math.hypot(p.x - x, p.y - y) / radius);
+  }
+
+  private hasNearbyParticle(x: number, y: number, radius: number): boolean {
+    return this.particles.some((p) => Math.hypot(p.x - x, p.y - y) <= radius);
   }
 
   private bounce(p: BlobParticle): void {

@@ -8,8 +8,8 @@ export const orbitalShrapnelDefinition: SimulationDefinition = {
   id: 'orbital-shrapnel',
   kind: 'simulation',
   name: 'Orbital Shrapnel Field',
-  short: 'Triangular debris arcs around a planet, leaving glowing dust trails and shockwave ripples.',
-  long: 'A deterministic orbital particle field with central gravity, transient touch-created gravity wells, swipe shockwaves, and a low-resolution trail field rendered through shared simulation layers.',
+  short: 'Triangular debris starts in stable orbit, then bends around touch-driven bodies.',
+  long: 'A deterministic orbital particle field with central gravity, orbit-matched shrapnel insertion, moving-body influence, and a low-resolution trail field rendered through shared simulation layers.',
   tags: ['simulation', 'particles', 'space', 'trails'],
   icon: '🪐',
   paletteHint: 'cosmic',
@@ -32,11 +32,13 @@ export const orbitalShrapnelDefinition: SimulationDefinition = {
   settingsFields: ORBITAL_SHRAPNEL_SETTINGS_FIELDS,
   configDefaults: ORBITAL_SHRAPNEL_DEFAULTS,
   styleManifest: orbitalShrapnelStyleManifest,
+  modes: [
+    { id: 'add', label: 'Add', icon: '+', description: 'Tap or drag to add shrapnel with pointer velocity' },
+    { id: 'influence', label: 'Influence', icon: '●', description: 'Drag like a moving body through the field' },
+  ],
   gestureMap: {
-    tap: 'send a soft shockwave through the ring',
-    drag: 'swish nearby debris into new orbital bands',
-    hold: 'create a temporary gravity well',
-    fast_swipe: 'trigger a stronger debris shockwave',
+    tap: 'use the selected orbital tool at the pointer',
+    drag: 'repeat the selected orbital tool continuously',
   },
   directorEvents: [
     { id: 'meteor-shower', label: 'Meteor Shower', minIntervalMs: 7000, maxIntervalMs: 15000, intensity: 0.42 },
@@ -53,8 +55,7 @@ export const orbitalShrapnelDefinition: SimulationDefinition = {
   previewFactory: () => new OrbitalShrapnelPreviewScene(),
   demoAiFactory: () => new OrbitalShrapnelDemoAI(),
   tutorialPages: [
-    { icon: '🌀', title: 'Swish the Ring', body: 'Drag across the field to bend dust and debris into fresh orbital bands.' },
-    { icon: '🌑', title: 'Gravity Wells', body: 'Hold anywhere to pull nearby shards toward a temporary attractor.' },
-    { icon: '💥', title: 'Shockwaves', body: 'Fast swipes send a ripple through the debris cloud without increasing particle count.' },
+    { icon: '+', title: 'Add Shrapnel', body: 'Tap or drag to add shards that inherit your pointer motion.' },
+    { icon: '●', title: 'Influence Field', body: 'Drag through the ring as a moving body that pushes particles aside.' },
   ],
 };

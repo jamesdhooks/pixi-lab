@@ -1,5 +1,6 @@
 import {
   DensityMetaballRenderer,
+  FieldPaletteRenderer,
   ParticlePointRenderer,
   SimulationScene,
   type GameContext,
@@ -15,6 +16,8 @@ import { bioPlasmaStyle } from './styles/bio-plasma.js';
 import { oilSlickStyle } from './styles/oil-slick.js';
 import { toxicLagoonStyle } from './styles/toxic-lagoon.js';
 
+type AmoebaLampMode = 'add' | 'swish';
+
 export const amoebaLampStyleManifest: SimStyleManifest = {
   defaultStyleId: 'bio-plasma',
   capabilities: {
@@ -28,6 +31,8 @@ export const amoebaLampStyleManifest: SimStyleManifest = {
 export class AmoebaLampScene extends SimulationScene {
   readonly name: string = 'AmoebaLamp';
   private densityRenderer: DensityMetaballRenderer | null = null;
+  /** Basic-quality fallback: renders density field at grid resolution instead of canvas resolution. */
+  private fieldFallbackRenderer: FieldPaletteRenderer | null = null;
   private particleRenderer: ParticlePointRenderer | null = null;
   private model: AmoebaLampModel | null = null;
   private modelOptions: AmoebaLampModelOptions | null = null;
@@ -39,6 +44,7 @@ export class AmoebaLampScene extends SimulationScene {
   private lastBlobCount = 0;
   private lastParticleBudget = 0;
   private lastGridColumns = 0;
+  private interactionMode: AmoebaLampMode = 'add';
 
   constructor(private readonly previewColumns?: number, private readonly previewBudget?: number) {
     super();
@@ -46,10 +52,15 @@ export class AmoebaLampScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    this.densityRenderer = new DensityMetaballRenderer(ctx.systems.pixi.app);
-    this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
-    this.densityRenderer.setQuality(ctx.quality);
-    this.particleRenderer.setQuality(ctx.quality);
+    if (ctx.quality === 'enhanced') {
+      this.densityRenderer = new DensityMetaballRenderer(ctx.systems.pixi.app);
+      this.densityRenderer.setQuality(ctx.quality);
+      this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
+      this.particleRenderer.setQuality(ctx.quality);
+    } else {
+      this.fieldFallbackRenderer = new FieldPaletteRenderer(ctx.systems.pixi.app);
+      this.fieldFallbackRenderer.setQuality(ctx.quality);
+    }
     const settings = ctx.systems.settings;
     const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.resolution as number));
     const particleBudget = this.previewBudget ?? ((settings.get('particleBudget') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.particleBudget as number));
@@ -80,8 +91,10 @@ export class AmoebaLampScene extends SimulationScene {
 
   override onExit(): void {
     this.densityRenderer?.destroy();
+    this.fieldFallbackRenderer?.destroy();
     this.particleRenderer?.destroy();
     this.densityRenderer = null;
+    this.fieldFallbackRenderer = null;
     this.particleRenderer = null;
     this.model = null;
     this.modelOptions = null;
@@ -117,8 +130,8 @@ export class AmoebaLampScene extends SimulationScene {
 
     // Structural params (grid size, blob count, budget) require a full model rebuild.
     const newBlobCount = (settings.get('blobCount') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.blobCount as number);
-    const newParticleBudget = (settings.get('particleBudget') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.particleBudget as number);
-    const newGridColumns = (settings.get('resolution') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.resolution as number);
+    const newParticleBudget = this.previewBudget ?? ((settings.get('particleBudget') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.particleBudget as number));
+    const newGridColumns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.resolution as number));
     if (newBlobCount !== this.lastBlobCount || newParticleBudget !== this.lastParticleBudget || newGridColumns !== this.lastGridColumns) {
       this.lastBlobCount = newBlobCount;
       this.lastParticleBudget = newParticleBudget;
@@ -137,19 +150,33 @@ export class AmoebaLampScene extends SimulationScene {
       this.model = new AmoebaLampModel(this.modelOptions);
     }
 
-    for (const gesture of this.consumeGestures()) this.model.handleGesture(gesture);
+    for (const gesture of this.consumeGestures()) {
+      if (gesture.kind !== 'tap' && gesture.kind !== 'drag') continue;
+      if (this.interactionMode === 'add') {
+        this.model.addAmoeba(gesture.x, gesture.y, gesture.kind === 'tap' ? 4 : 3);
+      } else {
+        this.model.swish(gesture.x, gesture.y, gesture.dx ?? 0, gesture.dy ?? 0);
+      }
+    }
     this.model.update(dt);
     this.stagnationReport = this.model.detectStagnation(dt);
     if (this.stagnationReport.stagnant) this.stabilize();
   }
 
   override render(_alpha: number): void {
-    if (!this.densityRenderer || !this.particleRenderer || !this.model) return;
+    if (!this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? bioPlasmaStyle;
-    this.densityRenderer.clear();
-    this.particleRenderer.clear();
-    this.densityRenderer.renderDensity(this.model.densityField, this.ctx_.width, this.ctx_.height, style);
-    this.particleRenderer.renderParticles(this.model.renderParticles(), style, { alpha: 0.72, sizeScale: 0.82, zIndex: 2 });
+    if (this.densityRenderer) {
+      this.densityRenderer.clear();
+      this.densityRenderer.renderDensity(this.model.densityField, this.ctx_.width, this.ctx_.height, style);
+    } else if (this.fieldFallbackRenderer) {
+      this.fieldFallbackRenderer.clear();
+      this.fieldFallbackRenderer.renderField('density', this.model.densityField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.9, gamma: 0.55, zIndex: 0 });
+    }
+    if (this.particleRenderer) {
+      this.particleRenderer.clear();
+      this.particleRenderer.renderParticles(this.model.renderParticles(), style, { alpha: 0.72, sizeScale: 0.82, zIndex: 2 });
+    }
     const stats = this.model.stats();
     this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.particleCount, fieldVariance: stats.fieldVariance });
   }
@@ -167,17 +194,42 @@ export class AmoebaLampScene extends SimulationScene {
   }
 
   override setQuality(quality: RenderQuality): void {
+    const prev = this.quality;
     super.setQuality(quality);
     this.densityRenderer?.setQuality(quality);
+    this.fieldFallbackRenderer?.setQuality(quality);
     this.particleRenderer?.setQuality(quality);
+    // Dynamic renderer swap — only when scene is running and quality actually changed.
+    if (!this.model || prev === quality) return;
+    const pixi = this.ctx_.systems.pixi.app;
+    if (quality === 'enhanced') {
+      this.fieldFallbackRenderer?.destroy();
+      this.fieldFallbackRenderer = null;
+      this.densityRenderer = new DensityMetaballRenderer(pixi);
+      this.densityRenderer.setQuality(quality);
+      this.particleRenderer = new ParticlePointRenderer(pixi);
+      this.particleRenderer.setQuality(quality);
+    } else {
+      this.densityRenderer?.destroy();
+      this.densityRenderer = null;
+      this.particleRenderer?.destroy();
+      this.particleRenderer = null;
+      this.fieldFallbackRenderer = new FieldPaletteRenderer(pixi);
+      this.fieldFallbackRenderer.setQuality(quality);
+    }
+  }
+
+  override setMode(id: string): void {
+    if (id !== 'add' && id !== 'swish') return;
+    this.interactionMode = id;
   }
 
   getRenderLayers(): SimRenderLayers {
     return {
-      primitive: this.densityRenderer?.container,
-      density: this.densityRenderer?.layer,
+      primitive: this.densityRenderer?.container ?? this.fieldFallbackRenderer?.container,
+      density: this.densityRenderer?.layer ?? this.fieldFallbackRenderer?.getLayer('density'),
       particles: this.particleRenderer?.particles,
-      glow: this.densityRenderer?.layer,
+      glow: this.densityRenderer?.layer ?? this.fieldFallbackRenderer?.getLayer('density'),
     };
   }
 

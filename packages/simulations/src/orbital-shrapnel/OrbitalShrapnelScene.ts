@@ -1,4 +1,5 @@
 import {
+  FieldPaletteRenderer,
   ParticlePointRenderer,
   SimulationScene,
   TrailFeedbackRenderer,
@@ -15,6 +16,13 @@ import { blackHoleLensStyle } from './styles/black-hole-lens.js';
 import { iceRingStyle } from './styles/ice-ring.js';
 import { solarDebrisStyle } from './styles/solar-debris.js';
 
+type OrbitalShrapnelMode = 'add' | 'influence';
+
+interface PointerTrack {
+  x: number;
+  y: number;
+}
+
 export const orbitalShrapnelStyleManifest: SimStyleManifest = {
   defaultStyleId: 'ice-ring',
   capabilities: {
@@ -29,6 +37,8 @@ export class OrbitalShrapnelScene extends SimulationScene {
   readonly name: string = 'OrbitalShrapnel';
   private trailRenderer: TrailFeedbackRenderer | null = null;
   private particleRenderer: ParticlePointRenderer | null = null;
+  /** Basic-quality fallback — renders the trail density field without RTT overhead. */
+  private fieldRenderer: FieldPaletteRenderer | null = null;
   private model: OrbitalShrapnelModel | null = null;
   private modelOptions: OrbitalShrapnelModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
@@ -38,6 +48,8 @@ export class OrbitalShrapnelScene extends SimulationScene {
   private lastPlanetRadius = 0;
   private lastGravity = 0;
   private lastTrailFade = 0;
+  private interactionMode: OrbitalShrapnelMode = 'add';
+  private readonly pointerTracks = new Map<number, PointerTrack>();
 
   constructor(private readonly previewColumns?: number, private readonly previewBudget?: number) {
     super();
@@ -45,10 +57,15 @@ export class OrbitalShrapnelScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    this.trailRenderer = new TrailFeedbackRenderer(ctx.systems.pixi.app);
-    this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
-    this.trailRenderer.setQuality(ctx.quality);
-    this.particleRenderer.setQuality(ctx.quality);
+    if (ctx.quality === 'enhanced') {
+      this.trailRenderer = new TrailFeedbackRenderer(ctx.systems.pixi.app);
+      this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
+      this.trailRenderer.setQuality(ctx.quality);
+      this.particleRenderer.setQuality(ctx.quality);
+    } else {
+      this.fieldRenderer = new FieldPaletteRenderer(ctx.systems.pixi.app);
+      this.fieldRenderer.setQuality(ctx.quality);
+    }
     const settings = ctx.systems.settings;
     const trailColumns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.resolution as number));
     const particleCount = this.previewBudget ?? ((settings.get('particleCount') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.particleCount as number));
@@ -74,8 +91,10 @@ export class OrbitalShrapnelScene extends SimulationScene {
   override onExit(): void {
     this.trailRenderer?.destroy();
     this.particleRenderer?.destroy();
+    this.fieldRenderer?.destroy();
     this.trailRenderer = null;
     this.particleRenderer = null;
+    this.fieldRenderer = null;
     this.model = null;
     this.modelOptions = null;
   }
@@ -83,19 +102,32 @@ export class OrbitalShrapnelScene extends SimulationScene {
   override update(dt: number): void {
     if (!this.model || !this.modelOptions) return;
     this.applyLiveSettings();
-    for (const gesture of this.consumeGestures()) this.model.handleGesture(gesture);
+    for (const gesture of this.consumeGestures()) {
+      if (gesture.kind !== 'tap' && gesture.kind !== 'drag') continue;
+      if (this.interactionMode === 'add') {
+        this.model.addShrapnel(gesture.x, gesture.y, gesture.dx, gesture.dy);
+      } else {
+        this.model.influenceBody(gesture.x, gesture.y, gesture.dx ?? 0, gesture.dy ?? 0, dt);
+      }
+    }
+    if (this.interactionMode === 'influence') this.applyPointerInfluence(dt);
     this.model.update(dt);
     this.stagnationReport = this.model.detectStagnation(dt);
     if (this.stagnationReport.stagnant) this.stabilize();
   }
 
   override render(_alpha: number): void {
-    if (!this.trailRenderer || !this.particleRenderer || !this.model) return;
+    if (!this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? iceRingStyle;
-    this.trailRenderer.clear();
-    this.particleRenderer.clear();
-    this.trailRenderer.renderTrail('orbit', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.88, gamma: 0.36, zIndex: 0 });
-    this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.58, zIndex: 1 });
+    if (this.trailRenderer && this.particleRenderer) {
+      this.trailRenderer.clear();
+      this.particleRenderer.clear();
+      this.trailRenderer.renderTrail('orbit', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.88, gamma: 0.36, zIndex: 0 });
+      this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.58, zIndex: 1 });
+    } else if (this.fieldRenderer) {
+      this.fieldRenderer.clear();
+      this.fieldRenderer.renderField('orbit', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.88, gamma: 0.36, zIndex: 0 });
+    }
     const stats = this.model.stats();
     this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.particleCount, fieldVariance: stats.trailVariance });
   }
@@ -115,9 +147,35 @@ export class OrbitalShrapnelScene extends SimulationScene {
   }
 
   override setQuality(quality: RenderQuality): void {
+    const prev = this.quality;
     super.setQuality(quality);
     this.trailRenderer?.setQuality(quality);
     this.particleRenderer?.setQuality(quality);
+    this.fieldRenderer?.setQuality(quality);
+    // Dynamic renderer swap — only when scene is running and quality actually changed.
+    if (!this.model || prev === quality) return;
+    const pixi = this.ctx_.systems.pixi.app;
+    if (quality === 'enhanced') {
+      this.fieldRenderer?.destroy();
+      this.fieldRenderer = null;
+      this.trailRenderer = new TrailFeedbackRenderer(pixi);
+      this.trailRenderer.setQuality(quality);
+      this.particleRenderer = new ParticlePointRenderer(pixi);
+      this.particleRenderer.setQuality(quality);
+    } else {
+      this.trailRenderer?.destroy();
+      this.trailRenderer = null;
+      this.particleRenderer?.destroy();
+      this.particleRenderer = null;
+      this.fieldRenderer = new FieldPaletteRenderer(pixi);
+      this.fieldRenderer.setQuality(quality);
+    }
+  }
+
+  override setMode(id: string): void {
+    if (id !== 'add' && id !== 'influence') return;
+    this.interactionMode = id;
+    this.pointerTracks.clear();
   }
 
 
@@ -163,11 +221,25 @@ export class OrbitalShrapnelScene extends SimulationScene {
     this.lastTrailFade = this.modelOptions.trailFade ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailFade as number);
   }
 
+  private applyPointerInfluence(dt: number): void {
+    if (!this.model) return;
+    const activeIds = new Set<number>();
+    for (const pointer of this.input_.snapshot.pointers.values()) {
+      activeIds.add(pointer.id);
+      const previous = this.pointerTracks.get(pointer.id);
+      const vx = previous ? (pointer.x - previous.x) / Math.max(0.016, dt) : 0;
+      const vy = previous ? (pointer.y - previous.y) / Math.max(0.016, dt) : 0;
+      this.model.influenceBody(pointer.x, pointer.y, vx, vy, dt);
+      this.pointerTracks.set(pointer.id, { x: pointer.x, y: pointer.y });
+    }
+    for (const id of Array.from(this.pointerTracks.keys())) if (!activeIds.has(id)) this.pointerTracks.delete(id);
+  }
+
   getRenderLayers(): SimRenderLayers {
     return {
-      trails: this.trailRenderer?.getLayer('orbit'),
+      trails: this.trailRenderer?.getLayer('orbit') ?? this.fieldRenderer?.getLayer('orbit'),
       particles: this.particleRenderer?.particles,
-      glow: this.trailRenderer?.getLayer('orbit'),
+      glow: this.trailRenderer?.getLayer('orbit') ?? this.fieldRenderer?.getLayer('orbit'),
     };
   }
 

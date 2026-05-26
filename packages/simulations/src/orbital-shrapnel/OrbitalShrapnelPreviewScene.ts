@@ -5,7 +5,7 @@ export class OrbitalShrapnelPreviewScene extends OrbitalShrapnelScene {
   override readonly name = 'OrbitalShrapnelPreview';
 
   constructor() {
-    super(36, 160);
+    super(24, 96);
   }
 
   override onEnter(ctx: GameContext, input: Input): void {

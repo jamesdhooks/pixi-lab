@@ -9,7 +9,7 @@ export const plasmaBranchDefinition: SimulationDefinition = {
   kind: 'simulation',
   name: 'Plasma Branch Terrarium',
   short: 'Branching ion arcs crawl across charged fields and leave glowing scar trails.',
-  long: 'A deterministic charged-field terrarium where taps inject charge, holds grow plasma knots, and swipes discharge branching arcs through a bounded scar trail field rendered with shared simulation layers.',
+  long: 'A deterministic charged-field terrarium where tap and drag input continuously injects plasma branches through a bounded scar trail field rendered with shared simulation layers.',
   tags: ['simulation', 'plasma', 'field', 'trails'],
   icon: '⚡',
   paletteHint: 'electric',
@@ -33,10 +33,8 @@ export const plasmaBranchDefinition: SimulationDefinition = {
   configDefaults: PLASMA_BRANCH_DEFAULTS,
   styleManifest: plasmaBranchStyleManifest,
   gestureMap: {
-    tap: 'inject charge and seed a new plasma branch',
-    drag: 'paint an ionized path through the charge field',
-    hold: 'build a bright temporary charge bloom',
-    fast_swipe: 'discharge a directional branching arc',
+    tap: 'add plasma at the pointer',
+    drag: 'continuously add plasma branches',
   },
   directorEvents: [
     { id: 'charge-buildup', label: 'Ambient Charge Build-up', minIntervalMs: 5000, maxIntervalMs: 12000, intensity: 0.38 },
@@ -53,8 +51,7 @@ export const plasmaBranchDefinition: SimulationDefinition = {
   previewFactory: () => new PlasmaBranchPreviewScene(),
   demoAiFactory: () => new PlasmaBranchDemoAI(),
   tutorialPages: [
-    { icon: '⚡', title: 'Seed Charge', body: 'Tap to inject charge and start new branching plasma growth.' },
-    { icon: '🌩️', title: 'Build a Bloom', body: 'Hold to create a bright ionized region that branches chase.' },
-    { icon: '🧬', title: 'Discharge Paths', body: 'Fast swipes fire directional arcs while scar trails slowly fade.' },
+    { icon: '⚡', title: 'Add Plasma', body: 'Tap or drag to inject branching plasma into the charged field.' },
+    { icon: '🧬', title: 'Branch Growth', body: 'Plasma arcs chase charge and leave fading scar trails.' },
   ],
 };

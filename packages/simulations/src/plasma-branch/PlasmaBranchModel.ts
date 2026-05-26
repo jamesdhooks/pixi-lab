@@ -51,8 +51,8 @@ export class PlasmaBranchModel {
     this.branches.length = 0;
     this.chargeField.fill(0);
     this.scarField.fill(0);
-    for (let i = 0; i < 4; i++) this.injectCharge(this.rng.range(0.15, 0.85) * this.options.width, this.rng.range(0.18, 0.82) * this.options.height, this.rng.range(0.65, 1.05));
-    this.spawnBranch(this.options.width * 0.5, this.options.height * 0.5, this.rng.range(0, Math.PI * 2), this.branchEnergy() * 0.9);
+    for (let i = 0; i < 6; i++) this.injectCharge(this.rng.range(0.15, 0.85) * this.options.width, this.rng.range(0.18, 0.82) * this.options.height, this.rng.range(0.72, 1.15));
+    for (let i = 0; i < 3; i++) this.spawnBranch(this.options.width * 0.5, this.options.height * 0.5, this.rng.range(0, Math.PI * 2), this.branchEnergy() * 0.9);
   }
 
   update(dt: number): void {
@@ -78,30 +78,25 @@ export class PlasmaBranchModel {
       branch.energy *= Math.max(0, 1 - 0.34 * dt);
       this.keepInBounds(branch);
       this.deposit(branch.x, branch.y, branch.energy);
-      if (branch.energy > 0.22 && this.branches.length < this.options.maxBranches && this.rng.next() < dt * 1.35) {
+      if (branch.energy > 0.22 && this.branches.length < this.options.maxBranches && this.rng.next() < dt * 1.7) {
         this.spawnBranch(branch.x, branch.y, Math.atan2(branch.vy, branch.vx) + this.rng.range(-0.95, 0.95), branch.energy * this.rng.range(0.42, 0.72));
         branch.energy *= 0.78;
       }
     }
-    for (let i = this.branches.length - 1; i >= 0; i--) if (this.branches[i].energy < 0.04 || this.branches[i].age > 4.8) this.branches.splice(i, 1);
+    for (let i = this.branches.length - 1; i >= 0; i--) if (this.branches[i].energy < 0.04 || this.branches[i].age > 6.2) this.branches.splice(i, 1);
   }
 
   handleGesture(event: GestureEvent): void {
-    if (event.kind === 'tap') {
-      this.injectCharge(event.x, event.y, 1.1);
-      this.spawnBranch(event.x, event.y, this.rng.range(0, Math.PI * 2), this.branchEnergy());
-    }
-    if (event.kind === 'hold') {
-      this.injectCharge(event.x, event.y, 1.6);
-      for (let i = 0; i < 2; i++) this.spawnBranch(event.x, event.y, this.rng.range(0, Math.PI * 2), this.branchEnergy() * 0.8);
-    }
-    if (event.kind === 'drag') this.injectLine(event.x - (event.dx ?? 0), event.y - (event.dy ?? 0), event.x, event.y, 0.55);
-    if (event.kind === 'fast_swipe') {
-      const dx = event.dx ?? 120;
-      const dy = event.dy ?? 0;
-      this.injectLine(event.x - dx, event.y - dy, event.x + dx * 0.25, event.y + dy * 0.25, 0.92);
-      this.spawnBranch(event.x, event.y, Math.atan2(dy, dx), this.branchEnergy() * 1.3);
-    }
+    if (event.kind === 'tap') this.addPlasma(event.x, event.y);
+    if (event.kind === 'drag') this.addPlasma(event.x, event.y, event.dx ?? 0, event.dy ?? 0);
+    while (this.branches.length > this.options.maxBranches) this.branches.shift();
+  }
+
+  addPlasma(x: number, y: number, dx = 0, dy = 0): void {
+    if (dx !== 0 || dy !== 0) this.injectLine(x - dx, y - dy, x, y, 0.72);
+    else this.injectCharge(x, y, 1.1);
+    const angle = dx !== 0 || dy !== 0 ? Math.atan2(dy, dx) : this.rng.range(0, Math.PI * 2);
+    this.spawnBranch(x, y, angle, this.branchEnergy() * 1.05);
     while (this.branches.length > this.options.maxBranches) this.branches.shift();
   }
 

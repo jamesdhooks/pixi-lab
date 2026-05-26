@@ -5,7 +5,7 @@ export class AmoebaLampPreviewScene extends AmoebaLampScene {
   override readonly name = 'AmoebaLampPreview';
 
   constructor() {
-    super(32, 28);
+    super(24, 20);
   }
 
   override onEnter(ctx: GameContext, input: Input): void {

@@ -8,8 +8,8 @@ export const antSignalDefinition: SimulationDefinition = {
   id: 'ant-signal',
   kind: 'simulation',
   name: 'Ant Signal Civilization',
-  short: 'A living swarm lays neon pheromone roads between nest and food signals.',
-  long: 'Deterministic ant agents route between a central nest and shifting food sources, reinforcing bounded pheromone trail fields that bloom into emergent colony highways through the shared simulation renderer.',
+  short: 'A living swarm lays neon pheromone roads between nest and food sources.',
+  long: 'Deterministic ant agents route between a central nest and food sources, reinforcing bounded pheromone trail fields that bloom into emergent colony highways through the shared simulation renderer.',
   tags: ['simulation', 'swarm', 'trails', 'emergent'],
   icon: '🐜',
   paletteHint: 'neon',
@@ -33,10 +33,9 @@ export const antSignalDefinition: SimulationDefinition = {
   configDefaults: ANT_SIGNAL_DEFAULTS,
   styleManifest: antSignalStyleManifest,
   gestureMap: {
-    tap: 'drop a new food source for the colony to discover',
-    drag: 'paint a pheromone guide road through the field',
-    hold: 'seed a dense food/signal bloom',
-    fast_swipe: 'wipe trails to redirect the colony network',
+    tap: 'drop a food source for the colony',
+    drag: 'continuously add food sources',
+    fast_swipe: 'clear nearby pheromone trails',
   },
   directorEvents: [
     { id: 'food-bloom', label: 'Food Bloom', minIntervalMs: 5000, maxIntervalMs: 12000, intensity: 0.34 },
@@ -53,8 +52,7 @@ export const antSignalDefinition: SimulationDefinition = {
   previewFactory: () => new AntSignalPreviewScene(),
   demoAiFactory: () => new AntSignalDemoAI(),
   tutorialPages: [
-    { icon: '🍯', title: 'Feed the Colony', body: 'Tap to add food signals that ants discover and carry back toward the nest.' },
-    { icon: '🛣️', title: 'Paint Roads', body: 'Drag to lay pheromone trails that bias the routing field.' },
-    { icon: '🧹', title: 'Redirect Traffic', body: 'Fast swipes wipe old roads and force the swarm to reorganize.' },
+    { icon: '🍯', title: 'Feed the Colony', body: 'Tap or drag to add food sources for ants to discover.' },
+    { icon: '🧹', title: 'Clear Trails', body: 'Fast swipes clear old pheromone paths so the swarm can reroute.' },
   ],
 };
