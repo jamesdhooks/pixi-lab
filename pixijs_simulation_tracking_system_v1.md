@@ -253,7 +253,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 12 | Cosmic Ink Ocean | IN_PROGRESS | vector fields | Model/scene/preview/demo AI implemented with deterministic vector turbulence, bounded ink scalar field, live flow controls, shared field/particle rendering, and vortex/shear gestures; full automated gate pending. |
 | 13 | Turing Skin | IN_PROGRESS | scalar fields | Model/scene/preview/demo AI implemented with deterministic Gray-Scott reaction diffusion, live chemistry controls, shared field rendering, and morphogen paint gestures; full automated gate pending. |
 | 14 | Oil-Water Universe | IN_PROGRESS | phase separation | Model/scene/preview/demo AI implemented with deterministic bounded phase separation, live separation/tension/viscosity/stir controls, shared density metaball + scalar edge rendering, and droplet/shear gestures; full automated gate pending. |
-| 15 | Prism Pool | NOT_STARTED | fake normals | shader showcase |
+| 15 | Prism Pool | IN_PROGRESS | fake normals | Model/scene/preview/demo AI implemented with deterministic bounded ripple-height fields, fake-normal/caustic projections, live wave/refraction controls, shared field rendering, and ripple/rake gestures; full automated gate pending. |
 | 16 | Neon River Delta | NOT_STARTED | height field | erosion system |
 | 17 | Alien Vascular Tree | NOT_STARTED | line mesh | branching system |
 | 18 | Living Voronoi Tissue | NOT_STARTED | voronoi field | territory simulation |
@@ -2521,7 +2521,187 @@ Deferred before marking COMPLETE:
 
 ---
 
-# 18. Agent Update Rules
+# 18. Prism Pool
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-26
+```
+
+---
+
+## Priority
+
+SHOWCASE
+
+Reason:
+- validates fake-normal water rendering without a simulation-specific shader stack
+- provides a caustic/refraction showcase using reusable field renderers
+- exercises live numeric settings across resolution, wave speed, refraction, caustics, and damping
+
+---
+
+## Dependencies
+
+- scalar height fields
+- field palette renderer
+- palette/bloom/distortion/normal-lighting pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded ripple-height field with velocity integration
+- fake-normal and caustic field projections derived from height gradients/curvature
+- tap, drag, hold, and fast-swipe gesture mapping for ripples, troughs, and caustic rakes
+- live settings polling for resolution, waveSpeed, refractionStrength, causticIntensity, and damping
+- stagnation recovery that injects seeded ripples when the surface flattens
+
+---
+
+## Required Render Layers
+
+```txt
+field
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+paletteMap
+edgeGlow
+bloom
+distortion
+normalLighting
+chromaticAberration
+contourBands
+```
+
+---
+
+## Required Styles
+
+### Crystal Caustics
+Clear turquoise water with bright prism caustics and glassy fake-normal highlights.
+
+### Rainbow Tiles
+Spectral tile-pool bands with saturated chromatic caustics.
+
+### Moonlit Glass
+Indigo low-light pool water with silver lunar ripples.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | drop a circular refractive ripple |
+| drag | rake caustic bands through the pool |
+| hold | pull a cool trough into the surface |
+| fast swipe | send a high-energy prism wave across the pool |
+
+---
+
+## Director Mode Events
+
+- caustic bloom
+- prism rake
+- moon pulse
+
+---
+
+## Stagnation Recovery
+
+If:
+- ripple energy collapses
+- height variance becomes too low
+- caustic variance fades out
+
+Then:
+- inject several seeded ripples
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+height/caustic fields:
+  32x18 to 128x72 typical, capped at 512 setting max
+
+rendering:
+  shared low-resolution field textures, no per-cell Pixi objects
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses `FieldPaletteRenderer` for height, caustic, and enhanced fake-normal overlays
+- model updates remain O(field cells)
+- structural resolution changes rebuild the deterministic model; numeric tuning mutates model options live
+
+Do NOT:
+- add a simulation-specific water shader before reusable compositor support exists
+- create one Pixi object per cell
+- allow unbounded ripple buffers
+
+---
+
+## Validation Checklist
+
+- [x] ripple fields initialize deterministically from seed
+- [x] update advances ripple state and keeps values bounded
+- [x] tap/drag/hold/swipe gestures alter caustic/ripple state
+- [x] field budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [ ] full automated gate passes in current environment
+
+---
+
+## Known Risks
+
+- first-playable fake normals are CPU-projected scalar overlays, not a true reusable GPU normal-lighting compositor
+- enhanced mode layers multiple shared field renderers and may need tuning after manual gallery validation
+- manual demo visual validation and Pi 5 FPS pass are still required before COMPLETE
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/prism-pool/PrismPoolModel.ts`
+- `packages/simulations/src/prism-pool/PrismPoolScene.ts`
+- `packages/simulations/src/prism-pool/PrismPoolPreviewScene.ts`
+- `packages/simulations/src/prism-pool/PrismPoolDemoAI.ts`
+- `packages/simulations/src/prism-pool/prism-pool.config.ts`
+- `packages/simulations/src/prism-pool/prism-pool.definition.ts`
+- `packages/simulations/src/prism-pool/styles/*.ts`
+- `packages/simulations/src/prism-pool/__tests__/PrismPoolModel.test.ts`
+
+Implementation notes:
+- Demo AI cycles styles plus every numeric setting so settings UI and scene live polling are exercised.
+- Preview scene uses reduced fixed resolution.
+- Registry exports include `prismPoolDefinition`, scene, preview, and model types.
+
+Deferred before marking COMPLETE:
+- reusable GPU fake-normal/refraction compositor beyond current field overlays
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 19. Agent Update Rules
 
 When an agent completes work:
 
@@ -2557,7 +2737,7 @@ The agent must:
 
 ---
 
-# 19. Recommended Git Workflow
+# 20. Recommended Git Workflow
 
 Recommended commit structure:
 
@@ -2573,7 +2753,7 @@ Avoid giant multi-simulation commits.
 
 ---
 
-# 20. Final Guidance for Agents
+# 21. Final Guidance for Agents
 
 The project succeeds if:
 - simulations feel alive

@@ -12,6 +12,7 @@ import { myceliumPrismDefinition } from './mycelium-prism/mycelium-prism.definit
 import { oilWaterUniverseDefinition } from './oil-water-universe/oil-water-universe.definition.js';
 import { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
 import { plasmaBranchDefinition } from './plasma-branch/plasma-branch.definition.js';
+import { prismPoolDefinition } from './prism-pool/prism-pool.definition.js';
 import { timeEchoDefinition } from './time-echo/time-echo.definition.js';
 import { turingSkinDefinition } from './turing-skin/turing-skin.definition.js';
 
@@ -80,6 +81,11 @@ export { PlasmaBranchScene, plasmaBranchStyleManifest } from './plasma-branch/Pl
 export { PlasmaBranchPreviewScene } from './plasma-branch/PlasmaBranchPreviewScene.js';
 export { PlasmaBranchModel, type PlasmaBranchModelOptions, type PlasmaBranchStats } from './plasma-branch/PlasmaBranchModel.js';
 
+export { prismPoolDefinition } from './prism-pool/prism-pool.definition.js';
+export { PrismPoolScene, prismPoolStyleManifest } from './prism-pool/PrismPoolScene.js';
+export { PrismPoolPreviewScene } from './prism-pool/PrismPoolPreviewScene.js';
+export { PrismPoolModel, type PrismPoolModelOptions, type PrismPoolStats } from './prism-pool/PrismPoolModel.js';
+
 export { timeEchoDefinition } from './time-echo/time-echo.definition.js';
 export { TimeEchoScene, timeEchoStyleManifest } from './time-echo/TimeEchoScene.js';
 export { TimeEchoPreviewScene } from './time-echo/TimeEchoPreviewScene.js';
@@ -106,6 +112,7 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   cosmicInkOceanDefinition,
   turingSkinDefinition,
   oilWaterUniverseDefinition,
+  prismPoolDefinition,
 ] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
