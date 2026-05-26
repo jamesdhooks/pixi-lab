@@ -1,10 +1,10 @@
 import type { SettingsField } from '@hooksjam/pixi-lab-core';
 
 export const MYCELIUM_LATTICE_SETTINGS_FIELDS: SettingsField[] = [
-  { key: 'resolution',         label: 'Resolution',              type: 'number', min: 32,   max: 512,  step: 32,   default: 96   },
-  { key: 'growthProbability',  label: 'Growth Probability',      type: 'number', min: 0.05, max: 1.00, step: 0.05, default: 0.52 },
-  { key: 'branchChance',       label: 'Branch Chance',           type: 'number', min: 0.00, max: 0.50, step: 0.02, default: 0.10 },
-  { key: 'generationHueStep',  label: 'Generation Palette Step', type: 'number', min: 1,    max: 40,   step: 1,    default: 13   },
+  { key: 'resolution',         label: 'Resolution',              type: 'number', min: 32,   max: 1024,  step: 32,   default: 96   },
+  { key: 'growthProbability',  label: 'Growth Probability',      type: 'number', min: 0.05, max: 1.00, step: 0.05, default: 0.2 },
+  { key: 'branchChance',       label: 'Branch Chance',           type: 'number', min: 0.00, max: 1.00, step: 0.02, default: 0.10 },
+  { key: 'generationHueStep',  label: 'Generation Palette Step', type: 'number', min: 1,    max: 10,   step: 1,    default: 3   },
 ];
 
 export const MYCELIUM_LATTICE_DEFAULTS: Record<string, unknown> = {

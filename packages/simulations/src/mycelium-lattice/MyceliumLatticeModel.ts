@@ -100,15 +100,17 @@ export class MyceliumLatticeModel {
     this.projectGrid();
   }
 
-  handleGesture(event: GestureEvent): void {
-    this.seedColonyAt(event.x, event.y);
+  handleGesture(event: GestureEvent, strainId?: number): void {
+    this.seedColonyAt(event.x, event.y, strainId);
   }
 
-  seedColonyAt(x: number, y: number): void {
+  seedColonyAt(x: number, y: number, strainId?: number): void {
     const col = this.toCol(x);
     const row = this.toRow(y);
-    const radius = Math.max(2, Math.floor(this.options.columns / 22));
-    const s = this.rng.int(0, this.options.strainCount - 1);
+    // Keep brush ~40 px on screen regardless of grid density.
+    const sidePx = 2 * this.options.width / Math.max(1, this.options.columns);
+    const radius = Math.max(1, Math.round(40 / sidePx));
+    const s = strainId ?? this.rng.int(0, this.options.strainCount - 1);
     for (let i = 0; i < 8; i++) {
       const dc = this.rng.int(-radius, radius);
       const dr = this.rng.int(-radius, radius);
