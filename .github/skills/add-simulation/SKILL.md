@@ -4,6 +4,19 @@ Use this skill when creating a new simulation in `packages/simulations`.
 
 Simulations are `LabExperience` entries with `kind: 'simulation'`. They use the shared engine systems from `@hooksjam/pixi-lab-core`: `SimulationScene`, style manifests, shared gestures, director mode, stagnation recovery, seeded RNG, performance quality, and render infrastructure.
 
+Before scaffolding, choose the simulation's primary renderer family:
+
+| Primitive | Renderer |
+|---|---|
+| scalar/wave/heat field | `FieldPaletteRenderer` |
+| metaballs/blobs/density membranes | `DensityMetaballRenderer` |
+| pheromones/echoes/scars/orbital dust | `TrailFeedbackRenderer` |
+| triangular grids/crystals/fungal lattices | `MeshLatticeRenderer` |
+| plasma branches/discharges/streaks | `ArcLineRenderer` |
+| agents/debris/sparks/nuclei | `ParticlePointRenderer` |
+
+Do not scaffold new simulations around `SimulationCanvasLayer.renderField()` unless the concept is explicitly a field visualization. `resolution` controls model/data resolution; visual smoothness should come from the chosen renderer.
+
 ---
 
 ## Step 1 — Choose Name and IDs
@@ -41,6 +54,8 @@ Create `<id>.config.ts` with `SettingsField[]` and defaults. Include controls fo
 - style id
 - debug overlay toggle
 - important live tuning values from the master plan, such as glow strength, thresholds, bloom, palette speed, field scale, or particle count
+
+If the simulation has a grid, field, or trail dimension, expose it with `key: 'resolution'`, `label: 'Resolution'`, `type: 'number'`, `min: 32`, `max: 512`, and `step: 32`. Do not use `gridColumns`, `fieldColumns`, `trailColumns`, or `fieldResolution` as settings keys.
 
 ---
 
@@ -93,9 +108,9 @@ if (newSurfaceTension !== this.lastSurfaceTension) {
   this.modelOptions = { ...this.modelOptions, surfaceTension: newSurfaceTension };
 }
 
-// Structural example (gridColumns) — rebuild model
-const newColumns = (settings.get('gridColumns') as number | undefined)
-  ?? (MY_DEFAULTS.gridColumns as number);
+// Structural example (resolution) — rebuild model
+const newColumns = (settings.get('resolution') as number | undefined)
+  ?? (MY_DEFAULTS.resolution as number);
 if (newColumns !== this.lastGridColumns) {
   this.lastGridColumns = newColumns;
   this.modelOptions = {

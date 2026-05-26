@@ -40,6 +40,7 @@ packages/simulations/src/
 12. **Configuration UI rule** — simulation-specific configurators (style picker, parameter sliders) must be horizontally centered on screen. Only utility controls (quality selector, reset, settings, hide-UI, demo) belong in the top-right corner.
 13. **Live settings polling rule** — `onEnter()` reads settings once at startup. To make sliders reactive, the scene **must** poll every `SettingsField` in `update()` each tick, compare against a cached `last*` field, and call a model setter (or rebuild the model) when the value changes. Never assume settings values are stable after `onEnter()`. See `HarmonicSandScene.update()` as the canonical example.
 14. **Resolution setting rule** — every simulation that has a grid, field, or trail column dimension **must** expose it as a `SettingsField` with `key: 'resolution'`, `label: 'Resolution'`, `type: 'number'`, `min: 32`, `max: 512`, `step: 32`. No other key names (`fieldColumns`, `gridColumns`, `trailColumns`, `fieldResolution`, etc.) are permitted. The internal model option that receives this value may keep its own field name (e.g. `columns`, `trailColumns`) — only the *settings key* must be `'resolution'`. DemoAI overhauls must call `applyNumericSetting('resolution', value)` accordingly.
+15. **Renderer family rule** — choose the renderer that matches the simulation primitive before writing scene code. Use `FieldPaletteRenderer` only for intentional scalar/wave/heat-field visualization; use `DensityMetaballRenderer` for blobs/metaballs; `TrailFeedbackRenderer` for pheromones, echoes, scars, orbital dust, and other persistent trails; `MeshLatticeRenderer` for triangular grids/crystals/fungal lattices; `ArcLineRenderer` for plasma branches, discharges, and streaks; and `ParticlePointRenderer` for agent/debris overlays. Do not default to `SimulationCanvasLayer.renderField()` as a lowest-common-denominator renderer.
 
 ## Do Not
 
@@ -51,6 +52,7 @@ packages/simulations/src/
 - Do not add simulation-specific global state.
 - Do not use raw DOM APIs for debug visualization.
 - Do not import `pixi.js` or `planck` directly in simulation content.
+- Do not use `resolution` as a visual smoothness escape hatch; renderer quality should come from the appropriate core renderer family.
 
 ## Validation
 

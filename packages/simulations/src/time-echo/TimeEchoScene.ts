@@ -1,6 +1,7 @@
 import {
-  SimulationCanvasLayer,
+  ParticlePointRenderer,
   SimulationScene,
+  TrailFeedbackRenderer,
   type GameContext,
   type Input,
   type RenderQuality,
@@ -26,7 +27,8 @@ export const timeEchoStyleManifest: SimStyleManifest = {
 
 export class TimeEchoScene extends SimulationScene {
   readonly name: string = 'TimeEcho';
-  private layer: SimulationCanvasLayer | null = null;
+  private trailRenderer: TrailFeedbackRenderer | null = null;
+  private particleRenderer: ParticlePointRenderer | null = null;
   private model: TimeEchoModel | null = null;
   private modelOptions: TimeEchoModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
@@ -43,8 +45,10 @@ export class TimeEchoScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
-    this.layer.setQuality(ctx.quality);
+    this.trailRenderer = new TrailFeedbackRenderer(ctx.systems.pixi.app);
+    this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
+    this.trailRenderer.setQuality(ctx.quality);
+    this.particleRenderer.setQuality(ctx.quality);
     const settings = ctx.systems.settings;
     const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (TIME_ECHO_DEFAULTS.resolution as number));
     const historyLength = this.previewHistory ?? ((settings.get('historyLength') as number | undefined) ?? (TIME_ECHO_DEFAULTS.historyLength as number));
@@ -69,8 +73,10 @@ export class TimeEchoScene extends SimulationScene {
   }
 
   override onExit(): void {
-    this.layer?.destroy();
-    this.layer = null;
+    this.trailRenderer?.destroy();
+    this.particleRenderer?.destroy();
+    this.trailRenderer = null;
+    this.particleRenderer = null;
     this.model = null;
     this.modelOptions = null;
   }
@@ -85,11 +91,12 @@ export class TimeEchoScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (!this.layer || !this.model) return;
+    if (!this.trailRenderer || !this.particleRenderer || !this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? ghostLoopStyle;
-    this.layer.clear();
-    this.layer.renderField(this.model.trailField, this.ctx_.width, this.ctx_.height, style);
-    this.layer.renderParticles(this.model.renderParticles(), style);
+    this.trailRenderer.clear();
+    this.particleRenderer.clear();
+    this.trailRenderer.renderTrail('echo', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.92, gamma: 0.34, zIndex: 0 });
+    this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.7, zIndex: 1 });
     const stats = this.model.stats();
     this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.particleCount, fieldVariance: stats.trailVariance });
   }
@@ -110,7 +117,8 @@ export class TimeEchoScene extends SimulationScene {
 
   override setQuality(quality: RenderQuality): void {
     super.setQuality(quality);
-    this.layer?.setQuality(quality);
+    this.trailRenderer?.setQuality(quality);
+    this.particleRenderer?.setQuality(quality);
   }
 
   private applyLiveSettings(): void {
@@ -169,8 +177,11 @@ export class TimeEchoScene extends SimulationScene {
   }
 
   getRenderLayers(): SimRenderLayers {
-    const layers = this.layer?.getRenderLayers() ?? {};
-    return { ...layers, trails: layers.field, glow: layers.particles };
+    return {
+      trails: this.trailRenderer?.getLayer('echo'),
+      particles: this.particleRenderer?.particles,
+      glow: this.trailRenderer?.getLayer('echo'),
+    };
   }
 
   getStyleManifest(): SimStyleManifest {

@@ -23,7 +23,8 @@
 4. **`LabExperience` lives in `packages/core`** (`LabExperience.ts`) — this is the shared contract between games, simulations, and toys
 5. **`GameLauncher` in packages/react is app-agnostic** — no routing, no fetch calls. Host apps inject `onQuit`, `onSubmitScore`, `topScores` props
 6. **Each game is a self-contained folder** under `packages/games/src/<game-name>/`
-7. **Conventional Commits enforced.** Format: `type(scope): subject`
+7. **Simulation rendering must use the appropriate core renderer family** — do not default to a generic field painter. Field sims use `FieldPaletteRenderer`; blobs use `DensityMetaballRenderer`; trails use `TrailFeedbackRenderer`; triangular/crystal/fungal grids use `MeshLatticeRenderer`; plasma/discharge/streak systems use `ArcLineRenderer`; agents/debris use `ParticlePointRenderer`.
+8. **Conventional Commits enforced.** Format: `type(scope): subject`
   - Valid scopes: `core`, `react`, `games`, `sims`, `demo`, `ci`, `deps`, `config`
 
 ## Architecture
@@ -35,7 +36,7 @@ packages/core/src/
   GameApp.ts          — main runtime orchestrator
   Scene.ts            — base scene class
   physics/            — planck wrappers
-  render/             — PixiJS wrappers
+  render/             — PixiJS wrappers and shared renderer families
   ai/                 — AI controller abstractions
   scoring/            — HighScoreProvider, NameSuggestions
   screensaver/        — ScreensaverManager

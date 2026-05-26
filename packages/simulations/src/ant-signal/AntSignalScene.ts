@@ -1,6 +1,8 @@
 import {
-  SimulationCanvasLayer,
+  FieldPaletteRenderer,
+  ParticlePointRenderer,
   SimulationScene,
+  TrailFeedbackRenderer,
   type GameContext,
   type Input,
   type RenderQuality,
@@ -26,7 +28,9 @@ export const antSignalStyleManifest: SimStyleManifest = {
 
 export class AntSignalScene extends SimulationScene {
   readonly name: string = 'AntSignal';
-  private layer: SimulationCanvasLayer | null = null;
+  private signalRenderer: FieldPaletteRenderer | null = null;
+  private trailRenderer: TrailFeedbackRenderer | null = null;
+  private particleRenderer: ParticlePointRenderer | null = null;
   private model: AntSignalModel | null = null;
   private modelOptions: AntSignalModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
@@ -42,8 +46,12 @@ export class AntSignalScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
-    this.layer.setQuality(ctx.quality);
+    this.signalRenderer = new FieldPaletteRenderer(ctx.systems.pixi.app);
+    this.trailRenderer = new TrailFeedbackRenderer(ctx.systems.pixi.app);
+    this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
+    this.signalRenderer.setQuality(ctx.quality);
+    this.trailRenderer.setQuality(ctx.quality);
+    this.particleRenderer.setQuality(ctx.quality);
     const settings = ctx.systems.settings;
     const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (ANT_SIGNAL_DEFAULTS.resolution as number));
     this.modelOptions = {
@@ -64,8 +72,12 @@ export class AntSignalScene extends SimulationScene {
   }
 
   override onExit(): void {
-    this.layer?.destroy();
-    this.layer = null;
+    this.signalRenderer?.destroy();
+    this.trailRenderer?.destroy();
+    this.particleRenderer?.destroy();
+    this.signalRenderer = null;
+    this.trailRenderer = null;
+    this.particleRenderer = null;
     this.model = null;
     this.modelOptions = null;
   }
@@ -80,12 +92,15 @@ export class AntSignalScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (!this.layer || !this.model) return;
+    if (!this.signalRenderer || !this.trailRenderer || !this.particleRenderer || !this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? neonColonyStyle;
-    this.layer.clear();
-    this.layer.renderField(this.model.foodSignalField, this.ctx_.width, this.ctx_.height, style);
-    this.layer.renderField(this.model.pheromoneField, this.ctx_.width, this.ctx_.height, style);
-    this.layer.renderParticles(this.model.renderParticles(), style);
+    this.signalRenderer.clear();
+    this.trailRenderer.clear();
+    this.particleRenderer.clear();
+    this.signalRenderer.renderField('food', this.model.foodSignalField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.24, gamma: 0.8, maxAlpha: 100, zIndex: 0 });
+    this.signalRenderer.renderField('nest', this.model.nestSignalField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.16, gamma: 0.9, maxAlpha: 80, zIndex: 1 });
+    this.trailRenderer.renderTrail('pheromone', this.model.pheromoneField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.9, intensity: 1, zIndex: 2 });
+    this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.62, zIndex: 3 });
     const stats = this.model.stats();
     this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.antCount, fieldVariance: stats.trailVariance });
   }
@@ -106,7 +121,9 @@ export class AntSignalScene extends SimulationScene {
 
   override setQuality(quality: RenderQuality): void {
     super.setQuality(quality);
-    this.layer?.setQuality(quality);
+    this.signalRenderer?.setQuality(quality);
+    this.trailRenderer?.setQuality(quality);
+    this.particleRenderer?.setQuality(quality);
   }
 
 
@@ -149,8 +166,12 @@ export class AntSignalScene extends SimulationScene {
   }
 
   getRenderLayers(): SimRenderLayers {
-    const layers = this.layer?.getRenderLayers() ?? {};
-    return { ...layers, trails: layers.field, glow: layers.particles };
+    return {
+      field: this.signalRenderer?.getLayer('food'),
+      trails: this.trailRenderer?.getLayer('pheromone'),
+      particles: this.particleRenderer?.particles,
+      glow: this.trailRenderer?.getLayer('pheromone'),
+    };
   }
 
   getStyleManifest(): SimStyleManifest {

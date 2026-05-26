@@ -29,7 +29,8 @@
 4. `LabExperience` (in `core/src/LabExperience.ts`) is the shared contract between games, simulations, and toys
 5. `GameLauncher` in react is app-agnostic — no routing, no fetch calls
 6. Each game is a self-contained folder under `packages/games/src/<game-name>/`
-7. Conventional Commits: `type(scope): subject` — scopes: `core` `react` `games` `sims` `demo` `ci` `deps` `config`
+7. Simulation rendering must use the appropriate core renderer family, not the lowest-common-denominator field painter. Use `FieldPaletteRenderer` for true scalar/wave fields, `DensityMetaballRenderer` for blobs, `TrailFeedbackRenderer` for persistent trails, `MeshLatticeRenderer` for triangular/crystal/fungal grids, `ArcLineRenderer` for plasma/discharge/streaks, and `ParticlePointRenderer` for agents/debris.
+8. Conventional Commits: `type(scope): subject` — scopes: `core` `react` `games` `sims` `demo` `ci` `deps` `config`
 
 ## Adding a New Experience
 

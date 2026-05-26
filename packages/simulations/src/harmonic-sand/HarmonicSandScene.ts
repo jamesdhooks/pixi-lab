@@ -1,5 +1,6 @@
 import {
-  SimulationCanvasLayer,
+  EmitterMarkerRenderer,
+  FieldPaletteRenderer,
   SimulationScene,
   type GameContext,
   type Input,
@@ -39,7 +40,8 @@ export const harmonicSandStyleManifest: SimStyleManifest = {
 
 export class HarmonicSandScene extends SimulationScene {
   readonly name: string = 'HarmonicSandPlate';
-  private layer: SimulationCanvasLayer | null = null;
+  private fieldRenderer: FieldPaletteRenderer | null = null;
+  private emitterRenderer: EmitterMarkerRenderer | null = null;
   private model: HarmonicSandModel | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
   /** Cached options used to recreate the model when quality or dimensions change. */
@@ -54,8 +56,9 @@ export class HarmonicSandScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
-    this.layer.setQuality(ctx.quality);
+    this.fieldRenderer = new FieldPaletteRenderer(ctx.systems.pixi.app);
+    this.emitterRenderer = new EmitterMarkerRenderer(ctx.systems.pixi.app);
+    this.fieldRenderer.setQuality(ctx.quality);
     const settings = ctx.systems.settings;
     this.modelOptions = {
       seed: ctx.seed,
@@ -76,14 +79,16 @@ export class HarmonicSandScene extends SimulationScene {
   }
 
   override onExit(): void {
-    this.layer?.destroy();
-    this.layer = null;
+    this.fieldRenderer?.destroy();
+    this.emitterRenderer?.destroy();
+    this.fieldRenderer = null;
+    this.emitterRenderer = null;
     this.model = null;
     this.modelOptions = null;
   }
 
   override onUIHidden(hidden: boolean): void {
-    this.layer?.setEmittersVisible(!hidden);
+    this.emitterRenderer?.setVisible(!hidden);
   }
 
   override update(dt: number): void {
@@ -126,11 +131,12 @@ export class HarmonicSandScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (!this.layer || !this.model) return;
+    if (!this.fieldRenderer || !this.emitterRenderer || !this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? chladniGoldStyle;
-    this.layer.clear();
-    this.layer.renderField(this.model.field, this.ctx_.width, this.ctx_.height, style);
-    this.layer.renderEmitters(this.model.emitters, this.model.elapsedTime);
+    this.fieldRenderer.clear();
+    this.emitterRenderer.clear();
+    this.fieldRenderer.renderField('wave', this.model.field, this.ctx_.width, this.ctx_.height, style);
+    this.emitterRenderer.renderEmitters(this.model.emitters, this.model.elapsedTime);
     this.ctx_.systems.debug?.update({
       fps: 0,
       quality: this.quality,
@@ -150,7 +156,11 @@ export class HarmonicSandScene extends SimulationScene {
   }
 
   getRenderLayers(): SimRenderLayers {
-    return this.layer?.getRenderLayers() ?? {};
+    return {
+      primitive: this.fieldRenderer?.container,
+      field: this.fieldRenderer?.getLayer('wave'),
+      particles: this.emitterRenderer?.layer,
+    };
   }
 
   getStyleManifest(): SimStyleManifest {
@@ -161,9 +171,9 @@ export class HarmonicSandScene extends SimulationScene {
     super.setQuality(quality);
     if (!this.modelOptions) return;
     // Quality is purely a rendering concern — update stored options and the
-    // canvas layer; the physics model is untouched.
+    // field renderer; the physics model is untouched.
     this.modelOptions = { ...this.modelOptions, quality };
-    this.layer?.setQuality(quality);
+    this.fieldRenderer?.setQuality(quality);
   }
 
   detectStagnation(): StagnationReport {

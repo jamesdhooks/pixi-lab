@@ -82,7 +82,6 @@ vi.mock('@hooksjam/pixi-lab-core', async (importOriginal) => {
 
 function makeSettings(vals: Record<string, unknown> = {}) {
   const defaults: Record<string, unknown> = {
-    maxBalls: 5,
     style: 'rainbow',
     bounciness: 0.6,
     audio: false,
@@ -176,8 +175,7 @@ describe('BallPitScene', () => {
     );
   });
 
-  it('does not spawn more balls than maxBalls setting', () => {
-    // maxBalls = 5 in our ctx
+  it('does not cap spawned balls through settings', () => {
     const emit = vi.mocked(ctx.emit);
     const input = makeInput(makeSnapshot());
     scene.onExit();
@@ -185,9 +183,8 @@ describe('BallPitScene', () => {
     for (let i = 0; i < 10; i++) {
       runTap(scene, input, i, 50 + i * 10, 50);
     }
-    // Score from spawns should cap out at maxBalls (5), rest are particle bursts (+0 score)
     const lastScoreCall = emit.mock.calls.filter((c) => c[0].kind === 'score_update').at(-1);
-    expect(lastScoreCall?.[0].value).toBeLessThanOrEqual(5);
+    expect(lastScoreCall?.[0].value).toBe(10);
   });
 
   it('resets score after spawned balls drain during reset', async () => {

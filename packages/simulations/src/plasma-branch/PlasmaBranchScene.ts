@@ -1,6 +1,9 @@
 import {
-  SimulationCanvasLayer,
+  ArcLineRenderer,
+  FieldPaletteRenderer,
+  ParticlePointRenderer,
   SimulationScene,
+  TrailFeedbackRenderer,
   type GameContext,
   type Input,
   type RenderQuality,
@@ -26,7 +29,10 @@ export const plasmaBranchStyleManifest: SimStyleManifest = {
 
 export class PlasmaBranchScene extends SimulationScene {
   readonly name: string = 'PlasmaBranch';
-  private layer: SimulationCanvasLayer | null = null;
+  private chargeRenderer: FieldPaletteRenderer | null = null;
+  private scarRenderer: TrailFeedbackRenderer | null = null;
+  private arcRenderer: ArcLineRenderer | null = null;
+  private particleRenderer: ParticlePointRenderer | null = null;
   private model: PlasmaBranchModel | null = null;
   private modelOptions: PlasmaBranchModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
@@ -42,8 +48,14 @@ export class PlasmaBranchScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
-    this.layer.setQuality(ctx.quality);
+    this.chargeRenderer = new FieldPaletteRenderer(ctx.systems.pixi.app);
+    this.scarRenderer = new TrailFeedbackRenderer(ctx.systems.pixi.app);
+    this.arcRenderer = new ArcLineRenderer(ctx.systems.pixi.app);
+    this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
+    this.chargeRenderer.setQuality(ctx.quality);
+    this.scarRenderer.setQuality(ctx.quality);
+    this.arcRenderer.setQuality(ctx.quality);
+    this.particleRenderer.setQuality(ctx.quality);
     const settings = ctx.systems.settings;
     const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.resolution as number));
     this.modelOptions = {
@@ -64,8 +76,14 @@ export class PlasmaBranchScene extends SimulationScene {
   }
 
   override onExit(): void {
-    this.layer?.destroy();
-    this.layer = null;
+    this.chargeRenderer?.destroy();
+    this.scarRenderer?.destroy();
+    this.arcRenderer?.destroy();
+    this.particleRenderer?.destroy();
+    this.chargeRenderer = null;
+    this.scarRenderer = null;
+    this.arcRenderer = null;
+    this.particleRenderer = null;
     this.model = null;
     this.modelOptions = null;
   }
@@ -80,12 +98,17 @@ export class PlasmaBranchScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (!this.layer || !this.model) return;
+    if (!this.chargeRenderer || !this.scarRenderer || !this.arcRenderer || !this.particleRenderer || !this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? lightningGardenStyle;
-    this.layer.clear();
-    this.layer.renderField(this.model.chargeField, this.ctx_.width, this.ctx_.height, style);
-    this.layer.renderField(this.model.scarField, this.ctx_.width, this.ctx_.height, style);
-    this.layer.renderParticles(this.model.renderParticles(), style);
+    const particles = this.model.renderParticles();
+    this.chargeRenderer.clear();
+    this.scarRenderer.clear();
+    this.arcRenderer.clear();
+    this.particleRenderer.clear();
+    this.chargeRenderer.renderField('charge', this.model.chargeField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.26, gamma: 0.72, maxAlpha: 120, zIndex: 0 });
+    this.scarRenderer.renderTrail('scars', this.model.scarField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.78, gamma: 0.32, zIndex: 1 });
+    this.arcRenderer.renderParticleArcs(particles, style, { alpha: 0.9, velocityScale: 0.38, zIndex: 2 });
+    this.particleRenderer.renderParticles(particles, style, { sizeScale: 0.62, zIndex: 3 });
     const stats = this.model.stats();
     this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.branchCount, fieldVariance: stats.chargeVariance });
   }
@@ -106,7 +129,10 @@ export class PlasmaBranchScene extends SimulationScene {
 
   override setQuality(quality: RenderQuality): void {
     super.setQuality(quality);
-    this.layer?.setQuality(quality);
+    this.chargeRenderer?.setQuality(quality);
+    this.scarRenderer?.setQuality(quality);
+    this.arcRenderer?.setQuality(quality);
+    this.particleRenderer?.setQuality(quality);
   }
 
 
@@ -149,8 +175,13 @@ export class PlasmaBranchScene extends SimulationScene {
   }
 
   getRenderLayers(): SimRenderLayers {
-    const layers = this.layer?.getRenderLayers() ?? {};
-    return { ...layers, trails: layers.field, glow: layers.particles };
+    return {
+      field: this.chargeRenderer?.getLayer('charge'),
+      trails: this.scarRenderer?.getLayer('scars'),
+      primitive: this.arcRenderer?.layer,
+      particles: this.particleRenderer?.particles,
+      glow: this.arcRenderer?.layer,
+    };
   }
 
   getStyleManifest(): SimStyleManifest {

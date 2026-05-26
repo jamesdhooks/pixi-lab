@@ -1,5 +1,6 @@
 import {
-  SimulationCanvasLayer,
+  DensityMetaballRenderer,
+  ParticlePointRenderer,
   SimulationScene,
   type GameContext,
   type Input,
@@ -26,7 +27,8 @@ export const amoebaLampStyleManifest: SimStyleManifest = {
 
 export class AmoebaLampScene extends SimulationScene {
   readonly name: string = 'AmoebaLamp';
-  private layer: SimulationCanvasLayer | null = null;
+  private densityRenderer: DensityMetaballRenderer | null = null;
+  private particleRenderer: ParticlePointRenderer | null = null;
   private model: AmoebaLampModel | null = null;
   private modelOptions: AmoebaLampModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
@@ -44,8 +46,10 @@ export class AmoebaLampScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
-    this.layer.setQuality(ctx.quality);
+    this.densityRenderer = new DensityMetaballRenderer(ctx.systems.pixi.app);
+    this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
+    this.densityRenderer.setQuality(ctx.quality);
+    this.particleRenderer.setQuality(ctx.quality);
     const settings = ctx.systems.settings;
     const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.resolution as number));
     const particleBudget = this.previewBudget ?? ((settings.get('particleBudget') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.particleBudget as number));
@@ -75,8 +79,10 @@ export class AmoebaLampScene extends SimulationScene {
   }
 
   override onExit(): void {
-    this.layer?.destroy();
-    this.layer = null;
+    this.densityRenderer?.destroy();
+    this.particleRenderer?.destroy();
+    this.densityRenderer = null;
+    this.particleRenderer = null;
     this.model = null;
     this.modelOptions = null;
   }
@@ -138,11 +144,12 @@ export class AmoebaLampScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (!this.layer || !this.model) return;
+    if (!this.densityRenderer || !this.particleRenderer || !this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? bioPlasmaStyle;
-    this.layer.clear();
-    this.layer.renderField(this.model.densityField, this.ctx_.width, this.ctx_.height, style);
-    this.layer.renderParticles(this.model.renderParticles(), style);
+    this.densityRenderer.clear();
+    this.particleRenderer.clear();
+    this.densityRenderer.renderDensity(this.model.densityField, this.ctx_.width, this.ctx_.height, style);
+    this.particleRenderer.renderParticles(this.model.renderParticles(), style, { alpha: 0.72, sizeScale: 0.82, zIndex: 2 });
     const stats = this.model.stats();
     this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.particleCount, fieldVariance: stats.fieldVariance });
   }
@@ -161,11 +168,17 @@ export class AmoebaLampScene extends SimulationScene {
 
   override setQuality(quality: RenderQuality): void {
     super.setQuality(quality);
-    this.layer?.setQuality(quality);
+    this.densityRenderer?.setQuality(quality);
+    this.particleRenderer?.setQuality(quality);
   }
 
   getRenderLayers(): SimRenderLayers {
-    return this.layer?.getRenderLayers() ?? {};
+    return {
+      primitive: this.densityRenderer?.container,
+      density: this.densityRenderer?.layer,
+      particles: this.particleRenderer?.particles,
+      glow: this.densityRenderer?.layer,
+    };
   }
 
   getStyleManifest(): SimStyleManifest {

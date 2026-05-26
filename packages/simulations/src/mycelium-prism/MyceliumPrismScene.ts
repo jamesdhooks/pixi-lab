@@ -1,5 +1,6 @@
 import {
-  SimulationCanvasLayer,
+  FieldPaletteRenderer,
+  MeshLatticeRenderer,
   SimulationScene,
   type GameContext,
   type Input,
@@ -26,7 +27,8 @@ export const myceliumPrismStyleManifest: SimStyleManifest = {
 
 export class MyceliumPrismScene extends SimulationScene {
   readonly name: string = 'MyceliumPrism';
-  private layer: SimulationCanvasLayer | null = null;
+  private fieldRenderer: FieldPaletteRenderer | null = null;
+  private latticeRenderer: MeshLatticeRenderer | null = null;
   private model: MyceliumPrismModel | null = null;
   private modelOptions: MyceliumPrismModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
@@ -41,8 +43,10 @@ export class MyceliumPrismScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
-    this.layer.setQuality(ctx.quality);
+    this.fieldRenderer = new FieldPaletteRenderer(ctx.systems.pixi.app);
+    this.latticeRenderer = new MeshLatticeRenderer(ctx.systems.pixi.app);
+    this.fieldRenderer.setQuality(ctx.quality);
+    this.latticeRenderer.setQuality(ctx.quality);
     const settings = ctx.systems.settings;
     const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (MYCELIUM_PRISM_DEFAULTS.resolution as number));
     this.modelOptions = {
@@ -66,8 +70,10 @@ export class MyceliumPrismScene extends SimulationScene {
   }
 
   override onExit(): void {
-    this.layer?.destroy();
-    this.layer = null;
+    this.fieldRenderer?.destroy();
+    this.latticeRenderer?.destroy();
+    this.fieldRenderer = null;
+    this.latticeRenderer = null;
     this.model = null;
     this.modelOptions = null;
   }
@@ -115,10 +121,12 @@ export class MyceliumPrismScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (!this.layer || !this.model) return;
+    if (!this.fieldRenderer || !this.latticeRenderer || !this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? neonMoldStyle;
-    this.layer.clear();
-    this.layer.renderField(this.model.field, this.ctx_.width, this.ctx_.height, style);
+    this.fieldRenderer.clear();
+    this.latticeRenderer.clear();
+    this.fieldRenderer.renderField('nutrient', this.model.field, this.ctx_.width, this.ctx_.height, style, { alpha: 0.28, gamma: 0.7, maxAlpha: 120, zIndex: 0 });
+    this.latticeRenderer.renderGrid(this.model.grid, this.ctx_.width, this.ctx_.height, style, { field: this.model.field, zIndex: 1 });
     const stats = this.model.stats();
     this.ctx_.systems.debug?.update({
       fps: 0,
@@ -148,11 +156,16 @@ export class MyceliumPrismScene extends SimulationScene {
 
   override setQuality(quality: RenderQuality): void {
     super.setQuality(quality);
-    this.layer?.setQuality(quality);
+    this.fieldRenderer?.setQuality(quality);
+    this.latticeRenderer?.setQuality(quality);
   }
 
   getRenderLayers(): SimRenderLayers {
-    return this.layer?.getRenderLayers() ?? {};
+    return {
+      primitive: this.latticeRenderer?.layer,
+      field: this.fieldRenderer?.getLayer('nutrient'),
+      glow: this.latticeRenderer?.layer,
+    };
   }
 
   getStyleManifest(): SimStyleManifest {
