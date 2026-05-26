@@ -1,6 +1,7 @@
 import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
 import { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
+import { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definition.js';
 import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 import { myceliumPrismDefinition } from './mycelium-prism/mycelium-prism.definition.js';
 import { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
@@ -15,6 +16,11 @@ export { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
 export { AntSignalScene, antSignalStyleManifest } from './ant-signal/AntSignalScene.js';
 export { AntSignalPreviewScene } from './ant-signal/AntSignalPreviewScene.js';
 export { AntSignalModel, type AntSignalModelOptions, type AntSignalStats } from './ant-signal/AntSignalModel.js';
+
+export { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definition.js';
+export { CrystalPlasmaScene, crystalPlasmaStyleManifest } from './crystal-plasma/CrystalPlasmaScene.js';
+export { CrystalPlasmaPreviewScene } from './crystal-plasma/CrystalPlasmaPreviewScene.js';
+export { CrystalPlasmaModel, type CrystalPlasmaModelOptions, type CrystalPlasmaStats } from './crystal-plasma/CrystalPlasmaModel.js';
 
 export { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 export { HarmonicSandScene, harmonicSandStyleManifest } from './harmonic-sand/HarmonicSandScene.js';
@@ -36,7 +42,7 @@ export { PlasmaBranchScene, plasmaBranchStyleManifest } from './plasma-branch/Pl
 export { PlasmaBranchPreviewScene } from './plasma-branch/PlasmaBranchPreviewScene.js';
 export { PlasmaBranchModel, type PlasmaBranchModelOptions, type PlasmaBranchStats } from './plasma-branch/PlasmaBranchModel.js';
 
-export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [harmonicSandDefinition, myceliumPrismDefinition, amoebaLampDefinition, orbitalShrapnelDefinition, plasmaBranchDefinition, antSignalDefinition] as const;
+export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [harmonicSandDefinition, myceliumPrismDefinition, amoebaLampDefinition, orbitalShrapnelDefinition, plasmaBranchDefinition, antSignalDefinition, crystalPlasmaDefinition] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
   return SIMULATION_REGISTRY.find((simulation) => simulation.id === id);
