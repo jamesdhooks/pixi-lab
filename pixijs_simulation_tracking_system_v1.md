@@ -248,7 +248,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 7 | Crystal Plasma Storm | IN_PROGRESS | triangle grid + stress | Model/scene/preview/demo AI implemented with deterministic crystal lattice growth, bounded stress/fracture fields, and shared scalar/trail field rendering; full gate pending. |
 | 8 | Time Echo Particles | IN_PROGRESS | history buffers | Model/scene/preview/demo AI implemented with deterministic bounded history buffers, live-polled echo controls, shared trail/particle rendering, and temporal anchor/freeze gestures; full automated gate pending. |
 | 9 | Electro-Osmotic Amoeba | IN_PROGRESS | Amoeba Lamp complete | Model/scene/preview/demo AI implemented with deterministic charged membrane particles, voltage/osmotic live controls, shared density rendering, and electro-fission gestures; full automated gate pending. |
-| 10 | Jelly Web Resonator | NOT_STARTED | spring system | soft-body showcase |
+| 10 | Jelly Web Resonator | IN_PROGRESS | spring system | Model/scene/preview/demo AI implemented with deterministic SpringSystem web rings, live tension/damping/resonance controls, shared field/particle rendering, and pluck/shear gestures; full automated gate pending. |
 | 11 | Cellular Ocean | NOT_STARTED | spring membranes | advanced membrane rendering |
 | 12 | Cosmic Ink Ocean | NOT_STARTED | vector fields | turbulence showcase |
 | 13 | Turing Skin | NOT_STARTED | scalar fields | reaction diffusion |

@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff } from 'lucide-react';
 import { GameLauncher, PreviewTile } from '@hooksjam/pixi-lab-react';
 import { useViewport } from '@hooksjam/pixi-lab-react';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
@@ -49,7 +49,7 @@ export function App() {
   const [carouselFilter, setCarouselFilter] = useState<FilterKind>('all');
   const [carouselSide, setCarouselSide] = useState<'bottom' | 'left' | 'right'>('bottom');
   const [carouselDocked, setCarouselDocked] = useState(false);
-  const [maxPixels, setMaxPixels] = useState(() => {
+  const [maxPixels] = useState(() => {
     try { return parseInt(localStorage.getItem('pixi-lab:maxPixels') ?? '0') || undefined; } catch { return undefined; }
   });
   const scrollerRef = useRef<HTMLDivElement>(null);

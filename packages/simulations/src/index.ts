@@ -4,6 +4,7 @@ import { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
 import { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definition.js';
 import { electroOsmoticAmoebaDefinition } from './electro-osmotic-amoeba/electro-osmotic-amoeba.definition.js';
 import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
+import { jellyWebDefinition } from './jelly-web/jelly-web.definition.js';
 import { myceliumLatticeDefinition } from './mycelium-lattice/mycelium-lattice.definition.js';
 import { myceliumPrismDefinition } from './mycelium-prism/mycelium-prism.definition.js';
 import { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
@@ -34,6 +35,11 @@ export { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition
 export { HarmonicSandScene, harmonicSandStyleManifest } from './harmonic-sand/HarmonicSandScene.js';
 export { HarmonicSandPreviewScene } from './harmonic-sand/HarmonicSandPreviewScene.js';
 export { HarmonicSandModel, type HarmonicEmitter, type HarmonicSandModelOptions } from './harmonic-sand/HarmonicSandModel.js';
+
+export { jellyWebDefinition } from './jelly-web/jelly-web.definition.js';
+export { JellyWebScene, jellyWebStyleManifest } from './jelly-web/JellyWebScene.js';
+export { JellyWebPreviewScene } from './jelly-web/JellyWebPreviewScene.js';
+export { JellyWebModel, type JellyWebModelOptions, type JellyWebStats } from './jelly-web/JellyWebModel.js';
 
 export { myceliumLatticeDefinition } from './mycelium-lattice/mycelium-lattice.definition.js';
 export { MyceliumLatticeScene, myceliumLatticeStyleManifest } from './mycelium-lattice/MyceliumLatticeScene.js';
@@ -71,6 +77,7 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   plasmaBranchDefinition,
   timeEchoDefinition,
   electroOsmoticAmoebaDefinition,
+  jellyWebDefinition,
 ] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
