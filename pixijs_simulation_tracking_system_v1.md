@@ -250,7 +250,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 9 | Electro-Osmotic Amoeba | IN_PROGRESS | Amoeba Lamp complete | Model/scene/preview/demo AI implemented with deterministic charged membrane particles, voltage/osmotic live controls, shared density rendering, and electro-fission gestures; full automated gate pending. |
 | 10 | Jelly Web Resonator | IN_PROGRESS | spring system | Model/scene/preview/demo AI implemented with deterministic SpringSystem web rings, live tension/damping/resonance controls, shared field/particle rendering, and pluck/shear gestures; full automated gate pending. |
 | 11 | Cellular Ocean | IN_PROGRESS | spring membranes | Model/scene/preview/demo AI implemented with deterministic SpringSystem membrane cells, live tension/viscosity/drift controls, shared field/particle rendering, and pulse/shear gestures; full automated gate pending. |
-| 12 | Cosmic Ink Ocean | NOT_STARTED | vector fields | turbulence showcase |
+| 12 | Cosmic Ink Ocean | IN_PROGRESS | vector fields | Model/scene/preview/demo AI implemented with deterministic vector turbulence, bounded ink scalar field, live flow controls, shared field/particle rendering, and vortex/shear gestures; full automated gate pending. |
 | 13 | Turing Skin | NOT_STARTED | scalar fields | reaction diffusion |
 | 14 | Oil-Water Universe | NOT_STARTED | phase separation | material domains |
 | 15 | Prism Pool | NOT_STARTED | fake normals | shader showcase |
@@ -1975,7 +1975,193 @@ Deferred before marking COMPLETE:
 
 ---
 
-# 15. Agent Update Rules
+# 15. Cosmic Ink Ocean
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-26
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates vector-field-driven motion with shared scalar-field rendering
+- provides a turbulence showcase without introducing one-off renderers
+- exercises live numeric settings across particle budgets, resolution, diffusion, and flow controls
+
+---
+
+## Dependencies
+
+- vector fields
+- scalar field renderer
+- particle renderer
+- palette/bloom/distortion pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded ink particles advected by a reusable `VectorField`
+- low-resolution scalar ink deposition through `ScalarField`
+- tap/hold vortices, drag/shear currents, and fast-swipe current cuts
+- live settings polling for resolution, particle count, turbulence, flow speed, ink diffusion, and vortex strength
+- stagnation recovery that injects a seeded vortex and velocity/ink energy
+
+---
+
+## Required Render Layers
+
+```txt
+field
+particles
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+paletteMap
+edgeGlow
+bloom
+trailFeedback
+contourBands
+chromaticAberration
+distortion
+```
+
+---
+
+## Required Styles
+
+### Nebula Ink
+Violet and cyan dye plumes over a dark interstellar bath.
+
+### Golden Tide
+Amber turbulence and pearl foam flowing through black ink.
+
+### Deep Current
+Cold green currents drifting below an abyssal blue surface.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | seed a clockwise ink vortex |
+| hold | seed a reverse pull vortex |
+| drag | shear particles into a flowing current |
+| fast swipe | cut a bright current through the ocean |
+
+---
+
+## Director Mode Events
+
+- vortex bloom
+- current shear
+- reverse tide
+
+---
+
+## Stagnation Recovery
+
+If:
+- particle motion collapses
+- ink field variance becomes too uniform
+- vector energy falls below visible turbulence
+
+Then:
+- inject a seeded central vortex
+- kick particles with deterministic velocity and dye energy
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+particles:
+  128-1200 configurable, 180 preview budget
+
+field:
+  32x18 to 160x90 typical, capped by shared resolution setting
+
+rendering:
+  basic uses field layer only; enhanced adds shared particle points
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses shared `FieldPaletteRenderer` and `ParticlePointRenderer`
+- vector advection remains model-side and deterministic through `SeededRng`
+- structural setting changes rebuild the deterministic model; tuning changes mutate model options live
+
+Do NOT:
+- create a custom fluid shader before reusable vector-field compositing exists
+- create one Pixi object per particle or field cell
+- allow unbounded vortex accumulation
+
+---
+
+## Validation Checklist
+
+- [x] ink particles initialize deterministically from seed
+- [x] update advances particle state and deposits bounded ink
+- [x] tap/drag/hold/swipe gestures alter flow state
+- [x] vector/ink fields and vortex budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [ ] full automated gate passes in current environment
+
+---
+
+## Known Risks
+
+- first-playable render visualizes vector turbulence through scalar ink deposition rather than a dedicated vector-field shader
+- advanced flow-line/normal-map distortion is represented through shared field rendering and style metadata until reusable compositor support lands
+- visual balance may need tuning after manual gallery/Pi validation
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/cosmic-ink-ocean/CosmicInkOceanModel.ts`
+- `packages/simulations/src/cosmic-ink-ocean/CosmicInkOceanScene.ts`
+- `packages/simulations/src/cosmic-ink-ocean/CosmicInkOceanPreviewScene.ts`
+- `packages/simulations/src/cosmic-ink-ocean/CosmicInkOceanDemoAI.ts`
+- `packages/simulations/src/cosmic-ink-ocean/cosmic-ink-ocean.config.ts`
+- `packages/simulations/src/cosmic-ink-ocean/cosmic-ink-ocean.definition.ts`
+- `packages/simulations/src/cosmic-ink-ocean/styles/*.ts`
+- `packages/simulations/src/cosmic-ink-ocean/__tests__/CosmicInkOceanModel.test.ts`
+
+Implementation notes:
+- Uses shared `VectorField` for flow, bounded `ScalarField` for ink density, and shared particle rendering for enhanced quality.
+- Demo AI cycles styles plus every numeric setting so the settings panel and live scene polling are exercised.
+- Preview scene uses reduced resolution and particle budgets.
+
+Deferred before marking COMPLETE:
+- reusable vector-field/flow-line compositor or normal-map fluid distortion pass
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 16. Agent Update Rules
 
 When an agent completes work:
 
@@ -2011,7 +2197,7 @@ The agent must:
 
 ---
 
-# 16. Recommended Git Workflow
+# 17. Recommended Git Workflow
 
 Recommended commit structure:
 
@@ -2027,7 +2213,7 @@ Avoid giant multi-simulation commits.
 
 ---
 
-# 17. Final Guidance for Agents
+# 18. Final Guidance for Agents
 
 The project succeeds if:
 - simulations feel alive

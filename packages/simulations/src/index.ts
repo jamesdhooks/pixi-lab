@@ -2,6 +2,7 @@ import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 import { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
 import { cellularOceanDefinition } from './cellular-ocean/cellular-ocean.definition.js';
+import { cosmicInkOceanDefinition } from './cosmic-ink-ocean/cosmic-ink-ocean.definition.js';
 import { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definition.js';
 import { electroOsmoticAmoebaDefinition } from './electro-osmotic-amoeba/electro-osmotic-amoeba.definition.js';
 import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
@@ -26,6 +27,11 @@ export { cellularOceanDefinition } from './cellular-ocean/cellular-ocean.definit
 export { CellularOceanScene, cellularOceanStyleManifest } from './cellular-ocean/CellularOceanScene.js';
 export { CellularOceanPreviewScene } from './cellular-ocean/CellularOceanPreviewScene.js';
 export { CellularOceanModel, type CellularOceanModelOptions, type CellularOceanStats } from './cellular-ocean/CellularOceanModel.js';
+
+export { cosmicInkOceanDefinition } from './cosmic-ink-ocean/cosmic-ink-ocean.definition.js';
+export { CosmicInkOceanScene, cosmicInkOceanStyleManifest } from './cosmic-ink-ocean/CosmicInkOceanScene.js';
+export { CosmicInkOceanPreviewScene } from './cosmic-ink-ocean/CosmicInkOceanPreviewScene.js';
+export { CosmicInkOceanModel, type CosmicInkOceanModelOptions, type CosmicInkOceanStats } from './cosmic-ink-ocean/CosmicInkOceanModel.js';
 
 export { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definition.js';
 export { CrystalPlasmaScene, crystalPlasmaStyleManifest } from './crystal-plasma/CrystalPlasmaScene.js';
@@ -85,6 +91,7 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   electroOsmoticAmoebaDefinition,
   jellyWebDefinition,
   cellularOceanDefinition,
+  cosmicInkOceanDefinition,
 ] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
