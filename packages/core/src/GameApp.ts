@@ -64,6 +64,13 @@ export interface GameAppOptions {
    * Example: 921_600 ≈ 1280×720.
    */
   maxPixels?: number;
+  /**
+   * Cap the game-loop tick rate (updates + renders per second).
+   * Browser rAF callbacks arriving sooner than `1000/maxFps` ms since the
+   * last processed frame are skipped. Useful for preview tiles that must share
+   * the JS thread without saturating it.
+   */
+  maxFps?: number;
   /** Emit events upward to React shell */
   onEvent?: (event: GameEvent) => void;
 }
@@ -131,6 +138,7 @@ export class GameApp {
       onFixedUpdate: this.onFixedUpdate,
       onUpdate: this.onUpdate,
       onRender: this.onRender,
+      maxFps: opts.maxFps,
     });
   }
 

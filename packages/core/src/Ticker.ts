@@ -23,6 +23,8 @@ export class Ticker {
   private readonly onFixedUpdate: FixedStepCallback;
   private readonly onUpdate: TickCallback;
   private readonly onRender: RenderCallback;
+  /** Minimum milliseconds between processed frames (0 = uncapped). */
+  private readonly minFrameMs: number;
 
   // FPS sampling
   private frameCount = 0;
@@ -33,10 +35,17 @@ export class Ticker {
     onFixedUpdate: FixedStepCallback;
     onUpdate: TickCallback;
     onRender: RenderCallback;
+    /**
+     * Cap the tick rate. Frames arriving sooner than `1000/maxFps` ms since
+     * the last processed frame are skipped. Useful for preview tiles that need
+     * to share the JS thread without saturating it.
+     */
+    maxFps?: number;
   }) {
     this.onFixedUpdate = opts.onFixedUpdate;
     this.onUpdate = opts.onUpdate;
     this.onRender = opts.onRender;
+    this.minFrameMs = opts.maxFps != null && opts.maxFps > 0 ? 1000 / opts.maxFps : 0;
   }
 
   start() {
@@ -62,6 +71,11 @@ export class Ticker {
       this.lastTime = now;
       return;
     }
+
+    // FPS cap: skip this rAF if the minimum frame interval hasn't elapsed yet.
+    // lastTime is only updated when we actually process a frame, so the elapsed
+    // calculation for the next eligible frame remains correct.
+    if (this.minFrameMs > 0 && now - this.lastTime < this.minFrameMs) return;
 
     const elapsed = Math.min((now - this.lastTime) / 1000, 0.25); // cap at 250 ms
     this.lastTime = now;
