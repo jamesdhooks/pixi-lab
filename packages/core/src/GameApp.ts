@@ -408,6 +408,10 @@ export class GameApp {
     this.onEvent({ kind: 'burst_effect', payload: { kind: effect.kind, id: effect.id } });
   }
 
+  setMaxPixels(maxPixels: number | undefined) {
+    this.pixi.setMaxPixels(maxPixels);
+  }
+
   setSleepMode(enabled: boolean) {
     if (!this.ready) return;
     this.burstEmitters.setSleepMode(enabled);

@@ -35,10 +35,14 @@ export class PixiApp {
   readonly app: Application;
   private _width: number;
   private _height: number;
+  private _maxDpr: number;
+  private _maxPixels: number | undefined;
 
   private constructor(opts: PixiAppOptions) {
     this._width = opts.width;
     this._height = opts.height;
+    this._maxDpr = opts.maxDpr ?? 2;
+    this._maxPixels = opts.maxPixels;
     this.app = new Application();
   }
 
@@ -85,6 +89,23 @@ export class PixiApp {
 
   get renderer() {
     return this.app.renderer;
+  }
+
+  setMaxPixels(maxPixels: number | undefined) {
+    this._maxPixels = maxPixels;
+    const w = Math.max(this._width, 1);
+    const h = Math.max(this._height, 1);
+    const pixelScaleCap =
+      this._maxPixels !== undefined
+        ? Math.sqrt(this._maxPixels / (w * h))
+        : Infinity;
+    const newResolution = Math.max(
+      0.25,
+      Math.min(window.devicePixelRatio, this._maxDpr, pixelScaleCap),
+    );
+    if (this.app.renderer.resolution !== newResolution) {
+      this.app.renderer.resolution = newResolution;
+    }
   }
 
   resize(width: number, height: number) {

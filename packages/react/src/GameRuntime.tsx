@@ -128,6 +128,10 @@ export function GameRuntime({
   }, [sleepMode, lowMotion]);
 
   useEffect(() => {
+    appRef.current?.setMaxPixels(maxPixels);
+  }, [maxPixels]);
+
+  useEffect(() => {
     if (typeof globalIntensity === 'number') appRef.current?.setGlobalIntensity(globalIntensity);
   }, [globalIntensity]);
 
