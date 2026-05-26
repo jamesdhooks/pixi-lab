@@ -47,7 +47,7 @@ export class AmoebaLampScene extends SimulationScene {
     this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
     this.layer.setQuality(ctx.quality);
     const settings = ctx.systems.settings;
-    const columns = this.previewColumns ?? ((settings.get('gridColumns') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.gridColumns as number));
+    const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.resolution as number));
     const particleBudget = this.previewBudget ?? ((settings.get('particleBudget') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.particleBudget as number));
     this.modelOptions = {
       seed: ctx.seed,
@@ -112,7 +112,7 @@ export class AmoebaLampScene extends SimulationScene {
     // Structural params (grid size, blob count, budget) require a full model rebuild.
     const newBlobCount = (settings.get('blobCount') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.blobCount as number);
     const newParticleBudget = (settings.get('particleBudget') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.particleBudget as number);
-    const newGridColumns = (settings.get('gridColumns') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.gridColumns as number);
+    const newGridColumns = (settings.get('resolution') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.resolution as number);
     if (newBlobCount !== this.lastBlobCount || newParticleBudget !== this.lastParticleBudget || newGridColumns !== this.lastGridColumns) {
       this.lastBlobCount = newBlobCount;
       this.lastParticleBudget = newParticleBudget;

@@ -19,6 +19,15 @@ const PERF_WINDOW_S = 2; // measure perf for 2 seconds
 const FPS_THRESHOLD = 20; // fall back if avg below this
 const PREVIEW_FPS_CAP = 30; // cap preview rendering
 
+/**
+ * GPU budget for live preview tiles.
+ * Caps the rendered pixel count to reduce memory and fill-rate pressure when
+ * a gallery renders many tiles simultaneously.  Tweak here to trade quality
+ * for performance — 200 k px ≈ DPR 1.5× on a 180 px tile, DPR 1.05× on a
+ * 450 px tile.  Set to `undefined` to disable.
+ */
+const PREVIEW_MAX_PIXELS: number | undefined = 200_000;
+
 function failureKey(gameId: string) {
   return `fao:game:tile-perf-fail:${gameId}`;
 }
@@ -75,6 +84,7 @@ export function GameTile({ definition, onPress, size = 180, index: _index = 0, a
       definition: overrideDef,
       scoreProvider: new NoopHighScoreProvider(),
       mode: 'screensaver',
+      maxPixels: PREVIEW_MAX_PIXELS,
     });
     appRef.current = app;
 

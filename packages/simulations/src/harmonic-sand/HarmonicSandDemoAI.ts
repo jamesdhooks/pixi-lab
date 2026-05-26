@@ -87,7 +87,7 @@ export class HarmonicSandDemoAI implements SimulationAI {
     //    replaces the ScalarField with an all-zero field, causing a black flash.
     if (isFirst) {
       const resOptions = [128, 192, 256];
-      applyNumericSetting('fieldResolution', resOptions[Math.floor(Math.random() * resOptions.length)]);
+      applyNumericSetting('resolution', resOptions[Math.floor(Math.random() * resOptions.length)]);
     }
 
     // 5. Queue 1–3 tap positions — spread across the canvas avoiding edges

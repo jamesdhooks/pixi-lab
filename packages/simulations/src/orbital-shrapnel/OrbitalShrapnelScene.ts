@@ -46,7 +46,7 @@ export class OrbitalShrapnelScene extends SimulationScene {
     this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
     this.layer.setQuality(ctx.quality);
     const settings = ctx.systems.settings;
-    const trailColumns = this.previewColumns ?? ((settings.get('trailColumns') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailColumns as number));
+    const trailColumns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.resolution as number));
     const particleCount = this.previewBudget ?? ((settings.get('particleCount') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.particleCount as number));
     this.modelOptions = {
       seed: ctx.seed,
@@ -117,7 +117,7 @@ export class OrbitalShrapnelScene extends SimulationScene {
     if (!this.modelOptions) return;
     const settings = this.ctx_.systems.settings;
     const particleCount = this.previewBudget ?? ((settings.get('particleCount') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.particleCount as number));
-    const trailColumns = this.previewColumns ?? ((settings.get('trailColumns') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailColumns as number));
+    const trailColumns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.resolution as number));
     const planetRadius = (settings.get('planetRadius') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.planetRadius as number);
     const gravity = (settings.get('gravity') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.gravity as number);
     const trailFade = (settings.get('trailFade') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailFade as number);

@@ -71,7 +71,7 @@ export class MyceliumPrismDemoAI implements SimulationAI {
       PARAM_PRESETS[Math.floor(Math.random() * PARAM_PRESETS.length)];
     applyNumericSetting('growthRate', growthRate);
     applyNumericSetting('nutrientDiffusion', nutrientDiffusion);
-    applyNumericSetting('gridColumns', gridColumns);
+    applyNumericSetting('resolution', gridColumns);
 
     this.nextOverhaulIn = 20 + Math.random() * 15; // 20–35 s
     this.elapsedSinceOverhaul = 0;

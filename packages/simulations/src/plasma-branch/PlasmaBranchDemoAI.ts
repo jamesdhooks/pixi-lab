@@ -51,7 +51,7 @@ export class PlasmaBranchDemoAI implements SimulationAI {
     applyNumericSetting('maxBranches', maxBranches);
     applyNumericSetting('chargeDecay', chargeDecay);
     applyNumericSetting('branchEnergy', branchEnergy);
-    applyNumericSetting('fieldColumns', fieldColumns);
+    applyNumericSetting('resolution', fieldColumns);
     this.nextOverhaulIn = 16 + Math.random() * 14;
     this.elapsedSinceOverhaul = 0;
   }

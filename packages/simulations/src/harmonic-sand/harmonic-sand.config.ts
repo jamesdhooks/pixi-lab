@@ -1,16 +1,7 @@
 import type { SettingsField } from '@hooksjam/pixi-lab-core';
 
 export const HARMONIC_SAND_SETTINGS_FIELDS: SettingsField[] = [
-  {
-    key: 'fieldResolution',
-    label: 'Resolution',
-    description: 'Grid columns — crank it for ultra-sharp patterns',
-    type: 'number',
-    min: 128,
-    max: 512,
-    step: 16,
-    default: 128,
-  },
+  { key: 'resolution', label: 'Resolution', type: 'number', min: 32, max: 512, step: 32, default: 128 },
   {
     key: 'baseFrequency',
     label: 'Base Frequency',
@@ -23,7 +14,7 @@ export const HARMONIC_SAND_SETTINGS_FIELDS: SettingsField[] = [
 ];
 
 export const HARMONIC_SAND_DEFAULTS: Record<string, unknown> = {
-  fieldResolution: 128,
+  resolution: 128,
   baseFrequency: 2.4,
   emitterCount: 0,
   style: 'chladni-gold',

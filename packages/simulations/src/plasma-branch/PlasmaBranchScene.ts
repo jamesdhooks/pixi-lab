@@ -45,7 +45,7 @@ export class PlasmaBranchScene extends SimulationScene {
     this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
     this.layer.setQuality(ctx.quality);
     const settings = ctx.systems.settings;
-    const columns = this.previewColumns ?? ((settings.get('fieldColumns') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.fieldColumns as number));
+    const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.resolution as number));
     this.modelOptions = {
       seed: ctx.seed,
       width: ctx.width,
@@ -113,7 +113,7 @@ export class PlasmaBranchScene extends SimulationScene {
   private applyLiveSettings(): void {
     if (!this.modelOptions) return;
     const settings = this.ctx_.systems.settings;
-    const columns = this.previewColumns ?? ((settings.get('fieldColumns') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.fieldColumns as number));
+    const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.resolution as number));
     const maxBranches = this.previewBudget ?? ((settings.get('maxBranches') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.maxBranches as number));
     const chargeDecay = (settings.get('chargeDecay') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.chargeDecay as number);
     const branchEnergy = (settings.get('branchEnergy') as number | undefined) ?? (PLASMA_BRANCH_DEFAULTS.branchEnergy as number);

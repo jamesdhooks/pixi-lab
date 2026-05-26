@@ -1,7 +1,7 @@
 import type { SettingsField } from '@hooksjam/pixi-lab-core';
 
 export const AMOEBA_LAMP_SETTINGS_FIELDS: SettingsField[] = [
-  { key: 'gridColumns', label: 'Density Grid Columns', type: 'number', min: 28, max: 96, step: 4, default: 56 },
+  { key: 'resolution', label: 'Resolution', type: 'number', min: 32, max: 512, step: 32, default: 64 },
   { key: 'blobCount', label: 'Seed Blobs', type: 'number', min: 3, max: 14, step: 1, default: 8 },
   { key: 'particleBudget', label: 'Blob Particle Budget', type: 'number', min: 24, max: 96, step: 4, default: 56 },
   { key: 'surfaceTension', label: 'Surface Tension', type: 'number', min: 0.2, max: 1.4, step: 0.05, default: 0.72 },
@@ -10,7 +10,7 @@ export const AMOEBA_LAMP_SETTINGS_FIELDS: SettingsField[] = [
 ];
 
 export const AMOEBA_LAMP_DEFAULTS: Record<string, unknown> = {
-  gridColumns: 56,
+  resolution: 64,
   blobCount: 8,
   particleBudget: 56,
   densityRadius: 3.4,

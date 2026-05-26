@@ -46,7 +46,7 @@ export class TimeEchoScene extends SimulationScene {
     this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
     this.layer.setQuality(ctx.quality);
     const settings = ctx.systems.settings;
-    const columns = this.previewColumns ?? ((settings.get('trailColumns') as number | undefined) ?? (TIME_ECHO_DEFAULTS.trailColumns as number));
+    const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (TIME_ECHO_DEFAULTS.resolution as number));
     const historyLength = this.previewHistory ?? ((settings.get('historyLength') as number | undefined) ?? (TIME_ECHO_DEFAULTS.historyLength as number));
     this.modelOptions = {
       seed: ctx.seed,
@@ -116,7 +116,7 @@ export class TimeEchoScene extends SimulationScene {
   private applyLiveSettings(): void {
     if (!this.model || !this.modelOptions) return;
     const settings = this.ctx_.systems.settings;
-    const columns = this.previewColumns ?? ((settings.get('trailColumns') as number | undefined) ?? (TIME_ECHO_DEFAULTS.trailColumns as number));
+    const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (TIME_ECHO_DEFAULTS.resolution as number));
     const particleCount = this.previewBudget ?? ((settings.get('particleCount') as number | undefined) ?? (TIME_ECHO_DEFAULTS.particleCount as number));
     const historyLength = this.previewHistory ?? ((settings.get('historyLength') as number | undefined) ?? (TIME_ECHO_DEFAULTS.historyLength as number));
     const echoDelay = (settings.get('echoDelay') as number | undefined) ?? (TIME_ECHO_DEFAULTS.echoDelay as number);

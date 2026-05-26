@@ -45,7 +45,7 @@ export class AntSignalScene extends SimulationScene {
     this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
     this.layer.setQuality(ctx.quality);
     const settings = ctx.systems.settings;
-    const columns = this.previewColumns ?? ((settings.get('fieldColumns') as number | undefined) ?? (ANT_SIGNAL_DEFAULTS.fieldColumns as number));
+    const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (ANT_SIGNAL_DEFAULTS.resolution as number));
     this.modelOptions = {
       seed: ctx.seed,
       width: ctx.width,
@@ -113,7 +113,7 @@ export class AntSignalScene extends SimulationScene {
   private applyLiveSettings(): void {
     if (!this.modelOptions) return;
     const settings = this.ctx_.systems.settings;
-    const columns = this.previewColumns ?? ((settings.get('fieldColumns') as number | undefined) ?? (ANT_SIGNAL_DEFAULTS.fieldColumns as number));
+    const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (ANT_SIGNAL_DEFAULTS.resolution as number));
     const antCount = this.previewBudget ?? ((settings.get('antCount') as number | undefined) ?? (ANT_SIGNAL_DEFAULTS.antCount as number));
     const foodCount = (settings.get('foodCount') as number | undefined) ?? (ANT_SIGNAL_DEFAULTS.foodCount as number);
     const pheromoneDecay = (settings.get('pheromoneDecay') as number | undefined) ?? (ANT_SIGNAL_DEFAULTS.pheromoneDecay as number);

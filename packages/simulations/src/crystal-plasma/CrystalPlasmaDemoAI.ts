@@ -51,7 +51,7 @@ export class CrystalPlasmaDemoAI implements SimulationAI {
     applyNumericSetting('maxCrystals', maxCrystals);
     applyNumericSetting('stressDecay', stressDecay);
     applyNumericSetting('growthBias', growthBias);
-    applyNumericSetting('fieldColumns', fieldColumns);
+    applyNumericSetting('resolution', fieldColumns);
     this.nextOverhaulIn = 17 + Math.random() * 14;
     this.elapsedSinceOverhaul = 0;
   }

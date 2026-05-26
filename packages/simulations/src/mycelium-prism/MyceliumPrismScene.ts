@@ -44,7 +44,7 @@ export class MyceliumPrismScene extends SimulationScene {
     this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
     this.layer.setQuality(ctx.quality);
     const settings = ctx.systems.settings;
-    const columns = this.previewColumns ?? ((settings.get('gridColumns') as number | undefined) ?? (MYCELIUM_PRISM_DEFAULTS.gridColumns as number));
+    const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (MYCELIUM_PRISM_DEFAULTS.resolution as number));
     this.modelOptions = {
       seed: ctx.seed,
       width: ctx.width,
@@ -94,7 +94,7 @@ export class MyceliumPrismScene extends SimulationScene {
     }
 
     // Grid dimensions require a full model rebuild.
-    const newGridColumns = (settings.get('gridColumns') as number | undefined) ?? (MYCELIUM_PRISM_DEFAULTS.gridColumns as number);
+    const newGridColumns = (settings.get('resolution') as number | undefined) ?? (MYCELIUM_PRISM_DEFAULTS.resolution as number);
     if (newGridColumns !== this.lastGridColumns) {
       this.lastGridColumns = newGridColumns;
       this.modelOptions = {

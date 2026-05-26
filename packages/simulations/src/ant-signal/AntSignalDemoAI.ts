@@ -51,7 +51,7 @@ export class AntSignalDemoAI implements SimulationAI {
     applyNumericSetting('antCount', antCount);
     applyNumericSetting('foodCount', foodCount);
     applyNumericSetting('pheromoneDecay', pheromoneDecay);
-    applyNumericSetting('fieldColumns', fieldColumns);
+    applyNumericSetting('resolution', fieldColumns);
     this.nextOverhaulIn = 18 + Math.random() * 13;
     this.elapsedSinceOverhaul = 0;
   }

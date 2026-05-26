@@ -45,7 +45,7 @@ export class CrystalPlasmaScene extends SimulationScene {
     this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
     this.layer.setQuality(ctx.quality);
     const settings = ctx.systems.settings;
-    const columns = this.previewColumns ?? ((settings.get('fieldColumns') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.fieldColumns as number));
+    const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.resolution as number));
     this.modelOptions = {
       seed: ctx.seed,
       width: ctx.width,
@@ -113,7 +113,7 @@ export class CrystalPlasmaScene extends SimulationScene {
   private applyLiveSettings(): void {
     if (!this.modelOptions) return;
     const settings = this.ctx_.systems.settings;
-    const columns = this.previewColumns ?? ((settings.get('fieldColumns') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.fieldColumns as number));
+    const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.resolution as number));
     const maxCrystals = this.previewBudget ?? ((settings.get('maxCrystals') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.maxCrystals as number));
     const stressDecay = (settings.get('stressDecay') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.stressDecay as number);
     const growthBias = (settings.get('growthBias') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.growthBias as number);
