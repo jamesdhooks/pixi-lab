@@ -136,6 +136,10 @@ export class MyceliumPrismModel {
     this.projectField();
   }
 
+  // Live-settable parameters — called from the scene each tick when a slider value changes.
+  setGrowthRate(v: number): void { this.options.growthRate = v; }
+  setNutrientDiffusion(v: number): void { this.options.nutrientDiffusion = v; }
+
   stats(): MyceliumStats {
     let activeCells = 0;
     let frontierCells = 0;

@@ -72,6 +72,44 @@ Must implement:
 
 Use shared gesture events from `consumeGestures()` and map them to the model behavior declared in the definition.
 
+### ⚠️ Live settings polling — REQUIRED
+
+**Sliders do nothing if you only read settings in `onEnter()`.** The settings system is write-only from the UI: the scene must poll for changes every tick. Follow the `HarmonicSandScene` pattern exactly:
+
+1. **Model**: add a public setter for each `SettingsField` of type `number` that mutates `this.options.<key>` in place.  
+   For params that require a structural rebuild (grid dimensions, particle budgets), the scene handles the rebuild instead.
+
+2. **Scene**: add a `private last<Key> = 0` tracking field per configurable setting.  
+   In `onEnter()`, initialise every `last*` field from `this.modelOptions` after the model is constructed.  
+   In `update()`, poll each setting **before** advancing the simulation:
+
+```ts
+// Compact live-applicable example (surfaceTension etc.)
+const newSurfaceTension = (settings.get('surfaceTension') as number | undefined)
+  ?? (MY_DEFAULTS.surfaceTension as number);
+if (newSurfaceTension !== this.lastSurfaceTension) {
+  this.lastSurfaceTension = newSurfaceTension;
+  this.model.setSurfaceTension(newSurfaceTension);
+  this.modelOptions = { ...this.modelOptions, surfaceTension: newSurfaceTension };
+}
+
+// Structural example (gridColumns) — rebuild model
+const newColumns = (settings.get('gridColumns') as number | undefined)
+  ?? (MY_DEFAULTS.gridColumns as number);
+if (newColumns !== this.lastGridColumns) {
+  this.lastGridColumns = newColumns;
+  this.modelOptions = {
+    ...this.modelOptions,
+    columns: newColumns,
+    rows: Math.max(12, Math.round(newColumns * this.ctx_.height / Math.max(1, this.ctx_.width))),
+    seed: this.modelOptions.seed + 1,
+  };
+  this.model = new MyModel(this.modelOptions);
+}
+```
+
+Keep `this.modelOptions` in sync with every live change so that `resize()` and `reset()` pick up the current values when they spread `...this.modelOptions`.
+
 ---
 
 ## Step 6 — Preview Scene
@@ -116,7 +154,45 @@ Required fields:
 - `defaultSeed`
 - `capabilities` with `interactive`, `ambient`, `gestures`, `directorMode`, `stagnationRecovery`, `debugOverlay`, `styleExport`, `proceduralTextures`, `renderTargetPool`, and **`demo: true`** as appropriate
 - `factory` and `previewFactory`
-- **`demoAiFactory`** — required when `capabilities.demo` is true; return a `SimulationAI` that generates plausible `GestureEvent[]` each frame to operate the simulation autonomously
+- **`demoAiFactory`** — required when `capabilities.demo` is true; return a `SimulationAI` that:
+  - Implements **`onActivate(ctx)`** to immediately apply an initial style + settings on first launch
+  - Implements **`think(ctx)`** with a periodic **overhaul loop** (every 18–35 s) that calls `ctx.resetScene()`, `ctx.applyStyle()`, and `ctx.applyNumericSetting()` for every `SettingsField` key
+  - Implements **`reset()`** to reset all elapsed timers (including the overhaul timer back to 0 to trigger overhaul on next tick)
+  - Generates continuous `GestureEvent[]` between overhuals to keep the simulation active
+  - Defines `PARAM_PRESETS` constant arrays covering the full range of each numeric setting
+
+  > A DemoAI that only generates gestures and never calls `applyStyle`/`applyNumericSetting` is **incomplete** — the demo will never cycle through the slider range or showcase different styles.
+
+  **Canonical pattern** (mirror `HarmonicSandDemoAI.ts` and `AmoebaLampDemoAI.ts`):
+
+  ```ts
+  const PARAM_PRESETS: Array<[number, ...]> = [/* one tuple per mood */];
+
+  export class MySimDemoAI implements SimulationAI {
+    private elapsedSinceOverhaul = 0;
+    private nextOverhaulIn = 0; // 0 triggers overhaul on first tick
+
+    onActivate(ctx: SimAIContext): void { this.doOverhaul(ctx); }
+
+    reset(): void { this.elapsedSinceOverhaul = 0; this.nextOverhaulIn = 0; /* reset other timers */ }
+
+    think(ctx: SimAIContext): GestureEvent[] {
+      this.elapsedSinceOverhaul += ctx.dt;
+      if (this.elapsedSinceOverhaul >= this.nextOverhaulIn) { this.doOverhaul(ctx); return []; }
+      // ... generate gestures ...
+    }
+
+    private doOverhaul(ctx: SimAIContext): void {
+      ctx.resetScene();
+      ctx.applyStyle(ctx.styleIds[Math.floor(Math.random() * ctx.styleIds.length)]);
+      const [param1, param2] = PARAM_PRESETS[Math.floor(Math.random() * PARAM_PRESETS.length)];
+      ctx.applyNumericSetting('param1Key', param1);
+      ctx.applyNumericSetting('param2Key', param2);
+      this.nextOverhaulIn = 20 + Math.random() * 15; // 20–35 s
+      this.elapsedSinceOverhaul = 0;
+    }
+  }
+  ```
 
 ---
 

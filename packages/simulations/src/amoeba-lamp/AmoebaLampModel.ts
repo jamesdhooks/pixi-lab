@@ -121,6 +121,11 @@ export class AmoebaLampModel {
     this.projectFields();
   }
 
+  // Live-settable parameters — called from the scene each tick when a slider value changes.
+  setSurfaceTension(v: number): void { this.options.surfaceTension = v; }
+  setBuoyancy(v: number): void { this.options.buoyancy = v; }
+  setDensityRadius(v: number): void { this.options.densityRadius = v; }
+
   stats(): AmoebaLampStats {
     let heat = 0;
     let speed = 0;

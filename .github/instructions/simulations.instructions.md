@@ -36,8 +36,9 @@ packages/simulations/src/
 8. Every simulation must map shared gestures through the definition's `gestureMap`.
 9. Every simulation must declare director events for ambient idle behavior.
 10. Use shared fields, render-target pools, style manifests, and shader pass abstractions where possible.
-11. Every simulation MUST export a `demoAiFactory` in its definition that returns a `SimulationAI` for automated demo operation. Set `capabilities.demo: true` when this is present.
+11. Every simulation MUST export a `demoAiFactory` in its definition that returns a `SimulationAI` for automated demo operation. Set `capabilities.demo: true` when this is present. The DemoAI **must** implement `onActivate()`, define `PARAM_PRESETS` covering the full slider range, and run a periodic overhaul loop in `think()` that calls `ctx.resetScene()`, `ctx.applyStyle()`, and `ctx.applyNumericSetting()` for every `SettingsField` key. A DemoAI that only generates gestures and never cycles settings or styles is incomplete. See `AmoebaLampDemoAI.ts` and `HarmonicSandDemoAI.ts` as canonical examples.
 12. **Configuration UI rule** — simulation-specific configurators (style picker, parameter sliders) must be horizontally centered on screen. Only utility controls (quality selector, reset, settings, hide-UI, demo) belong in the top-right corner.
+13. **Live settings polling rule** — `onEnter()` reads settings once at startup. To make sliders reactive, the scene **must** poll every `SettingsField` in `update()` each tick, compare against a cached `last*` field, and call a model setter (or rebuild the model) when the value changes. Never assume settings values are stable after `onEnter()`. See `HarmonicSandScene.update()` as the canonical example.
 
 ## Do Not
 

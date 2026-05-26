@@ -30,6 +30,13 @@ export class AmoebaLampScene extends SimulationScene {
   private model: AmoebaLampModel | null = null;
   private modelOptions: AmoebaLampModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
+  /** Cached settings values — detect changes each update tick and apply live. */
+  private lastSurfaceTension = 0;
+  private lastBuoyancy = 0;
+  private lastDensityRadius = 0;
+  private lastBlobCount = 0;
+  private lastParticleBudget = 0;
+  private lastGridColumns = 0;
 
   constructor(private readonly previewColumns?: number, private readonly previewBudget?: number) {
     super();
@@ -56,6 +63,12 @@ export class AmoebaLampScene extends SimulationScene {
       buoyancy: (settings.get('buoyancy') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.buoyancy as number),
     };
     this.model = new AmoebaLampModel(this.modelOptions);
+    this.lastSurfaceTension = this.modelOptions.surfaceTension;
+    this.lastBuoyancy = this.modelOptions.buoyancy;
+    this.lastDensityRadius = this.modelOptions.densityRadius;
+    this.lastBlobCount = this.modelOptions.blobCount;
+    this.lastParticleBudget = this.modelOptions.particleBudget;
+    this.lastGridColumns = this.modelOptions.columns;
     const style = settings.get('style') as string | undefined;
     if (style) this.setStyle(style);
     ctx.systems.debug?.setEnabled(false);
@@ -69,7 +82,55 @@ export class AmoebaLampScene extends SimulationScene {
   }
 
   override update(dt: number): void {
-    if (!this.model) return;
+    if (!this.model || !this.modelOptions) return;
+
+    // Poll every live-editable setting so slider changes take effect immediately
+    // without restarting the simulation (mirrors HarmonicSandScene pattern).
+    const settings = this.ctx_.systems.settings;
+
+    const newSurfaceTension = (settings.get('surfaceTension') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.surfaceTension as number);
+    if (newSurfaceTension !== this.lastSurfaceTension) {
+      this.lastSurfaceTension = newSurfaceTension;
+      this.model.setSurfaceTension(newSurfaceTension);
+      this.modelOptions = { ...this.modelOptions, surfaceTension: newSurfaceTension };
+    }
+
+    const newBuoyancy = (settings.get('buoyancy') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.buoyancy as number);
+    if (newBuoyancy !== this.lastBuoyancy) {
+      this.lastBuoyancy = newBuoyancy;
+      this.model.setBuoyancy(newBuoyancy);
+      this.modelOptions = { ...this.modelOptions, buoyancy: newBuoyancy };
+    }
+
+    const newDensityRadius = (settings.get('densityRadius') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.densityRadius as number);
+    if (newDensityRadius !== this.lastDensityRadius) {
+      this.lastDensityRadius = newDensityRadius;
+      this.model.setDensityRadius(newDensityRadius);
+      this.modelOptions = { ...this.modelOptions, densityRadius: newDensityRadius };
+    }
+
+    // Structural params (grid size, blob count, budget) require a full model rebuild.
+    const newBlobCount = (settings.get('blobCount') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.blobCount as number);
+    const newParticleBudget = (settings.get('particleBudget') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.particleBudget as number);
+    const newGridColumns = (settings.get('gridColumns') as number | undefined) ?? (AMOEBA_LAMP_DEFAULTS.gridColumns as number);
+    if (newBlobCount !== this.lastBlobCount || newParticleBudget !== this.lastParticleBudget || newGridColumns !== this.lastGridColumns) {
+      this.lastBlobCount = newBlobCount;
+      this.lastParticleBudget = newParticleBudget;
+      this.lastGridColumns = newGridColumns;
+      this.modelOptions = {
+        ...this.modelOptions,
+        blobCount: newBlobCount,
+        particleBudget: newParticleBudget,
+        columns: newGridColumns,
+        rows: Math.max(12, Math.round(newGridColumns * this.ctx_.height / Math.max(1, this.ctx_.width))),
+        surfaceTension: newSurfaceTension,
+        buoyancy: newBuoyancy,
+        densityRadius: newDensityRadius,
+        seed: this.modelOptions.seed + 1,
+      };
+      this.model = new AmoebaLampModel(this.modelOptions);
+    }
+
     for (const gesture of this.consumeGestures()) this.model.handleGesture(gesture);
     this.model.update(dt);
     this.stagnationReport = this.model.detectStagnation(dt);

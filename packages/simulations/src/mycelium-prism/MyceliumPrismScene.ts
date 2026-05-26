@@ -30,6 +30,10 @@ export class MyceliumPrismScene extends SimulationScene {
   private model: MyceliumPrismModel | null = null;
   private modelOptions: MyceliumPrismModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
+  /** Cached settings values — detect changes each update tick and apply live. */
+  private lastGrowthRate = 0;
+  private lastNutrientDiffusion = 0;
+  private lastGridColumns = 0;
 
   constructor(private readonly previewColumns?: number) {
     super();
@@ -53,6 +57,9 @@ export class MyceliumPrismScene extends SimulationScene {
       nutrientDiffusion: (settings.get('nutrientDiffusion') as number | undefined) ?? (MYCELIUM_PRISM_DEFAULTS.nutrientDiffusion as number),
     };
     this.model = new MyceliumPrismModel(this.modelOptions);
+    this.lastGrowthRate = this.modelOptions.growthRate;
+    this.lastNutrientDiffusion = this.modelOptions.nutrientDiffusion;
+    this.lastGridColumns = this.modelOptions.columns;
     const style = settings.get('style') as string | undefined;
     if (style) this.setStyle(style);
     ctx.systems.debug?.setEnabled(false);
@@ -66,7 +73,41 @@ export class MyceliumPrismScene extends SimulationScene {
   }
 
   override update(dt: number): void {
-    if (!this.model) return;
+    if (!this.model || !this.modelOptions) return;
+
+    // Poll every live-editable setting so slider changes take effect immediately
+    // without restarting the simulation (mirrors HarmonicSandScene pattern).
+    const settings = this.ctx_.systems.settings;
+
+    const newGrowthRate = (settings.get('growthRate') as number | undefined) ?? (MYCELIUM_PRISM_DEFAULTS.growthRate as number);
+    if (newGrowthRate !== this.lastGrowthRate) {
+      this.lastGrowthRate = newGrowthRate;
+      this.model.setGrowthRate(newGrowthRate);
+      this.modelOptions = { ...this.modelOptions, growthRate: newGrowthRate };
+    }
+
+    const newNutrientDiffusion = (settings.get('nutrientDiffusion') as number | undefined) ?? (MYCELIUM_PRISM_DEFAULTS.nutrientDiffusion as number);
+    if (newNutrientDiffusion !== this.lastNutrientDiffusion) {
+      this.lastNutrientDiffusion = newNutrientDiffusion;
+      this.model.setNutrientDiffusion(newNutrientDiffusion);
+      this.modelOptions = { ...this.modelOptions, nutrientDiffusion: newNutrientDiffusion };
+    }
+
+    // Grid dimensions require a full model rebuild.
+    const newGridColumns = (settings.get('gridColumns') as number | undefined) ?? (MYCELIUM_PRISM_DEFAULTS.gridColumns as number);
+    if (newGridColumns !== this.lastGridColumns) {
+      this.lastGridColumns = newGridColumns;
+      this.modelOptions = {
+        ...this.modelOptions,
+        columns: newGridColumns,
+        rows: Math.max(12, Math.round(newGridColumns * this.ctx_.height / Math.max(1, this.ctx_.width))),
+        growthRate: newGrowthRate,
+        nutrientDiffusion: newNutrientDiffusion,
+        seed: this.modelOptions.seed + 1,
+      };
+      this.model = new MyceliumPrismModel(this.modelOptions);
+    }
+
     for (const gesture of this.consumeGestures()) this.model.handleGesture(gesture);
     this.model.update(dt);
     this.stagnationReport = this.model.detectStagnation(dt);
