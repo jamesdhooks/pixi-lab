@@ -50,9 +50,11 @@ export function SimControlPanel({ app, fields, settingsVersion, headerSlot }: Si
 
   if (numericFields.length === 0 && !headerSlot) return null;
 
-  // Align top with the HUD buttons row (safeArea.top + 12px matches HUD paddingTop).
-  // Horizontal padding clears the quit button on the left and overflow button on the right (each ~44px).
-  const topOffset = `${(safeArea.top || 0) + 12}px`;
+  // On desktop, push controls below the HUD (which contains style dropdown on desktop).
+  // HUD is ~44px tall (padding + 32px button height). Add gap for breathing room.
+  // On mobile portrait, HUD is also present but more compact; still use similar offset.
+  const hudHeight = 44; // safeArea.top + 12px padding + 8 + 24 height + gap
+  const topOffset = `${(safeArea.top || 0) + 12 + hudHeight + 8}px`;
   // Narrow labels on mobile portrait to avoid overflow at 375 px.
   const labelClass = isMobile && !isLandscape
     ? 'w-16 shrink-0 text-right text-[10px] font-semibold uppercase tracking-widest text-white/70'
