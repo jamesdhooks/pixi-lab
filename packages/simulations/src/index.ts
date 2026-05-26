@@ -1,4 +1,5 @@
 import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
 import { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 import { myceliumPrismDefinition } from './mycelium-prism/mycelium-prism.definition.js';
@@ -9,6 +10,11 @@ export { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 export { AmoebaLampScene, amoebaLampStyleManifest } from './amoeba-lamp/AmoebaLampScene.js';
 export { AmoebaLampPreviewScene } from './amoeba-lamp/AmoebaLampPreviewScene.js';
 export { AmoebaLampModel, type AmoebaLampModelOptions, type AmoebaLampStats } from './amoeba-lamp/AmoebaLampModel.js';
+
+export { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
+export { AntSignalScene, antSignalStyleManifest } from './ant-signal/AntSignalScene.js';
+export { AntSignalPreviewScene } from './ant-signal/AntSignalPreviewScene.js';
+export { AntSignalModel, type AntSignalModelOptions, type AntSignalStats } from './ant-signal/AntSignalModel.js';
 
 export { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 export { HarmonicSandScene, harmonicSandStyleManifest } from './harmonic-sand/HarmonicSandScene.js';
@@ -30,7 +36,7 @@ export { PlasmaBranchScene, plasmaBranchStyleManifest } from './plasma-branch/Pl
 export { PlasmaBranchPreviewScene } from './plasma-branch/PlasmaBranchPreviewScene.js';
 export { PlasmaBranchModel, type PlasmaBranchModelOptions, type PlasmaBranchStats } from './plasma-branch/PlasmaBranchModel.js';
 
-export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [harmonicSandDefinition, myceliumPrismDefinition, amoebaLampDefinition, orbitalShrapnelDefinition, plasmaBranchDefinition] as const;
+export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [harmonicSandDefinition, myceliumPrismDefinition, amoebaLampDefinition, orbitalShrapnelDefinition, plasmaBranchDefinition, antSignalDefinition] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
   return SIMULATION_REGISTRY.find((simulation) => simulation.id === id);

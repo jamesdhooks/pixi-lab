@@ -230,7 +230,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 3 | Amoeba Lamp | IN_PROGRESS | density metaballs | Model/scene/preview/demo AI implemented with low-res density-field metaballs through the shared renderer; full gate pending. |
 | 4 | Orbital Shrapnel Field | IN_PROGRESS | custom mesh + trails | Model/scene/preview/demo AI implemented with deterministic orbital debris and a shared low-res trail field renderer; full automated gate passes under temporary Node 22/pnpm 10 toolchain. |
 | 5 | Plasma Branch Terrarium | IN_PROGRESS | charge field | Model/scene/preview/demo AI implemented with deterministic charge-grid branching and shared scalar/trail field rendering; full gate pending. |
-| 6 | Ant Signal Civilization | NOT_STARTED | trail field | emergence showcase |
+| 6 | Ant Signal Civilization | IN_PROGRESS | trail field | Model/scene/preview/demo AI implemented with deterministic pheromone-routing agents and shared trail/field rendering; full gate pending. |
 | 7 | Crystal Plasma Storm | NOT_STARTED | triangle grid + stress | crystal renderer |
 | 8 | Time Echo Particles | NOT_STARTED | history buffers | temporal system |
 | 9 | Electro-Osmotic Amoeba | NOT_STARTED | Amoeba Lamp complete | charged membranes |
@@ -1246,7 +1246,187 @@ Deferred before marking COMPLETE:
 
 ---
 
-# 11. Remaining Simulation Tracking Sections
+# 11. Ant Signal Civilization
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoBot
+LAST_UPDATED: 2026-05-26
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates swarm/agent emergence over low-resolution fields
+- validates pheromone trail-field rendering and bounded routing signals
+- provides the first stigmergy/civilization showcase for the gallery
+
+---
+
+## Dependencies
+
+- trail field
+- particle renderer
+- palette/bloom pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded ant agents
+- central nest signal and shifting food sources
+- pheromone deposition, fade, and user-painted guide roads
+- food pickup/return state transitions
+- stagnation recovery when food/trails collapse
+
+---
+
+## Required Render Layers
+
+```txt
+trails
+field
+particles
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+trailFeedback
+paletteMap
+bloom
+edgeGlow
+contourBands
+```
+
+---
+
+## Required Styles
+
+### Neon Colony
+Hot amber/magenta pheromone roads on a deep violet nest field.
+
+### Circuit Ants
+Green/cyan living PCB routing signals.
+
+### Fungal Roads
+Organic lime and magenta biological trail highways.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | add food source |
+| drag | paint pheromone guide road |
+| hold | seed dense food/signal bloom |
+| swipe | wipe trails and redirect routing |
+
+---
+
+## Director Mode Events
+
+- food bloom
+- pheromone pulse
+- route shift
+
+---
+
+## Stagnation Recovery
+
+If:
+- food sources disappear
+- pheromone variation collapses
+- trails fade to uniform darkness
+
+Then:
+- add fresh food sources
+- paint a nest-to-food signal road
+- perturb a subset of ants
+
+---
+
+## Performance Targets
+
+```txt
+ants:
+  40-360 first-playable budget
+
+trail/signals:
+  32x18 to 128x72
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses shared `SimulationCanvasLayer.renderField()` and `renderParticles()` rather than a custom instanced ant mesh
+- updates are O(ants + food sources) with bounded field sizes
+- food and pheromone state remains capped to avoid unbounded growth
+
+Do NOT:
+- add expensive all-agent neighbor interactions
+- create one Pixi object per ant
+- build simulation-specific trail shaders before reusable compositor support exists
+
+---
+
+## Validation Checklist
+
+- [x] ants route deterministically in model behavior
+- [x] tap/drag/hold/swipe gestures alter food and pheromone state
+- [x] pheromone trails are bounded and fade over time
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] full automated gate in current environment
+
+---
+
+## Known Risks
+
+- first-playable particles are point sprites rather than ant silhouettes or oriented sprites
+- pheromone feedback/bloom/contour effects are represented through shared field rendering and style metadata until reusable GPU compositor work lands
+- emergent routing may need tuning after manual visual validation
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/ant-signal/AntSignalModel.ts`
+- `packages/simulations/src/ant-signal/AntSignalScene.ts`
+- `packages/simulations/src/ant-signal/AntSignalPreviewScene.ts`
+- `packages/simulations/src/ant-signal/AntSignalDemoAI.ts`
+- `packages/simulations/src/ant-signal/ant-signal.config.ts`
+- `packages/simulations/src/ant-signal/ant-signal.definition.ts`
+- `packages/simulations/src/ant-signal/styles/*.ts`
+- `packages/simulations/src/ant-signal/__tests__/AntSignalModel.test.ts`
+
+Implementation notes:
+- Tests were written first and initially failed on the missing model import, then passed after implementing the deterministic model.
+- Uses seeded ant agents with food/nest signal sampling, bounded `TrailField` pheromone deposition/fade, and capped food-source growth.
+- Scene renders food/pheromone fields through the shared GPU field upload path and ants through the shared particle layer for the first playable pass.
+
+Deferred before marking COMPLETE:
+- dedicated reusable oriented sprite/instanced ant renderer
+- real reusable trail feedback/bloom/edge compositor passes beyond declared style metadata
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 12. Remaining Simulation Tracking Sections
 
 IMPORTANT:
 Every remaining simulation should follow EXACTLY the same structure:
@@ -1291,7 +1471,7 @@ The remaining simulations must be added using this exact format:
 
 ---
 
-# 12. Agent Update Rules
+# 13. Agent Update Rules
 
 When an agent completes work:
 
@@ -1327,7 +1507,7 @@ The agent must:
 
 ---
 
-# 13. Recommended Git Workflow
+# 14. Recommended Git Workflow
 
 Recommended commit structure:
 
@@ -1343,7 +1523,7 @@ Avoid giant multi-simulation commits.
 
 ---
 
-# 14. Final Guidance for Agents
+# 15. Final Guidance for Agents
 
 The project succeeds if:
 - simulations feel alive
