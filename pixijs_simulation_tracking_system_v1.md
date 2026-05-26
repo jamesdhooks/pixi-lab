@@ -255,7 +255,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 14 | Oil-Water Universe | IN_PROGRESS | phase separation | Model/scene/preview/demo AI implemented with deterministic bounded phase separation, live separation/tension/viscosity/stir controls, shared density metaball + scalar edge rendering, and droplet/shear gestures; full automated gate pending. |
 | 15 | Prism Pool | IN_PROGRESS | fake normals | Model/scene/preview/demo AI implemented with deterministic bounded ripple-height fields, fake-normal/caustic projections, live wave/refraction controls, shared field rendering, and ripple/rake gestures; full automated gate pending. |
 | 16 | Neon River Delta | IN_PROGRESS | height field | Model/scene/preview/demo AI implemented with deterministic bounded height-field erosion, live rainfall/erosion/sediment/flow controls, shared field rendering, and levee/channel gestures; full automated gate pending. |
-| 17 | Alien Vascular Tree | NOT_STARTED | line mesh | branching system |
+| 17 | Alien Vascular Tree | IN_PROGRESS | line mesh | Model/scene/preview/demo AI implemented with deterministic bounded vascular branch graph, live branch/nutrient/prune controls, shared ArcLineRenderer + scalar nutrient/pulse fields, and light/nutrient gestures; full automated gate pending. |
 | 18 | Living Voronoi Tissue | NOT_STARTED | voronoi field | territory simulation |
 | 19 | Proto-Galaxy Forge | NOT_STARTED | gravity wells | advanced particles |
 | 20 | Chromatic Avalanche Bowl | NOT_STARTED | density buckets | granular fake physics |

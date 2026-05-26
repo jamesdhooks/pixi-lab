@@ -1,4 +1,5 @@
 import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { alienVascularTreeDefinition } from './alien-vascular-tree/alien-vascular-tree.definition.js';
 import { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 import { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
 import { cellularOceanDefinition } from './cellular-ocean/cellular-ocean.definition.js';
@@ -16,6 +17,11 @@ import { plasmaBranchDefinition } from './plasma-branch/plasma-branch.definition
 import { prismPoolDefinition } from './prism-pool/prism-pool.definition.js';
 import { timeEchoDefinition } from './time-echo/time-echo.definition.js';
 import { turingSkinDefinition } from './turing-skin/turing-skin.definition.js';
+
+export { alienVascularTreeDefinition } from './alien-vascular-tree/alien-vascular-tree.definition.js';
+export { AlienVascularTreeScene, alienVascularTreeStyleManifest } from './alien-vascular-tree/AlienVascularTreeScene.js';
+export { AlienVascularTreePreviewScene } from './alien-vascular-tree/AlienVascularTreePreviewScene.js';
+export { AlienVascularTreeModel, type AlienVascularTreeModelOptions, type AlienVascularTreeStats } from './alien-vascular-tree/AlienVascularTreeModel.js';
 
 export { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 export { AmoebaLampScene, amoebaLampStyleManifest } from './amoeba-lamp/AmoebaLampScene.js';
@@ -120,6 +126,7 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   oilWaterUniverseDefinition,
   prismPoolDefinition,
   neonRiverDeltaDefinition,
+  alienVascularTreeDefinition,
 ] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
