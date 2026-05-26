@@ -33,10 +33,9 @@ export const myceliumPrismDefinition: SimulationDefinition = {
   configDefaults: MYCELIUM_PRISM_DEFAULTS,
   styleManifest: myceliumPrismStyleManifest,
   gestureMap: {
-    tap: 'seed a new spore colony',
-    drag: 'smear nutrient gel through the colony bed',
-    hold: 'add moisture and wake nearby veins',
-    fast_swipe: 'send a pulse through nearby mycelium',
+    tap: 'add a new spore colony',
+    drag: 'continuously add spore colonies',
+    hold: 'reset the colony bed',
   },
   directorEvents: [
     { id: 'spore-rain', label: 'Spore Rain', minIntervalMs: 7000, maxIntervalMs: 14000, intensity: 0.35 },
@@ -53,8 +52,7 @@ export const myceliumPrismDefinition: SimulationDefinition = {
   previewFactory: () => new MyceliumPrismPreviewScene(),
   demoAiFactory: () => new MyceliumPrismDemoAI(),
   tutorialPages: [
-    { icon: '✦', title: 'Seed Spores', body: 'Tap anywhere to plant a new glowing fungal colony.' },
-    { icon: '〰', title: 'Feed the Network', body: 'Drag to smear nutrients and guide growth fronts.' },
-    { icon: '↯', title: 'Pulse Veins', body: 'Swipe through mature colonies to light up active veins.' },
+    { icon: '✦', title: 'Add Spores', body: 'Tap or drag to plant new glowing fungal colonies.' },
+    { icon: '↺', title: 'Reset Growth', body: 'Hold to restart the colony bed.' },
   ],
 };

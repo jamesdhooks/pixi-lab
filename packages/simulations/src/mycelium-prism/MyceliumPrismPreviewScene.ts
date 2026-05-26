@@ -5,7 +5,7 @@ export class MyceliumPrismPreviewScene extends MyceliumPrismScene {
   override readonly name = 'MyceliumPrismPreview';
 
   constructor() {
-    super(32);
+    super(24);
   }
 
   override onEnter(ctx: GameContext, input: Input): void {

@@ -41,11 +41,11 @@ describe('MyceliumPrismModel', () => {
     expect(model.stats().activeCells).toBeGreaterThan(before);
   });
 
-  it('drag gestures smear nutrients along the grid', () => {
+  it('drag gestures continuously seed spore colonies', () => {
     const model = createModel();
-    const before = model.stats().meanNutrient;
+    const before = model.stats().activeCells;
     model.handleGesture({ kind: 'drag', x: 260, y: 120, dx: 35, dy: -10, timestamp: 0 });
-    expect(model.stats().meanNutrient).toBeGreaterThan(before);
+    expect(model.stats().activeCells).toBeGreaterThan(before);
   });
 
   it('detects and stabilizes stagnant states', () => {

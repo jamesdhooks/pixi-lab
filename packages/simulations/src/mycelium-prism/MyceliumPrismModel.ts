@@ -92,19 +92,16 @@ export class MyceliumPrismModel {
   }
 
   handleGesture(event: GestureEvent): void {
-    const { column, row } = this.toCell(event.x, event.y);
     switch (event.kind) {
       case 'tap':
-        this.seedColony(column, row, Math.floor(this.rng.range(0, Math.max(1, this.options.strainCount))), 1.1);
+        this.seedColonyAt(event.x, event.y, 1.1);
         break;
       case 'drag':
-        this.smearNutrients(column, row, 2, 0.18 + Math.min(0.35, Math.hypot(event.dx ?? 0, event.dy ?? 0) / 360));
+        this.seedColonyAt(event.x, event.y, 0.92);
         break;
       case 'hold':
-        this.smearNutrients(column, row, 3, 0.42);
-        break;
       case 'fast_swipe':
-        this.pulseVeins(column, row, 0.28);
+        this.seedColonyAt(event.x, event.y, 0.92);
         break;
       default:
         break;
@@ -139,6 +136,12 @@ export class MyceliumPrismModel {
   // Live-settable parameters — called from the scene each tick when a slider value changes.
   setGrowthRate(v: number): void { this.options.growthRate = v; }
   setNutrientDiffusion(v: number): void { this.options.nutrientDiffusion = v; }
+
+  seedColonyAt(x: number, y: number, energy = 1.05): void {
+    const { column, row } = this.toCell(x, y);
+    this.seedColony(column, row, Math.floor(this.rng.range(0, Math.max(1, this.options.strainCount))), energy);
+    this.projectField();
+  }
 
   stats(): MyceliumStats {
     let activeCells = 0;
@@ -250,11 +253,22 @@ export class MyceliumPrismModel {
   }
 
   private projectField(): void {
+    // Each strain gets its own palette band so colours are distinct in the square-grid view.
+    // Strains are spread across [0.20, 0.98] so that with any reasonable palette (5–8 entries)
+    // each strain maps to a clearly different colour bucket.
+    const strainCount = Math.max(1, this.options.strainCount);
+    const bandWidth = 0.78 / strainCount;
     for (let i = 0; i < this.cells.length; i++) {
       const cell = this.cells[i];
-      const strainPhase = cell.strain < 0 ? 0 : (cell.strain + 1) / Math.max(1, this.options.strainCount);
-      const pulse = cell.strain < 0 ? 0 : 0.15 * Math.sin(this.time * 4 + cell.age * 2 + strainPhase * Math.PI * 2);
-      const value = cell.strain < 0 ? cell.nutrient * 0.16 : Math.min(1.4, 0.35 + cell.energy + cell.nutrient * 0.25 + pulse);
+      let value: number;
+      if (cell.strain < 0) {
+        value = cell.nutrient * 0.10;
+      } else {
+        const strainCenter = 0.20 + (cell.strain + 0.5) * bandWidth;
+        const pulse = (bandWidth * 0.28) * Math.sin(this.time * 4 + cell.age * 2);
+        const frontierBoost = cell.frontier ? bandWidth * 0.12 : 0;
+        value = Math.max(0, Math.min(1, strainCenter + pulse + frontierBoost));
+      }
       this.grid.cells[i].value = value;
       this.field.values[i] = value;
     }
@@ -270,13 +284,6 @@ export class MyceliumPrismModel {
         cell.energy = Math.min(1.6, cell.energy + amount * falloff * 0.3);
         cell.frontier = true;
       }
-    }
-  }
-
-  private pulseVeins(column: number, row: number, amount: number): void {
-    for (const n of this.neighbors(column, row, 4)) {
-      const cell = this.cells[this.index(n.column, n.row)];
-      if (cell.strain >= 0) cell.energy = Math.min(1.8, cell.energy + amount);
     }
   }
 
