@@ -252,7 +252,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 11 | Cellular Ocean | IN_PROGRESS | spring membranes | Model/scene/preview/demo AI implemented with deterministic SpringSystem membrane cells, live tension/viscosity/drift controls, shared field/particle rendering, and pulse/shear gestures; full automated gate pending. |
 | 12 | Cosmic Ink Ocean | IN_PROGRESS | vector fields | Model/scene/preview/demo AI implemented with deterministic vector turbulence, bounded ink scalar field, live flow controls, shared field/particle rendering, and vortex/shear gestures; full automated gate pending. |
 | 13 | Turing Skin | IN_PROGRESS | scalar fields | Model/scene/preview/demo AI implemented with deterministic Gray-Scott reaction diffusion, live chemistry controls, shared field rendering, and morphogen paint gestures; full automated gate pending. |
-| 14 | Oil-Water Universe | NOT_STARTED | phase separation | material domains |
+| 14 | Oil-Water Universe | IN_PROGRESS | phase separation | Model/scene/preview/demo AI implemented with deterministic bounded phase separation, live separation/tension/viscosity/stir controls, shared density metaball + scalar edge rendering, and droplet/shear gestures; full automated gate pending. |
 | 15 | Prism Pool | NOT_STARTED | fake normals | shader showcase |
 | 16 | Neon River Delta | NOT_STARTED | height field | erosion system |
 | 17 | Alien Vascular Tree | NOT_STARTED | line mesh | branching system |
@@ -2338,7 +2338,190 @@ Deferred before marking COMPLETE:
 
 ---
 
-# 17. Agent Update Rules
+# 17. Oil-Water Universe
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-26
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates deterministic phase-separation behavior on bounded scalar fields
+- exercises the shared `DensityMetaballRenderer` for material domains with a scalar edge overlay
+- proves live settings polling for structural resolution plus material tuning sliders
+
+---
+
+## Dependencies
+
+```txt
+Shared systems:
+- ScalarField
+- SeededRng
+- DensityMetaballRenderer
+- FieldPaletteRenderer
+- SimulationScene live settings and gestures
+```
+
+---
+
+## Core Requirements
+
+- deterministic seeded oil/water phase initialization
+- bounded phase array, density projection, and edge projection
+- live settings polling for resolution, separation rate, boundary tension, viscosity, and stir strength
+- stagnation recovery that injects seeded alternating fluid domains
+
+---
+
+## Required Render Layers
+
+```txt
+density
+field
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+densityMetaball
+paletteMap
+edgeGlow
+bloom
+contourBands
+distortion
+```
+
+---
+
+## Required Styles
+
+### Oil Slick
+Black water and spectral petroleum membranes with sharp rainbow rims.
+
+### Bio Foam
+Milky emulsions split into green microbial islands and pearled foam.
+
+### Cosmic Cells
+Nebula-purple fluids phase into bright cellular continents in a dark basin.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | seed an oil droplet |
+| hold | carve a cool water pocket |
+| drag | stir alternating ribbons |
+| fast swipe | shear fresh membranes through the phase field |
+
+---
+
+## Director Mode Events
+
+- emulsion bloom
+- surface shear
+- phase reset
+
+---
+
+## Stagnation Recovery
+
+If:
+- field variance collapses
+- boundary energy falls below visible thresholds
+- mixing energy drops too low
+
+Then:
+- inject alternating seeded phase domains
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+phase field:
+  32x18 to 160x90 typical, capped by shared resolution setting
+
+rendering:
+  shared DensityMetaballRenderer plus one scalar edge field in enhanced quality
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses shared `DensityMetaballRenderer` for domains and `FieldPaletteRenderer` for enhanced edge glow
+- model updates remain O(field cells) with no per-cell Pixi objects
+- structural resolution changes rebuild the deterministic model; material tuning mutates model options live
+
+Do NOT:
+- add a simulation-specific oil/water shader before reusable compositor support exists
+- create one Pixi object per cell
+- allow unbounded droplet/domain buffers
+
+---
+
+## Validation Checklist
+
+- [x] phase fields initialize deterministically from seed
+- [x] update advances phase state and keeps values bounded
+- [x] tap/drag/hold/swipe gestures alter domain state
+- [x] field budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [ ] full automated gate passes in current environment
+
+---
+
+## Known Risks
+
+- first-playable phase separation is a CPU bounded field model rather than a dedicated GPU Cahn-Hilliard shader
+- enhanced quality adds a scalar edge overlay; visual balance may need manual gallery tuning
+- manual demo visual validation and Pi 5 FPS pass are still required before COMPLETE
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/oil-water-universe/OilWaterUniverseModel.ts`
+- `packages/simulations/src/oil-water-universe/OilWaterUniverseScene.ts`
+- `packages/simulations/src/oil-water-universe/OilWaterUniversePreviewScene.ts`
+- `packages/simulations/src/oil-water-universe/OilWaterUniverseDemoAI.ts`
+- `packages/simulations/src/oil-water-universe/oil-water-universe.config.ts`
+- `packages/simulations/src/oil-water-universe/oil-water-universe.definition.ts`
+- `packages/simulations/src/oil-water-universe/styles/*.ts`
+- `packages/simulations/src/oil-water-universe/__tests__/OilWaterUniverseModel.test.ts`
+
+Implementation notes:
+- Demo AI cycles styles plus every numeric setting so the settings panel and scene live polling are exercised.
+- Preview scene uses a reduced fixed resolution.
+- Registry exports include `oilWaterUniverseDefinition`, scene, preview, and model types.
+
+Deferred before marking COMPLETE:
+- manual demo visual validation and Pi 5 FPS pass
+- optional reusable GPU phase-separation compositor if CPU budgets become too costly
+
+---
+
+# 18. Agent Update Rules
 
 When an agent completes work:
 
@@ -2374,7 +2557,7 @@ The agent must:
 
 ---
 
-# 17. Recommended Git Workflow
+# 19. Recommended Git Workflow
 
 Recommended commit structure:
 
@@ -2390,7 +2573,7 @@ Avoid giant multi-simulation commits.
 
 ---
 
-# 18. Final Guidance for Agents
+# 20. Final Guidance for Agents
 
 The project succeeds if:
 - simulations feel alive

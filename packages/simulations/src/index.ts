@@ -9,6 +9,7 @@ import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition
 import { jellyWebDefinition } from './jelly-web/jelly-web.definition.js';
 import { myceliumLatticeDefinition } from './mycelium-lattice/mycelium-lattice.definition.js';
 import { myceliumPrismDefinition } from './mycelium-prism/mycelium-prism.definition.js';
+import { oilWaterUniverseDefinition } from './oil-water-universe/oil-water-universe.definition.js';
 import { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
 import { plasmaBranchDefinition } from './plasma-branch/plasma-branch.definition.js';
 import { timeEchoDefinition } from './time-echo/time-echo.definition.js';
@@ -64,6 +65,11 @@ export { MyceliumPrismScene, myceliumPrismStyleManifest } from './mycelium-prism
 export { MyceliumPrismPreviewScene } from './mycelium-prism/MyceliumPrismPreviewScene.js';
 export { MyceliumPrismModel, type MyceliumPrismModelOptions, type MyceliumStats } from './mycelium-prism/MyceliumPrismModel.js';
 
+export { oilWaterUniverseDefinition } from './oil-water-universe/oil-water-universe.definition.js';
+export { OilWaterUniverseScene, oilWaterUniverseStyleManifest } from './oil-water-universe/OilWaterUniverseScene.js';
+export { OilWaterUniversePreviewScene } from './oil-water-universe/OilWaterUniversePreviewScene.js';
+export { OilWaterUniverseModel, type OilWaterUniverseModelOptions, type OilWaterUniverseStats } from './oil-water-universe/OilWaterUniverseModel.js';
+
 export { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
 export { OrbitalShrapnelScene, orbitalShrapnelStyleManifest } from './orbital-shrapnel/OrbitalShrapnelScene.js';
 export { OrbitalShrapnelPreviewScene } from './orbital-shrapnel/OrbitalShrapnelPreviewScene.js';
@@ -99,6 +105,7 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   cellularOceanDefinition,
   cosmicInkOceanDefinition,
   turingSkinDefinition,
+  oilWaterUniverseDefinition,
 ] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
