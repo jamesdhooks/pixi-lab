@@ -231,7 +231,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 4 | Orbital Shrapnel Field | IN_PROGRESS | custom mesh + trails | Model/scene/preview/demo AI implemented with deterministic orbital debris and a shared low-res trail field renderer; full automated gate passes under temporary Node 22/pnpm 10 toolchain. |
 | 5 | Plasma Branch Terrarium | IN_PROGRESS | charge field | Model/scene/preview/demo AI implemented with deterministic charge-grid branching and shared scalar/trail field rendering; full gate pending. |
 | 6 | Ant Signal Civilization | IN_PROGRESS | trail field | Model/scene/preview/demo AI implemented with deterministic pheromone-routing agents and shared trail/field rendering; full gate pending. |
-| 7 | Crystal Plasma Storm | NOT_STARTED | triangle grid + stress | crystal renderer |
+| 7 | Crystal Plasma Storm | IN_PROGRESS | triangle grid + stress | Model/scene/preview/demo AI implemented with deterministic crystal lattice growth, bounded stress/fracture fields, and shared scalar/trail field rendering; full gate pending. |
 | 8 | Time Echo Particles | NOT_STARTED | history buffers | temporal system |
 | 9 | Electro-Osmotic Amoeba | NOT_STARTED | Amoeba Lamp complete | charged membranes |
 | 10 | Jelly Web Resonator | NOT_STARTED | spring system | soft-body showcase |
@@ -1426,7 +1426,189 @@ Deferred before marking COMPLETE:
 
 ---
 
-# 12. Remaining Simulation Tracking Sections
+# 12. Crystal Plasma Storm
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoBot
+LAST_UPDATED: 2026-05-26
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates triangular-grid crystal growth behavior
+- validates stress/fracture field projection through shared render layers
+- provides an electric faceted showcase before advanced membrane/temporal simulations
+
+---
+
+## Dependencies
+
+- triangular grid
+- scalar stress field
+- trail/fracture field
+- edge-glow/bloom/facet pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic seeded crystal facet growth
+- bounded lattice cell activation and stress accumulation
+- fracture trail deposition and fade
+- tap/drag/hold/swipe gesture mapping
+- stagnation recovery when lattice growth or stress collapses
+
+---
+
+## Required Render Layers
+
+```txt
+field
+trails
+particles
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+paletteMap
+edgeGlow
+bloom
+trailFeedback
+contourBands
+distortion
+```
+
+---
+
+## Required Styles
+
+### Ice Lightning
+Cold blue facets with white electrical fractures.
+
+### Ruby Fault
+Crimson crystal stress with molten gold fault lines.
+
+### Aurora Quartz
+Green/violet/cyan quartz facets with aurora-like glow.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | seed crystal facets |
+| drag | paint charge stress |
+| hold | build stress bloom |
+| swipe | fracture faults and discharge stress |
+
+---
+
+## Director Mode Events
+
+- crystal growth spurt
+- stress bloom
+- random fracture
+
+---
+
+## Stagnation Recovery
+
+If:
+- crystal growth drains out
+- stress field becomes uniform
+- no active crystal facets remain
+
+Then:
+- seed central facets
+- inject stress bloom
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+crystals:
+  80-520 first-playable budget
+
+stress/fracture field:
+  32x18 to 128x72
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses shared `SimulationCanvasLayer.renderField()` and `renderParticles()` rather than a custom crystal mesh
+- growth is O(active crystals) with a capped crystal budget
+- stress and fracture fields are low-resolution and bounded
+
+Do NOT:
+- create one Pixi object per lattice cell
+- introduce simulation-specific facet shaders before reusable compositor support exists
+- allow unbounded recursive crystal growth
+
+---
+
+## Validation Checklist
+
+- [x] crystal lattice grows deterministically in model behavior
+- [x] tap/drag/hold/swipe gestures alter stress and fracture state
+- [x] fracture trails are bounded and fade over time
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] model tests pass in current environment
+
+---
+
+## Known Risks
+
+- first-playable render uses point sprites and scalar fields rather than true triangular facet mesh lighting
+- facet lighting/crack/bloom effects are represented through shared field rendering and style metadata until reusable GPU compositor work lands
+- crystal growth/fracture balance may need tuning after manual visual validation
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/crystal-plasma/CrystalPlasmaModel.ts`
+- `packages/simulations/src/crystal-plasma/CrystalPlasmaScene.ts`
+- `packages/simulations/src/crystal-plasma/CrystalPlasmaPreviewScene.ts`
+- `packages/simulations/src/crystal-plasma/CrystalPlasmaDemoAI.ts`
+- `packages/simulations/src/crystal-plasma/crystal-plasma.config.ts`
+- `packages/simulations/src/crystal-plasma/crystal-plasma.definition.ts`
+- `packages/simulations/src/crystal-plasma/styles/*.ts`
+- `packages/simulations/src/crystal-plasma/__tests__/CrystalPlasmaModel.test.ts`
+
+Implementation notes:
+- Tests were written first and initially failed on the missing model import, then exposed a fracture-deposition behavior gap that was fixed in the deterministic model.
+- Uses a shared `TriangularGrid` for active crystal facets, a bounded `ScalarField` for stress, and a bounded `TrailField` for fracture scars.
+- Scene renders stress/fracture fields through the shared GPU field upload path and crystal facets through the shared particle layer for the first playable pass.
+
+Deferred before marking COMPLETE:
+- dedicated reusable triangular facet/crystal mesh renderer with crack overlays
+- real reusable facet lighting/edge-glow/bloom/fracture compositor passes beyond declared style metadata
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 13. Remaining Simulation Tracking Sections
 
 IMPORTANT:
 Every remaining simulation should follow EXACTLY the same structure:
@@ -1471,7 +1653,7 @@ The remaining simulations must be added using this exact format:
 
 ---
 
-# 13. Agent Update Rules
+# 14. Agent Update Rules
 
 When an agent completes work:
 
@@ -1507,7 +1689,7 @@ The agent must:
 
 ---
 
-# 14. Recommended Git Workflow
+# 15. Recommended Git Workflow
 
 Recommended commit structure:
 
@@ -1523,7 +1705,7 @@ Avoid giant multi-simulation commits.
 
 ---
 
-# 15. Final Guidance for Agents
+# 16. Final Guidance for Agents
 
 The project succeeds if:
 - simulations feel alive
