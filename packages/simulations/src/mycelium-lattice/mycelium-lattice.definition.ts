@@ -18,11 +18,9 @@ export const myceliumLatticeDefinition: SimulationDefinition = {
   gestureMap: {
     tap:  'seed a new spore cluster',
     drag: 'continuously scatter spores',
-    hold: 'reset the lattice',
   },
   tutorialPages: [
-    { icon: '✦', title: 'Add Spores',    body: 'Tap anywhere to seed a new spore cluster. Drag to scatter spores continuously.' },
-    { icon: '↺', title: 'Reset Growth',  body: 'Hold anywhere on the screen to clear the grid and start fresh.' },
+    { icon: '✦', title: 'Add Spores', body: 'Tap anywhere to seed a new spore cluster. Drag to scatter spores continuously.' },
   ],
   settingsFields: MYCELIUM_LATTICE_SETTINGS_FIELDS,
   configDefaults: MYCELIUM_LATTICE_DEFAULTS,

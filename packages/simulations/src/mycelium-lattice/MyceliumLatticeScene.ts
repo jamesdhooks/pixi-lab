@@ -30,7 +30,8 @@ export class MyceliumLatticeScene extends SimulationScene {
   private model: MyceliumLatticeModel | null = null;
   private modelOptions: MyceliumLatticeModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
-  private resetOnHoldArmed = true;
+  private readonly pointerStrains = new Map<number, number>();
+  private nextBrushStrain = 0;
 
   /** Cached settings values for live-change detection each tick. */
   private lastGrowthProbability = 0;
@@ -108,7 +109,7 @@ export class MyceliumLatticeScene extends SimulationScene {
       this.modelOptions = {
         ...this.modelOptions,
         columns: newColumns,
-        rows: Math.max(12, Math.round(newColumns * this.ctx_.height / Math.max(1, this.ctx_.width))),
+        rows: Math.max(12, Math.ceil(newColumns * this.ctx_.height / (Math.max(1, this.ctx_.width) * Math.sqrt(3)))),
         growthProbability: newGrowthProb,
         branchChance: newBranch,
         generationHueStep: newGenStep,
@@ -117,25 +118,31 @@ export class MyceliumLatticeScene extends SimulationScene {
       this.model = new MyceliumLatticeModel(this.modelOptions);
     }
 
-    for (const gesture of this.consumeGestures()) {
-      if (gesture.kind === 'hold' && this.resetOnHoldArmed) {
-        this.resetOnHoldArmed = false;
-        this.reset();
-        continue;
-      }
-      this.model.handleGesture(gesture);
+    // Clean up per-pointer strain assignments for lifted pointers.
+    for (const id of this.input_.snapshot.justUp) {
+      this.pointerStrains.delete(id);
     }
-    if (this.input_.snapshot.pointers.size === 0) this.resetOnHoldArmed = true;
+
+    for (const gesture of this.consumeGestures()) {
+      // Assign a stable strain for each pointer-down so the whole drag
+      // paints cohesive same-colour patches rather than random splotches.
+      const pid = gesture.id ?? 0;
+      if (!this.pointerStrains.has(pid)) {
+        const strainCount = this.modelOptions?.strainCount ?? 6;
+        this.pointerStrains.set(pid, this.nextBrushStrain % strainCount);
+        this.nextBrushStrain++;
+      }
+      this.model.handleGesture(gesture, this.pointerStrains.get(pid));
+    }
 
     this.model.update(dt);
     this.stagnationReport = this.model.detectStagnation(dt);
-    if (this.stagnationReport.stagnant) this.stabilize();
+    if (this.stagnationReport.stagnant && this.isAutoMode) this.stabilize();
   }
 
   override render(_alpha: number): void {
     if (!this.latticeRenderer || !this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? earthOvergrowthStyle;
-    this.latticeRenderer.clear();
     this.latticeRenderer.renderGrid(this.model.grid, this.ctx_.width, this.ctx_.height, style, { zIndex: 0 });
     const stats = this.model.stats();
     this.ctx_.systems.debug?.update({
@@ -152,7 +159,7 @@ export class MyceliumLatticeScene extends SimulationScene {
       ...this.modelOptions,
       width,
       height,
-      rows: Math.max(12, Math.round(this.modelOptions.columns * height / Math.max(1, width))),
+      rows: Math.max(12, Math.ceil(this.modelOptions.columns * height / (Math.max(1, width) * Math.sqrt(3)))),
       seed: this.modelOptions.seed + Math.floor(width + height),
     };
     this.model = new MyceliumLatticeModel(this.modelOptions);
@@ -204,7 +211,7 @@ export class MyceliumLatticeScene extends SimulationScene {
 
   private buildOptions(ctx: GameContext, columns: number): MyceliumLatticeModelOptions {
     const settings = ctx.systems.settings;
-    const rows = Math.max(12, Math.round(columns * ctx.height / Math.max(1, ctx.width)));
+    const rows = Math.max(12, Math.ceil(columns * ctx.height / (Math.max(1, ctx.width) * Math.sqrt(3))));
     return {
       seed:               ctx.seed,
       width:              ctx.width,
@@ -212,7 +219,9 @@ export class MyceliumLatticeScene extends SimulationScene {
       columns,
       rows,
       strainCount:        MYCELIUM_LATTICE_DEFAULTS.strainCount        as number,
-      initialSpores:      MYCELIUM_LATTICE_DEFAULTS.initialSpores      as number,
+      initialSpores:      (ctx.mode === 'demo' || ctx.mode === 'screensaver')
+        ? (MYCELIUM_LATTICE_DEFAULTS.initialSpores as number)
+        : 0,
       maxTips:            MYCELIUM_LATTICE_DEFAULTS.maxTips             as number,
       growthProbability: (settings.get('growthProbability') as number | undefined) ?? (MYCELIUM_LATTICE_DEFAULTS.growthProbability as number),
       branchChance:      (settings.get('branchChance')      as number | undefined) ?? (MYCELIUM_LATTICE_DEFAULTS.branchChance      as number),
@@ -224,4 +233,13 @@ export class MyceliumLatticeScene extends SimulationScene {
 
   /** Expose settings fields for settings introspection. */
   static readonly settingsFields = MYCELIUM_LATTICE_SETTINGS_FIELDS;
+
+  // -------------------------------------------------------------------------
+  // Private helpers
+  // -------------------------------------------------------------------------
+
+  /** True when the runtime should drive autonomous growth (demo or screensaver). */
+  private get isAutoMode(): boolean {
+    return this.ctx_.mode === 'demo' || this.ctx_.mode === 'screensaver';
+  }
 }
