@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff, Settings as SettingsIcon, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff, X } from 'lucide-react';
 import { GameLauncher, PreviewTile } from '@hooksjam/pixi-lab-react';
 import { useViewport } from '@hooksjam/pixi-lab-react';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
@@ -49,7 +49,6 @@ export function App() {
   const [carouselFilter, setCarouselFilter] = useState<FilterKind>('all');
   const [carouselSide, setCarouselSide] = useState<'bottom' | 'left' | 'right'>('bottom');
   const [carouselDocked, setCarouselDocked] = useState(false);
-  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
   const [maxPixels, setMaxPixels] = useState(() => {
     try { return parseInt(localStorage.getItem('pixi-lab:maxPixels') ?? '0') || undefined; } catch { return undefined; }
   });
@@ -63,10 +62,7 @@ export function App() {
     try { localStorage.setItem('pixi-lab:maxPixels', String(maxPixels || '')); } catch {}
   }, [maxPixels]);
 
-  // Close settings panel when no experience is active
-  useEffect(() => {
-    if (!active) setSettingsPanelOpen(false);
-  }, [active]);
+
 
   const availableKinds = useMemo<FilterKind[]>(() => {
     const seen = new Set<LabExperience['kind']>();
@@ -203,20 +199,7 @@ export function App() {
                 >
                   <ChevronOpenIcon size={16} />
                 </motion.button>
-                <motion.button
-                  key="settings-floating"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                  onClick={() => setSettingsPanelOpen((o) => !o)}
-                  aria-label="Render settings"
-                  className={`fixed z-[65] bottom-2 right-4 flex h-7 w-7 items-center justify-center rounded-xl backdrop-blur-md transition-colors ${
-                    settingsPanelOpen ? 'bg-white/15 text-white/80' : 'bg-black/30 text-white/30 hover:bg-black/50 hover:text-white/60'
-                  }`}
-                >
-                  <SettingsIcon size={13} />
-                </motion.button>
+
               </>
             )}
           </AnimatePresence>
@@ -274,15 +257,6 @@ export function App() {
                       </button>
                     );
                   })}
-                  <button
-                    onClick={() => setSettingsPanelOpen((o) => !o)}
-                    aria-label="Render settings"
-                    className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
-                      settingsPanelOpen ? 'text-white/70' : 'text-white/20 hover:text-white/50'
-                    }`}
-                  >
-                    <SettingsIcon size={12} />
-                  </button>
                   <button
                     onClick={() => setCarouselDocked((d) => !d)}
                     aria-label={carouselDocked ? 'Undock' : 'Dock'}
@@ -444,113 +418,7 @@ export function App() {
             )}
           </AnimatePresence>
 
-          {/* Settings panel — part of the carousel group, opens above it */}
-          <AnimatePresence>
-            {settingsPanelOpen && (
-              <>
-                <div className="fixed inset-0 z-[64]" onClick={() => setSettingsPanelOpen(false)} />
-                <motion.div
-                  key="settings"
-                  initial={{ opacity: 0, y: 6, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.97 }}
-                  transition={{ duration: 0.15, ease: 'easeOut' }}
-                  className={`fixed z-[65] right-4 w-60 rounded-2xl bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden ${
-                    carouselOpen ? 'bottom-[172px]' : 'bottom-[44px]'
-                  }`}
-                >
-                  {/* Header */}
-                  <div className="flex items-center border-b border-white/[0.07] px-3 py-1.5">
-                    <span className="mr-auto text-[10px] font-semibold uppercase tracking-widest text-white/30">
-                      Render Settings
-                    </span>
-                    <button
-                      onClick={() => setSettingsPanelOpen(false)}
-                      className="flex h-6 w-6 items-center justify-center rounded text-white/20 transition-colors hover:text-white/50"
-                      aria-label="Close settings"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
 
-                  <div className="p-3 space-y-3">
-                    {/* Dark mode row */}
-                    <div className="flex items-center justify-between px-1">
-                      <span className="text-[11px] font-semibold text-white/60">Dark mode</span>
-                      <button
-                        onClick={() => setDark((d) => !d)}
-                        className={`relative h-[18px] w-8 rounded-full transition-colors ${
-                          dark ? 'bg-blue-500/80' : 'bg-white/15'
-                        }`}
-                      >
-                        <span
-                          className={`absolute top-[1px] left-[1px] h-4 w-4 rounded-full bg-white transition-transform shadow-sm ${
-                            dark ? 'translate-x-[14px]' : ''
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="h-px bg-white/[0.07]" />
-
-                    {/* Resolution cap */}
-                    <div>
-                      <div className="flex items-center justify-between px-1 mb-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">
-                          Pixel budget
-                        </span>
-                        <span className="text-[10px] tabular-nums text-white/40">
-                          {maxPixels ? maxPixels.toLocaleString() : 'unlimited'}
-                        </span>
-                      </div>
-
-                      {/* Presets — 2×2 grid */}
-                      <div className="grid grid-cols-2 gap-1 mb-2.5">
-                        {[
-                          { label: 'Off', sub: 'unlimited', value: undefined },
-                          { label: '360p', sub: '640×360', value: 230400 },
-                          { label: '720p', sub: '1280×720', value: 921600 },
-                          { label: '1080p', sub: '1920×1080', value: 2073600 },
-                        ].map(({ label, sub, value }) => (
-                          <button
-                            key={label}
-                            onClick={() => setMaxPixels(value)}
-                            className={`flex flex-col items-center py-1.5 rounded-xl transition-colors ${
-                              maxPixels === value
-                                ? 'bg-white/15 text-white'
-                                : 'bg-white/[0.05] text-white/40 hover:bg-white/10 hover:text-white/70'
-                            }`}
-                          >
-                            <span className="text-[11px] font-bold leading-none">{label}</span>
-                            <span className="text-[9px] mt-0.5 opacity-60">{sub}</span>
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Fine-tune slider */}
-                      <input
-                        type="range"
-                        min="0"
-                        max="2073600"
-                        step="50000"
-                        value={maxPixels || 0}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value);
-                          setMaxPixels(val === 0 ? undefined : val);
-                        }}
-                        className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-blue-500"
-                      />
-                      <div className="flex justify-between text-[9px] text-white/25 mt-1 px-0.5">
-                        <span>Off</span>
-                        <span>1080p</span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
         </>
       )}
 
