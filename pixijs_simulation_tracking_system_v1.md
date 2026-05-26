@@ -249,7 +249,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 8 | Time Echo Particles | IN_PROGRESS | history buffers | Model/scene/preview/demo AI implemented with deterministic bounded history buffers, live-polled echo controls, shared trail/particle rendering, and temporal anchor/freeze gestures; full automated gate pending. |
 | 9 | Electro-Osmotic Amoeba | IN_PROGRESS | Amoeba Lamp complete | Model/scene/preview/demo AI implemented with deterministic charged membrane particles, voltage/osmotic live controls, shared density rendering, and electro-fission gestures; full automated gate pending. |
 | 10 | Jelly Web Resonator | IN_PROGRESS | spring system | Model/scene/preview/demo AI implemented with deterministic SpringSystem web rings, live tension/damping/resonance controls, shared field/particle rendering, and pluck/shear gestures; full automated gate pending. |
-| 11 | Cellular Ocean | NOT_STARTED | spring membranes | advanced membrane rendering |
+| 11 | Cellular Ocean | IN_PROGRESS | spring membranes | Model/scene/preview/demo AI implemented with deterministic SpringSystem membrane cells, live tension/viscosity/drift controls, shared field/particle rendering, and pulse/shear gestures; full automated gate pending. |
 | 12 | Cosmic Ink Ocean | NOT_STARTED | vector fields | turbulence showcase |
 | 13 | Turing Skin | NOT_STARTED | scalar fields | reaction diffusion |
 | 14 | Oil-Water Universe | NOT_STARTED | phase separation | material domains |
@@ -1793,7 +1793,189 @@ The remaining simulations must be added using this exact format:
 
 ---
 
-# 14. Agent Update Rules
+# 14. Cellular Ocean
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-26
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates soft membrane/cell behavior on top of the shared spring system
+- provides a biological ocean simulation between Amoeba Lamp and Jelly Web complexity
+- exercises live structural rebuilds for membrane/cell budgets and live setters for fluid tuning
+
+---
+
+## Dependencies
+
+- spring membranes
+- scalar field renderer
+- particle renderer
+- palette/bloom pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded membrane cells built from `SpringSystem`
+- low-resolution cellular density field projection
+- cell drift, repulsion, membrane tension, viscosity, and pressure pulses
+- live settings polling for resolution, cell count, membrane points, membrane tension, viscosity, pulse strength, and drift strength
+- stagnation recovery that injects a fresh osmotic pulse
+
+---
+
+## Required Render Layers
+
+```txt
+field
+particles
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+paletteMap
+edgeGlow
+bloom
+contourBands
+distortion
+```
+
+---
+
+## Required Styles
+
+### Lagoon Cells
+Aqua membranes drifting through a dark tidal microscope field.
+
+### Coral Mitosis
+Warm coral and violet membranes pulsing like reef plankton under UV light.
+
+### Abyssal Nuclei
+Deep indigo cells with ghostly green nuclei and soft phosphor edges.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | send an osmotic pulse through nearby membranes |
+| drag | shear cells into a flowing membrane current |
+| hold | invert pressure and pull membranes inward |
+| fast swipe | shock the ocean and scatter cells into a new pattern |
+
+---
+
+## Director Mode Events
+
+- cell bloom
+- tide shear
+- osmotic shock
+
+---
+
+## Stagnation Recovery
+
+If:
+- membrane velocity collapses
+- cellular density field becomes too uniform
+
+Then:
+- inject a strong seeded osmotic pulse
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+cells:
+  4-18 first-playable budget
+
+membrane points:
+  8-24 per cell
+
+density field:
+  32x18 to 128x72 typical, capped at 256 setting max
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses shared `SimulationCanvasLayer.renderField()` and `renderParticles()` rather than custom membrane meshes
+- updates remain bounded by cells, membrane points, and scalar field resolution
+- structural setting changes rebuild the deterministic model; numeric tuning changes mutate model options live
+
+Do NOT:
+- create one Pixi object per membrane segment
+- add custom membrane shaders before a reusable membrane renderer exists
+- allow unbounded cell division/growth
+
+---
+
+## Validation Checklist
+
+- [x] membrane cells initialize deterministically from seed
+- [x] update advances membrane/cell state
+- [x] tap/drag/hold/swipe gestures alter membrane dynamics
+- [x] density field and membrane budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] model tests pass in current environment
+
+---
+
+## Known Risks
+
+- first-playable render uses scalar density fields and particle points rather than true filled membrane meshes
+- advanced membrane lighting, normals, and cell interiors are represented through shared field rendering and style metadata until reusable membrane rendering lands
+- visual balance may need tuning after manual gallery/Pi validation
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/cellular-ocean/CellularOceanModel.ts`
+- `packages/simulations/src/cellular-ocean/CellularOceanScene.ts`
+- `packages/simulations/src/cellular-ocean/CellularOceanPreviewScene.ts`
+- `packages/simulations/src/cellular-ocean/CellularOceanDemoAI.ts`
+- `packages/simulations/src/cellular-ocean/cellular-ocean.config.ts`
+- `packages/simulations/src/cellular-ocean/cellular-ocean.definition.ts`
+- `packages/simulations/src/cellular-ocean/styles/*.ts`
+- `packages/simulations/src/cellular-ocean/__tests__/CellularOceanModel.test.ts`
+
+Implementation notes:
+- Uses shared `SpringSystem` membrane loops, a bounded `ScalarField` for cellular density, and shared particle rendering for membrane nodes.
+- Demo AI cycles styles plus every numeric setting so the settings panel and live scene polling are exercised.
+- Preview scene uses reduced resolution, cell count, and membrane point budgets.
+
+Deferred before marking COMPLETE:
+- dedicated reusable membrane mesh/fake-normal renderer for filled soft cells
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 15. Agent Update Rules
 
 When an agent completes work:
 
@@ -1829,7 +2011,7 @@ The agent must:
 
 ---
 
-# 15. Recommended Git Workflow
+# 16. Recommended Git Workflow
 
 Recommended commit structure:
 
@@ -1845,7 +2027,7 @@ Avoid giant multi-simulation commits.
 
 ---
 
-# 16. Final Guidance for Agents
+# 17. Final Guidance for Agents
 
 The project succeeds if:
 - simulations feel alive

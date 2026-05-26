@@ -1,6 +1,7 @@
 import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 import { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
+import { cellularOceanDefinition } from './cellular-ocean/cellular-ocean.definition.js';
 import { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definition.js';
 import { electroOsmoticAmoebaDefinition } from './electro-osmotic-amoeba/electro-osmotic-amoeba.definition.js';
 import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
@@ -20,6 +21,11 @@ export { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
 export { AntSignalScene, antSignalStyleManifest } from './ant-signal/AntSignalScene.js';
 export { AntSignalPreviewScene } from './ant-signal/AntSignalPreviewScene.js';
 export { AntSignalModel, type AntSignalModelOptions, type AntSignalStats } from './ant-signal/AntSignalModel.js';
+
+export { cellularOceanDefinition } from './cellular-ocean/cellular-ocean.definition.js';
+export { CellularOceanScene, cellularOceanStyleManifest } from './cellular-ocean/CellularOceanScene.js';
+export { CellularOceanPreviewScene } from './cellular-ocean/CellularOceanPreviewScene.js';
+export { CellularOceanModel, type CellularOceanModelOptions, type CellularOceanStats } from './cellular-ocean/CellularOceanModel.js';
 
 export { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definition.js';
 export { CrystalPlasmaScene, crystalPlasmaStyleManifest } from './crystal-plasma/CrystalPlasmaScene.js';
@@ -78,6 +84,7 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   timeEchoDefinition,
   electroOsmoticAmoebaDefinition,
   jellyWebDefinition,
+  cellularOceanDefinition,
 ] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
