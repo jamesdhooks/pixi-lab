@@ -5,7 +5,7 @@ export class MyceliumLatticePreviewScene extends MyceliumLatticeScene {
   override readonly name = 'MyceliumLatticePreview';
 
   constructor() {
-    super(28);
+    super(28, 0.18);
   }
 
   override onEnter(ctx: GameContext, input: Input): void {

@@ -39,7 +39,7 @@ export class MyceliumLatticeScene extends SimulationScene {
   private lastGenerationHueStep = 0;
   private lastGridColumns = 0;
 
-  constructor(private readonly previewColumns?: number) {
+  constructor(private readonly previewColumns?: number, private readonly growthProbOverride?: number) {
     super();
   }
 
@@ -223,7 +223,9 @@ export class MyceliumLatticeScene extends SimulationScene {
         ? (MYCELIUM_LATTICE_DEFAULTS.initialSpores as number)
         : 0,
       maxTips:            MYCELIUM_LATTICE_DEFAULTS.maxTips             as number,
-      growthProbability: (settings.get('growthProbability') as number | undefined) ?? (MYCELIUM_LATTICE_DEFAULTS.growthProbability as number),
+      growthProbability: this.growthProbOverride
+        ?? (settings.get('growthProbability') as number | undefined)
+        ?? (MYCELIUM_LATTICE_DEFAULTS.growthProbability as number),
       branchChance:      (settings.get('branchChance')      as number | undefined) ?? (MYCELIUM_LATTICE_DEFAULTS.branchChance      as number),
       generationHueStep: (settings.get('generationHueStep') as number | undefined) ?? (MYCELIUM_LATTICE_DEFAULTS.generationHueStep as number),
       forwardBias:        MYCELIUM_LATTICE_DEFAULTS.forwardBias        as number,

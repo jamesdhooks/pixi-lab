@@ -30,7 +30,6 @@ export class MyceliumPrismScene extends SimulationScene {
   private model: MyceliumPrismModel | null = null;
   private modelOptions: MyceliumPrismModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
-  private resetOnHoldArmed = true;
   /** Cached settings values — detect changes each update tick and apply live. */
   private lastGrowthRate = 0;
   private lastNutrientDiffusion = 0;
@@ -110,14 +109,8 @@ export class MyceliumPrismScene extends SimulationScene {
     }
 
     for (const gesture of this.consumeGestures()) {
-      if (gesture.kind === 'hold' && this.resetOnHoldArmed) {
-        this.resetOnHoldArmed = false;
-        this.reset();
-        continue;
-      }
       this.model.handleGesture(gesture);
     }
-    if (this.input_.snapshot.pointers.size === 0) this.resetOnHoldArmed = true;
     this.model.update(dt);
     this.stagnationReport = this.model.detectStagnation(dt);
     if (this.stagnationReport.stagnant) this.stabilize();
