@@ -58,6 +58,12 @@ export interface GameAppOptions {
   lowMotion?: boolean;
   globalIntensity?: number;
   ambientDataAdapters?: AmbientDataAdapter[];
+  /**
+   * Cap the total rendered pixel count passed to PixiApp.
+   * Useful on fill-rate-constrained devices (e.g. Raspberry Pi).
+   * Example: 921_600 ≈ 1280×720.
+   */
+  maxPixels?: number;
   /** Emit events upward to React shell */
   onEvent?: (event: GameEvent) => void;
 }
@@ -149,6 +155,13 @@ export class GameApp {
       background: styleRegistry.getPalette(palette ?? definition.paletteHint ?? 'rainbow')
         .background,
       backgroundAlpha: this.opts.transparent ? 0 : 1,
+      // Force WebGL — skips WebGPU auto-detection which adds overhead and can
+      // be unstable on embedded GPU drivers (e.g. Raspberry Pi VideoCore).
+      preference: 'webgl',
+      // Cap DPR at 1 for basic quality — avoids 4× pixel overhead on HiDPI
+      // screens when the device can't sustain higher-resolution rendering.
+      maxDpr: this.quality === 'basic' ? 1 : 2,
+      maxPixels: this.opts.maxPixels,
     });
 
     // If destroy() was called while PixiApp was initialising (e.g. React

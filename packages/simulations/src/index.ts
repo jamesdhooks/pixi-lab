@@ -6,6 +6,10 @@ import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition
 import { myceliumPrismDefinition } from './mycelium-prism/mycelium-prism.definition.js';
 import { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
 import { plasmaBranchDefinition } from './plasma-branch/plasma-branch.definition.js';
+<<<<<<< HEAD
+=======
+import { timeEchoDefinition } from './time-echo/time-echo.definition.js';
+>>>>>>> d58d0082c6bb6ef583369823e3e836e2e4694e0c
 
 export { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 export { AmoebaLampScene, amoebaLampStyleManifest } from './amoeba-lamp/AmoebaLampScene.js';
@@ -42,7 +46,16 @@ export { PlasmaBranchScene, plasmaBranchStyleManifest } from './plasma-branch/Pl
 export { PlasmaBranchPreviewScene } from './plasma-branch/PlasmaBranchPreviewScene.js';
 export { PlasmaBranchModel, type PlasmaBranchModelOptions, type PlasmaBranchStats } from './plasma-branch/PlasmaBranchModel.js';
 
+<<<<<<< HEAD
 export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [harmonicSandDefinition, myceliumPrismDefinition, amoebaLampDefinition, orbitalShrapnelDefinition, plasmaBranchDefinition, antSignalDefinition, crystalPlasmaDefinition] as const;
+=======
+export { timeEchoDefinition } from './time-echo/time-echo.definition.js';
+export { TimeEchoScene, timeEchoStyleManifest } from './time-echo/TimeEchoScene.js';
+export { TimeEchoPreviewScene } from './time-echo/TimeEchoPreviewScene.js';
+export { TimeEchoModel, type TimeEchoModelOptions, type TimeEchoStats } from './time-echo/TimeEchoModel.js';
+
+export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [harmonicSandDefinition, myceliumPrismDefinition, amoebaLampDefinition, orbitalShrapnelDefinition, plasmaBranchDefinition, antSignalDefinition, crystalPlasmaDefinition, timeEchoDefinition] as const;
+>>>>>>> d58d0082c6bb6ef583369823e3e836e2e4694e0c
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
   return SIMULATION_REGISTRY.find((simulation) => simulation.id === id);

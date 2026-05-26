@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff, Settings as SettingsIcon, X } from 'lucide-react';
 import { GameLauncher, PreviewTile } from '@hooksjam/pixi-lab-react';
 import { useViewport } from '@hooksjam/pixi-lab-react';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
@@ -49,15 +49,24 @@ export function App() {
   const [carouselFilter, setCarouselFilter] = useState<FilterKind>('all');
   const [carouselSide, setCarouselSide] = useState<'bottom' | 'left' | 'right'>('bottom');
   const [carouselDocked, setCarouselDocked] = useState(false);
+  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
+  const [maxPixels, setMaxPixels] = useState(() => {
+    try { return parseInt(localStorage.getItem('pixi-lab:maxPixels') ?? '0') || undefined; } catch { return undefined; }
+  });
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   // On portrait mobile, force carousel to bottom dock and hide side-picker buttons.
   const effectiveCarouselSide = isMobile && !isLandscape ? 'bottom' : carouselSide;
 
-  // Sync dark class on <html>
+  // Persist maxPixels to localStorage
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-  }, [dark]);
+    try { localStorage.setItem('pixi-lab:maxPixels', String(maxPixels || '')); } catch {}
+  }, [maxPixels]);
+
+  // Persist maxPixels to localStorage
+  useEffect(() => {
+    try { localStorage.setItem('pixi-lab:maxPixels', String(maxPixels || '')); } catch {}
+  }, [maxPixels]);
 
   const availableKinds = useMemo<FilterKind[]>(() => {
     const seen = new Set<LabExperience['kind']>();
@@ -167,6 +176,7 @@ export function App() {
             >
               <GameLauncher
                 definition={active}
+                maxPixels={maxPixels}
                 onQuit={() => { setActive(null); setCarouselOpen(false); }}
               />
             </div>
@@ -409,6 +419,112 @@ export function App() {
             )}
           </AnimatePresence>
         </>
+      )}
+
+      {/* ── Settings panel — floating, always accessible ── */}
+      <AnimatePresence>
+        {settingsPanelOpen && (
+          <motion.div
+            key="settings"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="fixed top-4 right-4 z-[100] w-64 rounded-xl bg-black/90 backdrop-blur-xl border border-white/10 p-4 shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-white">Render Settings</h3>
+              <button
+                onClick={() => setSettingsPanelOpen(false)}
+                className="flex h-6 w-6 items-center justify-center rounded text-white/40 transition-colors hover:text-white/70"
+                aria-label="Close settings"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Dark mode toggle */}
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-white/60">Dark Mode</label>
+                <button
+                  onClick={() => setDark((d) => !d)}
+                  className={`relative h-5 w-9 rounded-full transition-colors ${
+                    dark ? 'bg-blue-600' : 'bg-white/20'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                      dark ? 'translate-x-4' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Max pixels slider */}
+              <div>
+                <label className="text-xs font-medium text-white/60 block mb-2">
+                  Max Pixels {maxPixels ? `(${maxPixels.toLocaleString()})` : '(unlimited)'}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="2073600"
+                  step="100000"
+                  value={maxPixels || 0}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setMaxPixels(val === 0 ? undefined : val);
+                  }}
+                  className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-blue-600"
+                />
+                <div className="flex justify-between text-[10px] text-white/40 mt-1">
+                  <span>Off</span>
+                  <span>1920×1080</span>
+                </div>
+              </div>
+
+              {/* Quick presets */}
+              <div>
+                <label className="text-xs font-medium text-white/60 block mb-2">Presets</label>
+                <div className="grid grid-cols-3 gap-1">
+                  {[
+                    { label: 'Off', value: undefined },
+                    { label: '720p', value: 921600 },
+                    { label: '1080p', value: 2073600 },
+                  ].map(({ label, value }) => (
+                    <button
+                      key={label}
+                      onClick={() => setMaxPixels(value)}
+                      className={`py-1 px-2 text-[11px] font-semibold rounded transition-colors ${
+                        maxPixels === value
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white/10 text-white/60 hover:text-white/90'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Settings button — floating, top-right when not in experience ── */}
+      {!active && (
+        <motion.button
+          key="settings-button"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setSettingsPanelOpen((o) => !o)}
+          aria-label="Open settings"
+          className="fixed top-4 right-4 z-[99] flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/60 transition-colors hover:bg-slate-200 dark:hover:bg-white/20"
+        >
+          <SettingsIcon size={18} />
+        </motion.button>
       )}
 
       {/* ── Gallery layer ── */}

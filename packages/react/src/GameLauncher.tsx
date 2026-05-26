@@ -36,6 +36,8 @@ export interface GameLauncherProps {
   onSubmitScore?: (score: number, name: string) => Promise<void>;
   /** Called when the user quits — host app handles navigation */
   onQuit?: () => void;
+  /** Cap rendered pixel count — see GameAppOptions.maxPixels */
+  maxPixels?: number;
 }
 
 export function GameLauncher(props: GameLauncherProps) {
@@ -52,6 +54,7 @@ function GameLauncherInner({
   topScores = [],
   onSubmitScore,
   onQuit,
+  maxPixels,
 }: GameLauncherProps) {
   // ViewportProvider is mounted by GameLauncher wrapper; child components read context directly.
   const { isMobile, isLandscape } = useViewportContext();
@@ -259,6 +262,7 @@ function GameLauncherInner({
         definition={definition}
         userId={userId}
         mode="play"
+        maxPixels={maxPixels}
         onEvent={handleEvent}
         onReady={(app) => {
           appRef.current = app;

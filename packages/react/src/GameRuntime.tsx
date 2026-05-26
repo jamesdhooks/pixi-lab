@@ -23,6 +23,8 @@ export interface GameRuntimeProps {
   ambientDataAdapters?: AmbientDataAdapter[];
   onEvent?: (event: GameEvent) => void;
   className?: string;
+  /** Cap rendered pixel count — see GameAppOptions.maxPixels */
+  maxPixels?: number;
   /** Called when the GameApp instance is ready */
   onReady?: (app: GameApp) => void;
 }
@@ -43,6 +45,7 @@ export function GameRuntime({
   ambientDataAdapters,
   onEvent,
   className,
+  maxPixels,
   onReady,
 }: GameRuntimeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -84,6 +87,7 @@ export function GameRuntime({
         lowMotion,
         globalIntensity,
         ambientDataAdapters,
+        maxPixels,
         onEvent: handleEvent,
       };
 
