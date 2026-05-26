@@ -30,6 +30,11 @@ export class CrystalPlasmaScene extends SimulationScene {
   private model: CrystalPlasmaModel | null = null;
   private modelOptions: CrystalPlasmaModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
+  /** Cached settings values — detect changes each update tick and apply live. */
+  private lastMaxCrystals = 0;
+  private lastFieldColumns = 0;
+  private lastStressDecay = 0;
+  private lastGrowthBias = 0;
 
   constructor(private readonly previewColumns?: number, private readonly previewBudget?: number) {
     super();
@@ -49,8 +54,10 @@ export class CrystalPlasmaScene extends SimulationScene {
       rows: Math.max(12, Math.round(columns * ctx.height / Math.max(1, ctx.width))),
       maxCrystals: this.previewBudget ?? ((settings.get('maxCrystals') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.maxCrystals as number)),
       stressDecay: (settings.get('stressDecay') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.stressDecay as number),
+      growthBias: (settings.get('growthBias') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.growthBias as number),
     };
     this.model = new CrystalPlasmaModel(this.modelOptions);
+    this.cacheLiveSettings();
     const style = settings.get('style') as string | undefined;
     if (style) this.setStyle(style);
     ctx.systems.debug?.setEnabled(false);
@@ -64,7 +71,8 @@ export class CrystalPlasmaScene extends SimulationScene {
   }
 
   override update(dt: number): void {
-    if (!this.model) return;
+    if (!this.model || !this.modelOptions) return;
+    this.applyLiveSettings();
     for (const gesture of this.consumeGestures()) this.model.handleGesture(gesture);
     this.model.update(dt);
     this.stagnationReport = this.model.detectStagnation(dt);
@@ -86,17 +94,58 @@ export class CrystalPlasmaScene extends SimulationScene {
     if (!this.modelOptions) return;
     this.modelOptions = { ...this.modelOptions, width, height, rows: Math.max(12, Math.round(this.modelOptions.columns * height / Math.max(1, width))), seed: this.modelOptions.seed + Math.floor(width + height) };
     this.model = new CrystalPlasmaModel(this.modelOptions);
+    this.cacheLiveSettings();
   }
 
   override reset(): void {
     if (!this.modelOptions) return;
     this.modelOptions = { ...this.modelOptions, seed: this.modelOptions.seed + 1 };
     this.model = new CrystalPlasmaModel(this.modelOptions);
+    this.cacheLiveSettings();
   }
 
   override setQuality(quality: RenderQuality): void {
     super.setQuality(quality);
     this.layer?.setQuality(quality);
+  }
+
+
+  private applyLiveSettings(): void {
+    if (!this.modelOptions) return;
+    const settings = this.ctx_.systems.settings;
+    const columns = this.previewColumns ?? ((settings.get('fieldColumns') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.fieldColumns as number));
+    const maxCrystals = this.previewBudget ?? ((settings.get('maxCrystals') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.maxCrystals as number));
+    const stressDecay = (settings.get('stressDecay') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.stressDecay as number);
+    const growthBias = (settings.get('growthBias') as number | undefined) ?? (CRYSTAL_PLASMA_DEFAULTS.growthBias as number);
+
+    if (
+      columns === this.lastFieldColumns &&
+      maxCrystals === this.lastMaxCrystals &&
+      stressDecay === this.lastStressDecay &&
+      growthBias === this.lastGrowthBias
+    ) {
+      return;
+    }
+
+    this.modelOptions = {
+      ...this.modelOptions,
+      columns,
+      rows: Math.max(12, Math.round(columns * this.ctx_.height / Math.max(1, this.ctx_.width))),
+      maxCrystals,
+      stressDecay,
+      growthBias,
+      seed: this.modelOptions.seed + 1,
+    };
+    this.model = new CrystalPlasmaModel(this.modelOptions);
+    this.cacheLiveSettings();
+  }
+
+  private cacheLiveSettings(): void {
+    if (!this.modelOptions) return;
+    this.lastFieldColumns = this.modelOptions.columns;
+    this.lastMaxCrystals = this.modelOptions.maxCrystals;
+    this.lastStressDecay = this.modelOptions.stressDecay;
+    this.lastGrowthBias = this.modelOptions.growthBias ?? (CRYSTAL_PLASMA_DEFAULTS.growthBias as number);
   }
 
   getRenderLayers(): SimRenderLayers {
@@ -121,6 +170,7 @@ export class CrystalPlasmaScene extends SimulationScene {
     if (seed !== undefined && this.modelOptions) {
       this.modelOptions = { ...this.modelOptions, seed };
       this.model = new CrystalPlasmaModel(this.modelOptions);
+      this.cacheLiveSettings();
       return;
     }
     this.reset();

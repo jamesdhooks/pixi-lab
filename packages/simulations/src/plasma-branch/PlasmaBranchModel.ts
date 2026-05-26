@@ -9,6 +9,7 @@ export interface PlasmaBranchModelOptions {
   rows: number;
   maxBranches: number;
   chargeDecay: number;
+  branchEnergy?: number;
 }
 
 export interface PlasmaBranchStats {
@@ -51,7 +52,7 @@ export class PlasmaBranchModel {
     this.chargeField.fill(0);
     this.scarField.fill(0);
     for (let i = 0; i < 4; i++) this.injectCharge(this.rng.range(0.15, 0.85) * this.options.width, this.rng.range(0.18, 0.82) * this.options.height, this.rng.range(0.65, 1.05));
-    this.spawnBranch(this.options.width * 0.5, this.options.height * 0.5, this.rng.range(0, Math.PI * 2), 0.85);
+    this.spawnBranch(this.options.width * 0.5, this.options.height * 0.5, this.rng.range(0, Math.PI * 2), this.branchEnergy() * 0.9);
   }
 
   update(dt: number): void {
@@ -88,18 +89,18 @@ export class PlasmaBranchModel {
   handleGesture(event: GestureEvent): void {
     if (event.kind === 'tap') {
       this.injectCharge(event.x, event.y, 1.1);
-      this.spawnBranch(event.x, event.y, this.rng.range(0, Math.PI * 2), 0.95);
+      this.spawnBranch(event.x, event.y, this.rng.range(0, Math.PI * 2), this.branchEnergy());
     }
     if (event.kind === 'hold') {
       this.injectCharge(event.x, event.y, 1.6);
-      for (let i = 0; i < 2; i++) this.spawnBranch(event.x, event.y, this.rng.range(0, Math.PI * 2), 0.75);
+      for (let i = 0; i < 2; i++) this.spawnBranch(event.x, event.y, this.rng.range(0, Math.PI * 2), this.branchEnergy() * 0.8);
     }
     if (event.kind === 'drag') this.injectLine(event.x - (event.dx ?? 0), event.y - (event.dy ?? 0), event.x, event.y, 0.55);
     if (event.kind === 'fast_swipe') {
       const dx = event.dx ?? 120;
       const dy = event.dy ?? 0;
       this.injectLine(event.x - dx, event.y - dy, event.x + dx * 0.25, event.y + dy * 0.25, 0.92);
-      this.spawnBranch(event.x, event.y, Math.atan2(dy, dx), 1.25);
+      this.spawnBranch(event.x, event.y, Math.atan2(dy, dx), this.branchEnergy() * 1.3);
     }
     while (this.branches.length > this.options.maxBranches) this.branches.shift();
   }
@@ -115,7 +116,7 @@ export class PlasmaBranchModel {
     const cx = this.options.width * 0.5;
     const cy = this.options.height * 0.5;
     this.injectCharge(cx, cy, 1.4);
-    for (let i = 0; i < 5; i++) this.spawnBranch(cx, cy, (i / 5) * Math.PI * 2 + this.rng.range(-0.2, 0.2), 0.8);
+    for (let i = 0; i < 5; i++) this.spawnBranch(cx, cy, (i / 5) * Math.PI * 2 + this.rng.range(-0.2, 0.2), this.branchEnergy() * 0.85);
     this.stagnantMs = 0;
   }
 
@@ -140,6 +141,10 @@ export class PlasmaBranchModel {
     this.chargeField.fill(0);
     this.scarField.fill(0);
     this.stagnantMs = 0;
+  }
+
+  private branchEnergy(): number {
+    return this.options.branchEnergy ?? 0.95;
   }
 
   private injectLine(x0: number, y0: number, x1: number, y1: number, amount: number): void {
