@@ -72,6 +72,12 @@ function GameLauncherInner({
   const [quality, setQuality] = useState<RenderQuality>(() => {
     try { return (localStorage.getItem('pixi-lab:quality') as RenderQuality) ?? 'basic'; } catch { return 'basic'; }
   });
+  const [localMaxPixels, setLocalMaxPixels] = useState<number | undefined>(() => {
+    try {
+      const stored = parseInt(localStorage.getItem('pixi-lab:maxPixels') ?? '');
+      return (isNaN(stored) || stored === 0) ? maxPixels : stored;
+    } catch { return maxPixels; }
+  });
   /** Tracks the quality tier actually being rendered (may differ from `quality` on fallback). */
   const [renderedQuality, setRenderedQuality] = useState<RenderQuality | undefined>(undefined);
   const [modeId, setModeId] = useState(() => definition.modes?.[0]?.id ?? '');
@@ -174,6 +180,12 @@ function GameLauncherInner({
     [onSubmitScore, score],
   );
 
+  const handleMaxPixelsChange = useCallback((v: number | undefined) => {
+    setLocalMaxPixels(v);
+    appRef.current?.setMaxPixels(v);
+    try { localStorage.setItem('pixi-lab:maxPixels', String(v ?? '')); } catch { /* ignore */ }
+  }, []);
+
   const handleQualityChange = useCallback(
     (nextQuality: RenderQuality) => {
       setQuality(nextQuality);
@@ -202,7 +214,6 @@ function GameLauncherInner({
 
   const hasModes = (definition.modes?.length ?? 0) > 1;
   const hasQualityModes = (definition.capabilities.qualityModes?.length ?? 0) > 0;
-  const hasSettings = (definition.capabilities.settings !== false) && (definition.settingsFields?.length ?? 0) > 0;
   const isSimulation = definition.kind === 'simulation';
   const topNumericFields = (definition.settingsFields ?? []).filter(
     (f) => f.type === 'number' && (!f.visibleModes || f.visibleModes.includes(modeId)),
@@ -262,7 +273,8 @@ function GameLauncherInner({
         definition={definition}
         userId={userId}
         mode="play"
-        maxPixels={maxPixels}
+        quality={quality}
+        maxPixels={localMaxPixels}
         onEvent={handleEvent}
         onReady={(app) => {
           appRef.current = app;
@@ -387,7 +399,7 @@ function GameLauncherInner({
               {
                 key: 'settings',
                 label: 'Settings',
-                hidden: !hasSettings,
+                hidden: false,
                 node: (
                   <motion.button
                     whileTap={{ scale: 0.9 }}
@@ -451,12 +463,14 @@ function GameLauncherInner({
             ]}
           />
 
-          {hasSettings && appRef.current && (
+          {appRef.current && (
             <SettingsDrawer
               open={settingsOpen}
               onClose={handleCloseSettings}
               settings={appRef.current.settings}
-              fields={definition.settingsFields!}
+              fields={definition.settingsFields ?? []}
+              maxPixels={localMaxPixels}
+              onMaxPixelsChange={handleMaxPixelsChange}
             />
           )}
 

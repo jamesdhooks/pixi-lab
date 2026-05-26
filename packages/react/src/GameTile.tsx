@@ -17,7 +17,11 @@ import type { LabExperience } from '@hooksjam/pixi-lab-core';
 
 const PERF_WINDOW_S = 2; // measure perf for 2 seconds
 const FPS_THRESHOLD = 20; // fall back if avg below this
-const PREVIEW_FPS_CAP = 30; // cap preview rendering
+/** Cap each preview tile's tick rate so many simultaneous tiles don't saturate
+ *  the JS thread and tank the browser's own rAF rate below FPS_THRESHOLD. */
+const PREVIEW_FPS_CAP = 60;
+/** Stagger tile start-up so 9 tiles don't all create WebGL contexts at once. */
+const INIT_STAGGER_MS = 300;
 
 /**
  * GPU budget for live preview tiles.
@@ -26,7 +30,7 @@ const PREVIEW_FPS_CAP = 30; // cap preview rendering
  * for performance — 200 k px ≈ DPR 1.5× on a 180 px tile, DPR 1.05× on a
  * 450 px tile.  Set to `undefined` to disable.
  */
-const PREVIEW_MAX_PIXELS: number | undefined = 200_000;
+const PREVIEW_MAX_PIXELS: number | undefined = 90_000;
 
 function failureKey(gameId: string) {
   return `fao:game:tile-perf-fail:${gameId}`;
@@ -54,7 +58,7 @@ export interface GameTileProps {
 
 export type PreviewTileProps = GameTileProps;
 
-export function GameTile({ definition, onPress, size = 180, index: _index = 0, active = true }: GameTileProps) {
+export function GameTile({ definition, onPress, size = 180, index = 0, active = true }: GameTileProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<GameApp | null>(null);
   // Always attempt the live preview — clear any stale failure recorded by a previous bug.
@@ -84,6 +88,8 @@ export function GameTile({ definition, onPress, size = 180, index: _index = 0, a
       definition: overrideDef,
       scoreProvider: new NoopHighScoreProvider(),
       mode: 'screensaver',
+      quality: 'basic',
+      maxFps: PREVIEW_FPS_CAP,
       maxPixels: PREVIEW_MAX_PIXELS,
     });
     appRef.current = app;
@@ -131,13 +137,15 @@ export function GameTile({ definition, onPress, size = 180, index: _index = 0, a
       appRef.current = null;
       return;
     }
-    startPreview();
+    // Stagger tile start-up so all tiles don't init WebGL contexts simultaneously.
+    const timerId = window.setTimeout(startPreview, index * INIT_STAGGER_MS);
     return () => {
+      window.clearTimeout(timerId);
       cancelAnimationFrame(rafRef.current);
       appRef.current?.destroy();
       appRef.current = null;
     };
-  }, [active, startPreview]);
+  }, [active, startPreview, index]);
 
   return (
     <motion.button
@@ -191,6 +199,3 @@ function FallbackTile({ definition, size }: { definition: LabExperience; size: n
     </div>
   );
 }
-
-// Unused — hints to TS that PREVIEW_FPS_CAP is read
-void PREVIEW_FPS_CAP;

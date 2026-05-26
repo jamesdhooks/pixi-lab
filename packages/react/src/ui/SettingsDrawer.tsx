@@ -18,9 +18,11 @@ interface SettingsDrawerProps {
   onClose: () => void;
   settings: Settings;
   fields: SettingsField[];
+  maxPixels?: number;
+  onMaxPixelsChange?: (v: number | undefined) => void;
 }
 
-export function SettingsDrawer({ open, onClose, settings, fields }: SettingsDrawerProps) {
+export function SettingsDrawer({ open, onClose, settings, fields, maxPixels, onMaxPixelsChange }: SettingsDrawerProps) {
   const { isMobile, isLandscape } = useViewportContext();
   const [vals, setVals] = useState<Record<string, unknown>>({});
 
@@ -38,16 +40,49 @@ export function SettingsDrawer({ open, onClose, settings, fields }: SettingsDraw
     setVals((prev) => ({ ...prev, [key]: value }));
   };
 
+  const PIXEL_PRESETS: Array<{ label: string; sub: string; value: number | undefined }> = [
+    { label: 'Off', sub: 'unlimited', value: undefined },
+    { label: '360p', sub: '640×360', value: 230_400 },
+    { label: '720p', sub: '1280×720', value: 921_600 },
+    { label: '1080p', sub: '1920×1080', value: 2_073_600 },
+  ];
+
   const content = (
-    <div className="space-y-0.5 p-3">
-      {fields.map((field) => (
-        <FieldRow
-          key={field.key}
-          field={field}
-          value={vals[field.key]}
-          onChange={(v) => apply(field.key, v)}
-        />
-      ))}
+    <div className="p-3 space-y-0.5">
+      {/* ── Common: resolution (pixel budget) ── */}
+      <p className="px-2 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">Resolution</p>
+      <div className="grid grid-cols-4 gap-1 mb-2">
+        {PIXEL_PRESETS.map(({ label, sub, value }) => (
+          <button
+            key={label}
+            onClick={() => onMaxPixelsChange?.(value)}
+            className={`flex flex-col items-center py-1.5 rounded-xl transition-colors ${
+              maxPixels === value
+                ? 'bg-white/15 text-white'
+                : 'bg-white/[0.05] text-white/40 hover:bg-white/10 hover:text-white/70'
+            }`}
+          >
+            <span className="text-[11px] font-bold leading-none">{label}</span>
+            <span className="text-[9px] mt-0.5 opacity-60">{sub}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Experience-specific settings ── */}
+      {fields.length > 0 && (
+        <>
+          <div className="mx-0 my-2 h-px bg-white/8" />
+          <p className="px-2 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">Experience</p>
+          {fields.map((field) => (
+            <FieldRow
+              key={field.key}
+              field={field}
+              value={vals[field.key]}
+              onChange={(v) => apply(field.key, v)}
+            />
+          ))}
+        </>
+      )}
     </div>
   );
 
