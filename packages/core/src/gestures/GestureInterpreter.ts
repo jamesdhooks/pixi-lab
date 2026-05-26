@@ -42,9 +42,15 @@ export class GestureInterpreter {
         state.lastMove = state.latest;
         state.latest = pointer;
       }
-      if (!state.holdEmitted && durationMs >= holdMs) {
-        state.holdEmitted = true;
-        events.push({ kind: 'hold', id: pointer.id, x: pointer.x, y: pointer.y, durationMs, strength: Math.min(1, durationMs / 1500), timestamp: now });
+      if (!state.holdEmitted) {
+        const moveTolerance = this.options.tapMoveTolerance ?? 12;
+        if (Math.hypot(dx, dy) > moveTolerance) {
+          // Pointer moved too far — permanently cancel hold for this press.
+          state.holdEmitted = true;
+        } else if (durationMs >= holdMs) {
+          state.holdEmitted = true;
+          events.push({ kind: 'hold', id: pointer.id, x: pointer.x, y: pointer.y, durationMs, strength: Math.min(1, durationMs / 1500), timestamp: now });
+        }
       }
     }
 

@@ -70,7 +70,7 @@ export class PixiApp {
       height: h,
       background: opts.background ?? 0x1a1a2e,
       backgroundAlpha: opts.backgroundAlpha ?? 1,
-      antialias: opts.antialias ?? false,
+      antialias: opts.antialias ?? true,
       resolution,
       autoDensity: true,
       preference: opts.preference ?? 'webgl',
