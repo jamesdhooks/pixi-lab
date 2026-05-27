@@ -9,3 +9,4 @@ Currently includes:
 - Sleep Aquarium — a deterministic low-motion night reef with synthetic/time fallback data, live sleep controls, and preview/fullscreen factories.
 - Music Dream Field — a deterministic media/synthetic beat ambient with live pulse, budget, low-motion, and sleep-safe controls.
 - House Pulse Map — a deterministic Home Assistant/presence ambient with synthetic fallback data, live budgets, event sensitivity, low-motion, and sleep-safe controls.
+- Task Garden — a deterministic tasks/calendar ambient with synthetic fallback data, live plant and sparkle budgets, urgency/growth/completion controls, low-motion, and sleep-safe behavior.
