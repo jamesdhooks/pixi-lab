@@ -11,3 +11,4 @@ Currently includes:
 - House Pulse Map — a deterministic Home Assistant/presence ambient with synthetic fallback data, live budgets, event sensitivity, low-motion, and sleep-safe controls.
 - Task Garden — a deterministic tasks/calendar ambient with synthetic fallback data, live plant and sparkle budgets, urgency/growth/completion controls, low-motion, and sleep-safe behavior.
 - Family Orbit — a deterministic presence/calendar ambient with synthetic fallback data, live member and activity budgets, closeness/pulse/orbit controls, low-motion, and sleep-safe behavior.
+- Snowfall — a deterministic foreground overlay effect with synthetic/weather fallback data, live flake budget, intensity, wind, depth drift, low-motion, and sleep-safe controls.

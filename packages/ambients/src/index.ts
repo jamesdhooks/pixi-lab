@@ -1,4 +1,4 @@
-import type { AmbientDefinition } from '@hooksjam/pixi-lab-core';
+import type { AmbientDefinition, LabExperience } from '@hooksjam/pixi-lab-core';
 import { dayRhythmFieldDefinition } from './day-rhythm-field/day-rhythm-field.definition.js';
 import { homeWeatherGlassDefinition } from './home-weather-glass/home-weather-glass.definition.js';
 import { sleepAquariumDefinition } from './sleep-aquarium/sleep-aquarium.definition.js';
@@ -6,6 +6,7 @@ import { musicDreamFieldDefinition } from './music-dream-field/music-dream-field
 import { housePulseMapDefinition } from './house-pulse-map/house-pulse-map.definition.js';
 import { taskGardenDefinition } from './task-garden/task-garden.definition.js';
 import { familyOrbitDefinition } from './family-orbit/family-orbit.definition.js';
+import { snowfallDefinition } from './snowfall/snowfall.definition.js';
 
 export { dayRhythmFieldDefinition } from './day-rhythm-field/day-rhythm-field.definition.js';
 export { DayRhythmFieldModel, type DayRhythmFieldModelOptions, type DayRhythmFieldStats } from './day-rhythm-field/DayRhythmFieldModel.js';
@@ -58,8 +59,11 @@ export {
   type FamilyOrbitStats,
 } from './family-orbit/FamilyOrbitModel.js';
 export { FamilyOrbitScene, familyOrbitStyles } from './family-orbit/FamilyOrbitScene.js';
+export { snowfallDefinition } from './snowfall/snowfall.definition.js';
+export { SnowfallModel, type SnowfallModelOptions, type SnowfallSnapshot, type SnowfallStats } from './snowfall/SnowfallModel.js';
+export { SnowfallScene, snowfallStyles, snowfallStyleManifest } from './snowfall/SnowfallScene.js';
 
-export const AMBIENT_REGISTRY: readonly AmbientDefinition[] = [
+export const AMBIENT_REGISTRY: readonly LabExperience[] = [
   dayRhythmFieldDefinition,
   homeWeatherGlassDefinition,
   sleepAquariumDefinition,
@@ -67,8 +71,10 @@ export const AMBIENT_REGISTRY: readonly AmbientDefinition[] = [
   housePulseMapDefinition,
   taskGardenDefinition,
   familyOrbitDefinition,
+  snowfallDefinition,
 ] as const;
 
 export function getAmbient(id: string): AmbientDefinition | undefined {
-  return AMBIENT_REGISTRY.find((ambient) => ambient.id === id);
+  const experience = AMBIENT_REGISTRY.find((ambient) => ambient.id === id);
+  return experience?.kind === 'ambient' ? experience : undefined;
 }
