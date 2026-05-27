@@ -224,7 +224,7 @@ Overlay content implementations are deferred until `ForegroundAmbientOverlay` an
 | Priority | Overlay | Status | Depends On | Notes |
 |---|---|---|---|---|
 | 1 | Snowfall | COMPLETE | ForegroundAmbientOverlay | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic foreground overlay effect with synthetic/weather fallback data, preview/fullscreen/foreground factories, live flake/intensity/brightness/wind/depth-drift/low-motion/sleep settings, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
-| 2 | Embers | DEFERRED | EmberEmitter | cozy mode |
+| 2 | Embers | COMPLETE | EmberEmitter | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic cozy foreground overlay effect with synthetic/Home Assistant/weather fallback data, preview/fullscreen/foreground factories, live ember/intensity/brightness/heat/updraft/low-motion/sleep settings, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
 | 3 | Fireflies | DEFERRED | FireflyEmitter | quiet night |
 | 4 | Confetti | DEFERRED | ConfettiEmitter | UI celebration |
 | 5 | Rain Streaks | DEFERRED | particle/line renderer | weather |

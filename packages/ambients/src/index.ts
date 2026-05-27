@@ -7,6 +7,7 @@ import { housePulseMapDefinition } from './house-pulse-map/house-pulse-map.defin
 import { taskGardenDefinition } from './task-garden/task-garden.definition.js';
 import { familyOrbitDefinition } from './family-orbit/family-orbit.definition.js';
 import { snowfallDefinition } from './snowfall/snowfall.definition.js';
+import { embersDefinition } from './embers/embers.definition.js';
 
 export { dayRhythmFieldDefinition } from './day-rhythm-field/day-rhythm-field.definition.js';
 export { DayRhythmFieldModel, type DayRhythmFieldModelOptions, type DayRhythmFieldStats } from './day-rhythm-field/DayRhythmFieldModel.js';
@@ -62,6 +63,9 @@ export { FamilyOrbitScene, familyOrbitStyles } from './family-orbit/FamilyOrbitS
 export { snowfallDefinition } from './snowfall/snowfall.definition.js';
 export { SnowfallModel, type SnowfallModelOptions, type SnowfallSnapshot, type SnowfallStats } from './snowfall/SnowfallModel.js';
 export { SnowfallScene, snowfallStyles, snowfallStyleManifest } from './snowfall/SnowfallScene.js';
+export { embersDefinition } from './embers/embers.definition.js';
+export { EmbersModel, type EmbersModelOptions, type EmbersSnapshot, type EmbersStats } from './embers/EmbersModel.js';
+export { EmbersScene, embersStyles, embersStyleManifest } from './embers/EmbersScene.js';
 
 export const AMBIENT_REGISTRY: readonly LabExperience[] = [
   dayRhythmFieldDefinition,
@@ -72,6 +76,7 @@ export const AMBIENT_REGISTRY: readonly LabExperience[] = [
   taskGardenDefinition,
   familyOrbitDefinition,
   snowfallDefinition,
+  embersDefinition,
 ] as const;
 
 export function getAmbient(id: string): AmbientDefinition | undefined {

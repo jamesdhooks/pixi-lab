@@ -12,3 +12,4 @@ Currently includes:
 - Task Garden — a deterministic tasks/calendar ambient with synthetic fallback data, live plant and sparkle budgets, urgency/growth/completion controls, low-motion, and sleep-safe behavior.
 - Family Orbit — a deterministic presence/calendar ambient with synthetic fallback data, live member and activity budgets, closeness/pulse/orbit controls, low-motion, and sleep-safe behavior.
 - Snowfall — a deterministic foreground overlay effect with synthetic/weather fallback data, live flake budget, intensity, wind, depth drift, low-motion, and sleep-safe controls.
+- Embers — a deterministic cozy foreground overlay effect with synthetic/Home Assistant/weather fallback data, live ember budget, heat, updraft, low-motion, and sleep-safe controls.
