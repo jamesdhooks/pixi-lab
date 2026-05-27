@@ -256,9 +256,9 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 15 | Prism Pool | IN_PROGRESS | fake normals | Model/scene/preview/demo AI implemented with deterministic bounded ripple-height fields, fake-normal/caustic projections, live wave/refraction controls, shared field rendering, and ripple/rake gestures; full automated gate pending. |
 | 16 | Neon River Delta | IN_PROGRESS | height field | Model/scene/preview/demo AI implemented with deterministic bounded height-field erosion, live rainfall/erosion/sediment/flow controls, shared field rendering, and levee/channel gestures; full automated gate pending. |
 | 17 | Alien Vascular Tree | IN_PROGRESS | line mesh | Model/scene/preview/demo AI implemented with deterministic bounded vascular branch graph, live branch/nutrient/prune controls, shared ArcLineRenderer + scalar nutrient/pulse fields, and light/nutrient gestures; full automated gate pending. |
-| 18 | Living Voronoi Tissue | IN_PROGRESS | voronoi field | Model/scene/preview/demo AI implemented with deterministic bounded weighted Voronoi territory fields, live migration/membrane/signal/division controls, shared field/particle rendering, and pressure/shear gestures; full automated gate passes in current environment. |
-| 19 | Proto-Galaxy Forge | IN_PROGRESS | gravity wells | Model/scene/preview/demo AI implemented with deterministic bounded orbital dust, live gravity/spin/fusion controls, shared field/particle rendering, and nova/shear/well gestures; full automated gate pending. |
-| 20 | Chromatic Avalanche Bowl | IN_PROGRESS | density buckets | Model/scene/preview/demo AI implemented with deterministic bounded granular bowl dynamics, live slope/friction/chroma/pour controls, shared density metaball + scalar field rendering, and pour/rake avalanche gestures; full automated gate passes in current environment. |
+| 18 | Living Voronoi Tissue | IN_PROGRESS | voronoi field | Model/scene/preview/demo AI implemented with deterministic bounded weighted Voronoi territory fields, live migration/membrane/signal/division controls, shared field/particle rendering, and pressure/shear gestures; full automated gate and browser launch QA pass in current environment. |
+| 19 | Proto-Galaxy Forge | IN_PROGRESS | gravity wells | Model/scene/preview/demo AI implemented with deterministic bounded orbital dust, live gravity/spin/fusion controls, shared field/particle rendering, and nova/shear/well gestures; full automated gate passes in current environment. |
+| 20 | Chromatic Avalanche Bowl | IN_PROGRESS | density buckets | Model/scene/preview/demo AI implemented with deterministic bounded granular bowl dynamics, live slope/friction/chroma/pour controls, shared density metaball + scalar field rendering, and pour/rake avalanche gestures; full automated gate and browser launch QA pass in current environment. |
 
 ---
 
@@ -1171,7 +1171,7 @@ Do NOT:
 - [x] trails are bounded and fade over time
 - [x] styles clearly distinct in style manifests
 - [ ] stable FPS on Pi target
-- [x] full automated gate in current environment
+- [x] full automated gate passes in current environment
 
 ---
 
@@ -3031,14 +3031,15 @@ Do NOT:
 - [x] styles clearly distinct in style manifests
 - [ ] stable FPS on Pi target
 - [x] full automated gate passes in current environment
+- [x] browser gallery launch QA passes in local demo app
 
 ---
 
 ## Known Risks
 
 - first-playable Voronoi field is CPU-projected into shared scalar renderers, not a reusable GPU Voronoi compositor
-- enhanced mode layers three field renderers plus nuclei particles and may need visual tuning after gallery validation
-- manual demo visual validation and Pi 5 FPS pass are still required before COMPLETE
+- enhanced mode layers three field renderers plus nuclei particles and may need visual tuning after Pi/device validation
+- Pi 5 FPS pass is still required before COMPLETE
 
 ---
 
@@ -3397,14 +3398,15 @@ Do NOT:
 - [x] styles clearly distinct in style manifests
 - [ ] stable FPS on Pi target
 - [x] full automated gate passes in current environment
+- [x] browser gallery launch QA passes in local demo app
 
 ---
 
 ## Known Risks
 
 - first-playable granular rendering is CPU-projected into shared density/scalar renderers rather than a reusable GPU sand compositor
-- enhanced mode layers density, chroma, and motion fields and may need gallery visual tuning
-- manual demo visual validation and Pi 5 FPS pass are still required before COMPLETE
+- enhanced mode layers density, chroma, and motion fields and may need Pi/device visual tuning
+- Pi 5 FPS pass is still required before COMPLETE
 
 ---
 

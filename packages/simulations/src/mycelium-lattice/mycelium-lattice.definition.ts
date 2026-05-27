@@ -31,6 +31,11 @@ export const myceliumLatticeDefinition: SimulationDefinition = {
     { id: 'tip-surge',     label: 'Tip Surge',     minIntervalMs: 6000,  maxIntervalMs: 12000, intensity: 0.50 },
     { id: 'hue-drift',     label: 'Hue Drift',     minIntervalMs: 12000, maxIntervalMs: 22000, intensity: 0.40 },
   ],
+  stagnationPolicy: {
+    stagnant: false,
+    reason: 'Recover when fungal active tips, occupancy variance, or growth energy collapse.',
+    severity: 0,
+  },
   capabilities: {
     demo: true,
     settings: true,
