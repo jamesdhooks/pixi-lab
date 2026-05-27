@@ -3,6 +3,7 @@ import { alienVascularTreeDefinition } from './alien-vascular-tree/alien-vascula
 import { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 import { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
 import { cellularOceanDefinition } from './cellular-ocean/cellular-ocean.definition.js';
+import { chromaticAvalancheBowlDefinition } from './chromatic-avalanche-bowl/chromatic-avalanche-bowl.definition.js';
 import { cosmicInkOceanDefinition } from './cosmic-ink-ocean/cosmic-ink-ocean.definition.js';
 import { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definition.js';
 import { electroOsmoticAmoebaDefinition } from './electro-osmotic-amoeba/electro-osmotic-amoeba.definition.js';
@@ -39,6 +40,11 @@ export { cellularOceanDefinition } from './cellular-ocean/cellular-ocean.definit
 export { CellularOceanScene, cellularOceanStyleManifest } from './cellular-ocean/CellularOceanScene.js';
 export { CellularOceanPreviewScene } from './cellular-ocean/CellularOceanPreviewScene.js';
 export { CellularOceanModel, type CellularOceanModelOptions, type CellularOceanStats } from './cellular-ocean/CellularOceanModel.js';
+
+export { chromaticAvalancheBowlDefinition } from './chromatic-avalanche-bowl/chromatic-avalanche-bowl.definition.js';
+export { ChromaticAvalancheBowlScene, chromaticAvalancheBowlStyleManifest } from './chromatic-avalanche-bowl/ChromaticAvalancheBowlScene.js';
+export { ChromaticAvalancheBowlPreviewScene } from './chromatic-avalanche-bowl/ChromaticAvalancheBowlPreviewScene.js';
+export { ChromaticAvalancheBowlModel, type ChromaticAvalancheBowlModelOptions, type ChromaticAvalancheBowlStats } from './chromatic-avalanche-bowl/ChromaticAvalancheBowlModel.js';
 
 export { cosmicInkOceanDefinition } from './cosmic-ink-ocean/cosmic-ink-ocean.definition.js';
 export { CosmicInkOceanScene, cosmicInkOceanStyleManifest } from './cosmic-ink-ocean/CosmicInkOceanScene.js';
@@ -141,6 +147,7 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   alienVascularTreeDefinition,
   livingVoronoiTissueDefinition,
   protoGalaxyForgeDefinition,
+  chromaticAvalancheBowlDefinition,
 ] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {

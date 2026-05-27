@@ -258,7 +258,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 17 | Alien Vascular Tree | IN_PROGRESS | line mesh | Model/scene/preview/demo AI implemented with deterministic bounded vascular branch graph, live branch/nutrient/prune controls, shared ArcLineRenderer + scalar nutrient/pulse fields, and light/nutrient gestures; full automated gate pending. |
 | 18 | Living Voronoi Tissue | IN_PROGRESS | voronoi field | Model/scene/preview/demo AI implemented with deterministic bounded weighted Voronoi territory fields, live migration/membrane/signal/division controls, shared field/particle rendering, and pressure/shear gestures; full automated gate passes in current environment. |
 | 19 | Proto-Galaxy Forge | IN_PROGRESS | gravity wells | Model/scene/preview/demo AI implemented with deterministic bounded orbital dust, live gravity/spin/fusion controls, shared field/particle rendering, and nova/shear/well gestures; full automated gate pending. |
-| 20 | Chromatic Avalanche Bowl | NOT_STARTED | density buckets | granular fake physics |
+| 20 | Chromatic Avalanche Bowl | IN_PROGRESS | density buckets | Model/scene/preview/demo AI implemented with deterministic bounded granular bowl dynamics, live slope/friction/chroma/pour controls, shared density metaball + scalar field rendering, and pour/rake avalanche gestures; full automated gate passes in current environment. |
 
 ---
 
@@ -3249,7 +3249,189 @@ Deferred before marking COMPLETE:
 
 ---
 
-# 20. Agent Update Rules
+# 20. Chromatic Avalanche Bowl
+
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-27
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates density-bucket/granular fake physics using shared density and scalar renderers
+- provides a colorful tactile powder simulation with live slope/friction controls
+- exercises structural live rebuilds for resolution and grain budgets
+
+---
+
+## Dependencies
+
+- density metaball renderer
+- scalar field renderer
+- seeded RNG
+- palette/bloom/pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded chromatic powder grains inside an elliptical avalanche bowl
+- low-resolution density, chroma, and motion field projections
+- live settings polling for resolution, grainCount, slopeAngle, friction, chromaMix, and pourRate
+- tap/hold/drag/fast-swipe gesture mapping for pigment pours, mound building, rake shears, and high-energy avalanches
+- stagnation recovery that injects deterministic pigment bursts and grain velocity when motion/variance collapses
+
+---
+
+## Required Render Layers
+
+```txt
+density
+field
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+densityMetaball
+paletteMap
+edgeGlow
+bloom
+contourBands
+```
+
+---
+
+## Required Styles
+
+### Powder Prism
+Bright festival powders tumble into saturated spectral dunes.
+
+### Mineral Bowl
+Malachite, lapis, and garnet grains settle into polished stone bands.
+
+### Ember Chute
+Charcoal granular slopes glow with molten orange and violet sparks.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | pour a burst of fresh pigment grains into the bowl |
+| hold | build a colored mound and nudge nearby grains outward |
+| drag | rake colored sediment into flowing avalanche bands |
+| fast swipe | launch a high-energy chromatic slide across the bowl |
+
+---
+
+## Director Mode Events
+
+- pigment pour
+- bowl tilt
+- avalanche rake
+
+---
+
+## Stagnation Recovery
+
+If:
+- active grain motion collapses
+- pile variance becomes too low
+- chroma variance fades out
+
+Then:
+- inject deterministic pigment grains near the upper bowl
+- kick existing grains with fresh avalanche velocity
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+density/chroma/motion fields:
+  32x18 to 192x108 typical, capped at 512 setting max
+
+grains:
+  80 to 1400 setting range, preview capped at 140
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses `DensityMetaballRenderer` for pile density plus `FieldPaletteRenderer` overlays for chroma and enhanced motion glow
+- structural resolution/grain changes rebuild the model; slope, friction, chroma, and pour settings mutate model options live
+- model remains O(grains + field cells) and avoids pairwise grain collisions
+
+Do NOT:
+- add a simulation-specific granular renderer before reusable particle/density infrastructure needs it
+- perform all-pairs grain physics
+- allow unbounded grain or field growth
+
+---
+
+## Validation Checklist
+
+- [x] granular fields initialize deterministically from seed
+- [x] update advances density/chroma/motion state and keeps values bounded
+- [x] tap/drag/hold/swipe gestures alter avalanche state
+- [x] grain and field budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] full automated gate passes in current environment
+
+---
+
+## Known Risks
+
+- first-playable granular rendering is CPU-projected into shared density/scalar renderers rather than a reusable GPU sand compositor
+- enhanced mode layers density, chroma, and motion fields and may need gallery visual tuning
+- manual demo visual validation and Pi 5 FPS pass are still required before COMPLETE
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/chromatic-avalanche-bowl/ChromaticAvalancheBowlModel.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/ChromaticAvalancheBowlScene.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/ChromaticAvalancheBowlPreviewScene.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/ChromaticAvalancheBowlDemoAI.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/chromatic-avalanche-bowl.config.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/chromatic-avalanche-bowl.definition.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/styles/*.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/__tests__/ChromaticAvalancheBowlModel.test.ts`
+
+Implementation notes:
+- Demo AI cycles styles plus every numeric setting so settings UI and scene live polling are exercised.
+- Preview scene uses reduced fixed resolution and grain budgets.
+- Registry exports include `chromaticAvalancheBowlDefinition`, scene, preview, and model types.
+
+Deferred before marking COMPLETE:
+- reusable GPU granular/sediment compositor beyond density field overlays
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 21. Agent Update Rules
 
 When an agent completes work:
 
@@ -3285,7 +3467,7 @@ The agent must:
 
 ---
 
-# 21. Recommended Git Workflow
+# 22. Recommended Git Workflow
 
 Recommended commit structure:
 
@@ -3301,7 +3483,7 @@ Avoid giant multi-simulation commits.
 
 ---
 
-# 22. Final Guidance for Agents
+# 23. Final Guidance for Agents
 
 The project succeeds if:
 - simulations feel alive
