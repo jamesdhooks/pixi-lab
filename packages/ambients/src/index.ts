@@ -5,6 +5,7 @@ import { sleepAquariumDefinition } from './sleep-aquarium/sleep-aquarium.definit
 import { musicDreamFieldDefinition } from './music-dream-field/music-dream-field.definition.js';
 import { housePulseMapDefinition } from './house-pulse-map/house-pulse-map.definition.js';
 import { taskGardenDefinition } from './task-garden/task-garden.definition.js';
+import { familyOrbitDefinition } from './family-orbit/family-orbit.definition.js';
 
 export { dayRhythmFieldDefinition } from './day-rhythm-field/day-rhythm-field.definition.js';
 export { DayRhythmFieldModel, type DayRhythmFieldModelOptions, type DayRhythmFieldStats } from './day-rhythm-field/DayRhythmFieldModel.js';
@@ -49,6 +50,14 @@ export {
   type TaskGardenStats,
 } from './task-garden/TaskGardenModel.js';
 export { TaskGardenScene, taskGardenStyles } from './task-garden/TaskGardenScene.js';
+export { familyOrbitDefinition } from './family-orbit/family-orbit.definition.js';
+export {
+  FamilyOrbitModel,
+  type FamilyOrbitModelOptions,
+  type FamilyOrbitSnapshot,
+  type FamilyOrbitStats,
+} from './family-orbit/FamilyOrbitModel.js';
+export { FamilyOrbitScene, familyOrbitStyles } from './family-orbit/FamilyOrbitScene.js';
 
 export const AMBIENT_REGISTRY: readonly AmbientDefinition[] = [
   dayRhythmFieldDefinition,
@@ -57,6 +66,7 @@ export const AMBIENT_REGISTRY: readonly AmbientDefinition[] = [
   musicDreamFieldDefinition,
   housePulseMapDefinition,
   taskGardenDefinition,
+  familyOrbitDefinition,
 ] as const;
 
 export function getAmbient(id: string): AmbientDefinition | undefined {
