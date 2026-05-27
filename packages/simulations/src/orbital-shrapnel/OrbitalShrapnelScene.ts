@@ -128,8 +128,11 @@ export class OrbitalShrapnelScene extends SimulationScene {
       this.fieldRenderer.clear();
       this.fieldRenderer.renderField('orbit', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.88, gamma: 0.36, zIndex: 0 });
     }
-    const stats = this.model.stats();
-    this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.particleCount, fieldVariance: stats.trailVariance });
+    const debug = this.ctx_.systems.debug;
+    if (debug?.isEnabled()) {
+      const stats = this.model.stats();
+      debug.update({ fps: 0, quality: this.quality, particleCount: stats.particleCount, fieldVariance: stats.trailVariance });
+    }
   }
 
   override resize(width: number, height: number): void {

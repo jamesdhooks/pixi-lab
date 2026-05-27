@@ -144,13 +144,16 @@ export class MyceliumLatticeScene extends SimulationScene {
     if (!this.latticeRenderer || !this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? earthOvergrowthStyle;
     this.latticeRenderer.renderGrid(this.model.grid, this.ctx_.width, this.ctx_.height, style, { zIndex: 0 });
-    const stats = this.model.stats();
-    this.ctx_.systems.debug?.update({
-      fps: 0,
-      quality: this.quality,
-      particleCount: stats.livingCells,
-      fieldVariance: stats.tipCount / Math.max(1, stats.livingCells),
-    });
+    const debug = this.ctx_.systems.debug;
+    if (debug?.isEnabled()) {
+      const stats = this.model.stats();
+      debug.update({
+        fps: 0,
+        quality: this.quality,
+        particleCount: stats.livingCells,
+        fieldVariance: stats.tipCount / Math.max(1, stats.livingCells),
+      });
+    }
   }
 
   override resize(width: number, height: number): void {

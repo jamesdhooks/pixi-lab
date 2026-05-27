@@ -1,4 +1,5 @@
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
+import { useEffect, useRef, useState } from 'react';
 import { PreviewTile } from './GameTile.js';
 
 export interface GalleryProps {
@@ -40,14 +41,42 @@ export function Gallery({ experiences, activeKind, onKindChange, onSelect }: Gal
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
         {filtered.map((experience, index) => (
-          <div key={experience.id} style={{ display: 'grid', gap: 8 }}>
-            <PreviewTile definition={experience} onPress={() => onSelect(experience)} index={index} />
-            <div>
-              <div style={{ fontWeight: 700 }}>{experience.name}</div>
-              <div style={{ color: '#94a3b8', fontSize: 13 }}>{experience.short}</div>
-            </div>
-          </div>
+          <GalleryCard key={experience.id} experience={experience} index={index} onSelect={onSelect} />
         ))}
+      </div>
+    </div>
+  );
+}
+
+function GalleryCard({
+  experience,
+  index,
+  onSelect,
+}: {
+  experience: LabExperience;
+  index: number;
+  onSelect: (experience: LabExperience) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setActive(entry.isIntersecting),
+      { rootMargin: '180px', threshold: 0.01 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} style={{ display: 'grid', gap: 8 }}>
+      <PreviewTile definition={experience} onPress={() => onSelect(experience)} index={index} active={active} />
+      <div>
+        <div style={{ fontWeight: 700 }}>{experience.name}</div>
+        <div style={{ color: '#94a3b8', fontSize: 13 }}>{experience.short}</div>
       </div>
     </div>
   );

@@ -99,8 +99,11 @@ export class CosmicInkOceanScene extends SimulationScene {
       this.particleRenderer.clear();
       this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.72, zIndex: 1 });
     }
-    const stats = this.model.stats();
-    this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.particleCount, fieldVariance: stats.inkVariance });
+    const debug = this.ctx_.systems.debug;
+    if (debug?.isEnabled()) {
+      const stats = this.model.stats();
+      debug.update({ fps: 0, quality: this.quality, particleCount: stats.particleCount, fieldVariance: stats.inkVariance });
+    }
   }
 
   override resize(width: number, height: number): void {

@@ -125,8 +125,11 @@ export class ElectroOsmoticAmoebaScene extends SimulationScene {
     this.layer.clear();
     this.layer.renderField(this.model.densityField, this.ctx_.width, this.ctx_.height, style);
     this.layer.renderParticles(this.model.renderParticles(), style);
-    const stats = this.model.stats();
-    this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.particleCount, fieldVariance: stats.fieldVariance });
+    const debug = this.ctx_.systems.debug;
+    if (debug?.isEnabled()) {
+      const stats = this.model.stats();
+      debug.update({ fps: 0, quality: this.quality, particleCount: stats.particleCount, fieldVariance: stats.fieldVariance });
+    }
   }
 
   override resize(width: number, height: number): void {

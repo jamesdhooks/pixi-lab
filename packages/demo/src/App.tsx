@@ -526,11 +526,23 @@ function ExperienceCard({ experience, index, onSelect }: ExperienceCardProps) {
   const badgeCls = KIND_BADGE[experience.kind] ?? 'bg-slate-100 text-slate-500 dark:bg-slate-700/40 dark:text-slate-400';
   const previewRef = useRef<HTMLDivElement>(null);
   const [previewSize, setPreviewSize] = useState(240);
+  const [previewActive, setPreviewActive] = useState(false);
 
   useLayoutEffect(() => {
     if (previewRef.current) {
       setPreviewSize(previewRef.current.clientWidth);
     }
+  }, []);
+
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setPreviewActive(entry.isIntersecting),
+      { rootMargin: '180px', threshold: 0.01 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
   }, []);
 
   return (
@@ -546,7 +558,7 @@ function ExperienceCard({ experience, index, onSelect }: ExperienceCardProps) {
         ref={previewRef}
         className="relative w-full aspect-square rounded-2xl overflow-hidden pointer-events-none bg-slate-100 dark:bg-[#0d0d1e] transition-transform duration-200 group-hover:scale-[1.03]"
       >
-        <PreviewTile definition={experience} index={index} size={previewSize} />
+        <PreviewTile definition={experience} index={index} size={previewSize} active={previewActive} />
 
         {/* Kind badge — overlaid on the preview tile */}
         <span className={`absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${badgeCls}`}>

@@ -126,13 +126,16 @@ export class MyceliumPrismScene extends SimulationScene {
       // Soft glow pass: wider blend, lower alpha, slightly different gamma.
       this.fieldRenderer.renderField('glow', this.model.field, this.ctx_.width, this.ctx_.height, style, { alpha: 0.22, gamma: 0.32, maxAlpha: 90, zIndex: 1 });
     }
-    const stats = this.model.stats();
-    this.ctx_.systems.debug?.update({
-      fps: 0,
-      quality: this.quality,
-      particleCount: stats.activeCells,
-      fieldVariance: stats.meanEnergy,
-    });
+    const debug = this.ctx_.systems.debug;
+    if (debug?.isEnabled()) {
+      const stats = this.model.stats();
+      debug.update({
+        fps: 0,
+        quality: this.quality,
+        particleCount: stats.activeCells,
+        fieldVariance: stats.meanEnergy,
+      });
+    }
   }
 
   override resize(width: number, height: number): void {

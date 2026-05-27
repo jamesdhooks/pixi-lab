@@ -138,11 +138,14 @@ export class HarmonicSandScene extends SimulationScene {
     this.emitterRenderer.clear();
     this.fieldRenderer.renderField('wave', this.model.field, this.ctx_.width, this.ctx_.height, style);
     this.emitterRenderer.renderEmitters(this.model.emitters, this.model.elapsedTime);
-    this.ctx_.systems.debug?.update({
-      fps: 0,
-      quality: this.quality,
-      fieldVariance: this.model.field.stats().variance,
-    });
+    const debug = this.ctx_.systems.debug;
+    if (debug?.isEnabled()) {
+      debug.update({
+        fps: 0,
+        quality: this.quality,
+        fieldVariance: this.model.field.stats().variance,
+      });
+    }
   }
 
   override resize(width: number, height: number): void {

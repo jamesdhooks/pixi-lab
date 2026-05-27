@@ -19,7 +19,7 @@ const PERF_WINDOW_S = 2; // measure perf for 2 seconds
 const FPS_THRESHOLD = 20; // fall back if avg below this
 /** Cap each preview tile's tick rate so many simultaneous tiles don't saturate
  *  the JS thread and tank the browser's own rAF rate below FPS_THRESHOLD. */
-const PREVIEW_FPS_CAP = 60;
+const PREVIEW_FPS_CAP = 30;
 /** Stagger tile start-up so 9 tiles don't all create WebGL contexts at once. */
 const INIT_STAGGER_MS = 300;
 
@@ -72,7 +72,7 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
 
   const startPreview = useCallback(() => {
     const container = containerRef.current;
-    if (!container || useFallback) return;
+    if (!container || useFallback || appRef.current) return;
 
     const overrideDef = {
       ...definition,
@@ -135,6 +135,11 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
       cancelAnimationFrame(rafRef.current);
       appRef.current?.destroy();
       appRef.current = null;
+      if (measuringRef.current) {
+        frameCountRef.current = 0;
+        elapsedRef.current = 0;
+        lastTimeRef.current = null;
+      }
       return;
     }
     // Stagger tile start-up so all tiles don't init WebGL contexts simultaneously.
@@ -144,6 +149,11 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
       cancelAnimationFrame(rafRef.current);
       appRef.current?.destroy();
       appRef.current = null;
+      if (measuringRef.current) {
+        frameCountRef.current = 0;
+        elapsedRef.current = 0;
+        lastTimeRef.current = null;
+      }
     };
   }, [active, startPreview, index]);
 

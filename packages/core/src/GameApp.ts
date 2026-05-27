@@ -572,11 +572,13 @@ export class GameApp {
       }
     }
 
-    this.debug.update({
-      fps: this.ticker.fps,
-      quality: this.quality,
-      renderTargets: JSON.stringify(this.renderTargets.stats()),
-    });
+    if (this.debug.isEnabled()) {
+      this.debug.update({
+        fps: this.ticker.fps,
+        quality: this.quality,
+        renderTargets: JSON.stringify(this.renderTargets.stats()),
+      });
+    }
 
     // Update telemetry
     this.telemetry.update({
@@ -589,6 +591,7 @@ export class GameApp {
   private onRender = (alpha: number) => {
     if (this._mode === 'paused') return;
     this.currentScene?.render(alpha);
+    this.pixi.render();
   };
 
   private handleResize = (width: number, height: number) => {

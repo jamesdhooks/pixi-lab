@@ -73,6 +73,7 @@ export class PixiApp {
       antialias: opts.antialias ?? true,
       resolution,
       autoDensity: true,
+      autoStart: false,
       preference: opts.preference ?? 'webgl',
     });
     opts.container.appendChild(instance.app.canvas);
@@ -89,6 +90,10 @@ export class PixiApp {
 
   get renderer() {
     return this.app.renderer;
+  }
+
+  render() {
+    this.app.render();
   }
 
   setMaxPixels(maxPixels: number | undefined) {

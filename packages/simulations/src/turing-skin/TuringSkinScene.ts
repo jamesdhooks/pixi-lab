@@ -85,8 +85,11 @@ export class TuringSkinScene extends SimulationScene {
     const style = this.ctx_.systems.styleManager?.getStyle() ?? leopardGoldStyle;
     this.fieldRenderer.clear();
     this.fieldRenderer.renderField('pigment', this.model.pigmentField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.96, gamma: this.quality === 'enhanced' ? 0.58 : 0.72, zIndex: 0 });
-    const stats = this.model.stats();
-    this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.columns * stats.rows, fieldVariance: stats.fieldVariance });
+    const debug = this.ctx_.systems.debug;
+    if (debug?.isEnabled()) {
+      const stats = this.model.stats();
+      debug.update({ fps: 0, quality: this.quality, particleCount: stats.columns * stats.rows, fieldVariance: stats.fieldVariance });
+    }
   }
 
   override resize(width: number, height: number): void {
