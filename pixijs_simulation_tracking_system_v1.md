@@ -256,7 +256,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 15 | Prism Pool | IN_PROGRESS | fake normals | Model/scene/preview/demo AI implemented with deterministic bounded ripple-height fields, fake-normal/caustic projections, live wave/refraction controls, shared field rendering, and ripple/rake gestures; full automated gate pending. |
 | 16 | Neon River Delta | IN_PROGRESS | height field | Model/scene/preview/demo AI implemented with deterministic bounded height-field erosion, live rainfall/erosion/sediment/flow controls, shared field rendering, and levee/channel gestures; full automated gate pending. |
 | 17 | Alien Vascular Tree | IN_PROGRESS | line mesh | Model/scene/preview/demo AI implemented with deterministic bounded vascular branch graph, live branch/nutrient/prune controls, shared ArcLineRenderer + scalar nutrient/pulse fields, and light/nutrient gestures; full automated gate pending. |
-| 18 | Living Voronoi Tissue | NOT_STARTED | voronoi field | territory simulation |
+| 18 | Living Voronoi Tissue | IN_PROGRESS | voronoi field | Model/scene/preview/demo AI implemented with deterministic bounded weighted Voronoi territory fields, live migration/membrane/signal/division controls, shared field/particle rendering, and pressure/shear gestures; full automated gate passes in current environment. |
 | 19 | Proto-Galaxy Forge | NOT_STARTED | gravity wells | advanced particles |
 | 20 | Chromatic Avalanche Bowl | NOT_STARTED | density buckets | granular fake physics |
 
@@ -2876,6 +2876,191 @@ Implementation notes:
 
 Deferred before marking COMPLETE:
 - reusable vector/flow compositor beyond scalar field overlays
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 18. Living Voronoi Tissue
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-27
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates weighted Voronoi territory simulation without a one-off renderer
+- exercises biological cell division/migration using bounded deterministic model state
+- proves live structural rebuilds for resolution/cell budget plus live setters for tissue dynamics
+
+---
+
+## Dependencies
+
+- scalar fields
+- field palette renderer
+- particle point renderer
+- palette/bloom/edge/contour pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded tissue cells seeded through `SeededRng`
+- weighted Voronoi projection into territory, membrane boundary, and signal scalar fields
+- cell migration, membrane tension, signal strength, energy pulsing, and bounded cell division
+- tap, hold, drag, and fast-swipe gesture mapping for mitosis pressure and tissue shear
+- live settings polling for resolution, cellCount, migrationRate, membraneTension, signalStrength, divisionRate, and debug overlay
+- stagnation recovery that injects deterministic motility and signal variation when motion/variance collapses
+
+---
+
+## Required Render Layers
+
+```txt
+field
+particles
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+paletteMap
+edgeGlow
+bloom
+contourBands
+distortion
+```
+
+---
+
+## Required Styles
+
+### Biolume Tissue
+Dark petri-glass tissue with cyan membranes, violet territory gradients, and warm mitosis pulses.
+
+### Coral Colony
+Soft coral territories divide through amber membranes and teal nutrient halos.
+
+### Microscope Bloom
+High-contrast microscope stain with lime nuclei, indigo membranes, and bright mitotic scars.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | seed a local mitosis pulse that energizes nearby cells |
+| hold | compress a territory pocket and push cells away from pressure |
+| drag | shear membranes into flowing tissue folds |
+| fast swipe | throw a strong shear wave through multiple territories |
+
+---
+
+## Director Mode Events
+
+- mitosis wave
+- membrane spasm
+- nutrient signal
+
+---
+
+## Stagnation Recovery
+
+If:
+- tissue motion energy collapses
+- boundary variance becomes too low
+- signal variance fades out
+
+Then:
+- inject deterministic random motility into several cells
+- raise local cell energy
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+territory/boundary/signal fields:
+  32x18 to 160x90 typical, capped at 512 setting max
+
+cells:
+  12 to 220 setting range, preview capped at 36
+
+rendering:
+  shared low-resolution field textures plus ParticleContainer nuclei, no per-cell mesh objects
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses layered `FieldPaletteRenderer` fields for territory, membranes, and enhanced signal glow
+- nuclei/cell centers render through shared `ParticlePointRenderer`
+- structural resolution/cell-count changes rebuild the model; dynamic numeric settings mutate model options live
+
+Do NOT:
+- add a simulation-specific Voronoi shader until reusable compositor support exists
+- create one Pixi object per territory/cell
+- allow unbounded cell division or field buffers
+
+---
+
+## Validation Checklist
+
+- [x] tissue fields initialize deterministically from seed
+- [x] update advances territory/membrane/signal state and keeps values bounded
+- [x] tap/drag/hold/swipe gestures alter tissue state
+- [x] cell and field budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] full automated gate passes in current environment
+
+---
+
+## Known Risks
+
+- first-playable Voronoi field is CPU-projected into shared scalar renderers, not a reusable GPU Voronoi compositor
+- enhanced mode layers three field renderers plus nuclei particles and may need visual tuning after gallery validation
+- manual demo visual validation and Pi 5 FPS pass are still required before COMPLETE
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/living-voronoi-tissue/LivingVoronoiTissueModel.ts`
+- `packages/simulations/src/living-voronoi-tissue/LivingVoronoiTissueScene.ts`
+- `packages/simulations/src/living-voronoi-tissue/LivingVoronoiTissuePreviewScene.ts`
+- `packages/simulations/src/living-voronoi-tissue/LivingVoronoiTissueDemoAI.ts`
+- `packages/simulations/src/living-voronoi-tissue/living-voronoi-tissue.config.ts`
+- `packages/simulations/src/living-voronoi-tissue/living-voronoi-tissue.definition.ts`
+- `packages/simulations/src/living-voronoi-tissue/styles/*.ts`
+- `packages/simulations/src/living-voronoi-tissue/__tests__/LivingVoronoiTissueModel.test.ts`
+
+Implementation notes:
+- Demo AI cycles styles plus every numeric setting so settings UI and scene live polling are exercised.
+- Preview scene uses reduced fixed resolution and cell budget.
+- Registry exports include `livingVoronoiTissueDefinition`, scene, preview, and model types.
+
+Deferred before marking COMPLETE:
+- reusable GPU Voronoi compositor beyond scalar field overlays
 - manual demo visual validation and Pi 5 FPS pass
 
 ---

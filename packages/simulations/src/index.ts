@@ -8,6 +8,7 @@ import { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definit
 import { electroOsmoticAmoebaDefinition } from './electro-osmotic-amoeba/electro-osmotic-amoeba.definition.js';
 import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 import { jellyWebDefinition } from './jelly-web/jelly-web.definition.js';
+import { livingVoronoiTissueDefinition } from './living-voronoi-tissue/living-voronoi-tissue.definition.js';
 import { myceliumLatticeDefinition } from './mycelium-lattice/mycelium-lattice.definition.js';
 import { myceliumPrismDefinition } from './mycelium-prism/mycelium-prism.definition.js';
 import { neonRiverDeltaDefinition } from './neon-river-delta/neon-river-delta.definition.js';
@@ -62,6 +63,11 @@ export { jellyWebDefinition } from './jelly-web/jelly-web.definition.js';
 export { JellyWebScene, jellyWebStyleManifest } from './jelly-web/JellyWebScene.js';
 export { JellyWebPreviewScene } from './jelly-web/JellyWebPreviewScene.js';
 export { JellyWebModel, type JellyWebModelOptions, type JellyWebStats } from './jelly-web/JellyWebModel.js';
+
+export { livingVoronoiTissueDefinition } from './living-voronoi-tissue/living-voronoi-tissue.definition.js';
+export { LivingVoronoiTissueScene, livingVoronoiTissueStyleManifest } from './living-voronoi-tissue/LivingVoronoiTissueScene.js';
+export { LivingVoronoiTissuePreviewScene } from './living-voronoi-tissue/LivingVoronoiTissuePreviewScene.js';
+export { LivingVoronoiTissueModel, type LivingVoronoiTissueCell, type LivingVoronoiTissueModelOptions, type LivingVoronoiTissueStats } from './living-voronoi-tissue/LivingVoronoiTissueModel.js';
 
 export { myceliumLatticeDefinition } from './mycelium-lattice/mycelium-lattice.definition.js';
 export { MyceliumLatticeScene, myceliumLatticeStyleManifest } from './mycelium-lattice/MyceliumLatticeScene.js';
@@ -127,6 +133,7 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   prismPoolDefinition,
   neonRiverDeltaDefinition,
   alienVascularTreeDefinition,
+  livingVoronoiTissueDefinition,
 ] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
