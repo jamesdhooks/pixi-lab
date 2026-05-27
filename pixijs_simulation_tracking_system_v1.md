@@ -39,6 +39,21 @@ Scope:
 
 ---
 
+## 2026-05-27 — Registry QA + Automated Gate Refresh
+
+Scope:
+- synced `neocloud/pixi-lab-continuous-implementation` with `origin/neocloud/pixi-lab-baseline-stabilization`
+- reran the full automated gate across the current simulation catalog: `pnpm build`, `pnpm --recursive typecheck`, and `pnpm test`
+- ran a built `packages/simulations/dist/index.js` registry QA probe across all 21 simulations to verify discovery-critical fields: factories, demo AI, style manifest capabilities, settings/defaults, gesture map, and stagnation policy
+- launched the demo dev server and confirmed the Vite shell serves successfully over HTTP
+
+Validation notes:
+- automated build/typecheck/test gate passed in the current environment
+- registry QA passed with no discovery/wiring omissions
+- HTTP launch smoke passed; real browser canvas/console verification and Pi 5 FPS validation remain manual gates before any simulation should be marked `COMPLETE`
+
+---
+
 ## 2026-05-24 — Ambient + Reusable FX Engine Support
 
 Scope:
