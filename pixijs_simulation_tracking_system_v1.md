@@ -257,7 +257,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 16 | Neon River Delta | IN_PROGRESS | height field | Model/scene/preview/demo AI implemented with deterministic bounded height-field erosion, live rainfall/erosion/sediment/flow controls, shared field rendering, and levee/channel gestures; full automated gate pending. |
 | 17 | Alien Vascular Tree | IN_PROGRESS | line mesh | Model/scene/preview/demo AI implemented with deterministic bounded vascular branch graph, live branch/nutrient/prune controls, shared ArcLineRenderer + scalar nutrient/pulse fields, and light/nutrient gestures; full automated gate pending. |
 | 18 | Living Voronoi Tissue | IN_PROGRESS | voronoi field | Model/scene/preview/demo AI implemented with deterministic bounded weighted Voronoi territory fields, live migration/membrane/signal/division controls, shared field/particle rendering, and pressure/shear gestures; full automated gate passes in current environment. |
-| 19 | Proto-Galaxy Forge | NOT_STARTED | gravity wells | advanced particles |
+| 19 | Proto-Galaxy Forge | IN_PROGRESS | gravity wells | Model/scene/preview/demo AI implemented with deterministic bounded orbital dust, live gravity/spin/fusion controls, shared field/particle rendering, and nova/shear/well gestures; full automated gate pending. |
 | 20 | Chromatic Avalanche Bowl | NOT_STARTED | density buckets | granular fake physics |
 
 ---
@@ -3061,6 +3061,190 @@ Implementation notes:
 
 Deferred before marking COMPLETE:
 - reusable GPU Voronoi compositor beyond scalar field overlays
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 19. Proto-Galaxy Forge
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-27
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates gravity-well particle behavior on top of shared scalar and particle renderers
+- provides the galaxy/space simulation slot with live orbital controls
+- exercises structural live rebuilds for particle/well budgets and dynamic setters for force tuning
+
+---
+
+## Dependencies
+
+- scalar field renderer
+- particle point renderer
+- seeded RNG
+- palette/bloom/pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded orbital dust particles influenced by wandering gravity wells
+- low-resolution density, heat, and gravity field projection
+- live settings polling for resolution, particleCount, wellCount, gravityStrength, spinBias, fusionRate, and debug overlay
+- tap/hold/drag/fast-swipe gesture mapping for novas, gravity-well relocation, and filament shearing
+- stagnation recovery that injects deterministic nova energy and boosts well mass when motion/variance collapses
+
+---
+
+## Required Render Layers
+
+```txt
+field
+particles
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+paletteMap
+edgeGlow
+bloom
+contourBands
+distortion
+```
+
+---
+
+## Required Styles
+
+### Stellar Nursery
+Magenta hydrogen clouds, cyan young stars, and warm fusion cores.
+
+### Dark Matter Filament
+Deep violet gravity wells with blue-white dust tracing invisible mass.
+
+### Infrared Forge
+Amber dust lanes and ember-hot star birth regions against a black telescope plate.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | trigger a small nova that heats and scatters nearby star dust |
+| hold | move and strengthen the nearest gravity well |
+| drag | shear dust lanes into spiral filaments |
+| fast swipe | launch a stronger galactic shear wave |
+
+---
+
+## Director Mode Events
+
+- protostar burst
+- gravity well migration
+- filament shear
+
+---
+
+## Stagnation Recovery
+
+If:
+- orbital motion energy collapses
+- density variance becomes too low
+- heat variance fades out
+
+Then:
+- inject a deterministic nova near center
+- raise gravity well mass slightly
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+density/heat/gravity fields:
+  32x18 to 192x108 typical, capped at 512 setting max
+
+particles:
+  80 to 900 setting range, preview capped at 120
+
+gravity wells:
+  2 to 9 setting range, preview capped at 3
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses layered `FieldPaletteRenderer` fields for density, gravity, and enhanced heat glow
+- star dust renders through shared `ParticlePointRenderer`
+- structural resolution/particle/well changes rebuild the model; force, spin, and fusion settings mutate model options live
+
+Do NOT:
+- add a simulation-specific N-body renderer or shader before reusable particle/field infrastructure requires it
+- perform all-pairs particle gravity; particle dynamics remain O(particles × wells)
+- allow unbounded particle or well growth
+
+---
+
+## Validation Checklist
+
+- [x] galaxy fields initialize deterministically from seed
+- [x] update advances density/heat/gravity state and keeps values bounded
+- [x] tap/drag/hold/swipe gestures alter orbital state
+- [x] particle and field budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] full automated gate in current environment
+
+---
+
+## Known Risks
+
+- first-playable gravity rendering is CPU-projected into shared scalar renderers, not a reusable GPU gravitational lensing compositor
+- enhanced mode layers three field renderers plus dust particles and may need visual tuning after gallery validation
+- manual demo visual validation and Pi 5 FPS pass are still required before COMPLETE
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/proto-galaxy-forge/ProtoGalaxyForgeModel.ts`
+- `packages/simulations/src/proto-galaxy-forge/ProtoGalaxyForgeScene.ts`
+- `packages/simulations/src/proto-galaxy-forge/ProtoGalaxyForgePreviewScene.ts`
+- `packages/simulations/src/proto-galaxy-forge/ProtoGalaxyForgeDemoAI.ts`
+- `packages/simulations/src/proto-galaxy-forge/proto-galaxy-forge.config.ts`
+- `packages/simulations/src/proto-galaxy-forge/proto-galaxy-forge.definition.ts`
+- `packages/simulations/src/proto-galaxy-forge/styles/*.ts`
+- `packages/simulations/src/proto-galaxy-forge/__tests__/ProtoGalaxyForgeModel.test.ts`
+
+Implementation notes:
+- Demo AI cycles styles plus every numeric setting so settings UI and scene live polling are exercised.
+- Preview scene uses reduced fixed resolution, particle, and well budgets.
+- Registry exports include `protoGalaxyForgeDefinition`, scene, preview, and model types.
+
+Deferred before marking COMPLETE:
+- reusable GPU lensing/nebula compositor beyond scalar field overlays
 - manual demo visual validation and Pi 5 FPS pass
 
 ---

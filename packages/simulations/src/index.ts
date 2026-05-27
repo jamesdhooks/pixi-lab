@@ -16,6 +16,7 @@ import { oilWaterUniverseDefinition } from './oil-water-universe/oil-water-unive
 import { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
 import { plasmaBranchDefinition } from './plasma-branch/plasma-branch.definition.js';
 import { prismPoolDefinition } from './prism-pool/prism-pool.definition.js';
+import { protoGalaxyForgeDefinition } from './proto-galaxy-forge/proto-galaxy-forge.definition.js';
 import { timeEchoDefinition } from './time-echo/time-echo.definition.js';
 import { turingSkinDefinition } from './turing-skin/turing-skin.definition.js';
 
@@ -104,6 +105,11 @@ export { PrismPoolScene, prismPoolStyleManifest } from './prism-pool/PrismPoolSc
 export { PrismPoolPreviewScene } from './prism-pool/PrismPoolPreviewScene.js';
 export { PrismPoolModel, type PrismPoolModelOptions, type PrismPoolStats } from './prism-pool/PrismPoolModel.js';
 
+export { protoGalaxyForgeDefinition } from './proto-galaxy-forge/proto-galaxy-forge.definition.js';
+export { ProtoGalaxyForgeScene, protoGalaxyForgeStyleManifest } from './proto-galaxy-forge/ProtoGalaxyForgeScene.js';
+export { ProtoGalaxyForgePreviewScene } from './proto-galaxy-forge/ProtoGalaxyForgePreviewScene.js';
+export { ProtoGalaxyForgeModel, type ProtoGalaxyForgeModelOptions, type ProtoGalaxyForgeStats } from './proto-galaxy-forge/ProtoGalaxyForgeModel.js';
+
 export { timeEchoDefinition } from './time-echo/time-echo.definition.js';
 export { TimeEchoScene, timeEchoStyleManifest } from './time-echo/TimeEchoScene.js';
 export { TimeEchoPreviewScene } from './time-echo/TimeEchoPreviewScene.js';
@@ -134,6 +140,7 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   neonRiverDeltaDefinition,
   alienVascularTreeDefinition,
   livingVoronoiTissueDefinition,
+  protoGalaxyForgeDefinition,
 ] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {
