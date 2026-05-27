@@ -8,3 +8,4 @@ Currently includes:
 - Home Weather Glass — a synthetic-or-injected weather ambient with low-motion and sleep-safe rain glass controls.
 - Sleep Aquarium — a deterministic low-motion night reef with synthetic/time fallback data, live sleep controls, and preview/fullscreen factories.
 - Music Dream Field — a deterministic media/synthetic beat ambient with live pulse, budget, low-motion, and sleep-safe controls.
+- House Pulse Map — a deterministic Home Assistant/presence ambient with synthetic fallback data, live budgets, event sensitivity, low-motion, and sleep-safe controls.
