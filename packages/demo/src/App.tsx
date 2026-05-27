@@ -5,9 +5,10 @@ import { GameLauncher, PreviewTile } from '@hooksjam/pixi-lab-react';
 import { useViewport } from '@hooksjam/pixi-lab-react';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
 import { SIMULATION_REGISTRY } from '@hooksjam/pixi-lab-simulations';
+import { AMBIENT_REGISTRY } from '@hooksjam/pixi-lab-ambients';
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
 
-const ALL_EXPERIENCES: readonly LabExperience[] = [...GAME_REGISTRY, ...SIMULATION_REGISTRY];
+const ALL_EXPERIENCES: readonly LabExperience[] = [...GAME_REGISTRY, ...SIMULATION_REGISTRY, ...AMBIENT_REGISTRY];
 
 type FilterKind = 'all' | LabExperience['kind'];
 

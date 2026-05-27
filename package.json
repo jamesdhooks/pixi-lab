@@ -5,14 +5,14 @@
   "description": "Game & Simulation Lab — core engine, React integration, content packages",
   "scripts": {
     "dev": "pnpm --filter @hooksjam/pixi-lab-demo dev",
-    "build": "pnpm --filter @hooksjam/pixi-lab-core build && pnpm --filter @hooksjam/pixi-lab-react build && pnpm --filter @hooksjam/pixi-lab-games build && pnpm --filter @hooksjam/pixi-lab-simulations build",
-    "typecheck": "pnpm --filter @hooksjam/pixi-lab-core typecheck && pnpm --filter @hooksjam/pixi-lab-react typecheck && pnpm --filter @hooksjam/pixi-lab-games typecheck && pnpm --filter @hooksjam/pixi-lab-simulations typecheck && pnpm --filter @hooksjam/pixi-lab-demo typecheck",
+    "build": "pnpm --filter @hooksjam/pixi-lab-core build && pnpm --filter @hooksjam/pixi-lab-react build && pnpm --filter @hooksjam/pixi-lab-games build && pnpm --filter @hooksjam/pixi-lab-simulations build && pnpm --filter @hooksjam/pixi-lab-ambients build",
+    "typecheck": "pnpm --filter @hooksjam/pixi-lab-core typecheck && pnpm --filter @hooksjam/pixi-lab-react typecheck && pnpm --filter @hooksjam/pixi-lab-games typecheck && pnpm --filter @hooksjam/pixi-lab-simulations typecheck && pnpm --filter @hooksjam/pixi-lab-ambients typecheck && pnpm --filter @hooksjam/pixi-lab-demo typecheck",
     "lint": "eslint 'packages/*/src/**/*.{ts,tsx}'",
     "test": "vitest run",
     "test:watch": "vitest",
-    "pack:dry-run": "pnpm --filter @hooksjam/pixi-lab-core pack --dry-run && pnpm --filter @hooksjam/pixi-lab-react pack --dry-run && pnpm --filter @hooksjam/pixi-lab-games pack --dry-run && pnpm --filter @hooksjam/pixi-lab-simulations pack --dry-run",
-    "publish:dry-run": "pnpm --filter @hooksjam/pixi-lab-core publish --dry-run --no-git-checks && pnpm --filter @hooksjam/pixi-lab-react publish --dry-run --no-git-checks && pnpm --filter @hooksjam/pixi-lab-games publish --dry-run --no-git-checks && pnpm --filter @hooksjam/pixi-lab-simulations publish --dry-run --no-git-checks",
-    "publish:packages": "pnpm --filter @hooksjam/pixi-lab-core publish --no-git-checks && pnpm --filter @hooksjam/pixi-lab-react publish --no-git-checks && pnpm --filter @hooksjam/pixi-lab-games publish --no-git-checks && pnpm --filter @hooksjam/pixi-lab-simulations publish --no-git-checks"
+    "pack:dry-run": "pnpm --filter @hooksjam/pixi-lab-core pack --dry-run && pnpm --filter @hooksjam/pixi-lab-react pack --dry-run && pnpm --filter @hooksjam/pixi-lab-games pack --dry-run && pnpm --filter @hooksjam/pixi-lab-simulations pack --dry-run && pnpm --filter @hooksjam/pixi-lab-ambients pack --dry-run",
+    "publish:dry-run": "pnpm --filter @hooksjam/pixi-lab-core publish --dry-run --no-git-checks && pnpm --filter @hooksjam/pixi-lab-react publish --dry-run --no-git-checks && pnpm --filter @hooksjam/pixi-lab-games publish --dry-run --no-git-checks && pnpm --filter @hooksjam/pixi-lab-simulations publish --dry-run --no-git-checks && pnpm --filter @hooksjam/pixi-lab-ambients publish --dry-run --no-git-checks",
+    "publish:packages": "pnpm --filter @hooksjam/pixi-lab-core publish --no-git-checks && pnpm --filter @hooksjam/pixi-lab-react publish --no-git-checks && pnpm --filter @hooksjam/pixi-lab-games publish --no-git-checks && pnpm --filter @hooksjam/pixi-lab-simulations publish --no-git-checks && pnpm --filter @hooksjam/pixi-lab-ambients publish --no-git-checks"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

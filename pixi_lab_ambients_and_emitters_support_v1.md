@@ -1457,7 +1457,7 @@ Add the following implementation tracking section.
 
 | Priority | Ambient | Status | Depends On | Notes |
 |---|---|---|---|---|
-| 1 | Day Rhythm Field | NOT_STARTED | AmbientLayer | easiest first ambient |
+| 1 | Day Rhythm Field | COMPLETE | AmbientLayer | Implemented as first packaged ambient with deterministic seeded particle field, synthetic/time data fallback, sleep/low-motion controls, styles, registry wiring, and demo/browser validation. |
 | 2 | Home Weather Glass | NOT_STARTED | synthetic weather | strong dashboard value |
 | 3 | Sleep Aquarium | NOT_STARTED | low-motion mode | night/sleep reference |
 | 4 | Music Dream Field | NOT_STARTED | synthetic beat | media integration later |

@@ -65,7 +65,7 @@ Scope:
 - add React background and foreground overlay components
 
 Deferred:
-- ambient catalog implementations such as Day Rhythm Field, Home Weather Glass, Sleep Aquarium, and Task Garden
+- remaining ambient catalog implementations such as Home Weather Glass, Sleep Aquarium, and Task Garden
 - foreground overlay content such as Snowfall, Rain Streaks, Leaves/Pollen, and Embers
 - real Home Assistant/weather/calendar/media/photo/task adapters; demo and engine support use synthetic/injected data contracts
 
@@ -206,7 +206,7 @@ Ambient implementations are deferred until engine support systems above are comp
 
 | Priority | Ambient | Status | Depends On | Notes |
 |---|---|---|---|---|
-| 1 | Day Rhythm Field | DEFERRED | AmbientLayer | easiest first ambient |
+| 1 | Day Rhythm Field | COMPLETE | AmbientLayer | Implemented as `@hooksjam/pixi-lab-ambients` first ambient with deterministic model, synthetic/time data bindings, low-motion/sleep controls, style presets, demo gallery wiring, ambient registry QA, and browser launch QA. |
 | 2 | Home Weather Glass | DEFERRED | synthetic weather | strong dashboard value |
 | 3 | Sleep Aquarium | DEFERRED | low-motion mode | night/sleep reference |
 | 4 | Music Dream Field | DEFERRED | synthetic beat | media integration later |

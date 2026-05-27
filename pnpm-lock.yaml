@@ -30,6 +30,18 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@20.19.41)(jsdom@29.1.1)
 
+  packages/ambients:
+    devDependencies:
+      '@hooksjam/pixi-lab-core':
+        specifier: workspace:*
+        version: link:../core
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.1(@types/node@20.19.41)(jsdom@29.1.1)
+
   packages/core:
     devDependencies:
       pixi.js:
@@ -44,6 +56,9 @@ importers:
 
   packages/demo:
     dependencies:
+      '@hooksjam/pixi-lab-ambients':
+        specifier: workspace:*
+        version: link:../ambients
       '@hooksjam/pixi-lab-core':
         specifier: workspace:*
         version: link:../core
