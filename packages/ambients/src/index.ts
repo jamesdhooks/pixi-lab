@@ -2,6 +2,7 @@ import type { AmbientDefinition } from '@hooksjam/pixi-lab-core';
 import { dayRhythmFieldDefinition } from './day-rhythm-field/day-rhythm-field.definition.js';
 import { homeWeatherGlassDefinition } from './home-weather-glass/home-weather-glass.definition.js';
 import { sleepAquariumDefinition } from './sleep-aquarium/sleep-aquarium.definition.js';
+import { musicDreamFieldDefinition } from './music-dream-field/music-dream-field.definition.js';
 
 export { dayRhythmFieldDefinition } from './day-rhythm-field/day-rhythm-field.definition.js';
 export { DayRhythmFieldModel, type DayRhythmFieldModelOptions, type DayRhythmFieldStats } from './day-rhythm-field/DayRhythmFieldModel.js';
@@ -22,11 +23,20 @@ export {
   type SleepAquariumStats,
 } from './sleep-aquarium/SleepAquariumModel.js';
 export { SleepAquariumScene, sleepAquariumStyles } from './sleep-aquarium/SleepAquariumScene.js';
+export { musicDreamFieldDefinition } from './music-dream-field/music-dream-field.definition.js';
+export {
+  MusicDreamFieldModel,
+  type MusicDreamFieldModelOptions,
+  type MusicDreamFieldSnapshot,
+  type MusicDreamFieldStats,
+} from './music-dream-field/MusicDreamFieldModel.js';
+export { MusicDreamFieldScene, musicDreamFieldStyles } from './music-dream-field/MusicDreamFieldScene.js';
 
 export const AMBIENT_REGISTRY: readonly AmbientDefinition[] = [
   dayRhythmFieldDefinition,
   homeWeatherGlassDefinition,
   sleepAquariumDefinition,
+  musicDreamFieldDefinition,
 ] as const;
 
 export function getAmbient(id: string): AmbientDefinition | undefined {

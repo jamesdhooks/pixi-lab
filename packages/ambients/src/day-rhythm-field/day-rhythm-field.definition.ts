@@ -38,6 +38,7 @@ export const dayRhythmFieldDefinition: AmbientDefinition = {
     allowBackground: true,
   },
   styles: dayRhythmFieldStyles,
+  configDefaults: { ...DAY_RHYTHM_FIELD_DEFAULTS },
   settingsFields: [
     {
       key: 'particleCount',

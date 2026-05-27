@@ -38,6 +38,7 @@ export const homeWeatherGlassDefinition: AmbientDefinition = {
     allowBackground: true,
   },
   styles: homeWeatherGlassStyles,
+  configDefaults: { ...HOME_WEATHER_GLASS_DEFAULTS },
   settingsFields: [
     {
       key: 'dropletCount',
