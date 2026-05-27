@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>PixiJS Triangular Mycelium Demo v8</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #050508;
+      color: #d7e7ff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #hud {
+      position: fixed;
+      left: 12px;
+      top: 12px;
+      z-index: 10;
+      width: min(720px, calc(100vw - 24px));
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 10px;
+      background: rgba(0,0,0,0.48);
+      backdrop-filter: blur(6px);
+      line-height: 1.35;
+      font-size: 12px;
+      user-select: none;
+    }
+
+    #hud b {
+      color: #ffffff;
+    }
+
+    .hint {
+      opacity: 0.78;
+    }
+
+    .controls {
+      margin-top: 8px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: 165px 1fr 64px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    #stats {
+      margin-top: 8px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <b>Triangular Mycelium / Bacterial Growth v8</b><br />
+    One Pixi mesh. Equilateral triangular cells. Each cell has up to 3 edge-neighbors.<br />
+    Cell color is assigned once at birth from <b>strain + generation</b> using a muted pastel / earth-tone palette.<br />
+    <span class="hint">Click/drag to seed. R reset. Space pause. G toggle debug gaps.</span>
+
+    <div class="controls">
+      <div class="control-row">
+        <label for="growthProbability">Growth probability</label>
+        <input id="growthProbability" type="range" min="0.05" max="1.00" step="0.01" value="0.52" />
+        <span id="growthProbabilityValue">0.52</span>
+      </div>
+
+      <div class="control-row">
+        <label for="generationHueStep">Generation palette step</label>
+        <input id="generationHueStep" type="range" min="1" max="40" step="0.5" value="13" />
+        <span id="generationHueStepValue">13°</span>
+      </div>
+
+      <div class="control-row">
+        <label for="branchChance">Branch chance</label>
+        <input id="branchChance" type="range" min="0" max="1.00" step="0.01" value="0.10" />
+        <span id="branchChanceValue">0.075</span>
+      </div>
+    </div>
+
+    <div id="stats">Loading…</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.18.0/dist/pixi.min.js"></script>
+  <script>
+  (async function () {
+    const {
+      Application,
+      Mesh,
+      MeshGeometry,
+      Shader,
+      Buffer,
+      BufferUsage,
+    } = PIXI;
+
+    const CONFIG = {
+      // Smaller = more triangles.
+      // 6 is a good "many thousands" default. Try 4 on a desktop.
+      sidePx: 6,
+
+      // 1.0 is exactly flush. 1.002 slightly overlaps to hide GPU subpixel cracks.
+      triangleScale: 1.002,
+      debugGapScale: 0.92,
+
+      initialSpores: 14,
+      ticksPerSecond: 48,
+      maxTips: 12000,
+
+      // Main growth controls. Sliders update these live.
+      growthProbability: 0.52,
+      generationHueStep: 13.0,
+      branchChance: 0.10,
+
+      // Directional bias. Growth is still based on 3 triangular neighbor slots.
+      forwardBias: 1.0,
+      sideBias: 0.42,
+
+      // Pointer seeding.
+      pointerSeedRadius: 42,
+      pointerSeedsOnDown: 48,
+      pointerSeedsPerMove: 10,
+
+      // Color.
+      strainHueStep: 47.0,
+      brightness: 0.98,
+    };
+
+    const EMPTY = 0;
+    const TIP = 1;
+    const BODY = 2;
+
+    const app = new Application();
+    await app.init({
+      resizeTo: window,
+      backgroundColor: 0x050508,
+      antialias: false,
+      powerPreference: "high-performance",
+    });
+
+    document.body.appendChild(app.canvas);
+
+    const $stats = document.getElementById("stats");
+    const $growth = document.getElementById("growthProbability");
+    const $growthValue = document.getElementById("growthProbabilityValue");
+    const $hue = document.getElementById("generationHueStep");
+    const $hueValue = document.getElementById("generationHueStepValue");
+    const $branch = document.getElementById("branchChance");
+    const $branchValue = document.getElementById("branchChanceValue");
+
+    function syncControls({ recolor = false } = {}) {
+      CONFIG.growthProbability = Number($growth.value);
+      CONFIG.generationHueStep = Number($hue.value);
+      CONFIG.branchChance = Number($branch.value);
+
+      $growthValue.textContent = CONFIG.growthProbability.toFixed(2);
+      $hueValue.textContent = `${CONFIG.generationHueStep.toFixed(1).replace(".0", "")}°`;
+      $branchValue.textContent = CONFIG.branchChance.toFixed(2);
+
+      if (recolor && colors && state) {
+        refreshAllColors();
+      }
+    }
+
+    $growth.addEventListener("input", () => syncControls());
+    $branch.addEventListener("input", () => syncControls());
+    $hue.addEventListener("input", () => syncControls({ recolor: true }));
+
+    let mesh = null;
+    let colorBuffer = null;
+
+    let cells = [];
+    let neighbors = null;
+    let reverseSlots = null;
+
+    let state = null;
+    let generation = null;
+    let strain = null;
+    let heading = null;
+    let moisture = null;
+    let colors = null;
+
+    let tips = [];
+    let simTick = 0;
+    let paused = false;
+    let accumulator = 0;
+    let frameCount = 0;
+    let useDebugGaps = false;
+
+    // -----------------------------
+    // Utility
+    // -----------------------------
+    function randInt(max) {
+      return (Math.random() * max) | 0;
+    }
+
+    function clamp01(v) {
+      return Math.max(0, Math.min(1, v));
+    }
+
+    function edgeKey(a, b) {
+      return a < b ? `${a}|${b}` : `${b}|${a}`;
+    }
+
+    function dist2(ax, ay, bx, by) {
+      const dx = ax - bx;
+      const dy = ay - by;
+      return dx * dx + dy * dy;
+    }
+
+    function screenToClip(x, y, w, h) {
+      return [
+        (x / w) * 2 - 1,
+        1 - (y / h) * 2,
+      ];
+    }
+
+    function mix(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function smoothstep(edge0, edge1, x) {
+      const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+      return t * t * (3 - 2 * t);
+    }
+
+    function lerpColor(a, b, t) {
+      return [
+        mix(a[0], b[0], t),
+        mix(a[1], b[1], t),
+        mix(a[2], b[2], t),
+      ];
+    }
+
+    // Muted pastel / earth-tone palette.
+    //
+    // The previous cosine palette was intentionally neon/psychedelic.
+    // This ramp is warmer and more organic:
+    //   moss -> sage -> lichen -> clay -> ochre -> mauve -> dusk blue
+    //
+    // Values are RGB in 0..1.
+    const EARTH_PALETTE = [
+      [0.23, 0.32, 0.22], // moss
+      [0.48, 0.57, 0.42], // sage
+      [0.68, 0.66, 0.49], // dry lichen
+      [0.70, 0.49, 0.35], // soft clay
+      [0.78, 0.64, 0.39], // muted ochre
+      [0.62, 0.48, 0.52], // dusty mauve
+      [0.39, 0.48, 0.58], // dusk blue
+      [0.52, 0.60, 0.53], // pale eucalyptus
+    ];
+
+    function palette(t, saturation = 1.0, brightness = 1.0) {
+      // Wrap t around the color ramp.
+      t = ((t % 1) + 1) % 1;
+
+      const scaled = t * EARTH_PALETTE.length;
+      const i0 = Math.floor(scaled) % EARTH_PALETTE.length;
+      const i1 = (i0 + 1) % EARTH_PALETTE.length;
+      const f = smoothstep(0, 1, scaled - Math.floor(scaled));
+
+      let rgb = lerpColor(EARTH_PALETTE[i0], EARTH_PALETTE[i1], f);
+
+      // Gentle pastel lift: pull slightly toward warm off-white.
+      const cream = [0.86, 0.82, 0.70];
+      const pastelAmount = 0.16;
+      rgb = lerpColor(rgb, cream, pastelAmount);
+
+      // Very mild contrast/saturation handling.
+      const avg = (rgb[0] + rgb[1] + rgb[2]) / 3;
+      rgb = [
+        avg + (rgb[0] - avg) * saturation,
+        avg + (rgb[1] - avg) * saturation,
+        avg + (rgb[2] - avg) * saturation,
+      ];
+
+      return [
+        Math.min(1, rgb[0] * brightness),
+        Math.min(1, rgb[1] * brightness),
+        Math.min(1, rgb[2] * brightness),
+      ];
+    }
+
+    function setCellRgb(c, rgb) {
+      const base = c * 9;
+      for (let i = 0; i < 3; i++) {
+        colors[base + i * 3 + 0] = rgb[0];
+        colors[base + i * 3 + 1] = rgb[1];
+        colors[base + i * 3 + 2] = rgb[2];
+      }
+    }
+
+    function setEmptyColor(c) {
+      const m = moisture[c];
+      setCellRgb(c, [
+        0.018 + m * 0.010,
+        0.016 + m * 0.011,
+        0.014 + m * 0.009,
+      ]);
+    }
+
+    function bornColorT(c) {
+      // This is the only formula used for living cells.
+      // It has no time and no age component.
+      return (
+        strain[c] * CONFIG.strainHueStep / 360 +
+        generation[c] * CONFIG.generationHueStep / 360 +
+        moisture[c] * 0.08
+      );
+    }
+
+    function setBirthColor(c) {
+      setCellRgb(c, palette(bornColorT(c), 0.92, CONFIG.brightness));
+    }
+
+    function refreshAllColors() {
+      for (let c = 0; c < state.length; c++) {
+        if (state[c] === EMPTY) setEmptyColor(c);
+        else setBirthColor(c);
+      }
+      colorBuffer.update();
+    }
+
+    // -----------------------------
+    // Geometry
+    // -----------------------------
+    function buildGridGeometry() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const side = CONFIG.sidePx;
+      const triH = side * Math.sqrt(3) / 2;
+
+      // Equilateral triangular lattice.
+      // vertex(i, j) = (i*side + j*side/2, j*triH)
+      const cols = Math.ceil(w / side) + 6;
+      const rows = Math.ceil(h / triH) + 6;
+
+      const vertexId = (i, j) => j * (cols + 1) + i;
+      const vertexPos = (i, j) => ({
+        x: i * side + j * side * 0.5 - side * rows * 0.25 - side,
+        y: j * triH - triH,
+      });
+
+      const raw = [];
+
+      for (let j = 0; j < rows; j++) {
+        for (let i = 0; i < cols; i++) {
+          const v00 = vertexId(i, j);
+          const v10 = vertexId(i + 1, j);
+          const v01 = vertexId(i, j + 1);
+          const v11 = vertexId(i + 1, j + 1);
+
+          const p00 = vertexPos(i, j);
+          const p10 = vertexPos(i + 1, j);
+          const p01 = vertexPos(i, j + 1);
+          const p11 = vertexPos(i + 1, j + 1);
+
+          const cxA = (p00.x + p10.x + p01.x) / 3;
+          const cyA = (p00.y + p10.y + p01.y) / 3;
+          const cxB = (p10.x + p11.x + p01.x) / 3;
+          const cyB = (p10.y + p11.y + p01.y) / 3;
+
+          if (cxA > -24 && cxA < w + 24 && cyA > -24 && cyA < h + 24) {
+            raw.push({
+              lattice: [v00, v10, v01],
+              pts: [p00, p10, p01],
+              cx: cxA,
+              cy: cyA,
+            });
+          }
+
+          if (cxB > -24 && cxB < w + 24 && cyB > -24 && cyB < h + 24) {
+            raw.push({
+              lattice: [v10, v11, v01],
+              pts: [p10, p11, p01],
+              cx: cxB,
+              cy: cyB,
+            });
+          }
+        }
+      }
+
+      cells = raw;
+      const n = cells.length;
+      const positions = new Float32Array(n * 3 * 2);
+      const uvs = new Float32Array(n * 3 * 2);
+      const indices = new Uint32Array(n * 3);
+      colors = new Float32Array(n * 3 * 3);
+
+      const scale = useDebugGaps ? CONFIG.debugGapScale : CONFIG.triangleScale;
+
+      for (let c = 0; c < n; c++) {
+        const tri = cells[c];
+
+        for (let k = 0; k < 3; k++) {
+          const p = tri.pts[k];
+          const sx = tri.cx + (p.x - tri.cx) * scale;
+          const sy = tri.cy + (p.y - tri.cy) * scale;
+          const [clipX, clipY] = screenToClip(sx, sy, w, h);
+          const vi = c * 3 + k;
+
+          positions[vi * 2 + 0] = clipX;
+          positions[vi * 2 + 1] = clipY;
+          uvs[vi * 2 + 0] = 0;
+          uvs[vi * 2 + 1] = 0;
+          indices[vi] = vi;
+        }
+      }
+
+      // Each triangle has exactly three edge slots.
+      neighbors = new Int32Array(n * 3);
+      reverseSlots = new Int32Array(n * 3);
+      neighbors.fill(-1);
+      reverseSlots.fill(-1);
+
+      const edgeMap = new Map();
+
+      for (let c = 0; c < n; c++) {
+        const [a, b, d] = cells[c].lattice;
+        const edges = [
+          [a, b],
+          [b, d],
+          [d, a],
+        ];
+
+        for (let slot = 0; slot < 3; slot++) {
+          const key = edgeKey(edges[slot][0], edges[slot][1]);
+
+          if (!edgeMap.has(key)) {
+            edgeMap.set(key, { cell: c, slot });
+          } else {
+            const other = edgeMap.get(key);
+            neighbors[c * 3 + slot] = other.cell;
+            neighbors[other.cell * 3 + other.slot] = c;
+            reverseSlots[c * 3 + slot] = other.slot;
+            reverseSlots[other.cell * 3 + other.slot] = slot;
+          }
+        }
+      }
+
+      state = new Uint8Array(n);
+      generation = new Uint16Array(n);
+      strain = new Uint8Array(n);
+      heading = new Uint8Array(n);
+      moisture = new Float32Array(n);
+
+      for (let c = 0; c < n; c++) {
+        const x = cells[c].cx / w;
+        const y = cells[c].cy / h;
+
+        moisture[c] = clamp01(
+          0.50 +
+          0.25 * Math.sin(x * 17.0 + y * 4.5) +
+          0.20 * Math.sin(x * 5.0 - y * 13.0) +
+          0.12 * Math.sin((x + y) * 21.0) +
+          0.08 * Math.random()
+        );
+      }
+
+      const geometry = new MeshGeometry({
+        positions,
+        uvs,
+        indices,
+        topology: "triangle-list",
+      });
+
+      geometry.addAttribute("aColor", {
+        buffer: new Buffer({
+          data: colors,
+          usage: BufferUsage.VERTEX | BufferUsage.COPY_DST,
+        }),
+        format: "float32x3",
+      });
+
+      colorBuffer = geometry.getAttribute("aColor").buffer;
+      return geometry;
+    }
+
+    function makeShader() {
+      return Shader.from({
+        gl: {
+          vertex: `
+            precision mediump float;
+            attribute vec2 aPosition;
+            attribute vec3 aColor;
+            varying vec3 vColor;
+
+            void main() {
+              vColor = aColor;
+              gl_Position = vec4(aPosition, 0.0, 1.0);
+            }
+          `,
+          fragment: `
+            precision mediump float;
+            varying vec3 vColor;
+
+            void main() {
+              gl_FragColor = vec4(vColor, 1.0);
+            }
+          `,
+        },
+      });
+    }
+
+    // -----------------------------
+    // Simulation
+    // -----------------------------
+    function seedAtCell(c, s = randInt(8), gen = 0) {
+      if (c < 0 || c >= state.length) return;
+      if (state[c] !== EMPTY) return;
+
+      state[c] = TIP;
+      generation[c] = gen;
+      strain[c] = s;
+      heading[c] = randInt(3);
+
+      tips.push(c);
+      setBirthColor(c);
+    }
+
+    function nearestCell(x, y) {
+      let best = -1;
+      let bestD = Infinity;
+
+      // Demo-simple. Production can add a spatial lookup.
+      for (let c = 0; c < cells.length; c++) {
+        const d = dist2(x, y, cells[c].cx, cells[c].cy);
+        if (d < bestD) {
+          bestD = d;
+          best = c;
+        }
+      }
+
+      return best;
+    }
+
+    function seedNear(x, y, radius, count) {
+      const s = randInt(8);
+
+      for (let i = 0; i < count; i++) {
+        const px = x + (Math.random() * 2 - 1) * radius;
+        const py = y + (Math.random() * 2 - 1) * radius;
+        seedAtCell(nearestCell(px, py), s, 0);
+      }
+
+      colorBuffer.update();
+    }
+
+    function chooseNextSlot(cell) {
+      const preferred = heading[cell] % 3;
+      const r = Math.random();
+
+      if (r < 0.64) return preferred;
+      if (r < 0.82) return (preferred + 1) % 3;
+      return (preferred + 2) % 3;
+    }
+
+    function advanceTip(cell, newTips) {
+      const slots = [
+        chooseNextSlot(cell),
+        randInt(3),
+        randInt(3),
+      ];
+
+      let grew = false;
+
+      for (const slot of slots) {
+        const n = neighbors[cell * 3 + slot];
+        if (n < 0 || state[n] !== EMPTY) continue;
+
+        const isForward = slot === heading[cell];
+        const directionBias = isForward ? CONFIG.forwardBias : CONFIG.sideBias;
+        const moistureBonus = 0.35 + moisture[n] * 0.95;
+        const chance = Math.min(1, CONFIG.growthProbability * directionBias * moistureBonus);
+
+        if (Math.random() < chance) {
+          // Internal state change only. Color is not changed.
+          state[cell] = BODY;
+
+          state[n] = TIP;
+          generation[n] = generation[cell] + 1;
+          strain[n] = strain[cell];
+
+          // Continue away from the edge we entered from.
+          const backSlot = reverseSlots[cell * 3 + slot];
+          const a = (backSlot + 1) % 3;
+          const b = (backSlot + 2) % 3;
+          heading[n] = Math.random() < 0.65 ? a : b;
+
+          newTips.push(n);
+          setBirthColor(n);
+
+          // Optional side branch.
+          if (Math.random() < CONFIG.branchChance) {
+            const branchSlot = (slot + 1 + randInt(2)) % 3;
+            const bCell = neighbors[cell * 3 + branchSlot];
+
+            if (bCell >= 0 && state[bCell] === EMPTY) {
+              state[bCell] = TIP;
+              generation[bCell] = generation[cell] + 1;
+              strain[bCell] = strain[cell];
+              heading[bCell] = randInt(3);
+              newTips.push(bCell);
+              setBirthColor(bCell);
+            }
+          }
+
+          grew = true;
+          break;
+        }
+      }
+
+      if (!grew) {
+        // If a tip fails this tick, keep it alive so it can try again.
+        // This makes low probabilities visibly slow rather than instantly dying.
+        newTips.push(cell);
+      }
+    }
+
+    function stepSimulation() {
+      simTick++;
+
+      if (tips.length > CONFIG.maxTips) {
+        tips.splice(0, tips.length - CONFIG.maxTips);
+      }
+
+      // Shuffle to avoid directional scan artifacts.
+      for (let i = tips.length - 1; i > 0; i--) {
+        const j = randInt(i + 1);
+        const tmp = tips[i];
+        tips[i] = tips[j];
+        tips[j] = tmp;
+      }
+
+      const newTips = [];
+
+      for (let i = 0; i < tips.length; i++) {
+        const c = tips[i];
+        if (state[c] === TIP) advanceTip(c, newTips);
+      }
+
+      tips = newTips;
+      colorBuffer.update();
+    }
+
+    function reset() {
+      tips = [];
+      simTick = 0;
+
+      state.fill(EMPTY);
+      generation.fill(0);
+      strain.fill(0);
+      heading.fill(0);
+
+      for (let c = 0; c < state.length; c++) setEmptyColor(c);
+
+      for (let i = 0; i < CONFIG.initialSpores; i++) {
+        seedAtCell(randInt(state.length), randInt(8), 0);
+      }
+
+      colorBuffer.update();
+    }
+
+    function rebuild() {
+      if (mesh) {
+        app.stage.removeChild(mesh);
+        mesh.destroy({ children: true });
+      }
+
+      const geometry = buildGridGeometry();
+      mesh = new Mesh({
+        geometry,
+        shader: makeShader(),
+      });
+
+      app.stage.addChild(mesh);
+      reset();
+    }
+
+    // -----------------------------
+    // Input
+    // -----------------------------
+    let pointerDown = false;
+    let lastSeed = 0;
+
+    app.canvas.addEventListener("pointerdown", (e) => {
+      pointerDown = true;
+      seedNear(e.clientX, e.clientY, CONFIG.pointerSeedRadius, CONFIG.pointerSeedsOnDown);
+    });
+
+    app.canvas.addEventListener("pointermove", (e) => {
+      if (!pointerDown) return;
+
+      const now = performance.now();
+      if (now - lastSeed > 24) {
+        lastSeed = now;
+        seedNear(e.clientX, e.clientY, CONFIG.pointerSeedRadius, CONFIG.pointerSeedsPerMove);
+      }
+    });
+
+    window.addEventListener("pointerup", () => {
+      pointerDown = false;
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key.toLowerCase() === "r") reset();
+
+      if (e.code === "Space") {
+        paused = !paused;
+      }
+
+      if (e.key.toLowerCase() === "g") {
+        useDebugGaps = !useDebugGaps;
+        rebuild();
+      }
+    });
+
+    let resizeTimer = 0;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(rebuild, 120);
+    });
+
+    // -----------------------------
+    // Run
+    // -----------------------------
+    syncControls();
+    rebuild();
+
+    app.ticker.add((ticker) => {
+      const dt = Math.min(ticker.deltaMS / 1000, 0.05);
+
+      if (!paused) {
+        accumulator += dt;
+        const step = 1 / CONFIG.ticksPerSecond;
+
+        while (accumulator >= step) {
+          stepSimulation();
+          accumulator -= step;
+        }
+      }
+
+      frameCount++;
+
+      if (frameCount % 15 === 0) {
+        let living = 0;
+        for (let i = 0; i < state.length; i++) {
+          if (state[i] !== EMPTY) living++;
+        }
+
+        $stats.textContent =
+          `triangles: ${state.length.toLocaleString()} | living: ${living.toLocaleString()} | ` +
+          `tips: ${tips.length.toLocaleString()} | fps: ${Math.round(app.ticker.FPS)} | ` +
+          `p: ${CONFIG.growthProbability.toFixed(2)} | palette/gen: ${CONFIG.generationHueStep.toFixed(1)}° | ` +
+          `${paused ? "paused" : "running"} | ${useDebugGaps ? "debug gaps" : "flush/overlap"}`;
+      }
+    });
+  })().catch((err) => {
+    console.error(err);
+    const stats = document.getElementById("stats");
+    if (stats) stats.textContent = "Startup error: " + (err && err.message ? err.message : err);
+  });
+  </script>
+</body>
+</html>
