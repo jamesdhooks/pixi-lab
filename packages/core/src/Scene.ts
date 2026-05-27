@@ -56,6 +56,14 @@ export abstract class Scene {
   }
 
   /**
+   * Return false when a scene has no visual changes to present this frame.
+   * The default keeps existing animated scenes rendering every tick.
+   */
+  shouldRender(): boolean {
+    return true;
+  }
+
+  /**
    * Called when the canvas is resized.
    */
   resize(_width: number, _height: number): void {

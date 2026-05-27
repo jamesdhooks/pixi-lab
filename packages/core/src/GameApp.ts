@@ -112,6 +112,7 @@ export class GameApp {
   private destroyed = false;
   private quality: RenderQuality;
   private resizeObserver: ResizeObserver | null = null;
+  private renderInvalidated = true;
 
   // Track if any human input happened this frame
   private hasHumanInputThisFrame = false;
@@ -293,6 +294,7 @@ export class GameApp {
     this.currentScene?.onExit();
     this.currentScene = scene;
     scene.onEnter(this.ctx, this.input);
+    this.renderInvalidated = true;
     // Propagate current interaction mode to the incoming scene
     if (this._interactionMode) scene.setMode(this._interactionMode);
   }
@@ -317,6 +319,7 @@ export class GameApp {
     if (this.currentScene instanceof SimulationScene) {
       this.currentScene.setQuality(quality);
     }
+    this.renderInvalidated = true;
   }
 
   setStyle(styleId: string) {
@@ -324,12 +327,14 @@ export class GameApp {
     this.styleManager.setStyle(styleId);
     // Forward to all scene types — SimulationScene and game scenes alike
     this.currentScene?.setStyle(styleId);
+    this.renderInvalidated = true;
     this.onEvent({ kind: 'style_change', payload: { styleId } });
   }
 
   setDebugEnabled(enabled: boolean) {
     if (!this.ready) return;
     this.debug.setEnabled(enabled);
+    this.renderInvalidated = true;
   }
 
   /** Notify the active simulation scene that the host UI visibility has changed. */
@@ -367,6 +372,7 @@ export class GameApp {
   resetScene() {
     if (!this.ready) return;
     this.currentScene?.reset();
+    this.renderInvalidated = true;
   }
 
   /**
@@ -394,6 +400,9 @@ export class GameApp {
     bodyCount: number;
     canvasW: number;
     canvasH: number;
+    bufferW: number;
+    bufferH: number;
+    resolution: number;
     heapMB: number | null;
   } {
     const fps = Math.round(this.ticker.fps);
@@ -406,6 +415,9 @@ export class GameApp {
       bodyCount: this.physicsWorld.world.getBodyCount(),
       canvasW: this.ctx?.width ?? 0,
       canvasH: this.ctx?.height ?? 0,
+      bufferW: this.pixi?.bufferWidth ?? 0,
+      bufferH: this.pixi?.bufferHeight ?? 0,
+      resolution: this.pixi?.resolution ?? 0,
       heapMB: mem ? Math.round(mem.usedJSHeapSize / 1024 / 1024) : null,
     };
   }
@@ -413,26 +425,31 @@ export class GameApp {
   emitBurst(effect: BurstEffect) {
     if (!this.ready) return;
     this.burstEmitters.emit(effect);
+    this.renderInvalidated = true;
     this.onEvent({ kind: 'burst_effect', payload: { kind: effect.kind, id: effect.id } });
   }
 
   setMaxPixels(maxPixels: number | undefined) {
     this.pixi.setMaxPixels(maxPixels);
+    this.renderInvalidated = true;
   }
 
   setSleepMode(enabled: boolean) {
     if (!this.ready) return;
     this.burstEmitters.setSleepMode(enabled);
+    this.renderInvalidated = true;
   }
 
   setLowMotion(enabled: boolean) {
     if (!this.ready) return;
     this.burstEmitters.setSleepMode(enabled || (this.opts.sleepMode ?? false));
+    this.renderInvalidated = true;
   }
 
   setGlobalIntensity(value: number) {
     if (!this.ready) return;
     this.burstEmitters.setGlobalIntensity(value);
+    this.renderInvalidated = true;
   }
 
   get scoreHandler(): HighScoreProvider {
@@ -590,7 +607,13 @@ export class GameApp {
 
   private onRender = (alpha: number) => {
     if (this._mode === 'paused') return;
-    this.currentScene?.render(alpha);
+    const scene = this.currentScene;
+    const shouldRenderScene = scene?.shouldRender() ?? false;
+    const shouldRenderSystems =
+      this.renderInvalidated || this.burstEmitters.count > 0 || this.debug.isEnabled();
+    if (!shouldRenderScene && !shouldRenderSystems) return;
+    scene?.render(alpha);
+    this.renderInvalidated = false;
     this.pixi.render();
   };
 
@@ -602,6 +625,7 @@ export class GameApp {
     this.ctx.width = width;
     this.ctx.height = height;
     this.currentScene?.resize(width, height);
+    this.renderInvalidated = true;
   };
 
   private handleScreensaverEnter = () => {

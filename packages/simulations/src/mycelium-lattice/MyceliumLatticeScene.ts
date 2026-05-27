@@ -32,6 +32,7 @@ export class MyceliumLatticeScene extends SimulationScene {
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
   private readonly pointerStrains = new Map<number, number>();
   private nextBrushStrain = 0;
+  private styleDirty = true;
 
   /** Cached settings values for live-change detection each tick. */
   private lastGrowthProbability = 0;
@@ -54,6 +55,7 @@ export class MyceliumLatticeScene extends SimulationScene {
 
     this.modelOptions = this.buildOptions(ctx, columns);
     this.model = new MyceliumLatticeModel(this.modelOptions);
+    this.styleDirty = true;
     this.lastGrowthProbability = this.modelOptions.growthProbability;
     this.lastBranchChance      = this.modelOptions.branchChance;
     this.lastGenerationHueStep = this.modelOptions.generationHueStep;
@@ -69,6 +71,7 @@ export class MyceliumLatticeScene extends SimulationScene {
     this.latticeRenderer = null;
     this.model = null;
     this.modelOptions = null;
+    this.styleDirty = true;
   }
 
   override update(dt: number): void {
@@ -116,6 +119,7 @@ export class MyceliumLatticeScene extends SimulationScene {
         seed: this.modelOptions.seed + 1,
       };
       this.model = new MyceliumLatticeModel(this.modelOptions);
+      this.styleDirty = true;
     }
 
     // Clean up per-pointer strain assignments for lifted pointers.
@@ -142,8 +146,13 @@ export class MyceliumLatticeScene extends SimulationScene {
 
   override render(_alpha: number): void {
     if (!this.latticeRenderer || !this.model) return;
-    const style = this.ctx_.systems.styleManager?.getStyle() ?? earthOvergrowthStyle;
-    this.latticeRenderer.renderGrid(this.model.grid, this.ctx_.width, this.ctx_.height, style, { zIndex: 0 });
+    const needsGridRender = this.styleDirty || this.model.hasRenderChanges();
+    if (needsGridRender) {
+      const style = this.ctx_.systems.styleManager?.getStyle() ?? earthOvergrowthStyle;
+      this.latticeRenderer.renderGrid(this.model.grid, this.ctx_.width, this.ctx_.height, style, { zIndex: 0 });
+      this.model.markRendered();
+      this.styleDirty = false;
+    }
     const debug = this.ctx_.systems.debug;
     if (debug?.isEnabled()) {
       const stats = this.model.stats();
@@ -156,6 +165,10 @@ export class MyceliumLatticeScene extends SimulationScene {
     }
   }
 
+  shouldRender(): boolean {
+    return this.styleDirty || (this.model?.hasRenderChanges() ?? false);
+  }
+
   override resize(width: number, height: number): void {
     if (!this.modelOptions) return;
     this.modelOptions = {
@@ -166,17 +179,25 @@ export class MyceliumLatticeScene extends SimulationScene {
       seed: this.modelOptions.seed + Math.floor(width + height),
     };
     this.model = new MyceliumLatticeModel(this.modelOptions);
+    this.styleDirty = true;
   }
 
   override reset(): void {
     if (!this.modelOptions) return;
     this.modelOptions = { ...this.modelOptions, seed: this.modelOptions.seed + 1 };
     this.model = new MyceliumLatticeModel(this.modelOptions);
+    this.styleDirty = true;
   }
 
   override setQuality(quality: RenderQuality): void {
     super.setQuality(quality);
     this.latticeRenderer?.setQuality(quality);
+    this.styleDirty = true;
+  }
+
+  override setStyle(styleId: string): void {
+    super.setStyle(styleId);
+    this.styleDirty = true;
   }
 
   getRenderLayers(): SimRenderLayers {
@@ -203,6 +224,7 @@ export class MyceliumLatticeScene extends SimulationScene {
     if (seed !== undefined && this.modelOptions) {
       this.modelOptions = { ...this.modelOptions, seed };
       this.model = new MyceliumLatticeModel(this.modelOptions);
+      this.styleDirty = true;
       return;
     }
     this.reset();

@@ -19,6 +19,9 @@ interface DebugStats {
   bodyCount: number;
   canvasW: number;
   canvasH: number;
+  bufferW?: number;
+  bufferH?: number;
+  resolution?: number;
   heapMB: number | null;
 }
 
@@ -83,8 +86,16 @@ export function DebugPanel({ app }: DebugPanelProps) {
               )}
               <StatRow label="bodies" value={stats ? String(stats.bodyCount) : '—'} />
               <StatRow
-                label="canvas"
+                label="logical"
                 value={stats ? `${stats.canvasW} × ${stats.canvasH}` : '—'}
+              />
+              <StatRow
+                label="buffer"
+                value={stats ? `${stats.bufferW ?? stats.canvasW} × ${stats.bufferH ?? stats.canvasH}` : '—'}
+              />
+              <StatRow
+                label="res"
+                value={stats?.resolution != null ? stats.resolution.toFixed(2) : '—'}
               />
               {stats?.heapMB != null && (
                 <StatRow label="heap" value={`${stats.heapMB} MB`} />

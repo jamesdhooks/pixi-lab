@@ -55,16 +55,7 @@ export class PixiApp {
     // time (e.g. during layout) and produce absurd canvas dimensions (2^25+1).
     const w = Math.max(opts.width, 1);
     const h = Math.max(opts.height, 1);
-    // If maxPixels is set, compute the largest resolution that keeps physical
-    // pixels (w × resolution) × (h × resolution) within budget.
-    const pixelScaleCap =
-      opts.maxPixels !== undefined
-        ? Math.sqrt(opts.maxPixels / (w * h))
-        : Infinity;
-    const resolution = Math.max(
-      0.25,
-      Math.min(window.devicePixelRatio, opts.maxDpr ?? 2, pixelScaleCap),
-    );
+    const resolution = instance.computeResolution(w, h);
     await instance.app.init({
       width: w,
       height: h,
@@ -98,25 +89,13 @@ export class PixiApp {
 
   setMaxPixels(maxPixels: number | undefined) {
     this._maxPixels = maxPixels;
-    const w = Math.max(this._width, 1);
-    const h = Math.max(this._height, 1);
-    const pixelScaleCap =
-      this._maxPixels !== undefined
-        ? Math.sqrt(this._maxPixels / (w * h))
-        : Infinity;
-    const newResolution = Math.max(
-      0.25,
-      Math.min(window.devicePixelRatio, this._maxDpr, pixelScaleCap),
-    );
-    if (this.app.renderer.resolution !== newResolution) {
-      this.app.renderer.resolution = newResolution;
-    }
+    this.applyRenderSize(this._width, this._height);
   }
 
   resize(width: number, height: number) {
     this._width = width;
     this._height = height;
-    this.app.renderer.resize(width, height);
+    this.applyRenderSize(width, height);
   }
 
   get width() {
@@ -126,11 +105,46 @@ export class PixiApp {
     return this._height;
   }
 
+  get bufferWidth() {
+    return this.canvas.width;
+  }
+
+  get bufferHeight() {
+    return this.canvas.height;
+  }
+
+  get resolution() {
+    return this.app.renderer.resolution;
+  }
+
   destroy() {
     // Use { removeView: true } instead of bare `true` to avoid triggering
     // GlobalResourceRegistry.release(), which clears the shared batch pool and
     // corrupts any other Pixi Application instances still running in the same tab
     // (e.g. GameTile preview apps on the home screen behind the GameLauncher).
     this.app.destroy({ removeView: true }, { children: true });
+  }
+
+  private applyRenderSize(width: number, height: number): void {
+    const w = Math.max(width, 1);
+    const h = Math.max(height, 1);
+    const newResolution = this.computeResolution(w, h);
+    if (this.app.renderer.resolution !== newResolution) {
+      this.app.renderer.resolution = newResolution;
+    }
+    this.app.renderer.resize(w, h);
+  }
+
+  private computeResolution(width: number, height: number): number {
+    // If maxPixels is set, compute the largest resolution that keeps physical
+    // pixels (w × resolution) × (h × resolution) within budget.
+    const pixelScaleCap =
+      this._maxPixels !== undefined
+        ? Math.sqrt(this._maxPixels / (width * height))
+        : Infinity;
+    return Math.max(
+      0.25,
+      Math.min(window.devicePixelRatio, this._maxDpr, pixelScaleCap),
+    );
   }
 }
