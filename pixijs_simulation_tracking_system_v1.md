@@ -46,6 +46,8 @@ Scope:
 - reran the full automated gate across the current simulation catalog: `pnpm build`, `pnpm --recursive typecheck`, and `pnpm test`
 - ran a built `packages/simulations/dist/index.js` registry QA probe across all 21 simulations to verify discovery-critical fields: factories, demo AI, style manifest capabilities, settings/defaults, gesture map, and stagnation policy
 - launched the demo dev server and confirmed the Vite shell serves successfully over HTTP
+- added `SimulationRegistry.test.ts` so discovery-critical simulation wiring is covered by the normal test gate instead of only an ad hoc probe
+- fixed Mycelium Lattice capability metadata to advertise director mode, debug overlay, style export, procedural textures, and render target pool support consistently with its scene/definition wiring
 
 Validation notes:
 - automated build/typecheck/test gate passed in the current environment
@@ -821,6 +823,7 @@ If no active tips remain, `stabilize()` seeds a new colony at a random empty cel
 - [ ] manual visual validation
 - [ ] Pi 5 FPS validation
 - [ ] stable loop with DemoAI for extended session
+- [x] registry QA covers demo/discovery-critical fields in the automated test gate
 
 ---
 
