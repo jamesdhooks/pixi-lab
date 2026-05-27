@@ -14,7 +14,7 @@
   "scripts": {
     "build": "tsc --build --force tsconfig.json",
     "typecheck": "tsc --noEmit --project tsconfig.json",
-    "test": "vitest run",
+    "test": "vitest run --config vitest.config.ts",
     "prepack": "pnpm build"
   },
   "peerDependencies": {

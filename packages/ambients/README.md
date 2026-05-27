@@ -5,3 +5,4 @@ Ambient visual layer content for pixi-lab.
 Currently includes:
 
 - Day Rhythm Field — a time/synthetic-data reactive background ambient.
+- Home Weather Glass — a synthetic-or-injected weather ambient with low-motion and sleep-safe rain glass controls.

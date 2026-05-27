@@ -209,7 +209,7 @@ Ambient implementations are deferred until engine support systems above are comp
 | Priority | Ambient | Status | Depends On | Notes |
 |---|---|---|---|---|
 | 1 | Day Rhythm Field | COMPLETE | AmbientLayer | Implemented as `@hooksjam/pixi-lab-ambients` first ambient with deterministic model, synthetic/time data bindings, low-motion/sleep controls, style presets, demo gallery wiring, ambient registry QA, and browser launch QA. |
-| 2 | Home Weather Glass | DEFERRED | synthetic weather | strong dashboard value |
+| 2 | Home Weather Glass | COMPLETE | synthetic weather | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic rain-glass model, synthetic/injected weather fallback, preview/fullscreen factories, live intensity/brightness/blur/budget/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
 | 3 | Sleep Aquarium | DEFERRED | low-motion mode | night/sleep reference |
 | 4 | Music Dream Field | DEFERRED | synthetic beat | media integration later |
 | 5 | House Pulse Map | DEFERRED | synthetic home events | HA integration later |
