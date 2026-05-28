@@ -6,6 +6,22 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-05-28 — Ambient / Overlay Green Gate Rerun
+
+Scope:
+- synced `neocloud/pixi-lab-continuous-implementation` with `origin/neocloud/pixi-lab-baseline-stabilization`
+- re-read `AGENTS.md`, the add-experience skill, and the ambient/overlay tracker sections
+- confirmed all 8 ambients and 6 foreground overlays remain implemented before post-backlog validation
+- reran focused ambient package gates, built ambient/effect registry QA, full workspace build/typecheck/test, and demo gallery HTTP smoke
+
+Validation notes:
+- `pnpm --filter @hooksjam/pixi-lab-ambients build`, `typecheck`, and `test` passed with 15 files / 87 tests
+- built `packages/ambients/dist/index.js` registry QA passed for 14 entries: 8 ambients and 6 foreground overlays
+- full automated gate passed: `pnpm build`, `pnpm --recursive typecheck`, and `pnpm test` (38 files / 226 tests)
+- demo Vite HTTP smoke passed for `/`, `/pixi-lab/`, `/pixi-lab/src/main.tsx`, and `/pixi-lab/src/App.tsx`; real browser canvas/console and Pi validation remain manual gates
+
+---
+
 ## 2026-05-28 — Ambient Catalog Plan Alignment
 
 Scope:
