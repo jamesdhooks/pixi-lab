@@ -617,7 +617,7 @@ Sleep mode reduces brightness, saturation, motion, particle count, and disables 
 
 ## 7.5 Ambient Experience Catalog
 
-Deferred content queue:
+Implemented ambient catalog:
 - Day Rhythm Field
 - Home Weather Glass
 - Sleep Aquarium
@@ -627,7 +627,7 @@ Deferred content queue:
 - Family Orbit
 - Memory Drift
 
-These ambient implementations are deferred until the supporting engine, React layer, synthetic data adapters, and emitter systems are complete.
+These ambient implementations live in `@hooksjam/pixi-lab-ambients` with deterministic seeded models, synthetic/injected data fallbacks, preview and fullscreen/background-capable scene factories, style metadata, user-facing controls, and low-motion/sleep-mode behavior. Foreground overlay effects from the same package cover Snowfall, Embers, Fireflies, Confetti, Rain Streaks, and Leaves/Pollen.
 
 ---
 

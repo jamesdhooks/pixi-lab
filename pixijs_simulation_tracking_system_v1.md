@@ -6,6 +6,20 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-05-28 — Ambient Catalog Plan Alignment
+
+Scope:
+- synced `neocloud/pixi-lab-continuous-implementation` with `origin/neocloud/pixi-lab-baseline-stabilization`
+- re-read `AGENTS.md`, the add-experience skill, and the ambient/overlay tracker sections
+- confirmed the ambient and foreground overlay implementation queues remain complete
+- updated `pixijs_simulation_master_plan_v7.md` so the ambient catalog is documented as implemented rather than deferred
+
+Validation notes:
+- focused ambient package build/typecheck/test and built registry QA were rerun for this cleanup slice
+- no broad simulation QA was started because this run stayed on ambient/overlay backlog documentation alignment
+
+---
+
 ## 2026-05-28 — Ambient / Overlay Backlog Verification
 
 Scope:
