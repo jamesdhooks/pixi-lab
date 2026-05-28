@@ -12,6 +12,7 @@ import { embersDefinition } from './embers/embers.definition.js';
 import { firefliesDefinition } from './fireflies/fireflies.definition.js';
 import { confettiDefinition } from './confetti/confetti.definition.js';
 import { rainStreaksDefinition } from './rain-streaks/rain-streaks.definition.js';
+import { leavesPollenDefinition } from './leaves-pollen/leaves-pollen.definition.js';
 
 export { dayRhythmFieldDefinition } from './day-rhythm-field/day-rhythm-field.definition.js';
 export { DayRhythmFieldModel, type DayRhythmFieldModelOptions, type DayRhythmFieldStats } from './day-rhythm-field/DayRhythmFieldModel.js';
@@ -87,6 +88,9 @@ export { ConfettiScene, confettiStyles, confettiStyleManifest } from './confetti
 export { rainStreaksDefinition } from './rain-streaks/rain-streaks.definition.js';
 export { RainStreaksModel, type RainStreaksModelOptions, type RainStreaksSnapshot, type RainStreaksStats } from './rain-streaks/RainStreaksModel.js';
 export { RainStreaksScene, rainStreaksStyles, rainStreaksStyleManifest } from './rain-streaks/RainStreaksScene.js';
+export { leavesPollenDefinition } from './leaves-pollen/leaves-pollen.definition.js';
+export { LeavesPollenModel, type LeavesPollenModelOptions, type LeavesPollenSnapshot, type LeavesPollenStats } from './leaves-pollen/LeavesPollenModel.js';
+export { LeavesPollenScene, leavesPollenStyles, leavesPollenStyleManifest } from './leaves-pollen/LeavesPollenScene.js';
 
 export const AMBIENT_REGISTRY: readonly LabExperience[] = [
   dayRhythmFieldDefinition,
@@ -102,6 +106,7 @@ export const AMBIENT_REGISTRY: readonly LabExperience[] = [
   firefliesDefinition,
   confettiDefinition,
   rainStreaksDefinition,
+  leavesPollenDefinition,
 ] as const;
 
 export function getAmbient(id: string): AmbientDefinition | undefined {
