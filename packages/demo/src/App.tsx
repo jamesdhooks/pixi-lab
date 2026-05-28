@@ -75,7 +75,8 @@ export function App() {
   const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const fluidReferenceMode = searchParams?.has('fluidReference') ?? false;
   const galleryMode = searchParams?.has('fluidGallery') ?? false;
-  const fluidOnlyMode = !fluidReferenceMode && !galleryMode;
+  const engineMode = searchParams?.has('fluidEngine') ?? false;
+  const fluidOnlyMode = !fluidReferenceMode && !galleryMode && engineMode;
 
   if (fluidOnlyMode) {
     return (
@@ -95,7 +96,7 @@ export function App() {
     );
   }
 
-  if (fluidReferenceMode) {
+  if (fluidReferenceMode || (!galleryMode && !engineMode)) {
     return (
       <div className="h-screen w-screen overflow-hidden bg-black">
         <iframe
