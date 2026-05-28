@@ -15,3 +15,4 @@ Currently includes:
 - Snowfall — a deterministic foreground overlay effect with synthetic/weather fallback data, live flake budget, intensity, wind, depth drift, low-motion, and sleep-safe controls.
 - Embers — a deterministic cozy foreground overlay effect with synthetic/Home Assistant/weather fallback data, live ember budget, heat, updraft, low-motion, and sleep-safe controls.
 - Fireflies — a deterministic night foreground overlay effect with synthetic/weather/presence/time fallback data, live firefly budget, glow, drift, meadow activity, low-motion, and sleep-safe controls.
+- Confetti — a deterministic celebration foreground overlay effect with synthetic/tasks/calendar fallback data, live piece budget, burst, gravity, spread, low-motion, and sleep-safe controls.

@@ -10,6 +10,7 @@ import { memoryDriftDefinition } from './memory-drift/memory-drift.definition.js
 import { snowfallDefinition } from './snowfall/snowfall.definition.js';
 import { embersDefinition } from './embers/embers.definition.js';
 import { firefliesDefinition } from './fireflies/fireflies.definition.js';
+import { confettiDefinition } from './confetti/confetti.definition.js';
 
 export { dayRhythmFieldDefinition } from './day-rhythm-field/day-rhythm-field.definition.js';
 export { DayRhythmFieldModel, type DayRhythmFieldModelOptions, type DayRhythmFieldStats } from './day-rhythm-field/DayRhythmFieldModel.js';
@@ -79,6 +80,9 @@ export { EmbersScene, embersStyles, embersStyleManifest } from './embers/EmbersS
 export { firefliesDefinition } from './fireflies/fireflies.definition.js';
 export { FirefliesModel, type FirefliesModelOptions, type FirefliesSnapshot, type FirefliesStats } from './fireflies/FirefliesModel.js';
 export { FirefliesScene, firefliesStyles, firefliesStyleManifest } from './fireflies/FirefliesScene.js';
+export { confettiDefinition } from './confetti/confetti.definition.js';
+export { ConfettiModel, type ConfettiModelOptions, type ConfettiSnapshot, type ConfettiStats } from './confetti/ConfettiModel.js';
+export { ConfettiScene, confettiStyles, confettiStyleManifest } from './confetti/ConfettiScene.js';
 
 export const AMBIENT_REGISTRY: readonly LabExperience[] = [
   dayRhythmFieldDefinition,
@@ -92,6 +96,7 @@ export const AMBIENT_REGISTRY: readonly LabExperience[] = [
   snowfallDefinition,
   embersDefinition,
   firefliesDefinition,
+  confettiDefinition,
 ] as const;
 
 export function getAmbient(id: string): AmbientDefinition | undefined {
