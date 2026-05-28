@@ -5,6 +5,7 @@ import { GameLauncher, GameRuntime, PreviewTile } from '@hooksjam/pixi-lab-react
 import { useViewport } from '@hooksjam/pixi-lab-react';
 import { fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
+import { FluidTankReferenceRuntime } from './FluidTankReferenceRuntime';
 import { hasPassedDemoQa } from './demoQaStatus';
 
 const ALL_EXPERIENCES: readonly LabExperience[] = [fluidTankDefinition];
@@ -99,11 +100,7 @@ export function App() {
   if (fluidReferenceMode || (!galleryMode && !engineMode)) {
     return (
       <div className="h-screen w-screen overflow-hidden bg-black">
-        <iframe
-          title="Fluid Tank reference"
-          src="/pixi-lab/fluids.html"
-          className="h-full w-full border-0"
-        />
+        <FluidTankReferenceRuntime />
       </div>
     );
   }
