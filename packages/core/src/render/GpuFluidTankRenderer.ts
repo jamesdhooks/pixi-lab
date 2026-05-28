@@ -135,16 +135,17 @@ void main() {
   vec2 s1 = vec2(seed * 1.37, seed * 2.11);
   vec2 s2 = vec2(seed * 3.19, seed * 0.73);
 
-  float large = fbm(p * 1.65 * scale + s1);
-  float medium = fbm(p * 3.2 * scale + s2);
-  float ribbons = 0.5 + 0.5 * sin((p.x * 1.1 * scale - p.y * 0.62 * scale + large * 2.0 + seed * 0.07) * 6.2831853);
+  float large = fbm(p * 2.1 * scale + s1);
+  float medium = fbm(p * 5.6 * scale + s2);
+  float fine = fbm(p * 12.0 * scale - s1 * 0.42);
+  float ribbons = 0.5 + 0.5 * sin((p.x * 1.4 * scale - p.y * 0.8 * scale + large * 2.8 + seed * 0.07) * 6.2831853);
 
-  float hue = fract(large * 0.62 + medium * 0.21 + ribbons * 0.14 + seed * 0.113);
-  float saturation = 0.46 + 0.18 * medium;
-  float value = 0.88 + 0.12 * medium + 0.08 * ribbons;
+  float hue = fract(large * 0.76 + medium * 0.31 + ribbons * 0.22 + seed * 0.113);
+  float saturation = 0.72 + 0.26 * medium;
+  float value = 0.96 + 0.40 * fine + 0.16 * ribbons;
 
   vec3 color = hsv2rgb(vec3(hue, saturation, value));
-  color *= 0.96 + 0.08 * ribbons;
+  color *= 1.04 + 0.20 * ribbons;
 
   outColor = vec4(color, 1.0);
 }
@@ -469,7 +470,7 @@ export class GpuFluidTankRenderer {
     if (!this.supported || !this.dye) return;
     this.options.seed = seed;
     this.rng = new SeededRng(seed);
-    this.shaderSeed = this.rng.next() * 1000;
+    this.shaderSeed = seed;
     this.settleVelocity();
     this.initDyeField();
     if (seedMotion) this.seedRestingMotion();
@@ -734,9 +735,9 @@ export class GpuFluidTankRenderer {
       this.splat({
         x: this.rng.next(),
         y: this.rng.next(),
-        dx: Math.cos(angle) * randomBetween(this.rng, 0.08, 0.18),
-        dy: Math.sin(angle) * randomBetween(this.rng, 0.08, 0.18),
-        radiusScale: randomBetween(this.rng, 2.4, 4.0),
+        dx: Math.cos(angle) * randomBetween(this.rng, 0.35, 0.75),
+        dy: Math.sin(angle) * randomBetween(this.rng, 0.35, 0.75),
+        radiusScale: randomBetween(this.rng, 1.4, 2.4),
       });
     }
     this.splatCount = 0;

@@ -65,6 +65,7 @@ export class FluidTankScene extends SimulationScene {
   private lastEdgeDarkening = 0;
   private debugStill = false;
   private debugNoSeedMotion = false;
+  private debugMinimal = false;
 
   constructor(private readonly preview = false) {
     super();
@@ -79,7 +80,9 @@ export class FluidTankScene extends SimulationScene {
     const fluidDebugParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : undefined;
     this.debugStill = Boolean(fluidDebugParams?.has('fluidStill'));
     this.debugNoSeedMotion = Boolean(fluidDebugParams?.has('fluidNoSeedMotion'));
-    this.options = this.readOptions(ctx.seed);
+    this.debugMinimal = Boolean(fluidDebugParams?.has('fluidMinimal'));
+    const fluidSeed = this.debugMinimal ? Math.random() * 1000 : ctx.seed;
+    this.options = this.readOptions(fluidSeed);
     const displayMode = fluidDebugParams?.get('fluidDisplay');
     if (isFluidDisplayMode(displayMode)) {
       this.options = { ...this.options, displayMode };
@@ -109,7 +112,7 @@ export class FluidTankScene extends SimulationScene {
     ctx.systems.pixi.stage.addChild(this.rippleLayer);
     this.cacheOptions(this.options);
     const style = ctx.systems.settings.get('style') as string | undefined;
-    if (style) this.setStyle(style);
+    if (style && !this.debugMinimal) this.setStyle(style);
     this.renderer.resize(ctx.width, ctx.height, true);
     this.renderer.randomizeDye(this.options.seed, !(this.debugStill || this.debugNoSeedMotion));
     ctx.systems.debug?.setEnabled(false);
@@ -130,7 +133,7 @@ export class FluidTankScene extends SimulationScene {
   override update(dt: number): void {
     if (!this.renderer || !this.options) return;
     if (this.debugStill) return;
-    this.pollSettings();
+    if (!this.debugMinimal) this.pollSettings();
     this.applyPointerTrails();
     this.updateRipples(dt);
     const hasHumanPointers = this.input_.snapshot.pointers.size > 0;
