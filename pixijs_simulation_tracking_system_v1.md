@@ -6,6 +6,24 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-05-28 — Ambient / Overlay Backlog Verification
+
+Scope:
+- synced `neocloud/pixi-lab-continuous-implementation` with `origin/neocloud/pixi-lab-baseline-stabilization`
+- re-read the repo guidance and confirmed the ambient and foreground overlay tracker queues remain fully implemented before moving into post-backlog validation
+- reran package-local ambient build, typecheck, and model/registry tests
+- reran the full workspace automated gate now that ambient and overlay implementation is complete
+- ran a built `packages/ambients/dist/index.js` registry QA probe for all ambient/effect discovery-critical fields, synthetic fallbacks, render modes, passive behavior caps, low-motion/sleep controls, and style metadata
+- launched the demo Vite server and verified the gallery shell and app source resolve over HTTP with ambient registry imports present
+
+Validation notes:
+- `pnpm --filter @hooksjam/pixi-lab-ambients build`, `typecheck`, and `test` passed with 15 files / 87 tests
+- full automated gate passed: `pnpm build`, `pnpm --recursive typecheck`, and `pnpm test` (38 files / 226 tests)
+- ambient registry QA passed for 14 entries: 8 ambients and 6 foreground overlay effects
+- HTTP gallery smoke passed for `/pixi-lab/`, `/pixi-lab/src/main.tsx`, and `/pixi-lab/src/App.tsx`; real browser canvas/console and Pi validation remain manual gates
+
+---
+
 ## 2026-05-24 — Engine Simulation Foundation + Harmonic Sand Plate
 
 Scope:
