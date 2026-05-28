@@ -1,4 +1,4 @@
-import type { EffectDefinition } from '@hooksjam/pixi-lab-core';
+import { DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
 import { EMBERS_DEFAULTS } from './embers.config.js';
 import { EmbersScene, embersStyleManifest } from './EmbersScene.js';
 
@@ -20,6 +20,16 @@ export const embersDefinition: EffectDefinition = {
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
     settings: true,
+  },
+  dataBindings: [
+    { source: 'homeAssistant', optional: true, fallback: 'synthetic' },
+    { source: 'weather', optional: true, fallback: 'synthetic' },
+    { source: 'synthetic', optional: false, fallback: 'idle' },
+  ],
+  behavior: {
+    ...DEFAULT_FOREGROUND_BEHAVIOR,
+    maxBrightness: EMBERS_DEFAULTS.maxBrightness,
+    maxParticleCount: EMBERS_DEFAULTS.emberCount,
   },
   configDefaults: { ...EMBERS_DEFAULTS },
   styleManifest: embersStyleManifest,

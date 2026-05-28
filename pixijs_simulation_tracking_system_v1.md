@@ -56,6 +56,21 @@ Validation notes:
 
 ---
 
+## 2026-05-28 — Overlay Registry Metadata Cleanup
+
+Scope:
+- synced `neocloud/pixi-lab-continuous-implementation` with `origin/neocloud/pixi-lab-baseline-stabilization`
+- verified the ambient and foreground overlay tracker queues are implemented before shifting to broader simulation QA
+- extended `EffectDefinition` metadata so passive foreground overlays can declare optional data bindings and foreground-safe behavior constraints
+- declared weather/home/presence/task/calendar/time synthetic fallback bindings and max brightness/particle budgets for Snowfall, Embers, Fireflies, Confetti, Rain Streaks, and Leaves/Pollen
+
+Validation notes:
+- full automated build/typecheck/test gate passed in the current environment
+- built ambient registry QA passed for all 14 ambient/effect entries with factories, preview factories, settings/defaults, style metadata, render modes, low-motion/sleep controls, and required data/behavior metadata
+- demo Vite HTTP smoke passed for the gallery shell and app source resolution; real browser canvas/console and Pi validation still remain manual for the ambient and overlay catalog
+
+---
+
 ## 2026-05-24 — Ambient + Reusable FX Engine Support
 
 Scope:

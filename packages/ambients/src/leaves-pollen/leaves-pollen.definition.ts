@@ -1,4 +1,4 @@
-import type { EffectDefinition } from '@hooksjam/pixi-lab-core';
+import { DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
 import { LEAVES_POLLEN_DEFAULTS } from './leaves-pollen.config.js';
 import { LeavesPollenScene, leavesPollenStyleManifest } from './LeavesPollenScene.js';
 
@@ -20,6 +20,16 @@ export const leavesPollenDefinition: EffectDefinition = {
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
     settings: true,
+  },
+  dataBindings: [
+    { source: 'weather', optional: true, fallback: 'synthetic' },
+    { source: 'time', optional: true, fallback: 'synthetic' },
+    { source: 'synthetic', optional: false, fallback: 'idle' },
+  ],
+  behavior: {
+    ...DEFAULT_FOREGROUND_BEHAVIOR,
+    maxBrightness: LEAVES_POLLEN_DEFAULTS.maxBrightness,
+    maxParticleCount: LEAVES_POLLEN_DEFAULTS.particleCount,
   },
   configDefaults: { ...LEAVES_POLLEN_DEFAULTS },
   styleManifest: leavesPollenStyleManifest,

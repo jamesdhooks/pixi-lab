@@ -1,4 +1,4 @@
-import type { EffectDefinition } from '@hooksjam/pixi-lab-core';
+import { DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
 import { CONFETTI_DEFAULTS } from './confetti.config.js';
 import { ConfettiScene, confettiStyleManifest } from './ConfettiScene.js';
 
@@ -20,6 +20,17 @@ export const confettiDefinition: EffectDefinition = {
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
     settings: true,
+  },
+  dataBindings: [
+    { source: 'tasks', optional: true, fallback: 'synthetic' },
+    { source: 'calendar', optional: true, fallback: 'synthetic' },
+    { source: 'presence', optional: true, fallback: 'synthetic' },
+    { source: 'synthetic', optional: false, fallback: 'idle' },
+  ],
+  behavior: {
+    ...DEFAULT_FOREGROUND_BEHAVIOR,
+    maxBrightness: CONFETTI_DEFAULTS.maxBrightness,
+    maxParticleCount: CONFETTI_DEFAULTS.pieceCount,
   },
   configDefaults: { ...CONFETTI_DEFAULTS },
   styleManifest: confettiStyleManifest,

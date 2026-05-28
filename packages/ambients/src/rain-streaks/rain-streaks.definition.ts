@@ -1,4 +1,4 @@
-import type { EffectDefinition } from '@hooksjam/pixi-lab-core';
+import { DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
 import { RAIN_STREAKS_DEFAULTS } from './rain-streaks.config.js';
 import { RainStreaksScene, rainStreaksStyleManifest } from './RainStreaksScene.js';
 
@@ -20,6 +20,15 @@ export const rainStreaksDefinition: EffectDefinition = {
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
     settings: true,
+  },
+  dataBindings: [
+    { source: 'weather', optional: true, fallback: 'synthetic' },
+    { source: 'synthetic', optional: false, fallback: 'idle' },
+  ],
+  behavior: {
+    ...DEFAULT_FOREGROUND_BEHAVIOR,
+    maxBrightness: RAIN_STREAKS_DEFAULTS.maxBrightness,
+    maxParticleCount: RAIN_STREAKS_DEFAULTS.streakCount,
   },
   configDefaults: { ...RAIN_STREAKS_DEFAULTS },
   styleManifest: rainStreaksStyleManifest,

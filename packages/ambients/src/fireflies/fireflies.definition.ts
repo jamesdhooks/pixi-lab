@@ -1,4 +1,4 @@
-import type { EffectDefinition } from '@hooksjam/pixi-lab-core';
+import { DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
 import { FIREFLIES_DEFAULTS } from './fireflies.config.js';
 import { FirefliesScene, firefliesStyleManifest } from './FirefliesScene.js';
 
@@ -20,6 +20,17 @@ export const firefliesDefinition: EffectDefinition = {
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
     settings: true,
+  },
+  dataBindings: [
+    { source: 'weather', optional: true, fallback: 'synthetic' },
+    { source: 'presence', optional: true, fallback: 'synthetic' },
+    { source: 'time', optional: true, fallback: 'synthetic' },
+    { source: 'synthetic', optional: false, fallback: 'idle' },
+  ],
+  behavior: {
+    ...DEFAULT_FOREGROUND_BEHAVIOR,
+    maxBrightness: FIREFLIES_DEFAULTS.maxBrightness,
+    maxParticleCount: FIREFLIES_DEFAULTS.fireflyCount,
   },
   configDefaults: { ...FIREFLIES_DEFAULTS },
   styleManifest: firefliesStyleManifest,

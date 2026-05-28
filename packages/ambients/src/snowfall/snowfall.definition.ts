@@ -1,4 +1,4 @@
-import type { EffectDefinition } from '@hooksjam/pixi-lab-core';
+import { DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
 import { SNOWFALL_DEFAULTS } from './snowfall.config.js';
 import { SnowfallScene, snowfallStyleManifest } from './SnowfallScene.js';
 
@@ -20,6 +20,15 @@ export const snowfallDefinition: EffectDefinition = {
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
     settings: true,
+  },
+  dataBindings: [
+    { source: 'weather', optional: true, fallback: 'synthetic' },
+    { source: 'synthetic', optional: false, fallback: 'idle' },
+  ],
+  behavior: {
+    ...DEFAULT_FOREGROUND_BEHAVIOR,
+    maxBrightness: SNOWFALL_DEFAULTS.maxBrightness,
+    maxParticleCount: SNOWFALL_DEFAULTS.flakeCount,
   },
   configDefaults: { ...SNOWFALL_DEFAULTS },
   styleManifest: snowfallStyleManifest,
