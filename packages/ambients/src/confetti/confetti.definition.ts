@@ -37,7 +37,7 @@ export const confettiDefinition: EffectDefinition = {
   settingsFields: [
     { key: 'pieceCount', label: 'Piece Count', description: 'Seeded particle budget for the foreground celebration overlay.', type: 'number', min: 24, max: 1000, step: 24, default: CONFETTI_DEFAULTS.pieceCount },
     { key: 'intensity', label: 'Intensity', description: 'Global visibility multiplier for confetti pieces.', type: 'number', min: 0.08, max: 1, step: 0.04, default: CONFETTI_DEFAULTS.intensity },
-    { key: 'maxBrightness', label: 'Max Brightness', description: 'Caps confetti alpha so foreground UI remains readable.', type: 'number', min: 0.12, max: 0.9, step: 0.04, default: CONFETTI_DEFAULTS.maxBrightness },
+    { key: 'maxBrightness', label: 'Max Brightness', description: 'Caps confetti alpha so foreground UI remains readable.', type: 'number', min: 0.12, max: 0.75, step: 0.04, default: CONFETTI_DEFAULTS.maxBrightness },
     { key: 'burst', label: 'Burst', description: 'Manual celebration signal mixed with synthetic or task completion data.', type: 'number', min: 0, max: 1, step: 0.04, default: CONFETTI_DEFAULTS.burst },
     { key: 'gravity', label: 'Gravity', description: 'Controls falling speed for the overlay shower.', type: 'number', min: 0, max: 1, step: 0.04, default: CONFETTI_DEFAULTS.gravity },
     { key: 'spread', label: 'Spread', description: 'Controls horizontal drift and shower width.', type: 'number', min: 0, max: 1, step: 0.04, default: CONFETTI_DEFAULTS.spread },

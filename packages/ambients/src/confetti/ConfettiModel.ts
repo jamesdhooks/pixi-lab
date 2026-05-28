@@ -82,7 +82,7 @@ export class ConfettiModel {
   constructor(options: ConfettiModelOptions) {
     this.width = Math.max(1, options.width);
     this.height = Math.max(1, options.height);
-    this.maxBrightness = clamp(options.maxBrightness, 0.08, 0.9);
+    this.maxBrightness = clamp(options.maxBrightness, 0.08, 0.75);
     const count = Math.max(24, Math.floor(options.pieceCount));
     const rng = new SeededRng(options.seed);
     this.pieces = Array.from({ length: count }, () => ({
@@ -131,7 +131,7 @@ export class ConfettiModel {
   }
 
   setMaxBrightness(value: number): void {
-    this.maxBrightness = clamp(value, 0.08, 0.9);
+    this.maxBrightness = clamp(value, 0.08, 0.75);
   }
 
   setBurst(value: number): void {

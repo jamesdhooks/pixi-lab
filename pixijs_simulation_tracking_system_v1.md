@@ -71,6 +71,23 @@ Validation notes:
 
 ---
 
+## 2026-05-28 — Ambient Registry QA Guardrail
+
+Scope:
+- synced `neocloud/pixi-lab-continuous-implementation` with `origin/neocloud/pixi-lab-baseline-stabilization`
+- confirmed all ambient and foreground overlay tracker rows are implemented before running post-backlog validation
+- added `AmbientRegistry.test.ts` so ambient/effect discovery, render modes, synthetic fallbacks, passive behavior flags, style metadata, settings/default alignment, and foreground readability caps are covered by the normal test gate
+- tightened Confetti's default/user-facing/model-clamped `maxBrightness` ceiling so it stays within foreground overlay readability constraints
+
+Validation notes:
+- `pnpm --filter @hooksjam/pixi-lab-ambients test` passed with 15 files / 87 tests
+- `pnpm --filter @hooksjam/pixi-lab-ambients build` and `pnpm --filter @hooksjam/pixi-lab-ambients typecheck` passed
+- full automated gate passed: `pnpm build`, `pnpm --recursive typecheck`, and `pnpm test` (38 files / 226 tests)
+- built `packages/ambients/dist/index.js` registry QA passed for all 14 ambient/effect entries
+- demo Vite HTTP smoke passed for `/`, `/pixi-lab/src/main.tsx`, and `/pixi-lab/src/App.tsx`; real browser canvas/console and Pi validation remain manual gates
+
+---
+
 ## 2026-05-24 — Ambient + Reusable FX Engine Support
 
 Scope:
