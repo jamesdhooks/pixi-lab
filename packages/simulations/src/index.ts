@@ -1,19 +1,31 @@
 import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { alienVascularTreeDefinition } from './alien-vascular-tree/alien-vascular-tree.definition.js';
 import { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 import { antSignalDefinition } from './ant-signal/ant-signal.definition.js';
 import { cellularOceanDefinition } from './cellular-ocean/cellular-ocean.definition.js';
+import { chromaticAvalancheBowlDefinition } from './chromatic-avalanche-bowl/chromatic-avalanche-bowl.definition.js';
 import { cosmicInkOceanDefinition } from './cosmic-ink-ocean/cosmic-ink-ocean.definition.js';
 import { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definition.js';
 import { electroOsmoticAmoebaDefinition } from './electro-osmotic-amoeba/electro-osmotic-amoeba.definition.js';
 import { fluidTankDefinition } from './fluid-tank/fluid-tank.definition.js';
 import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 import { jellyWebDefinition } from './jelly-web/jelly-web.definition.js';
+import { livingVoronoiTissueDefinition } from './living-voronoi-tissue/living-voronoi-tissue.definition.js';
 import { myceliumLatticeDefinition } from './mycelium-lattice/mycelium-lattice.definition.js';
 import { myceliumPrismDefinition } from './mycelium-prism/mycelium-prism.definition.js';
+import { neonRiverDeltaDefinition } from './neon-river-delta/neon-river-delta.definition.js';
+import { oilWaterUniverseDefinition } from './oil-water-universe/oil-water-universe.definition.js';
 import { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
 import { plasmaBranchDefinition } from './plasma-branch/plasma-branch.definition.js';
+import { prismPoolDefinition } from './prism-pool/prism-pool.definition.js';
+import { protoGalaxyForgeDefinition } from './proto-galaxy-forge/proto-galaxy-forge.definition.js';
 import { timeEchoDefinition } from './time-echo/time-echo.definition.js';
 import { turingSkinDefinition } from './turing-skin/turing-skin.definition.js';
+
+export { alienVascularTreeDefinition } from './alien-vascular-tree/alien-vascular-tree.definition.js';
+export { AlienVascularTreeScene, alienVascularTreeStyleManifest } from './alien-vascular-tree/AlienVascularTreeScene.js';
+export { AlienVascularTreePreviewScene } from './alien-vascular-tree/AlienVascularTreePreviewScene.js';
+export { AlienVascularTreeModel, type AlienVascularTreeModelOptions, type AlienVascularTreeStats } from './alien-vascular-tree/AlienVascularTreeModel.js';
 
 export { amoebaLampDefinition } from './amoeba-lamp/amoeba-lamp.definition.js';
 export { AmoebaLampScene, amoebaLampStyleManifest } from './amoeba-lamp/AmoebaLampScene.js';
@@ -29,6 +41,11 @@ export { cellularOceanDefinition } from './cellular-ocean/cellular-ocean.definit
 export { CellularOceanScene, cellularOceanStyleManifest } from './cellular-ocean/CellularOceanScene.js';
 export { CellularOceanPreviewScene } from './cellular-ocean/CellularOceanPreviewScene.js';
 export { CellularOceanModel, type CellularOceanModelOptions, type CellularOceanStats } from './cellular-ocean/CellularOceanModel.js';
+
+export { chromaticAvalancheBowlDefinition } from './chromatic-avalanche-bowl/chromatic-avalanche-bowl.definition.js';
+export { ChromaticAvalancheBowlScene, chromaticAvalancheBowlStyleManifest } from './chromatic-avalanche-bowl/ChromaticAvalancheBowlScene.js';
+export { ChromaticAvalancheBowlPreviewScene } from './chromatic-avalanche-bowl/ChromaticAvalancheBowlPreviewScene.js';
+export { ChromaticAvalancheBowlModel, type ChromaticAvalancheBowlModelOptions, type ChromaticAvalancheBowlStats } from './chromatic-avalanche-bowl/ChromaticAvalancheBowlModel.js';
 
 export { cosmicInkOceanDefinition } from './cosmic-ink-ocean/cosmic-ink-ocean.definition.js';
 export { CosmicInkOceanScene, cosmicInkOceanStyleManifest } from './cosmic-ink-ocean/CosmicInkOceanScene.js';
@@ -60,6 +77,11 @@ export { JellyWebScene, jellyWebStyleManifest } from './jelly-web/JellyWebScene.
 export { JellyWebPreviewScene } from './jelly-web/JellyWebPreviewScene.js';
 export { JellyWebModel, type JellyWebModelOptions, type JellyWebStats } from './jelly-web/JellyWebModel.js';
 
+export { livingVoronoiTissueDefinition } from './living-voronoi-tissue/living-voronoi-tissue.definition.js';
+export { LivingVoronoiTissueScene, livingVoronoiTissueStyleManifest } from './living-voronoi-tissue/LivingVoronoiTissueScene.js';
+export { LivingVoronoiTissuePreviewScene } from './living-voronoi-tissue/LivingVoronoiTissuePreviewScene.js';
+export { LivingVoronoiTissueModel, type LivingVoronoiTissueCell, type LivingVoronoiTissueModelOptions, type LivingVoronoiTissueStats } from './living-voronoi-tissue/LivingVoronoiTissueModel.js';
+
 export { myceliumLatticeDefinition } from './mycelium-lattice/mycelium-lattice.definition.js';
 export { MyceliumLatticeScene, myceliumLatticeStyleManifest } from './mycelium-lattice/MyceliumLatticeScene.js';
 export { MyceliumLatticePreviewScene } from './mycelium-lattice/MyceliumLatticePreviewScene.js';
@@ -70,6 +92,16 @@ export { MyceliumPrismScene, myceliumPrismStyleManifest } from './mycelium-prism
 export { MyceliumPrismPreviewScene } from './mycelium-prism/MyceliumPrismPreviewScene.js';
 export { MyceliumPrismModel, type MyceliumPrismModelOptions, type MyceliumStats } from './mycelium-prism/MyceliumPrismModel.js';
 
+export { neonRiverDeltaDefinition } from './neon-river-delta/neon-river-delta.definition.js';
+export { NeonRiverDeltaScene, neonRiverDeltaStyleManifest } from './neon-river-delta/NeonRiverDeltaScene.js';
+export { NeonRiverDeltaPreviewScene } from './neon-river-delta/NeonRiverDeltaPreviewScene.js';
+export { NeonRiverDeltaModel, type NeonRiverDeltaModelOptions, type NeonRiverDeltaStats } from './neon-river-delta/NeonRiverDeltaModel.js';
+
+export { oilWaterUniverseDefinition } from './oil-water-universe/oil-water-universe.definition.js';
+export { OilWaterUniverseScene, oilWaterUniverseStyleManifest } from './oil-water-universe/OilWaterUniverseScene.js';
+export { OilWaterUniversePreviewScene } from './oil-water-universe/OilWaterUniversePreviewScene.js';
+export { OilWaterUniverseModel, type OilWaterUniverseModelOptions, type OilWaterUniverseStats } from './oil-water-universe/OilWaterUniverseModel.js';
+
 export { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
 export { OrbitalShrapnelScene, orbitalShrapnelStyleManifest } from './orbital-shrapnel/OrbitalShrapnelScene.js';
 export { OrbitalShrapnelPreviewScene } from './orbital-shrapnel/OrbitalShrapnelPreviewScene.js';
@@ -79,6 +111,16 @@ export { plasmaBranchDefinition } from './plasma-branch/plasma-branch.definition
 export { PlasmaBranchScene, plasmaBranchStyleManifest } from './plasma-branch/PlasmaBranchScene.js';
 export { PlasmaBranchPreviewScene } from './plasma-branch/PlasmaBranchPreviewScene.js';
 export { PlasmaBranchModel, type PlasmaBranchModelOptions, type PlasmaBranchStats } from './plasma-branch/PlasmaBranchModel.js';
+
+export { prismPoolDefinition } from './prism-pool/prism-pool.definition.js';
+export { PrismPoolScene, prismPoolStyleManifest } from './prism-pool/PrismPoolScene.js';
+export { PrismPoolPreviewScene } from './prism-pool/PrismPoolPreviewScene.js';
+export { PrismPoolModel, type PrismPoolModelOptions, type PrismPoolStats } from './prism-pool/PrismPoolModel.js';
+
+export { protoGalaxyForgeDefinition } from './proto-galaxy-forge/proto-galaxy-forge.definition.js';
+export { ProtoGalaxyForgeScene, protoGalaxyForgeStyleManifest } from './proto-galaxy-forge/ProtoGalaxyForgeScene.js';
+export { ProtoGalaxyForgePreviewScene } from './proto-galaxy-forge/ProtoGalaxyForgePreviewScene.js';
+export { ProtoGalaxyForgeModel, type ProtoGalaxyForgeModelOptions, type ProtoGalaxyForgeStats } from './proto-galaxy-forge/ProtoGalaxyForgeModel.js';
 
 export { timeEchoDefinition } from './time-echo/time-echo.definition.js';
 export { TimeEchoScene, timeEchoStyleManifest } from './time-echo/TimeEchoScene.js';
@@ -106,6 +148,13 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   cellularOceanDefinition,
   cosmicInkOceanDefinition,
   turingSkinDefinition,
+  oilWaterUniverseDefinition,
+  prismPoolDefinition,
+  neonRiverDeltaDefinition,
+  alienVascularTreeDefinition,
+  livingVoronoiTissueDefinition,
+  protoGalaxyForgeDefinition,
+  chromaticAvalancheBowlDefinition,
 ] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {

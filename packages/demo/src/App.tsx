@@ -5,10 +5,11 @@ import { GameLauncher, PreviewTile } from '@hooksjam/pixi-lab-react';
 import { useViewport } from '@hooksjam/pixi-lab-react';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
 import { SIMULATION_REGISTRY } from '@hooksjam/pixi-lab-simulations';
+import { AMBIENT_REGISTRY } from '@hooksjam/pixi-lab-ambients';
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
 import { hasPassedDemoQa } from './demoQaStatus';
 
-const ALL_EXPERIENCES: readonly LabExperience[] = [...GAME_REGISTRY, ...SIMULATION_REGISTRY];
+const ALL_EXPERIENCES: readonly LabExperience[] = [...GAME_REGISTRY, ...SIMULATION_REGISTRY, ...AMBIENT_REGISTRY];
 const APP_DEMO_INTERVAL_MS = 10_000;
 const APP_DEMO_CROSSFADE_MS = 220;
 const APP_DEMO_PRELOAD_MAX_PIXELS = 147_456;

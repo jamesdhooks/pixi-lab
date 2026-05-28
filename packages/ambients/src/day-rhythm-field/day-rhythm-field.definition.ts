@@ -1,0 +1,108 @@
+import type { AmbientDefinition } from '@hooksjam/pixi-lab-core';
+import { DEFAULT_AMBIENT_BEHAVIOR } from '@hooksjam/pixi-lab-core';
+import { DAY_RHYTHM_FIELD_DEFAULTS } from './day-rhythm-field.config.js';
+import { DayRhythmFieldScene, dayRhythmFieldStyles } from './DayRhythmFieldScene.js';
+
+export const dayRhythmFieldDefinition: AmbientDefinition = {
+  id: 'day-rhythm-field',
+  kind: 'ambient',
+  renderModes: ['fullscreen', 'background', 'widget', 'previewTile'],
+  name: 'Day Rhythm Field',
+  short: 'A quiet background field that breathes with time-of-day and synthetic dashboard signals.',
+  long: 'A first-class ambient experience for dashboard backgrounds: seeded luminous particles shift from dawn warmth through daylight clarity into dusk and sleep-safe night tones. It uses synthetic time data by default and can accept real host adapters later.',
+  tags: ['ambient', 'background', 'time', 'dashboard', 'low-motion'],
+  icon: '🌗',
+  paletteHint: 'midnight',
+  capabilities: {
+    ambient: true,
+    ambientLayer: true,
+    tutorial: true,
+    reset: true,
+    debugOverlay: true,
+    styleExport: true,
+    lowMotion: true,
+    sleepMode: true,
+    qualityModes: ['basic', 'enhanced'],
+    settings: true,
+  },
+  dataBindings: [
+    { source: 'time', optional: true, fallback: 'synthetic' },
+    { source: 'synthetic', optional: false, fallback: 'idle' },
+  ],
+  behavior: {
+    ...DEFAULT_AMBIENT_BEHAVIOR,
+    maxBrightness: DAY_RHYTHM_FIELD_DEFAULTS.maxBrightness,
+    maxParticleCount: DAY_RHYTHM_FIELD_DEFAULTS.particleCount,
+    maxUpdateHz: 30,
+    allowForeground: false,
+    allowBackground: true,
+  },
+  styles: dayRhythmFieldStyles,
+  configDefaults: { ...DAY_RHYTHM_FIELD_DEFAULTS },
+  settingsFields: [
+    {
+      key: 'particleCount',
+      label: 'Particle Count',
+      description: 'Background particle budget; keep modest for Pi/dashboard use.',
+      type: 'number',
+      min: 96,
+      max: 900,
+      step: 24,
+      default: DAY_RHYTHM_FIELD_DEFAULTS.particleCount,
+    },
+    {
+      key: 'intensity',
+      label: 'Intensity',
+      description: 'Global brightness and motion multiplier for the ambient layer.',
+      type: 'number',
+      min: 0.15,
+      max: 1,
+      step: 0.05,
+      default: DAY_RHYTHM_FIELD_DEFAULTS.intensity,
+    },
+    {
+      key: 'maxBrightness',
+      label: 'Max Brightness',
+      description: 'Readability guard for UI backgrounds.',
+      type: 'number',
+      min: 0.2,
+      max: 0.75,
+      step: 0.05,
+      default: DAY_RHYTHM_FIELD_DEFAULTS.maxBrightness,
+    },
+    {
+      key: 'sleepMode',
+      label: 'Sleep Mode',
+      description: 'Dims and reduces the ambient particle field.',
+      type: 'boolean',
+      default: DAY_RHYTHM_FIELD_DEFAULTS.sleepMode,
+    },
+    {
+      key: 'lowMotion',
+      label: 'Low Motion',
+      description: 'Reduces drift speed and visible particle count.',
+      type: 'boolean',
+      default: DAY_RHYTHM_FIELD_DEFAULTS.lowMotion,
+    },
+  ],
+  factory: () => new DayRhythmFieldScene(false),
+  previewFactory: () => new DayRhythmFieldScene(true),
+  defaultSeed: 271828,
+  tutorialPages: [
+    {
+      icon: '🌗',
+      title: 'Ambient background',
+      body: 'Day Rhythm Field is designed to sit behind UI. It stays dim, slow, and readable by default.',
+    },
+    {
+      icon: '🧭',
+      title: 'Data-ready',
+      body: 'The demo uses synthetic time data. Host apps can inject real time, weather, or home adapters later without changing the experience contract.',
+    },
+    {
+      icon: '🌙',
+      title: 'Sleep safe',
+      body: 'Sleep and low-motion settings reduce brightness, motion, and particle count for dashboard and night use.',
+    },
+  ],
+};

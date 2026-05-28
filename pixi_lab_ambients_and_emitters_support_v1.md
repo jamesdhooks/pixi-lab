@@ -1438,18 +1438,18 @@ Add the following implementation tracking section.
 
 | Priority | System | Status | Depends On | Notes |
 |---|---|---|---|---|
-| 1 | AmbientExperience Contract | NOT_STARTED | LabExperience | defines ambient interface |
-| 2 | AmbientLayer React Component | NOT_STARTED | Pixi app wrapper | background canvas |
-| 3 | ForegroundAmbientOverlay | NOT_STARTED | transparent Pixi canvas | above-UI effects |
-| 4 | Synthetic Ambient Data Adapters | NOT_STARTED | ambient contract | demo mode |
-| 5 | BurstEmitterSystem | NOT_STARTED | particle renderer | shared FX |
-| 6 | SparkEmitter | NOT_STARTED | BurstEmitterSystem | core effect |
-| 7 | EmberEmitter | NOT_STARTED | BurstEmitterSystem | ambient effect |
-| 8 | ConfettiEmitter | NOT_STARTED | BurstEmitterSystem | UI celebration |
-| 9 | FireworkEmitter | NOT_STARTED | BurstEmitterSystem + trails | celebration/showcase |
-| 10 | FireflyEmitter | NOT_STARTED | BurstEmitterSystem | quiet ambient |
-| 11 | SmokeEmitter | NOT_STARTED | BurstEmitterSystem | supporting effect |
-| 12 | ArcSparkEmitter | NOT_STARTED | line mesh renderer | plasma/electric effect |
+| 1 | AmbientExperience Contract | COMPLETE | LabExperience | `LabExperience` supports ambient/effect definitions, render modes, behavior config, and data bindings. |
+| 2 | AmbientLayer React Component | COMPLETE | Pixi app wrapper | `AmbientLayer` mounts background/dashboard ambients with opacity, intensity, sleep mode, low motion, pause, seed, and injected data adapters. |
+| 3 | ForegroundAmbientOverlay | COMPLETE | transparent Pixi canvas | `ForegroundAmbientOverlay` mounts transparent, pointer-safe, above-UI effects. |
+| 4 | Synthetic Ambient Data Adapters | COMPLETE | ambient contract | `AmbientDataManager` supports host adapters and synthetic fallback snapshots. |
+| 5 | BurstEmitterSystem | COMPLETE | particle renderer | Shared seeded burst/effect system owns caps, cleanup, quality, pause, sleep, and intensity scaling. |
+| 6 | SparkEmitter | COMPLETE | BurstEmitterSystem | Core radial spark/electrical burst facade. |
+| 7 | EmberEmitter | COMPLETE | BurstEmitterSystem | Warm passive ember effect facade. |
+| 8 | ConfettiEmitter | COMPLETE | BurstEmitterSystem | Celebration/UI feedback facade. |
+| 9 | FireworkEmitter | COMPLETE | BurstEmitterSystem + trails | Celebration/showcase effect facade. |
+| 10 | FireflyEmitter | COMPLETE | BurstEmitterSystem | Quiet ambient glow facade. |
+| 11 | SmokeEmitter | COMPLETE | BurstEmitterSystem | Supporting smoke/dust effect facade. |
+| 12 | ArcSparkEmitter | COMPLETE | BurstEmitterSystem | Plasma/electric arc effect facade. |
 
 ---
 
@@ -1457,14 +1457,14 @@ Add the following implementation tracking section.
 
 | Priority | Ambient | Status | Depends On | Notes |
 |---|---|---|---|---|
-| 1 | Day Rhythm Field | NOT_STARTED | AmbientLayer | easiest first ambient |
-| 2 | Home Weather Glass | NOT_STARTED | synthetic weather | strong dashboard value |
-| 3 | Sleep Aquarium | NOT_STARTED | low-motion mode | night/sleep reference |
-| 4 | Music Dream Field | NOT_STARTED | synthetic beat | media integration later |
-| 5 | House Pulse Map | NOT_STARTED | synthetic home events | HA integration later |
-| 6 | Task Garden | NOT_STARTED | synthetic tasks | organizer integration |
-| 7 | Family Orbit | NOT_STARTED | synthetic presence | presence integration later |
-| 8 | Memory Drift | NOT_STARTED | palette input | photo integration later |
+| 1 | Day Rhythm Field | COMPLETE | AmbientLayer | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic seeded particle field, synthetic/time fallback data, preview/fullscreen/background/widget factories, sleep/low-motion controls, styles, registry/demo gallery wiring, package docs, and model tests. |
+| 2 | Home Weather Glass | COMPLETE | synthetic weather | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic rain-glass model, synthetic/injected weather fallback, preview/fullscreen factories, live intensity/brightness/blur/budget/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. |
+| 3 | Sleep Aquarium | COMPLETE | low-motion mode | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic seeded fish/bubble model, synthetic/time fallback, preview/fullscreen/background/widget factories, live fish/bubble/intensity/brightness/current/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. |
+| 4 | Music Dream Field | COMPLETE | synthetic beat | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic pulse/ribbon model, optional media plus synthetic/time fallback, preview/fullscreen/background/widget factories, live orb/ribbon/intensity/brightness/beat/drift/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. |
+| 5 | House Pulse Map | COMPLETE | synthetic home events | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic smart-home floorplan model, optional Home Assistant/presence plus synthetic/time fallback, preview/fullscreen/background/widget factories, live node/link/intensity/brightness/event-sensitivity/pulse-speed/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. |
+| 6 | Task Garden | COMPLETE | synthetic tasks | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic plant/sparkle model, optional tasks/calendar plus synthetic/time fallback, preview/fullscreen/background/widget factories, live plant/sparkle/intensity/brightness/urgency/growth/completion/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. |
+| 7 | Family Orbit | COMPLETE | synthetic presence | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic presence/calendar orbit model, optional presence/calendar plus synthetic/time fallback, preview/fullscreen/background/widget factories, live member/comet/intensity/brightness/closeness/pulse/speed/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. |
+| 8 | Memory Drift | COMPLETE | palette input | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic photo-palette memory model, optional photos/media plus synthetic/time fallback, preview/fullscreen/background/widget factories, live memory/mote/intensity/brightness/warmth/nostalgia/drift/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. |
 
 ---
 
@@ -1472,12 +1472,12 @@ Add the following implementation tracking section.
 
 | Priority | Overlay | Status | Depends On | Notes |
 |---|---|---|---|---|
-| 1 | Snowfall | NOT_STARTED | ForegroundAmbientOverlay | simplest overlay |
-| 2 | Embers | NOT_STARTED | EmberEmitter | cozy mode |
-| 3 | Fireflies | NOT_STARTED | FireflyEmitter | quiet night |
-| 4 | Confetti | NOT_STARTED | ConfettiEmitter | UI celebration |
-| 5 | Rain Streaks | NOT_STARTED | particle/line renderer | weather |
-| 6 | Leaves/Pollen | NOT_STARTED | particle renderer | seasonal |
+| 1 | Snowfall | COMPLETE | ForegroundAmbientOverlay | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic foreground overlay effect with synthetic/weather fallback data, preview/fullscreen/foreground factories, live flake/intensity/brightness/wind/depth-drift/low-motion/sleep settings, registry/demo gallery export, package docs, and model tests. |
+| 2 | Embers | COMPLETE | EmberEmitter | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic cozy foreground overlay effect with synthetic/Home Assistant/weather fallback data, preview/fullscreen/foreground factories, live ember/intensity/brightness/heat/updraft/low-motion/sleep settings, registry/demo gallery export, package docs, and model tests. |
+| 3 | Fireflies | COMPLETE | FireflyEmitter | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic quiet-night foreground overlay effect with synthetic/weather/presence/time fallback data, preview/fullscreen/foreground factories, live firefly/intensity/brightness/glow/drift/meadow/low-motion/sleep settings, registry/demo gallery export, package docs, and model tests. |
+| 4 | Confetti | COMPLETE | ConfettiEmitter | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic celebration foreground overlay effect with synthetic/tasks/calendar/presence fallback data, preview/fullscreen/foreground factories, live piece/intensity/brightness/burst/gravity/spread/low-motion/sleep settings, registry/demo gallery export, package docs, and model tests. |
+| 5 | Rain Streaks | COMPLETE | particle/line renderer | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic foreground rain overlay effect with synthetic/weather fallback data, preview/fullscreen/foreground factories, live streak/intensity/brightness/wind/speed/trail-length/low-motion/sleep settings, registry/demo gallery export, package docs, and model tests. |
+| 6 | Leaves/Pollen | COMPLETE | particle renderer | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic seasonal foreground overlay effect with synthetic/weather/time fallback data, preview/fullscreen/foreground factories, live particle/intensity/brightness/breeze/drift-speed/pollen-mix/low-motion/sleep settings, registry/demo gallery export, package docs, and model tests. |
 
 ---
 

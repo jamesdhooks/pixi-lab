@@ -6,6 +6,70 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-05-28 — Post-Backlog Registry + Gallery Smoke Refresh
+
+Scope:
+- synced `neocloud/pixi-lab-continuous-implementation` with `origin/neocloud/pixi-lab-baseline-stabilization`
+- re-read `AGENTS.md`, the add-experience skill, the add-simulation skill, and the ambient/overlay tracker sections
+- confirmed all 8 ambients and 6 foreground overlays remain implemented before running post-backlog validation
+- reran the full workspace automated gate, built ambient/effect registry QA, built simulation registry QA, and demo gallery HTTP smoke
+
+Validation notes:
+- full automated gate passed: `pnpm build`, `pnpm --recursive typecheck`, and `pnpm test` (38 files / 226 tests)
+- built `packages/ambients/dist/index.js` registry QA passed for 14 entries: 8 ambients and 6 foreground overlays
+- built `packages/simulations/dist/index.js` registry QA passed for 21 simulations
+- demo Vite HTTP smoke passed for `/`, `/pixi-lab/`, `/pixi-lab/src/main.tsx`, and `/pixi-lab/src/App.tsx`; real browser canvas/console and Pi validation remain manual gates
+
+---
+
+## 2026-05-28 — Ambient / Overlay Green Gate Rerun
+
+Scope:
+- synced `neocloud/pixi-lab-continuous-implementation` with `origin/neocloud/pixi-lab-baseline-stabilization`
+- re-read `AGENTS.md`, the add-experience skill, and the ambient/overlay tracker sections
+- confirmed all 8 ambients and 6 foreground overlays remain implemented before post-backlog validation
+- reran focused ambient package gates, built ambient/effect registry QA, full workspace build/typecheck/test, and demo gallery HTTP smoke
+
+Validation notes:
+- `pnpm --filter @hooksjam/pixi-lab-ambients build`, `typecheck`, and `test` passed with 15 files / 87 tests
+- built `packages/ambients/dist/index.js` registry QA passed for 14 entries: 8 ambients and 6 foreground overlays
+- full automated gate passed: `pnpm build`, `pnpm --recursive typecheck`, and `pnpm test` (38 files / 226 tests)
+- demo Vite HTTP smoke passed for `/`, `/pixi-lab/`, `/pixi-lab/src/main.tsx`, and `/pixi-lab/src/App.tsx`; real browser canvas/console and Pi validation remain manual gates
+
+---
+
+## 2026-05-28 — Ambient Catalog Plan Alignment
+
+Scope:
+- synced `neocloud/pixi-lab-continuous-implementation` with `origin/neocloud/pixi-lab-baseline-stabilization`
+- re-read `AGENTS.md`, the add-experience skill, and the ambient/overlay tracker sections
+- confirmed the ambient and foreground overlay implementation queues remain complete
+- updated `pixijs_simulation_master_plan_v7.md` so the ambient catalog is documented as implemented rather than deferred
+
+Validation notes:
+- focused ambient package build/typecheck/test and built registry QA were rerun for this cleanup slice
+- no broad simulation QA was started because this run stayed on ambient/overlay backlog documentation alignment
+
+---
+
+## 2026-05-28 — Ambient / Overlay Backlog Verification
+
+Scope:
+- synced `neocloud/pixi-lab-continuous-implementation` with `origin/neocloud/pixi-lab-baseline-stabilization`
+- re-read the repo guidance and confirmed the ambient and foreground overlay tracker queues remain fully implemented before moving into post-backlog validation
+- reran package-local ambient build, typecheck, and model/registry tests
+- reran the full workspace automated gate now that ambient and overlay implementation is complete
+- ran a built `packages/ambients/dist/index.js` registry QA probe for all ambient/effect discovery-critical fields, synthetic fallbacks, render modes, passive behavior caps, low-motion/sleep controls, and style metadata
+- launched the demo Vite server and verified the gallery shell and app source resolve over HTTP with ambient registry imports present
+
+Validation notes:
+- `pnpm --filter @hooksjam/pixi-lab-ambients build`, `typecheck`, and `test` passed with 15 files / 87 tests
+- full automated gate passed: `pnpm build`, `pnpm --recursive typecheck`, and `pnpm test` (38 files / 226 tests)
+- ambient registry QA passed for 14 entries: 8 ambients and 6 foreground overlay effects
+- HTTP gallery smoke passed for `/pixi-lab/`, `/pixi-lab/src/main.tsx`, and `/pixi-lab/src/App.tsx`; real browser canvas/console and Pi validation remain manual gates
+
+---
+
 ## 2026-05-24 — Engine Simulation Foundation + Harmonic Sand Plate
 
 Scope:
@@ -39,6 +103,55 @@ Scope:
 
 ---
 
+## 2026-05-27 — Registry QA + Automated Gate Refresh
+
+Scope:
+- synced `neocloud/pixi-lab-continuous-implementation` with `origin/neocloud/pixi-lab-baseline-stabilization`
+- reran the full automated gate across the current simulation catalog: `pnpm build`, `pnpm --recursive typecheck`, and `pnpm test`
+- ran a built `packages/simulations/dist/index.js` registry QA probe across all 21 simulations to verify discovery-critical fields: factories, demo AI, style manifest capabilities, settings/defaults, gesture map, and stagnation policy
+- launched the demo dev server and confirmed the Vite shell serves successfully over HTTP
+- added `SimulationRegistry.test.ts` so discovery-critical simulation wiring is covered by the normal test gate instead of only an ad hoc probe
+- fixed Mycelium Lattice capability metadata to advertise director mode, debug overlay, style export, procedural textures, and render target pool support consistently with its scene/definition wiring
+
+Validation notes:
+- automated build/typecheck/test gate passed in the current environment
+- registry QA passed with no discovery/wiring omissions
+- HTTP launch smoke passed; real browser canvas/console verification and Pi 5 FPS validation remain manual gates before any simulation should be marked `COMPLETE`
+
+---
+
+## 2026-05-28 — Overlay Registry Metadata Cleanup
+
+Scope:
+- synced `neocloud/pixi-lab-continuous-implementation` with `origin/neocloud/pixi-lab-baseline-stabilization`
+- verified the ambient and foreground overlay tracker queues are implemented before shifting to broader simulation QA
+- extended `EffectDefinition` metadata so passive foreground overlays can declare optional data bindings and foreground-safe behavior constraints
+- declared weather/home/presence/task/calendar/time synthetic fallback bindings and max brightness/particle budgets for Snowfall, Embers, Fireflies, Confetti, Rain Streaks, and Leaves/Pollen
+
+Validation notes:
+- full automated build/typecheck/test gate passed in the current environment
+- built ambient registry QA passed for all 14 ambient/effect entries with factories, preview factories, settings/defaults, style metadata, render modes, low-motion/sleep controls, and required data/behavior metadata
+- demo Vite HTTP smoke passed for the gallery shell and app source resolution; real browser canvas/console and Pi validation still remain manual for the ambient and overlay catalog
+
+---
+
+## 2026-05-28 — Ambient Registry QA Guardrail
+
+Scope:
+- synced `neocloud/pixi-lab-continuous-implementation` with `origin/neocloud/pixi-lab-baseline-stabilization`
+- confirmed all ambient and foreground overlay tracker rows are implemented before running post-backlog validation
+- added `AmbientRegistry.test.ts` so ambient/effect discovery, render modes, synthetic fallbacks, passive behavior flags, style metadata, settings/default alignment, and foreground readability caps are covered by the normal test gate
+- tightened Confetti's default/user-facing/model-clamped `maxBrightness` ceiling so it stays within foreground overlay readability constraints
+
+Validation notes:
+- `pnpm --filter @hooksjam/pixi-lab-ambients test` passed with 15 files / 87 tests
+- `pnpm --filter @hooksjam/pixi-lab-ambients build` and `pnpm --filter @hooksjam/pixi-lab-ambients typecheck` passed
+- full automated gate passed: `pnpm build`, `pnpm --recursive typecheck`, and `pnpm test` (38 files / 226 tests)
+- built `packages/ambients/dist/index.js` registry QA passed for all 14 ambient/effect entries
+- demo Vite HTTP smoke passed for `/`, `/pixi-lab/src/main.tsx`, and `/pixi-lab/src/App.tsx`; real browser canvas/console and Pi validation remain manual gates
+
+---
+
 ## 2026-05-24 — Ambient + Reusable FX Engine Support
 
 Scope:
@@ -50,7 +163,7 @@ Scope:
 - add React background and foreground overlay components
 
 Deferred:
-- ambient catalog implementations such as Day Rhythm Field, Home Weather Glass, Sleep Aquarium, and Task Garden
+- remaining ambient catalog implementations such as Home Weather Glass, Sleep Aquarium, and Task Garden
 - foreground overlay content such as Snowfall, Rain Streaks, Leaves/Pollen, and Embers
 - real Home Assistant/weather/calendar/media/photo/task adapters; demo and engine support use synthetic/injected data contracts
 
@@ -131,7 +244,6 @@ Agents should NEVER:
 | Shared Palette Shader | IN_PROGRESS | Harmonic Sand renders scalar fields through a low-res GPU texture; reusable post-process palette shader remains a follow-up. |
 | Trail Feedback System | IN_PROGRESS | Pass IDs/style config exist; real ping-pong trail feedback shader remains a follow-up. |
 | Bloom Composite | IN_PROGRESS | Pass IDs/style config exist; real low-res bloom compositor remains a follow-up. |
-| GPU Fluid Tank Renderer | IN_PROGRESS | `packages/core/src/render/GpuFluidTankRenderer.ts` owns a reusable WebGL2 half-float stable-fluid pipeline with velocity/dye/pressure ping-pong targets, curl/vorticity, bounded wall damping, splat injection, and fullscreen display composite. Manual WebGL device/Pi validation still pending. |
 | PerformanceGovernor | COMPLETE | `packages/core/src/performance/PerformanceGovernor.ts` samples FPS and downgrades quality. |
 | DirectorMode | COMPLETE | `packages/core/src/director/DirectorMode.ts` schedules declared ambient events while idle. |
 | Gesture Interpreter | COMPLETE | `packages/core/src/gestures/GestureInterpreter.ts` emits tap, drag, hold, fast swipe, double tap, pinch, and spread. |
@@ -192,14 +304,14 @@ Ambient implementations are deferred until engine support systems above are comp
 
 | Priority | Ambient | Status | Depends On | Notes |
 |---|---|---|---|---|
-| 1 | Day Rhythm Field | DEFERRED | AmbientLayer | easiest first ambient |
-| 2 | Home Weather Glass | DEFERRED | synthetic weather | strong dashboard value |
-| 3 | Sleep Aquarium | DEFERRED | low-motion mode | night/sleep reference |
-| 4 | Music Dream Field | DEFERRED | synthetic beat | media integration later |
-| 5 | House Pulse Map | DEFERRED | synthetic home events | HA integration later |
-| 6 | Task Garden | DEFERRED | synthetic tasks | organizer integration |
-| 7 | Family Orbit | DEFERRED | synthetic presence | presence integration later |
-| 8 | Memory Drift | DEFERRED | palette input | photo integration later |
+| 1 | Day Rhythm Field | COMPLETE | AmbientLayer | Implemented as `@hooksjam/pixi-lab-ambients` first ambient with deterministic model, synthetic/time data bindings, low-motion/sleep controls, style presets, demo gallery wiring, ambient registry QA, and browser launch QA. |
+| 2 | Home Weather Glass | COMPLETE | synthetic weather | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic rain-glass model, synthetic/injected weather fallback, preview/fullscreen factories, live intensity/brightness/blur/budget/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
+| 3 | Sleep Aquarium | COMPLETE | low-motion mode | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic seeded fish/bubble model, synthetic/time fallback data, preview/fullscreen/background/widget factories, live fish/bubble/intensity/brightness/current/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
+| 4 | Music Dream Field | COMPLETE | synthetic beat | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic seeded pulse/ribbon model, optional media plus synthetic/time fallback data, preview/fullscreen/background/widget factories, live orb/ribbon/intensity/brightness/beat/drift/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
+| 5 | House Pulse Map | COMPLETE | synthetic home events | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic seeded smart-home floorplan model, optional Home Assistant/presence plus synthetic/time fallback data, preview/fullscreen/background/widget factories, live node/link/intensity/brightness/event-sensitivity/pulse-speed/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
+| 6 | Task Garden | COMPLETE | synthetic tasks | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic seeded plant/sparkle model, optional tasks/calendar plus synthetic/time fallback data, preview/fullscreen/background/widget factories, live plant/sparkle/intensity/brightness/urgency/growth/completion/low-motion/sleep settings, style presets, registry/demo gallery export, and model tests. Browser smoke/Pi validation still pending. |
+| 7 | Family Orbit | COMPLETE | synthetic presence | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic seeded presence/calendar orbit model, optional presence/calendar plus synthetic/time fallback data, preview/fullscreen/background/widget factories, live member/comet/intensity/brightness/closeness/pulse/speed/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
+| 8 | Memory Drift | COMPLETE | palette input | Implemented in `@hooksjam/pixi-lab-ambients` with deterministic seeded photo-palette memory model, optional photos/media plus synthetic/time fallback data, preview/fullscreen/background/widget factories, live memory/mote/intensity/brightness/warmth/nostalgia/drift/low-motion/sleep settings, style presets, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
 
 ## Foreground Overlay Queue
 
@@ -207,12 +319,12 @@ Overlay content implementations are deferred until `ForegroundAmbientOverlay` an
 
 | Priority | Overlay | Status | Depends On | Notes |
 |---|---|---|---|---|
-| 1 | Snowfall | DEFERRED | ForegroundAmbientOverlay | simplest overlay |
-| 2 | Embers | DEFERRED | EmberEmitter | cozy mode |
-| 3 | Fireflies | DEFERRED | FireflyEmitter | quiet night |
-| 4 | Confetti | DEFERRED | ConfettiEmitter | UI celebration |
-| 5 | Rain Streaks | DEFERRED | particle/line renderer | weather |
-| 6 | Leaves/Pollen | DEFERRED | particle renderer | seasonal |
+| 1 | Snowfall | COMPLETE | ForegroundAmbientOverlay | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic foreground overlay effect with synthetic/weather fallback data, preview/fullscreen/foreground factories, live flake/intensity/brightness/wind/depth-drift/low-motion/sleep settings, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
+| 2 | Embers | COMPLETE | EmberEmitter | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic cozy foreground overlay effect with synthetic/Home Assistant/weather fallback data, preview/fullscreen/foreground factories, live ember/intensity/brightness/heat/updraft/low-motion/sleep settings, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
+| 3 | Fireflies | COMPLETE | FireflyEmitter | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic quiet-night foreground overlay effect with synthetic/weather/presence/time fallback data, preview/fullscreen/foreground factories, live firefly/intensity/brightness/glow/drift/meadow/low-motion/sleep settings, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
+| 4 | Confetti | COMPLETE | ConfettiEmitter | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic celebration foreground overlay effect with synthetic/tasks/calendar/presence fallback data, preview/fullscreen/foreground factories, live piece/intensity/brightness/burst/gravity/spread/low-motion/sleep settings, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
+| 5 | Rain Streaks | COMPLETE | particle/line renderer | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic foreground rain overlay effect with synthetic/weather fallback data, preview/fullscreen/foreground factories, live streak/intensity/brightness/wind/speed/trail-length/low-motion/sleep settings, registry/demo gallery export, package docs, and model tests. Browser smoke/Pi validation still pending. |
+| 6 | Leaves/Pollen | COMPLETE | particle renderer | Implemented in `@hooksjam/pixi-lab-ambients` as a deterministic seasonal foreground overlay effect with synthetic/weather/time fallback data, preview/fullscreen/foreground factories, live particle/intensity/brightness/breeze/drift-speed/pollen-mix/low-motion/sleep settings, registry/demo gallery export, and model tests. Browser smoke/Pi validation still pending. |
 
 ## Ambient / FX Support Implementation Plan
 
@@ -230,36 +342,6 @@ Status values:
 - NEEDS_REFACTOR
 - PERFORMANCE_ISSUES
 - DEFERRED
-
----
-
-## Manual Demo QA Status
-
-The demo gallery shows a QA marker for demo-capable experiences that have not passed manual QA.
-
-Source of truth:
-- Human-readable status lives in this table.
-- The gallery reads `packages/demo/src/demoQaStatus.ts`; keep it in sync with this table.
-- Mark `PASSED` only after James explicitly gives a thumbs-up for that exact experience. Automated tests and local visual checks are not enough by themselves.
-
-| Experience ID | Display Name | Manual QA | Last Reviewed | Notes |
-|---|---|---|---|---|
-| `ball-pit` | Ball Pit | NEEDS_QA | - | Awaiting manual demo approval. |
-| `harmonic-sand` | Harmonic Sand Plate | NEEDS_QA | - | Awaiting manual demo approval. |
-| `mycelium-prism` | Mycelium Prism | NEEDS_QA | - | Awaiting manual demo approval. |
-| `mycelium-lattice` | Mycelium Lattice | NEEDS_QA | - | Awaiting manual demo approval. |
-| `amoeba-lamp` | Amoeba Lamp | NEEDS_QA | - | Awaiting manual demo approval. |
-| `ant-signal` | Ant Signal Civilization | NEEDS_QA | - | Awaiting manual demo approval. |
-| `crystal-plasma` | Crystal Plasma Storm | NEEDS_QA | - | Awaiting manual demo approval. |
-| `orbital-shrapnel` | Orbital Shrapnel Field | NEEDS_QA | - | Awaiting manual demo approval. |
-| `plasma-branch` | Plasma Branch Terrarium | NEEDS_QA | - | Awaiting manual demo approval. |
-| `time-echo` | Time Echo Particles | NEEDS_QA | - | Awaiting manual demo approval. |
-| `electro-osmotic-amoeba` | Electro-Osmotic Amoeba | NEEDS_QA | - | Awaiting manual demo approval. |
-| `jelly-web` | Jelly Web Resonator | NEEDS_QA | - | Awaiting manual demo approval. |
-| `cellular-ocean` | Cellular Ocean | NEEDS_QA | - | Awaiting manual demo approval. |
-| `cosmic-ink-ocean` | Cosmic Ink Ocean | NEEDS_QA | - | Awaiting manual demo approval. |
-| `turing-skin` | Turing Skin | NEEDS_QA | - | Awaiting manual demo approval. |
-| `fluid-tank` | Fluid Tank | NEEDS_QA | - | Awaiting manual demo approval. |
 
 ---
 
@@ -284,13 +366,13 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 12 | Cosmic Ink Ocean | IN_PROGRESS | vector fields | Model/scene/preview/demo AI implemented with deterministic vector turbulence, bounded ink scalar field, live flow controls, shared field/particle rendering, and vortex/shear gestures; full automated gate pending. |
 | 13 | Turing Skin | IN_PROGRESS | scalar fields | Model/scene/preview/demo AI implemented with deterministic Gray-Scott reaction diffusion, live chemistry controls, shared field rendering, and morphogen paint gestures; full automated gate pending. |
 | 13a | Fluid Tank | IN_PROGRESS | GPU fluid renderer | Scene/preview/demo AI implemented from `fluids.html` using reusable WebGL2 half-float fluid targets, live controls, shared gestures, and style metadata; focused core/simulations typecheck passes; manual visual/WebGL/Pi gate pending. |
-| 14 | Oil-Water Universe | NOT_STARTED | phase separation | material domains |
-| 15 | Prism Pool | NOT_STARTED | fake normals | shader showcase |
-| 16 | Neon River Delta | NOT_STARTED | height field | erosion system |
-| 17 | Alien Vascular Tree | NOT_STARTED | line mesh | branching system |
-| 18 | Living Voronoi Tissue | NOT_STARTED | voronoi field | territory simulation |
-| 19 | Proto-Galaxy Forge | NOT_STARTED | gravity wells | advanced particles |
-| 20 | Chromatic Avalanche Bowl | NOT_STARTED | density buckets | granular fake physics |
+| 14 | Oil-Water Universe | IN_PROGRESS | phase separation | Model/scene/preview/demo AI implemented with deterministic bounded phase separation, live separation/tension/viscosity/stir controls, shared density metaball + scalar edge rendering, and droplet/shear gestures; full automated gate pending. |
+| 15 | Prism Pool | IN_PROGRESS | fake normals | Model/scene/preview/demo AI implemented with deterministic bounded ripple-height fields, fake-normal/caustic projections, live wave/refraction controls, shared field rendering, and ripple/rake gestures; full automated gate pending. |
+| 16 | Neon River Delta | IN_PROGRESS | height field | Model/scene/preview/demo AI implemented with deterministic bounded height-field erosion, live rainfall/erosion/sediment/flow controls, shared field rendering, and levee/channel gestures; full automated gate pending. |
+| 17 | Alien Vascular Tree | IN_PROGRESS | line mesh | Model/scene/preview/demo AI implemented with deterministic bounded vascular branch graph, live branch/nutrient/prune controls, shared ArcLineRenderer + scalar nutrient/pulse fields, and light/nutrient gestures; full automated gate pending. |
+| 18 | Living Voronoi Tissue | IN_PROGRESS | voronoi field | Model/scene/preview/demo AI implemented with deterministic bounded weighted Voronoi territory fields, live migration/membrane/signal/division controls, shared field/particle rendering, and pressure/shear gestures; full automated gate and browser launch QA pass in current environment. |
+| 19 | Proto-Galaxy Forge | IN_PROGRESS | gravity wells | Model/scene/preview/demo AI implemented with deterministic bounded orbital dust, live gravity/spin/fusion controls, shared field/particle rendering, and nova/shear/well gestures; full automated gate passes in current environment. |
+| 20 | Chromatic Avalanche Bowl | IN_PROGRESS | density buckets | Model/scene/preview/demo AI implemented with deterministic bounded granular bowl dynamics, live slope/friction/chroma/pour controls, shared density metaball + scalar field rendering, and pour/rake avalanche gestures; full automated gate and browser launch QA pass in current environment. |
 
 ---
 
@@ -838,6 +920,7 @@ If no active tips remain, `stabilize()` seeds a new colony at a random empty cel
 - [ ] manual visual validation
 - [ ] Pi 5 FPS validation
 - [ ] stable loop with DemoAI for extended session
+- [x] registry QA covers demo/discovery-critical fields in the automated test gate
 
 ---
 
@@ -1203,7 +1286,7 @@ Do NOT:
 - [x] trails are bounded and fade over time
 - [x] styles clearly distinct in style manifests
 - [ ] stable FPS on Pi target
-- [x] full automated gate in current environment
+- [x] full automated gate passes in current environment
 
 ---
 
@@ -2536,7 +2619,1104 @@ Deferred before marking COMPLETE:
 
 ---
 
-# 18. Agent Update Rules
+---
+
+# 18. Oil-Water Universe
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-26
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates deterministic phase-separation behavior on bounded scalar fields
+- exercises the shared `DensityMetaballRenderer` for material domains with a scalar edge overlay
+- proves live settings polling for structural resolution plus material tuning sliders
+
+---
+
+## Dependencies
+
+```txt
+Shared systems:
+- ScalarField
+- SeededRng
+- DensityMetaballRenderer
+- FieldPaletteRenderer
+- SimulationScene live settings and gestures
+```
+
+---
+
+## Core Requirements
+
+- deterministic seeded oil/water phase initialization
+- bounded phase array, density projection, and edge projection
+- live settings polling for resolution, separation rate, boundary tension, viscosity, and stir strength
+- stagnation recovery that injects seeded alternating fluid domains
+
+---
+
+## Required Render Layers
+
+```txt
+density
+field
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+densityMetaball
+paletteMap
+edgeGlow
+bloom
+contourBands
+distortion
+```
+
+---
+
+## Required Styles
+
+### Oil Slick
+Black water and spectral petroleum membranes with sharp rainbow rims.
+
+### Bio Foam
+Milky emulsions split into green microbial islands and pearled foam.
+
+### Cosmic Cells
+Nebula-purple fluids phase into bright cellular continents in a dark basin.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | seed an oil droplet |
+| hold | carve a cool water pocket |
+| drag | stir alternating ribbons |
+| fast swipe | shear fresh membranes through the phase field |
+
+---
+
+## Director Mode Events
+
+- emulsion bloom
+- surface shear
+- phase reset
+
+---
+
+## Stagnation Recovery
+
+If:
+- field variance collapses
+- boundary energy falls below visible thresholds
+- mixing energy drops too low
+
+Then:
+- inject alternating seeded phase domains
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+phase field:
+  32x18 to 160x90 typical, capped by shared resolution setting
+
+rendering:
+  shared DensityMetaballRenderer plus one scalar edge field in enhanced quality
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses shared `DensityMetaballRenderer` for domains and `FieldPaletteRenderer` for enhanced edge glow
+- model updates remain O(field cells) with no per-cell Pixi objects
+- structural resolution changes rebuild the deterministic model; material tuning mutates model options live
+
+Do NOT:
+- add a simulation-specific oil/water shader before reusable compositor support exists
+- create one Pixi object per cell
+- allow unbounded droplet/domain buffers
+
+---
+
+## Validation Checklist
+
+- [x] phase fields initialize deterministically from seed
+- [x] update advances phase state and keeps values bounded
+- [x] tap/drag/hold/swipe gestures alter domain state
+- [x] field budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [ ] full automated gate passes in current environment
+
+---
+
+## Known Risks
+
+- first-playable phase separation is a CPU bounded field model rather than a dedicated GPU Cahn-Hilliard shader
+- enhanced quality adds a scalar edge overlay; visual balance may need manual gallery tuning
+- manual demo visual validation and Pi 5 FPS pass are still required before COMPLETE
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/oil-water-universe/OilWaterUniverseModel.ts`
+- `packages/simulations/src/oil-water-universe/OilWaterUniverseScene.ts`
+- `packages/simulations/src/oil-water-universe/OilWaterUniversePreviewScene.ts`
+- `packages/simulations/src/oil-water-universe/OilWaterUniverseDemoAI.ts`
+- `packages/simulations/src/oil-water-universe/oil-water-universe.config.ts`
+- `packages/simulations/src/oil-water-universe/oil-water-universe.definition.ts`
+- `packages/simulations/src/oil-water-universe/styles/*.ts`
+- `packages/simulations/src/oil-water-universe/__tests__/OilWaterUniverseModel.test.ts`
+
+Implementation notes:
+- Demo AI cycles styles plus every numeric setting so the settings panel and scene live polling are exercised.
+- Preview scene uses a reduced fixed resolution.
+- Registry exports include `oilWaterUniverseDefinition`, scene, preview, and model types.
+
+Deferred before marking COMPLETE:
+- manual demo visual validation and Pi 5 FPS pass
+- optional reusable GPU phase-separation compositor if CPU budgets become too costly
+
+---
+
+# 19. Prism Pool
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-26
+```
+
+---
+
+## Priority
+
+SHOWCASE
+
+Reason:
+- validates fake-normal water rendering without a simulation-specific shader stack
+- provides a caustic/refraction showcase using reusable field renderers
+- exercises live numeric settings across resolution, wave speed, refraction, caustics, and damping
+
+---
+
+## Dependencies
+
+- scalar height fields
+- field palette renderer
+- palette/bloom/distortion/normal-lighting pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded ripple-height field with velocity integration
+- fake-normal and caustic field projections derived from height gradients/curvature
+- tap, drag, hold, and fast-swipe gesture mapping for ripples, troughs, and caustic rakes
+- live settings polling for resolution, waveSpeed, refractionStrength, causticIntensity, and damping
+- stagnation recovery that injects seeded ripples when the surface flattens
+
+---
+
+## Required Render Layers
+
+```txt
+field
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+paletteMap
+edgeGlow
+bloom
+distortion
+normalLighting
+chromaticAberration
+contourBands
+```
+
+---
+
+## Required Styles
+
+### Crystal Caustics
+Clear turquoise water with bright prism caustics and glassy fake-normal highlights.
+
+### Rainbow Tiles
+Spectral tile-pool bands with saturated chromatic caustics.
+
+### Moonlit Glass
+Indigo low-light pool water with silver lunar ripples.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | drop a circular refractive ripple |
+| drag | rake caustic bands through the pool |
+| hold | pull a cool trough into the surface |
+| fast swipe | send a high-energy prism wave across the pool |
+
+---
+
+## Director Mode Events
+
+- caustic bloom
+- prism rake
+- moon pulse
+
+---
+
+## Stagnation Recovery
+
+If:
+- ripple energy collapses
+- height variance becomes too low
+- caustic variance fades out
+
+Then:
+- inject several seeded ripples
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+height/caustic fields:
+  32x18 to 128x72 typical, capped at 512 setting max
+
+rendering:
+  shared low-resolution field textures, no per-cell Pixi objects
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses `FieldPaletteRenderer` for height, caustic, and enhanced fake-normal overlays
+- model updates remain O(field cells)
+- structural resolution changes rebuild the deterministic model; numeric tuning mutates model options live
+
+Do NOT:
+- add a simulation-specific water shader before reusable compositor support exists
+- create one Pixi object per cell
+- allow unbounded ripple buffers
+
+---
+
+## Validation Checklist
+
+- [x] ripple fields initialize deterministically from seed
+- [x] update advances ripple state and keeps values bounded
+- [x] tap/drag/hold/swipe gestures alter caustic/ripple state
+- [x] field budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [ ] full automated gate passes in current environment
+
+---
+
+## Known Risks
+
+- first-playable fake normals are CPU-projected scalar overlays, not a true reusable GPU normal-lighting compositor
+- enhanced mode layers multiple shared field renderers and may need tuning after manual gallery validation
+- manual demo visual validation and Pi 5 FPS pass are still required before COMPLETE
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/prism-pool/PrismPoolModel.ts`
+- `packages/simulations/src/prism-pool/PrismPoolScene.ts`
+- `packages/simulations/src/prism-pool/PrismPoolPreviewScene.ts`
+- `packages/simulations/src/prism-pool/PrismPoolDemoAI.ts`
+- `packages/simulations/src/prism-pool/prism-pool.config.ts`
+- `packages/simulations/src/prism-pool/prism-pool.definition.ts`
+- `packages/simulations/src/prism-pool/styles/*.ts`
+- `packages/simulations/src/prism-pool/__tests__/PrismPoolModel.test.ts`
+
+Implementation notes:
+- Demo AI cycles styles plus every numeric setting so settings UI and scene live polling are exercised.
+- Preview scene uses reduced fixed resolution.
+- Registry exports include `prismPoolDefinition`, scene, preview, and model types.
+
+Deferred before marking COMPLETE:
+- reusable GPU fake-normal/refraction compositor beyond current field overlays
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 20. Neon River Delta
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-26
+```
+
+---
+
+## Priority
+
+SHOWCASE
+
+Reason:
+- validates a reusable height-field erosion model without adding a one-off renderer
+- exercises layered scalar fields for terrain, water, sediment glow, and flow debug overlays
+- proves live settings for resolution, rainfall, erosion, sediment brightness, and flow speed
+
+---
+
+## Dependencies
+
+- scalar height fields
+- field palette renderer
+- palette/bloom/edge/contour pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded terrain/water/sediment arrays seeded through `SeededRng`
+- O(field cells) downhill flow routing with erosion/deposition and sediment transport
+- tap, drag, hold, and fast-swipe gesture mapping for rain pools, distributary carving, levees, and flood cuts
+- live settings polling for resolution, rainfall, erosionRate, sedimentGlow, and flowSpeed
+- stagnation recovery that reseeds rain and carves fresh channels when variance/flow collapses
+
+---
+
+## Required Render Layers
+
+```txt
+field
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+paletteMap
+edgeGlow
+bloom
+contourBands
+distortion
+```
+
+---
+
+## Required Styles
+
+### Electric Estuary
+Cyan river braids cut through violet terrain with hot sediment veins.
+
+### Acid Dawn
+Chartreuse deltas and orange sediment clouds over a dark pre-sunrise basin.
+
+### Blacklight Alluvium
+Deep indigo landforms with ultraviolet water and pale alluvial fans.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | add a local rain pool that seeks a downhill channel |
+| drag | carve a glowing distributary across the terrain |
+| hold | raise a temporary levee that splits the flow |
+| fast swipe | cut a flood channel through the delta fan |
+
+---
+
+## Director Mode Events
+
+- monsoon pulse
+- sediment bloom
+- delta avulsion
+
+---
+
+## Stagnation Recovery
+
+If:
+- downhill flow energy collapses
+- water variance becomes too low
+- sediment variance fades out
+
+Then:
+- seed fresh rain
+- carve several deterministic channels
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+height/water/sediment fields:
+  32x18 to 128x72 typical, capped at 512 setting max
+
+rendering:
+  shared low-resolution field textures, no per-cell Pixi objects
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses `FieldPaletteRenderer` for terrain, water, sediment, and enhanced flow overlays
+- model updates remain bounded and O(field cells)
+- structural resolution changes rebuild the deterministic model; numeric tuning mutates model options live
+
+Do NOT:
+- add simulation-specific erosion/water shaders before reusable compositor support exists
+- create one Pixi object per cell
+- allow unbounded droplet, channel, or sediment buffers
+
+---
+
+## Validation Checklist
+
+- [x] terrain/water/sediment fields initialize deterministically from seed
+- [x] update advances erosion state and keeps values bounded
+- [x] tap/drag/hold/swipe gestures alter delta state
+- [x] field budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] full automated gate passes in current environment
+
+---
+
+## Known Risks
+
+- first-playable flow visualization is a CPU-projected scalar overlay, not a dedicated vector-field glyph/compositor
+- enhanced mode layers several shared field renderers and may need tuning after manual gallery validation
+- manual demo visual validation and Pi 5 FPS pass are still required before COMPLETE
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/neon-river-delta/NeonRiverDeltaModel.ts`
+- `packages/simulations/src/neon-river-delta/NeonRiverDeltaScene.ts`
+- `packages/simulations/src/neon-river-delta/NeonRiverDeltaPreviewScene.ts`
+- `packages/simulations/src/neon-river-delta/NeonRiverDeltaDemoAI.ts`
+- `packages/simulations/src/neon-river-delta/neon-river-delta.config.ts`
+- `packages/simulations/src/neon-river-delta/neon-river-delta.definition.ts`
+- `packages/simulations/src/neon-river-delta/styles/*.ts`
+- `packages/simulations/src/neon-river-delta/__tests__/NeonRiverDeltaModel.test.ts`
+
+Implementation notes:
+- Demo AI cycles styles plus every numeric setting so settings UI and scene live polling are exercised.
+- Preview scene uses reduced fixed resolution.
+- Registry exports include `neonRiverDeltaDefinition`, scene, preview, and model types.
+
+Deferred before marking COMPLETE:
+- reusable vector/flow compositor beyond scalar field overlays
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 21. Living Voronoi Tissue
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-27
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates weighted Voronoi territory simulation without a one-off renderer
+- exercises biological cell division/migration using bounded deterministic model state
+- proves live structural rebuilds for resolution/cell budget plus live setters for tissue dynamics
+
+---
+
+## Dependencies
+
+- scalar fields
+- field palette renderer
+- particle point renderer
+- palette/bloom/edge/contour pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded tissue cells seeded through `SeededRng`
+- weighted Voronoi projection into territory, membrane boundary, and signal scalar fields
+- cell migration, membrane tension, signal strength, energy pulsing, and bounded cell division
+- tap, hold, drag, and fast-swipe gesture mapping for mitosis pressure and tissue shear
+- live settings polling for resolution, cellCount, migrationRate, membraneTension, signalStrength, divisionRate, and debug overlay
+- stagnation recovery that injects deterministic motility and signal variation when motion/variance collapses
+
+---
+
+## Required Render Layers
+
+```txt
+field
+particles
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+paletteMap
+edgeGlow
+bloom
+contourBands
+distortion
+```
+
+---
+
+## Required Styles
+
+### Biolume Tissue
+Dark petri-glass tissue with cyan membranes, violet territory gradients, and warm mitosis pulses.
+
+### Coral Colony
+Soft coral territories divide through amber membranes and teal nutrient halos.
+
+### Microscope Bloom
+High-contrast microscope stain with lime nuclei, indigo membranes, and bright mitotic scars.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | seed a local mitosis pulse that energizes nearby cells |
+| hold | compress a territory pocket and push cells away from pressure |
+| drag | shear membranes into flowing tissue folds |
+| fast swipe | throw a strong shear wave through multiple territories |
+
+---
+
+## Director Mode Events
+
+- mitosis wave
+- membrane spasm
+- nutrient signal
+
+---
+
+## Stagnation Recovery
+
+If:
+- tissue motion energy collapses
+- boundary variance becomes too low
+- signal variance fades out
+
+Then:
+- inject deterministic random motility into several cells
+- raise local cell energy
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+territory/boundary/signal fields:
+  32x18 to 160x90 typical, capped at 512 setting max
+
+cells:
+  12 to 220 setting range, preview capped at 36
+
+rendering:
+  shared low-resolution field textures plus ParticleContainer nuclei, no per-cell mesh objects
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses layered `FieldPaletteRenderer` fields for territory, membranes, and enhanced signal glow
+- nuclei/cell centers render through shared `ParticlePointRenderer`
+- structural resolution/cell-count changes rebuild the model; dynamic numeric settings mutate model options live
+
+Do NOT:
+- add a simulation-specific Voronoi shader until reusable compositor support exists
+- create one Pixi object per territory/cell
+- allow unbounded cell division or field buffers
+
+---
+
+## Validation Checklist
+
+- [x] tissue fields initialize deterministically from seed
+- [x] update advances territory/membrane/signal state and keeps values bounded
+- [x] tap/drag/hold/swipe gestures alter tissue state
+- [x] cell and field budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] full automated gate passes in current environment
+- [x] browser gallery launch QA passes in local demo app
+
+---
+
+## Known Risks
+
+- first-playable Voronoi field is CPU-projected into shared scalar renderers, not a reusable GPU Voronoi compositor
+- enhanced mode layers three field renderers plus nuclei particles and may need visual tuning after Pi/device validation
+- Pi 5 FPS pass is still required before COMPLETE
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/living-voronoi-tissue/LivingVoronoiTissueModel.ts`
+- `packages/simulations/src/living-voronoi-tissue/LivingVoronoiTissueScene.ts`
+- `packages/simulations/src/living-voronoi-tissue/LivingVoronoiTissuePreviewScene.ts`
+- `packages/simulations/src/living-voronoi-tissue/LivingVoronoiTissueDemoAI.ts`
+- `packages/simulations/src/living-voronoi-tissue/living-voronoi-tissue.config.ts`
+- `packages/simulations/src/living-voronoi-tissue/living-voronoi-tissue.definition.ts`
+- `packages/simulations/src/living-voronoi-tissue/styles/*.ts`
+- `packages/simulations/src/living-voronoi-tissue/__tests__/LivingVoronoiTissueModel.test.ts`
+
+Implementation notes:
+- Demo AI cycles styles plus every numeric setting so settings UI and scene live polling are exercised.
+- Preview scene uses reduced fixed resolution and cell budget.
+- Registry exports include `livingVoronoiTissueDefinition`, scene, preview, and model types.
+
+Deferred before marking COMPLETE:
+- reusable GPU Voronoi compositor beyond scalar field overlays
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 22. Proto-Galaxy Forge
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-27
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates gravity-well particle behavior on top of shared scalar and particle renderers
+- provides the galaxy/space simulation slot with live orbital controls
+- exercises structural live rebuilds for particle/well budgets and dynamic setters for force tuning
+
+---
+
+## Dependencies
+
+- scalar field renderer
+- particle point renderer
+- seeded RNG
+- palette/bloom/pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded orbital dust particles influenced by wandering gravity wells
+- low-resolution density, heat, and gravity field projection
+- live settings polling for resolution, particleCount, wellCount, gravityStrength, spinBias, fusionRate, and debug overlay
+- tap/hold/drag/fast-swipe gesture mapping for novas, gravity-well relocation, and filament shearing
+- stagnation recovery that injects deterministic nova energy and boosts well mass when motion/variance collapses
+
+---
+
+## Required Render Layers
+
+```txt
+field
+particles
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+paletteMap
+edgeGlow
+bloom
+contourBands
+distortion
+```
+
+---
+
+## Required Styles
+
+### Stellar Nursery
+Magenta hydrogen clouds, cyan young stars, and warm fusion cores.
+
+### Dark Matter Filament
+Deep violet gravity wells with blue-white dust tracing invisible mass.
+
+### Infrared Forge
+Amber dust lanes and ember-hot star birth regions against a black telescope plate.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | trigger a small nova that heats and scatters nearby star dust |
+| hold | move and strengthen the nearest gravity well |
+| drag | shear dust lanes into spiral filaments |
+| fast swipe | launch a stronger galactic shear wave |
+
+---
+
+## Director Mode Events
+
+- protostar burst
+- gravity well migration
+- filament shear
+
+---
+
+## Stagnation Recovery
+
+If:
+- orbital motion energy collapses
+- density variance becomes too low
+- heat variance fades out
+
+Then:
+- inject a deterministic nova near center
+- raise gravity well mass slightly
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+density/heat/gravity fields:
+  32x18 to 192x108 typical, capped at 512 setting max
+
+particles:
+  80 to 900 setting range, preview capped at 120
+
+gravity wells:
+  2 to 9 setting range, preview capped at 3
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses layered `FieldPaletteRenderer` fields for density, gravity, and enhanced heat glow
+- star dust renders through shared `ParticlePointRenderer`
+- structural resolution/particle/well changes rebuild the model; force, spin, and fusion settings mutate model options live
+
+Do NOT:
+- add a simulation-specific N-body renderer or shader before reusable particle/field infrastructure requires it
+- perform all-pairs particle gravity; particle dynamics remain O(particles × wells)
+- allow unbounded particle or well growth
+
+---
+
+## Validation Checklist
+
+- [x] galaxy fields initialize deterministically from seed
+- [x] update advances density/heat/gravity state and keeps values bounded
+- [x] tap/drag/hold/swipe gestures alter orbital state
+- [x] particle and field budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] full automated gate in current environment
+
+---
+
+## Known Risks
+
+- first-playable gravity rendering is CPU-projected into shared scalar renderers, not a reusable GPU gravitational lensing compositor
+- enhanced mode layers three field renderers plus dust particles and may need visual tuning after gallery validation
+- manual demo visual validation and Pi 5 FPS pass are still required before COMPLETE
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/proto-galaxy-forge/ProtoGalaxyForgeModel.ts`
+- `packages/simulations/src/proto-galaxy-forge/ProtoGalaxyForgeScene.ts`
+- `packages/simulations/src/proto-galaxy-forge/ProtoGalaxyForgePreviewScene.ts`
+- `packages/simulations/src/proto-galaxy-forge/ProtoGalaxyForgeDemoAI.ts`
+- `packages/simulations/src/proto-galaxy-forge/proto-galaxy-forge.config.ts`
+- `packages/simulations/src/proto-galaxy-forge/proto-galaxy-forge.definition.ts`
+- `packages/simulations/src/proto-galaxy-forge/styles/*.ts`
+- `packages/simulations/src/proto-galaxy-forge/__tests__/ProtoGalaxyForgeModel.test.ts`
+
+Implementation notes:
+- Demo AI cycles styles plus every numeric setting so settings UI and scene live polling are exercised.
+- Preview scene uses reduced fixed resolution, particle, and well budgets.
+- Registry exports include `protoGalaxyForgeDefinition`, scene, preview, and model types.
+
+Deferred before marking COMPLETE:
+- reusable GPU lensing/nebula compositor beyond scalar field overlays
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 23. Chromatic Avalanche Bowl
+
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-27
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- validates density-bucket/granular fake physics using shared density and scalar renderers
+- provides a colorful tactile powder simulation with live slope/friction controls
+- exercises structural live rebuilds for resolution and grain budgets
+
+---
+
+## Dependencies
+
+- density metaball renderer
+- scalar field renderer
+- seeded RNG
+- palette/bloom/pass metadata
+
+---
+
+## Core Requirements
+
+Implemented:
+- deterministic bounded chromatic powder grains inside an elliptical avalanche bowl
+- low-resolution density, chroma, and motion field projections
+- live settings polling for resolution, grainCount, slopeAngle, friction, chromaMix, and pourRate
+- tap/hold/drag/fast-swipe gesture mapping for pigment pours, mound building, rake shears, and high-energy avalanches
+- stagnation recovery that injects deterministic pigment bursts and grain velocity when motion/variance collapses
+
+---
+
+## Required Render Layers
+
+```txt
+density
+field
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+densityMetaball
+paletteMap
+edgeGlow
+bloom
+contourBands
+```
+
+---
+
+## Required Styles
+
+### Powder Prism
+Bright festival powders tumble into saturated spectral dunes.
+
+### Mineral Bowl
+Malachite, lapis, and garnet grains settle into polished stone bands.
+
+### Ember Chute
+Charcoal granular slopes glow with molten orange and violet sparks.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | pour a burst of fresh pigment grains into the bowl |
+| hold | build a colored mound and nudge nearby grains outward |
+| drag | rake colored sediment into flowing avalanche bands |
+| fast swipe | launch a high-energy chromatic slide across the bowl |
+
+---
+
+## Director Mode Events
+
+- pigment pour
+- bowl tilt
+- avalanche rake
+
+---
+
+## Stagnation Recovery
+
+If:
+- active grain motion collapses
+- pile variance becomes too low
+- chroma variance fades out
+
+Then:
+- inject deterministic pigment grains near the upper bowl
+- kick existing grains with fresh avalanche velocity
+- reset stagnation timer
+
+---
+
+## Performance Targets
+
+```txt
+density/chroma/motion fields:
+  32x18 to 192x108 typical, capped at 512 setting max
+
+grains:
+  80 to 1400 setting range, preview capped at 140
+```
+
+---
+
+## Agent Implementation Guidance
+
+IMPORTANT:
+- first playable uses `DensityMetaballRenderer` for pile density plus `FieldPaletteRenderer` overlays for chroma and enhanced motion glow
+- structural resolution/grain changes rebuild the model; slope, friction, chroma, and pour settings mutate model options live
+- model remains O(grains + field cells) and avoids pairwise grain collisions
+
+Do NOT:
+- add a simulation-specific granular renderer before reusable particle/density infrastructure needs it
+- perform all-pairs grain physics
+- allow unbounded grain or field growth
+
+---
+
+## Validation Checklist
+
+- [x] granular fields initialize deterministically from seed
+- [x] update advances density/chroma/motion state and keeps values bounded
+- [x] tap/drag/hold/swipe gestures alter avalanche state
+- [x] grain and field budgets remain bounded
+- [x] stagnation detection and recovery covered by model tests
+- [x] styles clearly distinct in style manifests
+- [ ] stable FPS on Pi target
+- [x] full automated gate passes in current environment
+- [x] browser gallery launch QA passes in local demo app
+
+---
+
+## Known Risks
+
+- first-playable granular rendering is CPU-projected into shared density/scalar renderers rather than a reusable GPU sand compositor
+- enhanced mode layers density, chroma, and motion fields and may need Pi/device visual tuning
+- Pi 5 FPS pass is still required before COMPLETE
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/simulations/src/chromatic-avalanche-bowl/ChromaticAvalancheBowlModel.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/ChromaticAvalancheBowlScene.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/ChromaticAvalancheBowlPreviewScene.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/ChromaticAvalancheBowlDemoAI.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/chromatic-avalanche-bowl.config.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/chromatic-avalanche-bowl.definition.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/styles/*.ts`
+- `packages/simulations/src/chromatic-avalanche-bowl/__tests__/ChromaticAvalancheBowlModel.test.ts`
+
+Implementation notes:
+- Demo AI cycles styles plus every numeric setting so settings UI and scene live polling are exercised.
+- Preview scene uses reduced fixed resolution and grain budgets.
+- Registry exports include `chromaticAvalancheBowlDefinition`, scene, preview, and model types.
+
+Deferred before marking COMPLETE:
+- reusable GPU granular/sediment compositor beyond density field overlays
+- manual demo visual validation and Pi 5 FPS pass
+
+---
+
+# 24. Agent Update Rules
 
 When an agent completes work:
 
@@ -2572,7 +3752,7 @@ The agent must:
 
 ---
 
-# 19. Recommended Git Workflow
+# 25. Recommended Git Workflow
 
 Recommended commit structure:
 
@@ -2588,7 +3768,7 @@ Avoid giant multi-simulation commits.
 
 ---
 
-# 20. Final Guidance for Agents
+# 26. Final Guidance for Agents
 
 The project succeeds if:
 - simulations feel alive

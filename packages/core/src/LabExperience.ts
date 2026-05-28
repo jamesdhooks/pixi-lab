@@ -117,6 +117,10 @@ export interface AmbientExperience extends LabExperienceBase {
 export interface EffectExperience extends LabExperienceBase {
   kind: 'effect';
   renderModes: ExperienceRenderMode[];
+  /** Optional data sources used by passive foreground/background effects. */
+  dataBindings?: AmbientDataBinding[];
+  /** Optional passive runtime constraints for ambient-style effects. */
+  behavior?: AmbientBehaviorConfig;
 }
 
 export interface ToyExperience extends LabExperienceBase {
