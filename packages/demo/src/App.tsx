@@ -3,27 +3,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff, Play } from 'lucide-react';
 import { GameLauncher, PreviewTile } from '@hooksjam/pixi-lab-react';
 import { useViewport } from '@hooksjam/pixi-lab-react';
-import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
-import { SIMULATION_REGISTRY } from '@hooksjam/pixi-lab-simulations';
-import { AMBIENT_REGISTRY } from '@hooksjam/pixi-lab-ambients';
+import { fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
 import { hasPassedDemoQa } from './demoQaStatus';
 
-const ALL_EXPERIENCES: readonly LabExperience[] = [...GAME_REGISTRY, ...SIMULATION_REGISTRY, ...AMBIENT_REGISTRY];
+const ALL_EXPERIENCES: readonly LabExperience[] = [fluidTankDefinition];
 const APP_DEMO_INTERVAL_MS = 10_000;
 const APP_DEMO_CROSSFADE_MS = 220;
 const APP_DEMO_PRELOAD_MAX_PIXELS = 147_456;
 
 type DemoStageSlot = 'a' | 'b';
 
-type FilterKind = 'all' | LabExperience['kind'];
+type FilterKind = 'all' | 'overlays' | LabExperience['kind'];
 
 const KIND_LABELS: Record<string, string> = {
   all: 'All',
   game: 'Games',
   simulation: 'Simulations',
-  ambient: 'Ambients',
-  effect: 'Effects',
+  overlays: 'Overlays',
   toy: 'Toys',
 };
 
@@ -49,7 +46,11 @@ const LOGO_PARTICLES: Array<[number, string, string, string, number, number, num
 
 export function App() {
   const { isMobile, isLandscape } = useViewport();
-  const [active, setActive] = useState<LabExperience | null>(null);
+  const [active, setActive] = useState<LabExperience | null>(() =>
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('fluidOnly')
+      ? fluidTankDefinition
+      : null,
+  );
   const [filter, setFilter] = useState<FilterKind>('all');
   const [dark, setDark] = useState(true);
   const [carouselOpen, setCarouselOpen] = useState(false);
@@ -85,16 +86,35 @@ export function App() {
   const availableKinds = useMemo<FilterKind[]>(() => {
     const seen = new Set<LabExperience['kind']>();
     for (const e of ALL_EXPERIENCES) seen.add(e.kind);
-    return ['all', ...Array.from(seen)];
+    const kinds: FilterKind[] = ['all'];
+    let overlaysAdded = false;
+    for (const kind of Array.from(seen)) {
+      if (kind === 'ambient' || kind === 'effect') {
+        if (!overlaysAdded) { kinds.push('overlays'); overlaysAdded = true; }
+      } else {
+        kinds.push(kind);
+      }
+    }
+    return kinds;
   }, []);
 
   const filtered = useMemo(
-    () => (filter === 'all' ? ALL_EXPERIENCES : ALL_EXPERIENCES.filter((e) => e.kind === filter)),
+    () =>
+      filter === 'all'
+        ? ALL_EXPERIENCES
+        : filter === 'overlays'
+          ? ALL_EXPERIENCES.filter((e) => e.kind === 'ambient' || e.kind === 'effect')
+          : ALL_EXPERIENCES.filter((e) => e.kind === filter),
     [filter],
   );
 
   const carouselItems = useMemo(
-    () => (carouselFilter === 'all' ? ALL_EXPERIENCES : ALL_EXPERIENCES.filter((e) => e.kind === carouselFilter)),
+    () =>
+      carouselFilter === 'all'
+        ? ALL_EXPERIENCES
+        : carouselFilter === 'overlays'
+          ? ALL_EXPERIENCES.filter((e) => e.kind === 'ambient' || e.kind === 'effect')
+          : ALL_EXPERIENCES.filter((e) => e.kind === carouselFilter),
     [carouselFilter],
   );
 
@@ -400,10 +420,13 @@ export function App() {
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="absolute inset-0 overflow-hidden"
           >
+            {/* Sample page backdrop for overlay experiences (ambient / effect) */}
+            {(active.kind === 'ambient' || active.kind === 'effect') && <OverlayBackdrop />}
             <ExperienceSurface
               experience={active}
               dockedInset={dockedInset}
               maxPixels={maxPixels}
+              transparent={active.kind === 'ambient' || active.kind === 'effect'}
               onQuit={() => {
                 setActive(null);
                 setCarouselOpen(false);
@@ -791,6 +814,7 @@ interface ExperienceSurfaceProps {
   visible?: boolean;
   interactive?: boolean;
   zIndex?: number;
+  transparent?: boolean;
   onDemoAdvance?: () => void;
   onDemoExit?: () => void;
   onRuntimeReady?: () => void;
@@ -806,6 +830,7 @@ function ExperienceSurface({
   visible = true,
   interactive = true,
   zIndex = 1,
+  transparent = false,
   onDemoAdvance,
   onDemoExit,
   onRuntimeReady,
@@ -835,12 +860,100 @@ function ExperienceSurface({
           definition={experience}
           maxPixels={maxPixels}
           autoDemo={autoDemo}
+          transparent={transparent}
           onDemoAdvance={onDemoAdvance}
           onDemoExit={onDemoExit}
           onRuntimeReady={onRuntimeReady}
           onQuit={onQuit}
         />
       </div>
+    </div>
+  );
+}
+
+/** Simulated content page shown behind transparent overlay experiences. */
+function OverlayBackdrop() {
+  return (
+    <div className="fixed inset-0 overflow-y-auto bg-white text-slate-800 pointer-events-none select-none">
+      {/* Nav */}
+      <nav className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white/90 backdrop-blur-sm px-6 py-3">
+        <div className="flex items-center gap-3">
+          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-cyan-400" />
+          <span className="text-sm font-bold tracking-tight text-slate-900">Acme Dashboard</span>
+        </div>
+        <div className="hidden sm:flex items-center gap-6 text-xs font-medium text-slate-500">
+          <span>Overview</span><span>Analytics</span><span>Reports</span><span>Settings</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-sky-400 to-violet-500" />
+        </div>
+      </nav>
+
+      <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
+        {/* Hero */}
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-slate-700 p-8 text-white">
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">Good morning, James</p>
+          <h1 className="text-3xl font-bold mb-2">Your workspace at a glance</h1>
+          <p className="text-sm text-slate-300 max-w-md">All your projects, insights, and activity in one place. Dive into any area or explore something new.</p>
+          <div className="mt-5 flex gap-3">
+            <div className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold">View projects</div>
+            <div className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white/70">Invite team</div>
+          </div>
+        </div>
+
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: 'Active Projects', value: '12', delta: '+2 this week' },
+            { label: 'Team Members', value: '8', delta: '2 online now' },
+            { label: 'Tasks Due', value: '5', delta: '3 overdue' },
+            { label: 'Uptime', value: '99.9%', delta: 'Last 30 days' },
+          ].map(({ label, value, delta }) => (
+            <div key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">{delta}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Recent activity */}
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-700">Recent Activity</h2>
+            <span className="text-xs text-slate-400">View all</span>
+          </div>
+          {[
+            { icon: '📄', title: 'Q2 Report finalized', time: '2 min ago', badge: 'Docs' },
+            { icon: '🚀', title: 'v2.4.1 deployed to production', time: '18 min ago', badge: 'Deploy' },
+            { icon: '💬', title: 'Sofia commented on Onboarding flow', time: '1 hr ago', badge: 'Design' },
+            { icon: '✅', title: 'Sprint 14 review completed', time: '3 hr ago', badge: 'Agile' },
+          ].map(({ icon, title, time, badge }, i) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3 border-b last:border-0 border-slate-50">
+              <span className="text-lg leading-none">{icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-slate-800 truncate">{title}</p>
+                <p className="text-[10px] text-slate-400">{time}</p>
+              </div>
+              <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">{badge}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Paragraph copy */}
+        <div className="grid sm:grid-cols-2 gap-6 text-sm text-slate-600 leading-relaxed">
+          <p>
+            Seamlessly integrate your workflows with our powerful APIs. Build custom automations that
+            save your team hours every week — from smart notifications to real-time syncing across
+            every tool in your stack.
+          </p>
+          <p>
+            Our analytics engine processes millions of data points so you don&apos;t have to. Get
+            actionable insights, beautiful charts, and automated reports delivered straight to your
+            inbox on any schedule you choose.
+          </p>
+        </div>
+      </main>
     </div>
   );
 }

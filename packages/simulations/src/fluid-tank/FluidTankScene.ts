@@ -1,4 +1,5 @@
 import {
+  Graphics,
   GpuFluidTankRenderer,
   SimulationScene,
   velocityFromScreenDelta,
@@ -32,8 +33,8 @@ interface FluidRipple {
 export const fluidTankStyleManifest: SimStyleManifest = {
   defaultStyleId: 'bounded-cyan',
   capabilities: {
-    renderLayers: ['fluid', 'glow', 'debug'],
-    passes: ['gpuFluid', 'bloom', 'edgeGlow', 'chromaticAberration', 'colorGrade', 'composite'],
+    renderLayers: ['fluid'],
+    passes: ['gpuFluid'],
     qualities: ['basic', 'enhanced'],
   },
   styles: [boundedCyanStyle, nebulaOilStyle, thermalBloomStyle],
@@ -42,9 +43,8 @@ export const fluidTankStyleManifest: SimStyleManifest = {
 export class FluidTankScene extends SimulationScene {
   readonly name = 'FluidTank';
   private renderer: GpuFluidTankRenderer | null = null;
-  private rendererParent: HTMLElement | null = null;
-  private overlayCanvas: HTMLCanvasElement | null = null;
-  private overlayContext: CanvasRenderingContext2D | null = null;
+  private wallLayer: Graphics | null = null;
+  private rippleLayer: Graphics | null = null;
   private options: GpuFluidTankOptions | null = null;
   private previousPointers = new Map<number, PointerTrailPoint>();
   private ripples: FluidRipple[] = [];
@@ -63,6 +63,8 @@ export class FluidTankScene extends SimulationScene {
   private lastPaletteKey = '';
   private lastPaletteStrength = 0;
   private lastEdgeDarkening = 0;
+  private debugStill = false;
+  private debugNoSeedMotion = false;
 
   constructor(private readonly preview = false) {
     super();
@@ -73,26 +75,53 @@ export class FluidTankScene extends SimulationScene {
     const parent = ctx.systems.pixi.canvas.parentElement;
     if (!parent) return;
     parent.style.position = parent.style.position || 'relative';
-    this.rendererParent = parent;
+    ctx.systems.pixi.canvas.style.zIndex = '2';
+    const fluidDebugParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : undefined;
+    this.debugStill = Boolean(fluidDebugParams?.has('fluidStill'));
+    this.debugNoSeedMotion = Boolean(fluidDebugParams?.has('fluidNoSeedMotion'));
     this.options = this.readOptions(ctx.seed);
+    const displayMode = fluidDebugParams?.get('fluidDisplay');
+    if (isFluidDisplayMode(displayMode)) {
+      this.options = { ...this.options, displayMode };
+    }
+    if (fluidDebugParams?.has('fluidMinimal')) {
+      this.options = {
+        ...this.options,
+        cellSize: 1.2,
+        fingerForce: 8,
+        fingerRadius: 0.026,
+        viscosity: 0.22,
+        curl: 6,
+        eddyAssist: 0,
+        dyePersistence: 0.9996,
+        pressureIterations: 24,
+        ambient: false,
+        exposure: 1.06,
+      };
+    }
     this.renderer = new GpuFluidTankRenderer(parent, this.options, ctx.quality);
-    this.createOverlay(parent);
+    this.wallLayer = new Graphics();
+    this.rippleLayer = new Graphics();
+    this.wallLayer.zIndex = 1;
+    this.rippleLayer.zIndex = 2;
+    ctx.systems.pixi.stage.sortableChildren = true;
+    ctx.systems.pixi.stage.addChild(this.wallLayer);
+    ctx.systems.pixi.stage.addChild(this.rippleLayer);
     this.cacheOptions(this.options);
     const style = ctx.systems.settings.get('style') as string | undefined;
     if (style) this.setStyle(style);
     this.renderer.resize(ctx.width, ctx.height, true);
-    this.resizeOverlay(ctx.width, ctx.height);
-    this.renderer.randomizeDye(this.options.seed);
+    this.renderer.randomizeDye(this.options.seed, !(this.debugStill || this.debugNoSeedMotion));
     ctx.systems.debug?.setEnabled(false);
   }
 
   override onExit(): void {
     this.renderer?.destroy();
-    this.overlayCanvas?.remove();
+    this.wallLayer?.destroy();
+    this.rippleLayer?.destroy();
     this.renderer = null;
-    this.rendererParent = null;
-    this.overlayCanvas = null;
-    this.overlayContext = null;
+    this.wallLayer = null;
+    this.rippleLayer = null;
     this.options = null;
     this.previousPointers.clear();
     this.ripples = [];
@@ -100,6 +129,7 @@ export class FluidTankScene extends SimulationScene {
 
   override update(dt: number): void {
     if (!this.renderer || !this.options) return;
+    if (this.debugStill) return;
     this.pollSettings();
     this.applyPointerTrails();
     this.updateRipples(dt);
@@ -146,7 +176,8 @@ export class FluidTankScene extends SimulationScene {
 
   override render(_alpha: number): void {
     this.renderer?.render();
-    this.drawOverlay();
+    this.drawTankFrame();
+    this.drawRipples();
     const debug = this.ctx_.systems.debug;
     if (debug?.isEnabled()) {
       const stats = this.renderer?.stats();
@@ -161,7 +192,7 @@ export class FluidTankScene extends SimulationScene {
 
   override resize(width: number, height: number): void {
     this.renderer?.resize(width, height);
-    this.resizeOverlay(width, height);
+    this.drawTankFrame(width, height);
   }
 
   override reset(): void {
@@ -193,8 +224,6 @@ export class FluidTankScene extends SimulationScene {
   getRenderLayers(): SimRenderLayers {
     return {
       fluid: this.renderer?.canvas,
-      glow: this.renderer?.canvas,
-      debug: this.rendererParent,
     };
   }
 
@@ -369,27 +398,6 @@ export class FluidTankScene extends SimulationScene {
     this.lastEdgeDarkening = options.edgeDarkening;
   }
 
-  private createOverlay(parent: HTMLElement): void {
-    this.overlayCanvas = document.createElement('canvas');
-    this.overlayCanvas.style.position = 'absolute';
-    this.overlayCanvas.style.inset = '0';
-    this.overlayCanvas.style.width = '100%';
-    this.overlayCanvas.style.height = '100%';
-    this.overlayCanvas.style.display = 'block';
-    this.overlayCanvas.style.pointerEvents = 'none';
-    this.overlayCanvas.style.zIndex = '3';
-    parent.appendChild(this.overlayCanvas);
-    this.overlayContext = this.overlayCanvas.getContext('2d');
-  }
-
-  private resizeOverlay(width: number, height: number): void {
-    if (!this.overlayCanvas || !this.overlayContext) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    this.overlayCanvas.width = Math.max(2, Math.floor(width * dpr));
-    this.overlayCanvas.height = Math.max(2, Math.floor(height * dpr));
-    this.overlayContext.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-
   private addRipple(x: number, y: number, radius: number, life: number): void {
     if (this.preview) return;
     this.ripples.push({ x, y, radius, life });
@@ -404,34 +412,35 @@ export class FluidTankScene extends SimulationScene {
     }
   }
 
-  private drawOverlay(): void {
-    if (!this.overlayCanvas || !this.overlayContext) return;
-    const ctx = this.overlayContext;
-    const width = this.ctx_.width;
-    const height = this.ctx_.height;
-    ctx.clearRect(0, 0, width, height);
-
+  private drawTankFrame(width = this.ctx_.width, height = this.ctx_.height): void {
+    if (!this.wallLayer) return;
     const pad = 7;
-    ctx.lineJoin = 'miter';
-    ctx.strokeStyle = 'rgba(255,255,255,0.24)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(pad, pad, width - pad * 2, height - pad * 2);
-    ctx.strokeStyle = 'rgba(188,236,255,0.11)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(pad + 5, pad + 5, width - (pad + 5) * 2, height - (pad + 5) * 2);
-    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(pad - 1, pad - 1, width - (pad - 1) * 2, height - (pad - 1) * 2);
+    this.wallLayer.clear();
+    this.wallLayer
+      .rect(pad, pad, width - pad * 2, height - pad * 2)
+      .stroke({ color: 0xffffff, alpha: 0.24, width: 2 });
+    this.wallLayer
+      .rect(pad + 5, pad + 5, width - (pad + 5) * 2, height - (pad + 5) * 2)
+      .stroke({ color: 0xbcecff, alpha: 0.11, width: 1 });
+    this.wallLayer
+      .rect(pad - 1, pad - 1, width - (pad - 1) * 2, height - (pad - 1) * 2)
+      .stroke({ color: 0x000000, alpha: 0.28, width: 4 });
+  }
 
+  private drawRipples(): void {
+    if (!this.rippleLayer) return;
+    this.rippleLayer.clear();
     for (const ripple of this.ripples) {
-      ctx.beginPath();
-      ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(255,255,255,${Math.max(0, ripple.life * 0.28)})`;
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      this.rippleLayer
+        .circle(ripple.x, ripple.y, ripple.radius)
+        .stroke({ color: 0xffffff, alpha: Math.max(0, ripple.life * 0.28), width: 2 });
     }
   }
 
+}
+
+function isFluidDisplayMode(value: string | null | undefined): value is NonNullable<GpuFluidTankOptions['displayMode']> {
+  return value === 'dye' || value === 'velocity' || value === 'curl' || value === 'divergence' || value === 'pressure';
 }
 
 function numberSetting(value: unknown, fallback: unknown): number {

@@ -16,6 +16,7 @@ export interface GpuFluidTankOptions {
   edgeDarkening: number;
   ambient: boolean;
   seed: number;
+  displayMode?: 'dye' | 'velocity' | 'curl' | 'divergence' | 'pressure';
 }
 
 export interface FluidSplat {
@@ -60,6 +61,7 @@ interface FluidDoubleTarget {
 
 const BASE_SIM_RESOLUTION = 220;
 const BASE_DYE_RESOLUTION = 950;
+const VELOCITY_DISSIPATION = 0.986;
 const MAX_VELOCITY_CELLS = 8.5;
 
 const BASE_VERTEX_SHADER = `#version 300 es
@@ -83,56 +85,70 @@ const INIT_DYE_SHADER = `#version 300 es
 precision highp float;
 in vec2 vUv;
 out vec4 outColor;
+
 uniform vec2 resolution;
 uniform float seed;
 uniform float cellSize;
+
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
   p += dot(p, p + 45.32);
   return fract(p.x * p.y);
 }
+
 float noise(vec2 p) {
   vec2 i = floor(p);
   vec2 f = fract(p);
   f = f * f * (3.0 - 2.0 * f);
+
   float a = hash(i + vec2(0.0, 0.0));
   float b = hash(i + vec2(1.0, 0.0));
   float c = hash(i + vec2(0.0, 1.0));
   float d = hash(i + vec2(1.0, 1.0));
+
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
+
 float fbm(vec2 p) {
   float value = 0.0;
   float amplitude = 0.5;
+
   for (int i = 0; i < 5; i++) {
     value += amplitude * noise(p);
     p = p * 2.03 + vec2(17.17, 31.71);
     amplitude *= 0.52;
   }
+
   return value;
 }
+
 vec3 hsv2rgb(vec3 c) {
   vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
   vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
   return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
+
 void main() {
   float aspect = resolution.x / resolution.y;
   float scale = 1.0 / max(cellSize, 0.35);
   vec2 p = vUv * vec2(aspect, 1.0);
   vec2 s1 = vec2(seed * 1.37, seed * 2.11);
   vec2 s2 = vec2(seed * 3.19, seed * 0.73);
-  float large = fbm(p * 2.1 * scale + s1);
-  float medium = fbm(p * 5.6 * scale + s2);
-  float fine = fbm(p * 12.0 * scale - s1 * 0.42);
-  float ribbons = 0.5 + 0.5 * sin((p.x * 1.4 * scale - p.y * 0.8 * scale + large * 2.8 + seed * 0.07) * 6.2831853);
-  float hue = fract(large * 0.76 + medium * 0.31 + ribbons * 0.22 + seed * 0.113);
-  float saturation = 0.72 + 0.26 * medium;
-  float value = 0.96 + 0.40 * fine + 0.16 * ribbons;
+
+  float large = fbm(p * 1.65 * scale + s1);
+  float medium = fbm(p * 3.2 * scale + s2);
+  float ribbons = 0.5 + 0.5 * sin((p.x * 1.1 * scale - p.y * 0.62 * scale + large * 2.0 + seed * 0.07) * 6.2831853);
+
+  float hue = fract(large * 0.62 + medium * 0.21 + ribbons * 0.14 + seed * 0.113);
+  float saturation = 0.46 + 0.18 * medium;
+  float value = 0.88 + 0.12 * medium + 0.08 * ribbons;
+
   vec3 color = hsv2rgb(vec3(hue, saturation, value));
-  color *= 1.04 + 0.20 * ribbons;
+  color *= 0.96 + 0.08 * ribbons;
+
   outColor = vec4(color, 1.0);
-}`;
+}
+      `;
 
 const SPLAT_SHADER = `#version 300 es
 precision highp float;
@@ -301,45 +317,44 @@ precision highp float;
 precision highp sampler2D;
 in vec2 vUv;
 out vec4 outColor;
+
 uniform sampler2D uTexture;
 uniform vec2 texelSize;
 uniform vec2 resolution;
 uniform float exposure;
-uniform vec3 palette0;
-uniform vec3 palette1;
-uniform vec3 palette2;
-uniform float paletteStrength;
-uniform float edgeDarkening;
 uniform float time;
+
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
 }
-vec3 samplePalette(float value) {
-  float t = clamp(value, 0.0, 1.0) * 2.0;
-  return t < 1.0 ? mix(palette0, palette1, t) : mix(palette1, palette2, t - 1.0);
-}
+
 void main() {
-  vec3 source = texture(uTexture, vUv).rgb;
-  float chroma = max(source.r, max(source.g, source.b)) - min(source.r, min(source.g, source.b));
-  float paletteT = fract(source.r * 0.37 + source.g * 0.53 + source.b * 0.71);
-  vec3 paletteColor = samplePalette(paletteT);
-  vec3 c = mix(source, paletteColor * (0.72 + max(source.r, max(source.g, source.b)) * 0.48), paletteStrength);
-  c += source * chroma * (1.0 - paletteStrength) * 0.35;
+  vec3 c = texture(uTexture, vUv).rgb;
+
   vec3 glow = vec3(0.0);
   glow += texture(uTexture, vUv + vec2( 2.0,  0.0) * texelSize).rgb;
   glow += texture(uTexture, vUv + vec2(-2.0,  0.0) * texelSize).rgb;
   glow += texture(uTexture, vUv + vec2( 0.0,  2.0) * texelSize).rgb;
   glow += texture(uTexture, vUv + vec2( 0.0, -2.0) * texelSize).rgb;
-  c += glow * 0.075;
+  glow *= 0.075;
+
+  c += glow;
   c = 1.0 - exp(-c * exposure);
   c = pow(c, vec3(0.9));
+
   float edge = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
-  c *= mix(1.0, 0.78 + 0.22 * smoothstep(0.0, 0.035, edge), edgeDarkening);
+  float wallShadow = smoothstep(0.0, 0.035, edge);
+  c *= 0.78 + 0.22 * wallShadow;
+
   float vignette = smoothstep(0.92, 0.20, distance(vUv, vec2(0.5)));
-  c *= mix(1.0, 0.82 + 0.18 * vignette, edgeDarkening);
-  c += (hash(vUv * resolution + time) - 0.5) * 0.012;
+  c *= 0.82 + 0.18 * vignette;
+
+  float grain = hash(vUv * resolution + time) - 0.5;
+  c += grain * 0.012;
+
   outColor = vec4(max(c, 0.0), 1.0);
-}`;
+}
+      `;
 
 export class GpuFluidTankRenderer {
   readonly canvas: HTMLCanvasElement;
@@ -377,7 +392,7 @@ export class GpuFluidTankRenderer {
     this.canvas.style.display = 'block';
     this.canvas.style.pointerEvents = 'none';
     this.canvas.style.background = '#020206';
-    this.canvas.style.zIndex = '2';
+    this.canvas.style.zIndex = '1';
     parent.appendChild(this.canvas);
 
     this.gl = this.canvas.getContext('webgl2', {
@@ -450,14 +465,14 @@ export class GpuFluidTankRenderer {
     this.randomizeDye(this.options.seed);
   }
 
-  randomizeDye(seed = this.options.seed + 1): void {
+  randomizeDye(seed = this.options.seed + 1, seedMotion = true): void {
     if (!this.supported || !this.dye) return;
     this.options.seed = seed;
     this.rng = new SeededRng(seed);
     this.shaderSeed = this.rng.next() * 1000;
     this.settleVelocity();
     this.initDyeField();
-    this.seedRestingMotion();
+    if (seedMotion) this.seedRestingMotion();
     this.splatCount = 0;
   }
 
@@ -515,20 +530,32 @@ export class GpuFluidTankRenderer {
 
   render(): void {
     if (!this.supported || !this.gl || !this.dye) return;
+    const source = this.getDisplayTarget();
+    if (!source) return;
     const program = this.requireProgram('display');
     this.bind(program);
-    this.gl.uniform1i(program.uniforms.uTexture, this.dye.read.attach(0));
-    this.gl.uniform2f(program.uniforms.texelSize, 1 / this.dye.width, 1 / this.dye.height);
+    this.gl.uniform1i(program.uniforms.uTexture, source.attach(0));
+    this.gl.uniform2f(program.uniforms.texelSize, 1 / source.width, 1 / source.height);
     this.gl.uniform2f(program.uniforms.resolution, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
     this.gl.uniform1f(program.uniforms.exposure, this.options.exposure);
-    const palette = this.resolvePalette();
-    this.gl.uniform3f(program.uniforms.palette0, palette[0].r, palette[0].g, palette[0].b);
-    this.gl.uniform3f(program.uniforms.palette1, palette[1].r, palette[1].g, palette[1].b);
-    this.gl.uniform3f(program.uniforms.palette2, palette[2].r, palette[2].g, palette[2].b);
-    this.gl.uniform1f(program.uniforms.paletteStrength, this.options.paletteStrength);
-    this.gl.uniform1f(program.uniforms.edgeDarkening, this.options.edgeDarkening);
     this.gl.uniform1f(program.uniforms.time, this.elapsed);
     this.blit(null);
+  }
+
+  private getDisplayTarget(): FluidTarget | null {
+    switch (this.options.displayMode ?? 'dye') {
+      case 'velocity':
+        return this.velocity?.read ?? null;
+      case 'curl':
+        return this.curlTarget ?? null;
+      case 'divergence':
+        return this.divergence ?? null;
+      case 'pressure':
+        return this.pressure?.read ?? null;
+      case 'dye':
+      default:
+        return this.dye?.read ?? null;
+    }
   }
 
   stats(): GpuFluidTankStats {
@@ -663,7 +690,7 @@ export class GpuFluidTankRenderer {
     this.gl.uniform1i(program.uniforms.uVelocity, this.velocity.read.attach(0));
     this.gl.uniform1i(program.uniforms.uSource, this.velocity.read.attach(1));
     this.gl.uniform1f(program.uniforms.dt, dt);
-    this.gl.uniform1f(program.uniforms.dissipation, 0.996 - this.options.viscosity * 0.052);
+    this.gl.uniform1f(program.uniforms.dissipation, VELOCITY_DISSIPATION);
     this.blit(this.velocity.write);
     this.velocity.swap();
     this.enforceVelocityBoundary();
@@ -707,9 +734,9 @@ export class GpuFluidTankRenderer {
       this.splat({
         x: this.rng.next(),
         y: this.rng.next(),
-        dx: Math.cos(angle) * randomBetween(this.rng, 0.35, 0.75),
-        dy: Math.sin(angle) * randomBetween(this.rng, 0.35, 0.75),
-        radiusScale: randomBetween(this.rng, 1.4, 2.4),
+        dx: Math.cos(angle) * randomBetween(this.rng, 0.08, 0.18),
+        dy: Math.sin(angle) * randomBetween(this.rng, 0.08, 0.18),
+        radiusScale: randomBetween(this.rng, 2.4, 4.0),
       });
     }
     this.splatCount = 0;
@@ -882,14 +909,6 @@ export class GpuFluidTankRenderer {
     return program;
   }
 
-  private resolvePalette(): [{ r: number; g: number; b: number }, { r: number; g: number; b: number }, { r: number; g: number; b: number }] {
-    const colors = this.options.palette.length > 0 ? this.options.palette : [0x75ffe6, 0x9dfff4, 0xbcecff];
-    return [
-      toLinearRgb(colors[0] ?? colors[colors.length - 1] ?? 0xffffff),
-      toLinearRgb(colors[Math.floor((colors.length - 1) / 2)] ?? colors[0] ?? 0xffffff),
-      toLinearRgb(colors[colors.length - 1] ?? colors[0] ?? 0xffffff),
-    ];
-  }
 
   private getResolution(baseResolution: number): { width: number; height: number } {
     const aspect = this.height > 0 ? Math.max(this.width / this.height, this.height / this.width) : 1;
@@ -928,12 +947,4 @@ function clamp01(value: number): number {
 
 function randomBetween(rng: SeededRng, min: number, max: number): number {
   return min + rng.next() * (max - min);
-}
-
-function toLinearRgb(color: number): { r: number; g: number; b: number } {
-  return {
-    r: ((color >> 16) & 0xff) / 255,
-    g: ((color >> 8) & 0xff) / 255,
-    b: (color & 0xff) / 255,
-  };
 }
