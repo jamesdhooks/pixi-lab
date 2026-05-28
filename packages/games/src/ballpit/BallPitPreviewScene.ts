@@ -199,7 +199,6 @@ export class BallPitAutoScene extends Scene {
       entry.sprite.x = pos.x * 100;
       entry.sprite.y = pos.y * 100;
     }
-    this.ctx_.systems.particles.update(1 / 30);
   }
 
   private spawnBall(x: number, y: number, minR: number, maxR: number) {
@@ -232,4 +231,3 @@ export class BallPitAutoScene extends Scene {
 
 /** @deprecated Use BallPitAutoScene instead. */
 export { BallPitAutoScene as BallPitPreviewScene };
-

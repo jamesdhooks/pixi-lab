@@ -26,6 +26,15 @@ All types that cross package boundaries are defined here.
 6. **`GameDefinition` fields are stable API** — changing them is a breaking change requiring a version bump
 7. **Renderer families live in core** — Pixi-specific simulation renderers belong in `packages/core/src/render` and must be exported from `src/index.ts`. Simulation packages compose these renderer APIs; they must not implement their own Pixi render pipelines.
 
+## Idle Rendering Policy
+
+- Plain `Scene` subclasses are idle-by-default. `GameApp` already renders when there are active pointers, classic particles, burst emitters, awake dynamic/kinematic physics bodies, debug overlays, or runtime invalidations such as resize/style/quality/reset.
+- `Scene.shouldRender()` is only for custom visual work the engine cannot infer, such as a hand-drawn shockwave ring or a dirty mesh/grid that changed without physics.
+- Do not add unconditional per-frame `pixi.render()`, buffer uploads, field projection, DOM telemetry, or physics stepping for blank/settled scenes.
+- Do not auto-enable game AI during normal play. `aiAutoplay` is a capability flag, not an instruction to keep the scene hot; hidden AI pointers force updates/renders.
+- AI drag intents must carry one stable negative `id` from `drag_start` through `drag_move` and `drag_end`, otherwise input pointers leak and the runtime never becomes idle.
+- `SimulationScene` remains continuous by default for compatibility, but new simulations should expose dirty/active state and opt out of continuous rendering whenever their visual state can become unchanged.
+
 ## Simulation Renderer Families
 
 - `FieldPaletteRenderer` — scalar/wave/heat field visualization.

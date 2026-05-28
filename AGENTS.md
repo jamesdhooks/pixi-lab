@@ -30,11 +30,17 @@
 5. `GameLauncher` in react is app-agnostic — no routing, no fetch calls
 6. Each game is a self-contained folder under `packages/games/src/<game-name>/`
 7. Simulation rendering must use the appropriate core renderer family, not the lowest-common-denominator field painter. Use `FieldPaletteRenderer` for true scalar/wave fields, `DensityMetaballRenderer` for blobs, `TrailFeedbackRenderer` for persistent trails, `MeshLatticeRenderer` for triangular/crystal/fungal grids, `ArcLineRenderer` for plasma/discharge/streaks, and `ParticlePointRenderer` for agents/debris.
-8. Conventional Commits: `type(scope): subject` — scopes: `core` `react` `games` `sims` `demo` `ci` `deps` `config`
+8. Rendering is idle-by-default. Plain `Scene` subclasses must not force continuous rendering or per-frame simulation when there are no active pointers, particles, awake physics bodies, or custom visual animations. Override `shouldRender()` only for visual work the engine cannot infer, and prefer dirty/active flags over unconditional buffer uploads.
+9. `aiAutoplay` means the game supports AI; it must not run in normal play unless explicitly enabled by the host/runtime. AI drags must use stable negative pointer ids and must always release them.
+10. Conventional Commits: `type(scope): subject` — scopes: `core` `react` `games` `sims` `demo` `ci` `deps` `config`
 
 ## Adding a New Experience
 
 Read `.github/skills/add-experience/SKILL.md` first. It routes to the game or simulation scaffold.
+
+## Manual Demo QA
+
+Demo-capable experiences are marked as needing QA in the gallery until James explicitly approves them. When that happens, use `.github/skills/qa-experience/SKILL.md` and update both `pixijs_simulation_tracking_system_v1.md` and `packages/demo/src/demoQaStatus.ts`.
 
 ## Common Commands
 

@@ -12,7 +12,7 @@ const MAX_CATCH_UP_STEPS = 5; // prevent spiral-of-death
 
 export type TickCallback = (dt: number, physicsSteps: number) => void;
 export type FixedStepCallback = (dt: number) => void;
-export type RenderCallback = (alpha: number) => void;
+export type RenderCallback = (alpha: number) => boolean;
 
 export class Ticker {
   private rafId = 0;
@@ -28,8 +28,10 @@ export class Ticker {
 
   // FPS sampling
   private frameCount = 0;
+  private renderFrameCount = 0;
   private fpsWindow = 0;
   fps = 0;
+  renderFps = 0;
 
   constructor(opts: {
     onFixedUpdate: FixedStepCallback;
@@ -93,14 +95,18 @@ export class Ticker {
 
     // alpha is how far we are between the last and next physics step
     const alpha = this.accumulator / PHYSICS_DT;
-    this.onRender(alpha);
+    if (this.onRender(alpha)) {
+      this.renderFrameCount++;
+    }
 
     // FPS sampling (update every second)
     this.frameCount++;
     this.fpsWindow += elapsed;
     if (this.fpsWindow >= 1) {
       this.fps = Math.round(this.frameCount / this.fpsWindow);
+      this.renderFps = Math.round(this.renderFrameCount / this.fpsWindow);
       this.frameCount = 0;
+      this.renderFrameCount = 0;
       this.fpsWindow = 0;
     }
   };

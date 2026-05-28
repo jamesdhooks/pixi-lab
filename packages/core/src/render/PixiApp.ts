@@ -39,8 +39,8 @@ export class PixiApp {
   private _maxPixels: number | undefined;
 
   private constructor(opts: PixiAppOptions) {
-    this._width = opts.width;
-    this._height = opts.height;
+    this._width = PixiApp.normalizeSize(opts.width);
+    this._height = PixiApp.normalizeSize(opts.height);
     this._maxDpr = opts.maxDpr ?? 2;
     this._maxPixels = opts.maxPixels;
     this.app = new Application();
@@ -53,8 +53,8 @@ export class PixiApp {
     // (in GameApp) handles future resizes. resizeTo was causing a feedback loop
     // where Pixi's internal observer could measure the container at an invalid
     // time (e.g. during layout) and produce absurd canvas dimensions (2^25+1).
-    const w = Math.max(opts.width, 1);
-    const h = Math.max(opts.height, 1);
+    const w = PixiApp.normalizeSize(opts.width);
+    const h = PixiApp.normalizeSize(opts.height);
     const resolution = instance.computeResolution(w, h);
     await instance.app.init({
       width: w,
@@ -67,6 +67,11 @@ export class PixiApp {
       autoStart: false,
       preference: opts.preference ?? 'webgl',
     });
+    instance.app.canvas.style.display = 'block';
+    instance.app.canvas.style.position = 'absolute';
+    instance.app.canvas.style.inset = '0';
+    instance.app.canvas.style.width = '100%';
+    instance.app.canvas.style.height = '100%';
     opts.container.appendChild(instance.app.canvas);
     return instance;
   }
@@ -87,15 +92,25 @@ export class PixiApp {
     this.app.render();
   }
 
+  setImageRendering(mode: 'auto' | 'pixelated') {
+    this.app.canvas.style.imageRendering = mode;
+  }
+
   setMaxPixels(maxPixels: number | undefined) {
     this._maxPixels = maxPixels;
     this.applyRenderSize(this._width, this._height);
   }
 
   resize(width: number, height: number) {
-    this._width = width;
-    this._height = height;
-    this.applyRenderSize(width, height);
+    const w = PixiApp.normalizeSize(width);
+    const h = PixiApp.normalizeSize(height);
+    const nextResolution = this.computeResolution(w, h);
+    if (this._width === w && this._height === h && this.app.renderer.resolution === nextResolution) {
+      return;
+    }
+    this._width = w;
+    this._height = h;
+    this.applyRenderSize(w, h);
   }
 
   get width() {
@@ -126,8 +141,8 @@ export class PixiApp {
   }
 
   private applyRenderSize(width: number, height: number): void {
-    const w = Math.max(width, 1);
-    const h = Math.max(height, 1);
+    const w = PixiApp.normalizeSize(width);
+    const h = PixiApp.normalizeSize(height);
     const newResolution = this.computeResolution(w, h);
     if (this.app.renderer.resolution !== newResolution) {
       this.app.renderer.resolution = newResolution;
@@ -146,5 +161,9 @@ export class PixiApp {
       0.25,
       Math.min(window.devicePixelRatio, this._maxDpr, pixelScaleCap),
     );
+  }
+
+  private static normalizeSize(size: number): number {
+    return Math.max(1, Math.round(size));
   }
 }

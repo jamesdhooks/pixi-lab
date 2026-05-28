@@ -123,6 +123,11 @@ export type IntentKind = 'tap' | 'drag_start' | 'drag_move' | 'drag_end' | 'hold
 
 export interface Intent {
   kind: IntentKind;
+  /**
+   * Stable pointer id for multi-frame AI gestures. Omit for one-shot intents
+   * like tap; drag_start/drag_move/drag_end should share the same id.
+   */
+  id?: number;
   x: number;
   y: number;
   /** Optional second point for drag operations */
@@ -148,6 +153,7 @@ export type RenderPassId =
   | 'primitive'
   | 'paletteMap'
   | 'densityMetaball'
+  | 'gpuFluid'
   | 'edgeGlow'
   | 'trailFeedback'
   | 'fieldVisualize'
@@ -202,6 +208,7 @@ export interface SimRenderLayers {
   primitive?: unknown;
   particles?: unknown;
   density?: unknown;
+  fluid?: unknown;
   trails?: unknown;
   field?: unknown;
   mask?: unknown;

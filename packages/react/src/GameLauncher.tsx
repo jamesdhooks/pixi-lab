@@ -6,7 +6,7 @@
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { EyeOff, HelpCircle, Play, Settings as SettingsIcon, X } from 'lucide-react';
+import { Eye, EyeOff, HelpCircle, Play, Settings as SettingsIcon, X } from 'lucide-react';
 import { GameRuntime } from './GameRuntime.js';
 import { IntroCard } from './ui/IntroCard.js';
 import { GameOverModal } from './ui/GameOverModal.js';
@@ -27,6 +27,26 @@ import type { IntroHint } from './ui/IntroCard.js';
 
 type Shell = 'playing' | 'gameover';
 
+const RUNTIME_PERF_CSS = `
+.pixi-lab-runtime-shell [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.pixi-lab-runtime-shell [class*="shadow"] {
+  box-shadow: none !important;
+}
+
+.pixi-lab-runtime-shell [class*="drop-shadow"] {
+  filter: none !important;
+}
+
+.pixi-lab-runtime-shell [class*="transition"] {
+  transition-property: none !important;
+  transition-duration: 0ms !important;
+}
+`;
+
 export interface GameLauncherProps {
   definition: LabExperience;
   userId?: string;
@@ -38,6 +58,14 @@ export interface GameLauncherProps {
   onQuit?: () => void;
   /** Cap rendered pixel count — see GameAppOptions.maxPixels */
   maxPixels?: number;
+  /** Start this experience in unattended demo mode as soon as the runtime is ready. */
+  autoDemo?: boolean;
+  /** Called when the active demo surface is clicked; defaults to shuffling the current scene. */
+  onDemoAdvance?: () => void;
+  /** Called when an unattended demo is manually exited from the launcher overlay. */
+  onDemoExit?: () => void;
+  /** Called after the Pixi runtime is ready and the launcher's initial mode is applied. */
+  onRuntimeReady?: () => void;
 }
 
 export function GameLauncher(props: GameLauncherProps) {
@@ -55,19 +83,24 @@ function GameLauncherInner({
   onSubmitScore,
   onQuit,
   maxPixels,
+  autoDemo = false,
+  onDemoAdvance,
+  onDemoExit,
+  onRuntimeReady,
 }: GameLauncherProps) {
   // ViewportProvider is mounted by GameLauncher wrapper; child components read context directly.
   const { isMobile, isLandscape } = useViewportContext();
   const mobilePortrait = isMobile && !isLandscape;
   const [shell, setShell] = useState<Shell>('playing');
-  const [infoCardVisible, setInfoCardVisible] = useState(true);
+  const [infoCardVisible, setInfoCardVisible] = useState(!autoDemo);
   const [infoAutoDismiss, setInfoAutoDismiss] = useState(true);
   const [playKey, setPlayKey] = useState(0);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState<number | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [uiHidden, setUiHidden] = useState(false);
-  const [isDemo, setIsDemo] = useState(false);
+  const [uiHidden, setUiHidden] = useState(autoDemo);
+  const [isDemo, setIsDemo] = useState(autoDemo);
+  const [screensaverActive, setScreensaverActive] = useState(false);
   const [styleId, setStyleId] = useState(definition.styleManifest?.defaultStyleId ?? '');
   const [quality, setQuality] = useState<RenderQuality>(() => {
     try { return (localStorage.getItem('pixi-lab:quality') as RenderQuality) ?? 'basic'; } catch { return 'basic'; }
@@ -93,15 +126,8 @@ function GameLauncherInner({
   // Demo mode: X button only appears on interaction, fades out after 3 s of inactivity.
   const [demoHintVisible, setDemoHintVisible] = useState(false);
   const demoHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Restore UI on any pointer interaction while hidden.
-  // Restore UI on any pointer interaction while hidden — only in non-demo mode.
-  useEffect(() => {
-    if (!uiHidden || isDemo) return;
-    const restore = () => setUiHidden(false);
-    window.addEventListener('pointerdown', restore, { once: true });
-    return () => window.removeEventListener('pointerdown', restore);
-  }, [uiHidden, isDemo]);
+  const [hiddenUiHintVisible, setHiddenUiHintVisible] = useState(false);
+  const hiddenUiHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Propagate UI visibility to the simulation canvas layer (hides emitter markers).
   useEffect(() => {
@@ -122,6 +148,12 @@ function GameLauncherInner({
         break;
       case 'game_over':
         setShell('gameover');
+        break;
+      case 'screensaver_enter':
+        setScreensaverActive(true);
+        break;
+      case 'screensaver_exit':
+        setScreensaverActive(false);
         break;
       case 'quality_change':
         // Governor-triggered fallback — track actual rendered quality separately.
@@ -196,11 +228,65 @@ function GameLauncherInner({
     [],
   );
 
+  const enterDemoMode = useCallback((app: GameApp | null = appRef.current) => {
+    if (!app || !definition.capabilities.demo) return;
+    setShell('playing');
+    setSettingsOpen(false);
+    setInfoCardVisible(false);
+    setIsDemo(true);
+    setUiHidden(true);
+    app.setUIHidden(true);
+    app.setInteractionMode('demo');
+    app.setMode('demo');
+  }, [definition.capabilities.demo]);
+
+  const exitDemoMode = useCallback(() => {
+    if (onDemoExit) {
+      onDemoExit();
+      return;
+    }
+    setIsDemo(false);
+    setUiHidden(false);
+    appRef.current?.setUIHidden(false);
+    appRef.current?.setInteractionMode(modeId);
+    appRef.current?.setMode('play');
+  }, [modeId, onDemoExit]);
+
+  useEffect(() => {
+    if (!autoDemo || !appInstance) return;
+    enterDemoMode(appInstance);
+  }, [autoDemo, appInstance, enterDemoMode]);
+
+  useEffect(() => {
+    if (!autoDemo) return;
+    setShell('playing');
+    setSettingsOpen(false);
+    setInfoCardVisible(false);
+    setIsDemo(true);
+    setUiHidden(true);
+  }, [autoDemo]);
+
   const showDemoHint = useCallback(() => {
     setDemoHintVisible(true);
     if (demoHintTimerRef.current !== null) clearTimeout(demoHintTimerRef.current);
     demoHintTimerRef.current = setTimeout(() => setDemoHintVisible(false), 3000);
   }, []);
+
+  const advanceDemo = useCallback(() => {
+    showDemoHint();
+    if (onDemoAdvance) {
+      onDemoAdvance();
+      return;
+    }
+    appRef.current?.demoShuffle();
+  }, [onDemoAdvance, showDemoHint]);
+
+  const showHiddenUiHint = useCallback(() => {
+    if (!uiHidden || isDemo) return;
+    setHiddenUiHintVisible(true);
+    if (hiddenUiHintTimerRef.current !== null) clearTimeout(hiddenUiHintTimerRef.current);
+    hiddenUiHintTimerRef.current = setTimeout(() => setHiddenUiHintVisible(false), 3000);
+  }, [uiHidden, isDemo]);
 
   // Clean up timer and hide button when demo mode exits.
   useEffect(() => {
@@ -211,6 +297,46 @@ function GameLauncherInner({
     }
     setDemoHintVisible(false);
   }, [isDemo]);
+
+  useEffect(() => {
+    if (!uiHidden || isDemo) {
+      if (hiddenUiHintTimerRef.current !== null) {
+        clearTimeout(hiddenUiHintTimerRef.current);
+        hiddenUiHintTimerRef.current = null;
+      }
+      setHiddenUiHintVisible(false);
+      return;
+    }
+
+    const reveal = () => showHiddenUiHint();
+    window.addEventListener('pointerdown', reveal, { passive: true });
+    window.addEventListener('pointermove', reveal, { passive: true });
+    window.addEventListener('keydown', reveal);
+
+    return () => {
+      window.removeEventListener('pointerdown', reveal);
+      window.removeEventListener('pointermove', reveal);
+      window.removeEventListener('keydown', reveal);
+    };
+  }, [uiHidden, isDemo, showHiddenUiHint]);
+
+  useEffect(() => {
+    if (!screensaverActive) return;
+
+    const exitScreensaver = () => {
+      appRef.current?.exitScreensaver();
+    };
+
+    window.addEventListener('pointerdown', exitScreensaver, { passive: true });
+    window.addEventListener('pointermove', exitScreensaver, { passive: true });
+    window.addEventListener('keydown', exitScreensaver);
+
+    return () => {
+      window.removeEventListener('pointerdown', exitScreensaver);
+      window.removeEventListener('pointermove', exitScreensaver);
+      window.removeEventListener('keydown', exitScreensaver);
+    };
+  }, [screensaverActive]);
 
   const hasModes = (definition.modes?.length ?? 0) > 1;
   const hasQualityModes = (definition.capabilities.qualityModes?.length ?? 0) > 0;
@@ -267,12 +393,13 @@ function GameLauncherInner({
   }
 
   return (
-    <div className="fixed top-0 left-0 w-full h-full z-50 overflow-hidden bg-black">
+    <div className="pixi-lab-runtime-shell fixed top-0 left-0 w-full h-full z-50 overflow-hidden bg-black">
+      <style>{RUNTIME_PERF_CSS}</style>
       {/* Game canvas — always mounted */}
       <GameRuntime
         definition={definition}
         userId={userId}
-        mode="play"
+        mode={autoDemo && definition.capabilities.demo ? 'demo' : 'play'}
         quality={quality}
         maxPixels={localMaxPixels}
         onEvent={handleEvent}
@@ -280,7 +407,12 @@ function GameLauncherInner({
           appRef.current = app;
           setAppInstance(app);
           const initMode = definition.modes?.[0]?.id ?? '';
-          if (initMode) app.setInteractionMode(initMode);
+          if (autoDemo && definition.capabilities.demo) {
+            enterDemoMode(app);
+          } else if (initMode) {
+            app.setInteractionMode(initMode);
+          }
+          onRuntimeReady?.();
         }}
         className="w-full h-full"
       />
@@ -433,10 +565,7 @@ function GameLauncherInner({
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={() => {
-                      setIsDemo(true);
-                      setUiHidden(true);
-                      appRef.current?.setInteractionMode('demo');
-                      appRef.current?.setMode('demo');
+                      enterDemoMode();
                     }}
                     aria-label="Demo mode"
                     className="flex h-8 items-center gap-1.5 rounded-xl bg-black/30 px-2.5 text-white/40 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white/70"
@@ -498,7 +627,7 @@ function GameLauncherInner({
           <div
             className="absolute inset-0 z-10 cursor-pointer"
             onPointerMove={showDemoHint}
-            onClick={() => { showDemoHint(); appRef.current?.demoShuffle(); }}
+            onClick={advanceDemo}
           />
           {/* Close button — fades in on interaction, auto-hides after 3 s of inactivity */}
           <AnimatePresence>
@@ -513,9 +642,7 @@ function GameLauncherInner({
                 aria-label="Exit demo"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsDemo(false);
-                  setUiHidden(false);
-                  appRef.current?.setMode('play');
+                  exitDemoMode();
                 }}
               >
                 <X size={14} />
@@ -523,6 +650,28 @@ function GameLauncherInner({
             )}
           </AnimatePresence>
         </>
+      )}
+
+      {uiHidden && !isDemo && (
+        <AnimatePresence>
+          {hiddenUiHintVisible && (
+            <motion.button
+              key="hidden-ui-eye"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute right-3 top-3 z-40 flex h-8 w-8 items-center justify-center rounded-xl bg-black/30 text-white/60 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
+              aria-label="Restore UI"
+              onClick={(e) => {
+                e.stopPropagation();
+                setUiHidden(false);
+              }}
+            >
+              <Eye size={14} />
+            </motion.button>
+          )}
+        </AnimatePresence>
       )}
 
       {/* ── Game-over shell ────────────────────────────────────────────────────────── */}

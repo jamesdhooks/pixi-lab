@@ -131,6 +131,7 @@ Agents should NEVER:
 | Shared Palette Shader | IN_PROGRESS | Harmonic Sand renders scalar fields through a low-res GPU texture; reusable post-process palette shader remains a follow-up. |
 | Trail Feedback System | IN_PROGRESS | Pass IDs/style config exist; real ping-pong trail feedback shader remains a follow-up. |
 | Bloom Composite | IN_PROGRESS | Pass IDs/style config exist; real low-res bloom compositor remains a follow-up. |
+| GPU Fluid Tank Renderer | IN_PROGRESS | `packages/core/src/render/GpuFluidTankRenderer.ts` owns a reusable WebGL2 half-float stable-fluid pipeline with velocity/dye/pressure ping-pong targets, curl/vorticity, bounded wall damping, splat injection, and fullscreen display composite. Manual WebGL device/Pi validation still pending. |
 | PerformanceGovernor | COMPLETE | `packages/core/src/performance/PerformanceGovernor.ts` samples FPS and downgrades quality. |
 | DirectorMode | COMPLETE | `packages/core/src/director/DirectorMode.ts` schedules declared ambient events while idle. |
 | Gesture Interpreter | COMPLETE | `packages/core/src/gestures/GestureInterpreter.ts` emits tap, drag, hold, fast swipe, double tap, pinch, and spread. |
@@ -232,6 +233,36 @@ Status values:
 
 ---
 
+## Manual Demo QA Status
+
+The demo gallery shows a QA marker for demo-capable experiences that have not passed manual QA.
+
+Source of truth:
+- Human-readable status lives in this table.
+- The gallery reads `packages/demo/src/demoQaStatus.ts`; keep it in sync with this table.
+- Mark `PASSED` only after James explicitly gives a thumbs-up for that exact experience. Automated tests and local visual checks are not enough by themselves.
+
+| Experience ID | Display Name | Manual QA | Last Reviewed | Notes |
+|---|---|---|---|---|
+| `ball-pit` | Ball Pit | NEEDS_QA | - | Awaiting manual demo approval. |
+| `harmonic-sand` | Harmonic Sand Plate | NEEDS_QA | - | Awaiting manual demo approval. |
+| `mycelium-prism` | Mycelium Prism | NEEDS_QA | - | Awaiting manual demo approval. |
+| `mycelium-lattice` | Mycelium Lattice | NEEDS_QA | - | Awaiting manual demo approval. |
+| `amoeba-lamp` | Amoeba Lamp | NEEDS_QA | - | Awaiting manual demo approval. |
+| `ant-signal` | Ant Signal Civilization | NEEDS_QA | - | Awaiting manual demo approval. |
+| `crystal-plasma` | Crystal Plasma Storm | NEEDS_QA | - | Awaiting manual demo approval. |
+| `orbital-shrapnel` | Orbital Shrapnel Field | NEEDS_QA | - | Awaiting manual demo approval. |
+| `plasma-branch` | Plasma Branch Terrarium | NEEDS_QA | - | Awaiting manual demo approval. |
+| `time-echo` | Time Echo Particles | NEEDS_QA | - | Awaiting manual demo approval. |
+| `electro-osmotic-amoeba` | Electro-Osmotic Amoeba | NEEDS_QA | - | Awaiting manual demo approval. |
+| `jelly-web` | Jelly Web Resonator | NEEDS_QA | - | Awaiting manual demo approval. |
+| `cellular-ocean` | Cellular Ocean | NEEDS_QA | - | Awaiting manual demo approval. |
+| `cosmic-ink-ocean` | Cosmic Ink Ocean | NEEDS_QA | - | Awaiting manual demo approval. |
+| `turing-skin` | Turing Skin | NEEDS_QA | - | Awaiting manual demo approval. |
+| `fluid-tank` | Fluid Tank | NEEDS_QA | - | Awaiting manual demo approval. |
+
+---
+
 # 3. Simulation Implementation Queue
 
 Implement simulations in roughly this order unless dependencies require otherwise.
@@ -252,6 +283,7 @@ Implement simulations in roughly this order unless dependencies require otherwis
 | 11 | Cellular Ocean | IN_PROGRESS | spring membranes | Model/scene/preview/demo AI implemented with deterministic SpringSystem membrane cells, live tension/viscosity/drift controls, shared field/particle rendering, and pulse/shear gestures; full automated gate pending. |
 | 12 | Cosmic Ink Ocean | IN_PROGRESS | vector fields | Model/scene/preview/demo AI implemented with deterministic vector turbulence, bounded ink scalar field, live flow controls, shared field/particle rendering, and vortex/shear gestures; full automated gate pending. |
 | 13 | Turing Skin | IN_PROGRESS | scalar fields | Model/scene/preview/demo AI implemented with deterministic Gray-Scott reaction diffusion, live chemistry controls, shared field rendering, and morphogen paint gestures; full automated gate pending. |
+| 13a | Fluid Tank | IN_PROGRESS | GPU fluid renderer | Scene/preview/demo AI implemented from `fluids.html` using reusable WebGL2 half-float fluid targets, live controls, shared gestures, and style metadata; focused core/simulations typecheck passes; manual visual/WebGL/Pi gate pending. |
 | 14 | Oil-Water Universe | NOT_STARTED | phase separation | material domains |
 | 15 | Prism Pool | NOT_STARTED | fake normals | shader showcase |
 | 16 | Neon River Delta | NOT_STARTED | height field | erosion system |
@@ -2338,7 +2370,173 @@ Deferred before marking COMPLETE:
 
 ---
 
-# 17. Agent Update Rules
+# 17. Fluid Tank
+## Status
+
+```txt
+STATUS: IN_PROGRESS
+OWNER: NeoCloud
+LAST_UPDATED: 2026-05-27
+```
+
+---
+
+## Priority
+
+FOUNDATIONAL
+
+Reason:
+- promotes the standalone `fluids.html` prototype into a reusable engine renderer
+- validates WebGL2 half-float ping-pong fluid targets inside the shared app runtime
+- provides a future base for advection-heavy scenes without CPU field uploads
+
+---
+
+## Dependencies
+
+- `GpuFluidTankRenderer`
+- WebGL2 + `EXT_color_buffer_float`
+- shared settings, gestures, style manifests, and demo AI
+
+---
+
+## Core Requirements
+
+Implemented:
+- reusable GPU renderer with velocity, dye, pressure, divergence, and curl targets
+- live controls for cell size, finger force/radius, viscosity, curl, eddy assist, dye persistence, pressure iterations, and ambient stir
+- shared gesture integration for drag stirring, tap swirls, and settle mode
+- reset/new dye behavior through scene reset
+- demo AI that cycles styles and numeric settings
+
+---
+
+## Required Render Layers
+
+```txt
+fluid
+glow
+debug
+```
+
+---
+
+## Required Shader Features
+
+```txt
+gpuFluid
+bloom
+edgeGlow
+chromaticAberration
+colorGrade
+composite
+```
+
+---
+
+## Required Styles
+
+### Bounded Cyan
+Default teal tank dye and glassy display exposure.
+
+### Nebula Oil
+High-exposure magenta/violet oil-ribbon presentation.
+
+### Thermal Bloom
+Warm red/yellow bloom-heavy fluid presentation.
+
+---
+
+## Shared Gestures
+
+| Gesture | Action |
+|---|---|
+| tap | create a small swirl, or settle velocity in settle mode |
+| drag | inject bounded velocity along the pointer path |
+| fast swipe | treated as a stronger stir gesture through shared drag velocity |
+
+---
+
+## Director Mode Events
+
+- ambient eddy
+- dye refresh
+
+---
+
+## Stagnation Recovery
+
+If:
+- WebGL2 half-float fluid targets are unavailable
+- velocity collapses visually during future runtime instrumentation
+
+Then:
+- settle velocity or reseed dye through scene reset
+- report the unsupported GPU state through the stagnation policy
+
+---
+
+## Performance Targets
+
+```txt
+sim:
+  BASE_SIM_RESOLUTION / cellSize, clamped 90-260
+
+dye:
+  BASE_DYE_RESOLUTION / cellSize, clamped 300-1200
+
+rendering:
+  Basic DPR 1, Enhanced DPR up to 2; no per-cell Pixi objects
+```
+
+---
+
+## Validation Checklist
+
+- [x] reusable core renderer added and exported
+- [x] scene, preview, styles, config, definition, and demo AI implemented
+- [x] settings are live-polled
+- [x] shared gestures drive the fluid renderer
+- [x] focused core + simulations typecheck passes after core build
+- [ ] manual demo visual validation
+- [ ] WebGL2 unsupported-device fallback validation
+- [ ] stable FPS on Pi target
+- [ ] full automated quality gate passes
+
+---
+
+## Known Risks
+
+- renderer uses a DOM WebGL2 canvas layer because the source prototype depends on WebGL2 half-float targets; Pixi overlay rendering is intentionally minimal for this first pass
+- unsupported devices currently no-op the fluid layer and report stagnation rather than showing a styled fallback image
+- visual parity still needs manual browser/Pi validation against `fluids.html`
+
+---
+
+## Notes
+
+Implemented files:
+- `packages/core/src/render/GpuFluidTankRenderer.ts`
+- `packages/simulations/src/fluid-tank/FluidTankScene.ts`
+- `packages/simulations/src/fluid-tank/FluidTankPreviewScene.ts`
+- `packages/simulations/src/fluid-tank/FluidTankDemoAI.ts`
+- `packages/simulations/src/fluid-tank/fluid-tank.config.ts`
+- `packages/simulations/src/fluid-tank/fluid-tank.definition.ts`
+- `packages/simulations/src/fluid-tank/styles/*.ts`
+
+Implementation notes:
+- `GpuFluidTankRenderer` ports the `fluids.html` shader pipeline into core and exposes splat, settle, randomize, resize, quality, and stats APIs.
+- `fluid-tank` is registered in `SIMULATION_REGISTRY`; it remains absent from `DEMO_QA_PASSED_IDS` so the gallery marks it as needing QA.
+- The `gpuFluid` pass and `fluid` render layer are now documented as reusable mechanics.
+
+Deferred before marking COMPLETE:
+- manual visual comparison with `fluids.html`
+- Pi 5/WebGL performance validation
+- richer Pixi overlay frame/ripple rendering if the DOM fluid layer should sit below transparent Pixi content later
+
+---
+
+# 18. Agent Update Rules
 
 When an agent completes work:
 
@@ -2374,7 +2572,7 @@ The agent must:
 
 ---
 
-# 17. Recommended Git Workflow
+# 19. Recommended Git Workflow
 
 Recommended commit structure:
 
@@ -2390,7 +2588,7 @@ Avoid giant multi-simulation commits.
 
 ---
 
-# 18. Final Guidance for Agents
+# 20. Final Guidance for Agents
 
 The project succeeds if:
 - simulations feel alive

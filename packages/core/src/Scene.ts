@@ -56,11 +56,14 @@ export abstract class Scene {
   }
 
   /**
-   * Return false when a scene has no visual changes to present this frame.
-   * The default keeps existing animated scenes rendering every tick.
+   * Return true when the scene has custom visual work that still needs a frame
+   * even if the engine has no active physics bodies, particles, or pointers.
+   *
+   * Game scenes default to idle-until-active so future physics-driven scenes
+   * automatically stop presenting frames once the world settles.
    */
   shouldRender(): boolean {
-    return true;
+    return false;
   }
 
   /**
@@ -102,5 +105,13 @@ export abstract class Scene {
    */
   setStyle(_id: string): void {
     // Optional override
+  }
+
+  /**
+   * Hint for how the host canvas should be filtered when the browser has to
+   * upscale it back to CSS size (for example when maxPixels lowers resolution).
+   */
+  getCanvasImageRendering(): 'auto' | 'pixelated' {
+    return 'auto';
   }
 }

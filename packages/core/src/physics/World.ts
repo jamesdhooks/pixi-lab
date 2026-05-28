@@ -34,6 +34,21 @@ export class PhysicsWorld {
     this.world.step(dt, 8, 3);
   }
 
+  hasAwakeDynamicBodies(): boolean {
+    for (let body = this.world.getBodyList(); body; body = body.getNext()) {
+      if ((body.isDynamic() || body.isKinematic()) && body.isAwake()) return true;
+    }
+    return false;
+  }
+
+  countAwakeDynamicBodies(): number {
+    let count = 0;
+    for (let body = this.world.getBodyList(); body; body = body.getNext()) {
+      if ((body.isDynamic() || body.isKinematic()) && body.isAwake()) count++;
+    }
+    return count;
+  }
+
   setGravity(x: number, y: number) {
     this.world.setGravity(planck.Vec2(x, y));
   }

@@ -5,6 +5,7 @@ import { cellularOceanDefinition } from './cellular-ocean/cellular-ocean.definit
 import { cosmicInkOceanDefinition } from './cosmic-ink-ocean/cosmic-ink-ocean.definition.js';
 import { crystalPlasmaDefinition } from './crystal-plasma/crystal-plasma.definition.js';
 import { electroOsmoticAmoebaDefinition } from './electro-osmotic-amoeba/electro-osmotic-amoeba.definition.js';
+import { fluidTankDefinition } from './fluid-tank/fluid-tank.definition.js';
 import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 import { jellyWebDefinition } from './jelly-web/jelly-web.definition.js';
 import { myceliumLatticeDefinition } from './mycelium-lattice/mycelium-lattice.definition.js';
@@ -43,6 +44,11 @@ export { electroOsmoticAmoebaDefinition } from './electro-osmotic-amoeba/electro
 export { ElectroOsmoticAmoebaScene, electroOsmoticAmoebaStyleManifest } from './electro-osmotic-amoeba/ElectroOsmoticAmoebaScene.js';
 export { ElectroOsmoticAmoebaPreviewScene } from './electro-osmotic-amoeba/ElectroOsmoticAmoebaPreviewScene.js';
 export { ElectroOsmoticAmoebaModel, type ElectroOsmoticAmoebaModelOptions, type ElectroOsmoticAmoebaStats } from './electro-osmotic-amoeba/ElectroOsmoticAmoebaModel.js';
+
+export { fluidTankDefinition } from './fluid-tank/fluid-tank.definition.js';
+export { FluidTankScene, fluidTankStyleManifest } from './fluid-tank/FluidTankScene.js';
+export { FluidTankPreviewScene } from './fluid-tank/FluidTankPreviewScene.js';
+export { FluidTankDemoAI } from './fluid-tank/FluidTankDemoAI.js';
 
 export { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 export { HarmonicSandScene, harmonicSandStyleManifest } from './harmonic-sand/HarmonicSandScene.js';
@@ -95,6 +101,7 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   plasmaBranchDefinition,
   timeEchoDefinition,
   electroOsmoticAmoebaDefinition,
+  fluidTankDefinition,
   jellyWebDefinition,
   cellularOceanDefinition,
   cosmicInkOceanDefinition,

@@ -111,6 +111,13 @@ export { FieldPaletteRenderer, type FieldPaletteRenderOptions } from './render/F
 export { ParticlePointRenderer, type ParticlePointRenderOptions } from './render/ParticlePointRenderer.js';
 export { TrailFeedbackRenderer, type TrailFeedbackRenderOptions } from './render/TrailFeedbackRenderer.js';
 export { DensityMetaballRenderer, type DensityMetaballRenderOptions } from './render/DensityMetaballRenderer.js';
+export {
+  GpuFluidTankRenderer,
+  velocityFromScreenDelta,
+  type FluidSplat,
+  type GpuFluidTankOptions,
+  type GpuFluidTankStats,
+} from './render/GpuFluidTankRenderer.js';
 export { MeshLatticeRenderer, type MeshLatticeRenderOptions } from './render/MeshLatticeRenderer.js';
 export { ArcLineRenderer, type ArcLineRenderOptions } from './render/ArcLineRenderer.js';
 export { EmitterMarkerRenderer } from './render/EmitterMarkerRenderer.js';

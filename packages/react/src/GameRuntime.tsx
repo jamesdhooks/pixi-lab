@@ -146,7 +146,7 @@ export function GameRuntime({
       // className fully controls positioning and sizing.
       // When used in GameLauncher, className="w-full h-full" — the parent has
       // explicit w-screen h-screen so percentage sizing resolves correctly.
-      style={{ overflow: 'hidden' }}
+      style={{ overflow: 'hidden', position: 'relative' }}
     />
   );
 }

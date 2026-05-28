@@ -5,6 +5,7 @@
   "description": "Game & Simulation Lab — core engine, React integration, content packages",
   "scripts": {
     "dev": "pnpm --filter @hooksjam/pixi-lab-demo dev",
+    "dev-lan": "pnpm --filter @hooksjam/pixi-lab-demo dev --host 0.0.0.0 --port 5173 --strictPort",
     "build": "pnpm --filter @hooksjam/pixi-lab-core build && pnpm --filter @hooksjam/pixi-lab-react build && pnpm --filter @hooksjam/pixi-lab-games build && pnpm --filter @hooksjam/pixi-lab-simulations build",
     "typecheck": "pnpm --filter @hooksjam/pixi-lab-core typecheck && pnpm --filter @hooksjam/pixi-lab-react typecheck && pnpm --filter @hooksjam/pixi-lab-games typecheck && pnpm --filter @hooksjam/pixi-lab-simulations typecheck && pnpm --filter @hooksjam/pixi-lab-demo typecheck",
     "lint": "eslint 'packages/*/src/**/*.{ts,tsx}'",

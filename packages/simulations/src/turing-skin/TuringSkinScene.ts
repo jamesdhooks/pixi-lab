@@ -84,7 +84,12 @@ export class TuringSkinScene extends SimulationScene {
     if (!this.model || !this.fieldRenderer) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? leopardGoldStyle;
     this.fieldRenderer.clear();
-    this.fieldRenderer.renderField('pigment', this.model.pigmentField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.96, gamma: this.quality === 'enhanced' ? 0.58 : 0.72, zIndex: 0 });
+    this.fieldRenderer.renderField('pigment', this.model.pigmentField, this.ctx_.width, this.ctx_.height, style, {
+      alpha: 0.96,
+      gamma: this.quality === 'enhanced' ? 0.58 : 0.72,
+      zIndex: 0,
+      upscaleMode: 'nearest',
+    });
     const debug = this.ctx_.systems.debug;
     if (debug?.isEnabled()) {
       const stats = this.model.stats();
@@ -109,6 +114,10 @@ export class TuringSkinScene extends SimulationScene {
   override setQuality(quality: RenderQuality): void {
     super.setQuality(quality);
     this.fieldRenderer?.setQuality(quality);
+  }
+
+  override getCanvasImageRendering(): 'auto' | 'pixelated' {
+    return 'pixelated';
   }
 
   getRenderLayers(): SimRenderLayers { return { field: this.fieldRenderer?.getLayer('pigment'), glow: this.fieldRenderer?.getLayer('pigment') }; }
