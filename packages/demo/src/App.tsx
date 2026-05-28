@@ -72,6 +72,19 @@ export function App() {
     try { return parseInt(localStorage.getItem('pixi-lab:maxPixels') ?? '0') || undefined; } catch { return undefined; }
   });
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const fluidReferenceMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('fluidReference');
+
+  if (fluidReferenceMode) {
+    return (
+      <div className="h-screen w-screen overflow-hidden bg-black">
+        <iframe
+          title="Fluid Tank reference"
+          src="/pixi-lab/fluids.html"
+          className="h-full w-full border-0"
+        />
+      </div>
+    );
+  }
 
   // On portrait mobile, force carousel to bottom dock and hide side-picker buttons.
   const effectiveCarouselSide = isMobile && !isLandscape ? 'bottom' : carouselSide;
