@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useLayoutEffect, useEffect, useCallback, type CSSProperties } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff, Play } from 'lucide-react';
-import { GameLauncher, PreviewTile } from '@hooksjam/pixi-lab-react';
+import { GameLauncher, GameRuntime, PreviewTile } from '@hooksjam/pixi-lab-react';
 import { useViewport } from '@hooksjam/pixi-lab-react';
 import { fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
@@ -72,7 +72,28 @@ export function App() {
     try { return parseInt(localStorage.getItem('pixi-lab:maxPixels') ?? '0') || undefined; } catch { return undefined; }
   });
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const fluidReferenceMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('fluidReference');
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const fluidReferenceMode = searchParams?.has('fluidReference') ?? false;
+  const galleryMode = searchParams?.has('fluidGallery') ?? false;
+  const fluidOnlyMode = !fluidReferenceMode && !galleryMode;
+
+  if (fluidOnlyMode) {
+    return (
+      <div className="fixed inset-0 overflow-hidden bg-black">
+        <GameRuntime
+          definition={fluidTankDefinition}
+          mode="play"
+          quality="basic"
+          className="h-full w-full"
+          onReady={(app) => {
+            app.setInteractionMode('stir');
+            app.setMode('play');
+            app.setUIHidden(true);
+          }}
+        />
+      </div>
+    );
+  }
 
   if (fluidReferenceMode) {
     return (
