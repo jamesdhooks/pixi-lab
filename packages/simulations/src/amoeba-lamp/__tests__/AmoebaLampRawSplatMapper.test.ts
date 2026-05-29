@@ -59,4 +59,22 @@ describe('mapAmoebaParticlesToRawSplats', () => {
     expect(splats).toHaveLength(5);
     expect(splats.map((s) => s.texelX)).toEqual([0, 5, 11, 16, 21]);
   });
+
+  it('uses model heat when provided instead of deriving heat from position', () => {
+    const splats = mapAmoebaParticlesToRawSplats(
+      [
+        { x: 50, y: 190, heat: 0.08 },
+        { x: 100, y: 10, heat: 1.7 },
+      ],
+      {
+        width: 200,
+        height: 200,
+        textureWidth: 80,
+        textureHeight: 80,
+        densityRadius: 2,
+      },
+    );
+
+    expect(splats.map((s) => s.heat)).toEqual([0.15, 1]);
+  });
 });

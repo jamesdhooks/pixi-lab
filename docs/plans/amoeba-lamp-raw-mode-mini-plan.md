@@ -139,6 +139,10 @@ Run browser smoke only after the adapter is wired and `raw` is advertised.
 
 Implemented the first TDD helper for the raw adapter: `packages/simulations/src/amoeba-lamp/AmoebaLampRawSplatMapper.ts`. It maps deterministic CPU particle snapshots into bounded normalized density/heat splats with texture-space centers, deterministic upload budgeting, and explicit radius/heat values for future density/heat ping-pong injection. The RED run failed because the mapper module did not exist; the GREEN run passed `AmoebaLampRawSplatMapper.test.ts`. `raw` remains unadvertised for Amoeba Lamp until the actual scene-owned adapter is implemented and browser-smoked.
 
+## 2026-05-29 heat-source follow-up slice note
+
+Tightened the raw splat source contract so future density/heat ping-pong injection uses the model's real particle heat instead of deriving heat from screen position. Added a RED test proving provided heat must be clamped and preserved (`0.08 → 0.15`, `1.7 → 1`), then updated `AmoebaLampRawSplatMapper` and `AmoebaLampModel.particleSnapshot()` to carry heat alongside particle coordinates. This is still a helper-only RAW MODE slice: Amoeba Lamp continues to advertise only `basic`/`enhanced` until the adapter is wired and browser-smoked.
+
 ## Non-goals for the first raw slice
 
 - Do not extract a generic GPU Field Engine.

@@ -104,6 +104,10 @@ Mini-plan: `docs/plans/amoeba-lamp-raw-mode-mini-plan.md`. Do not advertise `raw
 
 Added `AmoebaLampRawSplatMapper` as the first implementation building block for the Amoeba raw adapter. It converts CPU model particles into bounded density/heat splat descriptors suitable for persistent density/heat texture ping-pong injection, with deterministic upload budgeting. This is intentionally a pure helper only; Amoeba Lamp still advertises `basic`/`enhanced` and raw browser QA is deferred until the adapter exists.
 
+## 2026-05-29 Amoeba heat-source follow-up
+
+Patched the helper contract so raw splats can use actual model particle heat instead of deriving heat from normalized Y position when `heat` is available. `AmoebaLampModel.particleSnapshot()` now exposes heat with coordinates, and the mapper clamps provided heat into the raw upload range. This keeps the future heat ping-pong texture tied to simulation state rather than a screen-space proxy while still leaving `raw` unadvertised until the adapter is implemented and browser-smoked.
+
 ## Acceptance for future raw scenes
 
 A scene may advertise `raw` only when all are true:

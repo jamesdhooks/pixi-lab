@@ -1,6 +1,7 @@
 export interface AmoebaRawSourceParticle {
   readonly x: number;
   readonly y: number;
+  readonly heat?: number;
 }
 
 export interface AmoebaRawSplatMapOptions {
@@ -43,9 +44,14 @@ export function mapAmoebaParticlesToRawSplats(
       texelY: Math.min(textureHeight - 1, Math.max(0, Math.round(y * textureHeight))),
       radius,
       density: 1,
-      heat: roundTo(Math.min(1, Math.max(0.15, 0.15 + y * 1.32)), 3),
+      heat: roundTo(clampHeat(particle.heat ?? (0.15 + y * 1.32)), 3),
     };
   });
+}
+
+function clampHeat(value: number): number {
+  if (!Number.isFinite(value)) return 0.15;
+  return Math.max(0.15, Math.min(1, value));
 }
 
 function clamp01(value: number): number {
