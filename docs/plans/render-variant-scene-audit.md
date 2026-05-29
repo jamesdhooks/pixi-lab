@@ -70,6 +70,10 @@ Why Cosmic Ink first:
 - It can prove which pieces are reusable: ping-pong render textures, splat texture creation, decay/blur, displacement/warp, palette composite, and cleanup.
 - It avoids prematurely designing a universal field renderer before two concrete ports exist.
 
+## 2026-05-29 raw candidate follow-up
+
+After the Cosmic Ink Pixi feedback slice, the next true RAW MODE target is **Amoeba Lamp**, documented in `docs/plans/amoeba-lamp-raw-mode-mini-plan.md`. The current scene/model split makes it the smallest valid raw candidate because deterministic particles, `densityField`, and `heatField` already exist; raw can focus on persistent density/heat texture ping-pong and membrane compositing while leaving `basic` and `enhanced` intact. `Ant Signal` and `Orbital Shrapnel` remain high-priority follow-ups after the Amoeba adapter proves the first raw field boundary.
+
 ## Deferred extraction candidates
 
 Only after Fluid Tank and Cosmic Ink both have Pixi feedback code, evaluate extraction of small package-owned helpers under `packages/simulations/src/rendering/`, such as:

@@ -327,6 +327,8 @@ pnpm --filter @hooksjam/pixi-lab-demo exec vite build --outDir dist-fluid-debug 
 
 **2026-05-29 slice note:** Began Task 8's first non-fluid Pixi feedback candidate with `cosmic-ink-ocean`. Added a scene-owned `CosmicInkFeedbackRenderer` using the shared Pixi app, ping-pong `RenderTexture`s, blur/glow feedback, generated soft splats, and existing model particles as field sources. Wired `CosmicInkOceanScene` so `basic` now renders through the Pixi feedback path and `enhanced` keeps the feedback path plus a lighter particle overlay; no `raw` quality was advertised. Added focused tests for the pure particle-to-feedback stamp mapper and verified the RED failure before implementation. Browser-smoked the gallery launch after validation: Cosmic Ink Ocean opened with one Pixi canvas, visible feedback rendering, visible settings/quality controls, basic-to-enhanced switching, and no JavaScript console errors.
 
+**2026-05-29 slice note:** Task 8 validation passed for the first non-fluid Pixi feedback slice (`cosmic-ink-ocean`). The next required pre-raw step inspected `amoeba-lamp`, `ant-signal`, and `orbital-shrapnel` current scene/model code and selected Amoeba Lamp as the smallest valid first true RAW MODE candidate. Added `docs/plans/amoeba-lamp-raw-mode-mini-plan.md` naming density/heat ping-pong textures, fallback behavior, preview behavior, browser QA routes, and validation commands. `raw` is still not advertised on Amoeba Lamp until a concrete adapter lands and passes QA.
+
 ---
 
 ## Task 8A: RAW MODE roadmap integration

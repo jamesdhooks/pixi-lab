@@ -87,6 +87,19 @@ Build these in order only as concrete scene work needs them:
    - `ant-signal` for pheromone emergence.
 5. Extract shared raw/field helpers only after at least two concrete scene implementations prove the boundary.
 
+## 2026-05-29 first true raw candidate decision
+
+After inspecting the current Tier 1 candidates, choose **Amoeba Lamp** for the first true non-fluid RAW MODE implementation slice.
+
+Evidence:
+
+- `AmoebaLampModel` already exposes deterministic blob particles plus `densityField` and `heatField`, so the first raw adapter can treat particles as hidden density/heat sources while persistent GPU textures become the hero visual.
+- `AmoebaLampScene` already separates `basic` (`FieldPaletteRenderer`) from `enhanced` (`DensityMetaballRenderer` + particles), making raw quality selection a scene-owned extension without disturbing the existing Pixi paths.
+- `AntSignal` remains an excellent pheromone-field candidate, but a valid raw path needs agent sampling/depositing against a pheromone texture and a CPU fallback bridge.
+- `OrbitalShrapnel` remains the strongest GPU-particle showcase, but the first valid slice needs particle texture lifecycle plus trail feedback together.
+
+Mini-plan: `docs/plans/amoeba-lamp-raw-mode-mini-plan.md`. Do not advertise `raw` on Amoeba Lamp until that adapter is implemented, validated, and browser-smoked.
+
 ## Acceptance for future raw scenes
 
 A scene may advertise `raw` only when all are true:
