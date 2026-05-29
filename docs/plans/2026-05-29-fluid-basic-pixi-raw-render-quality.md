@@ -306,6 +306,8 @@ pnpm --filter @hooksjam/pixi-lab-demo exec vite build --outDir dist-fluid-debug 
 4. Decide whether `raw` needs custom WebGL shaders or can use a shared future FieldRenderer.
 5. Record output in `docs/plans/render-variant-scene-audit.md`.
 
+**2026-05-29 slice note:** Task 7 completed in `docs/plans/render-variant-scene-audit.md`. The audit inspected current scene/model renderer usage across the report candidates, confirmed all non-fluid candidates still advertise only `basic`/`enhanced`, and ranked `cosmic-ink-ocean` as the next safe implementation slice because it is the closest reusable match to Fluid Tank's Pixi feedback path. `ant-signal` and `orbital-shrapnel` are the next trail-feedback validation candidates; shader/raw-only families such as `turing-skin`, `prism-pool`, and Voronoi/graph hybrids are deferred until after one non-fluid Pixi feedback port proves reusable helpers.
+
 ---
 
 ## Task 8: Build shared field renderer only after two concrete scene ports
