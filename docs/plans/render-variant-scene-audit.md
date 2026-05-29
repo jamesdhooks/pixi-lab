@@ -5,6 +5,18 @@ Branch: `neocloud/pixi-lab-continuous-implementation`
 Source plan: `docs/plans/2026-05-29-fluid-basic-pixi-raw-render-quality.md` Task 7  
 Reference report: `gpu_field_rendering_simulation_upgrade_report.md`
 
+## 2026-05-29 RAW MODE guidance addendum
+
+James' follow-up RAW MODE guidance changes the emphasis from "which existing scene is closest to Fluid" to "which scene best proves stateful GPU simulation." Keep both ideas:
+
+- `cosmic-ink-ocean` remains the safest **first non-fluid Pixi feedback** slice because it is closest to the Fluid Tank feedback implementation and can prove shared Pixi helper boundaries.
+- `amoeba-lamp`, `orbital-shrapnel`, and `ant-signal` are now the strongest **first true raw WebGL/GPU-field** candidates.
+- Do not globally expose `raw` for candidates in this table. Raw appears only after a concrete adapter exists, passes focused validation, and browser QA confirms raw/basic behavior.
+- Prefer field hero visuals over visible CPU dots: particles should splat density, pheromone, heat, charge, trails, or debris glow into textures that the renderer composites.
+- Defer a general GPU Field Engine until at least two concrete implementations prove which helpers are reusable.
+
+See `docs/plans/raw-mode-gpu-field-roadmap.md` for the staged module and scene-priority roadmap.
+
 ## Purpose
 
 This audit records which existing Pixi Lab simulations should receive render-quality variants after the Fluid Tank basic/raw split. It intentionally does **not** introduce new renderer abstractions yet. Per the plan, the next implementation slice should port one non-fluid scene first, then extract shared helpers only after concrete duplication exists.

@@ -32,6 +32,7 @@
   4. Height Field / Normal Engine
   5. Trail Feedback Engine
   6. Graph/Mesh + Field Hybrid Engine
+- `docs/plans/raw-mode-gpu-field-roadmap.md` refines the RAW MODE direction from James' follow-up guidance. Treat raw as a staged GPU field/particle platform: state textures, ping-pong passes, particle-to-field visuals, and scene-owned adapters. Do **not** globally enable raw for all scenes just because they are listed; each scene must earn `raw` through a verified implementation and browser QA.
 
 ---
 
@@ -44,6 +45,8 @@
 5. **No raw renderer in core API.** Raw WebGL adapters remain scene/package-owned. Core only knows the quality string.
 6. **One default Pixi canvas for `basic`.** The default/basic Fluid route must not create an extra DOM script canvas or standalone `PIXI.Application`.
 7. **No broad abstraction first.** Implement Fluid's split, then one non-fluid Pixi feedback scene, then extract shared helpers from proven duplication.
+8. **Raw mode is a GPU simulation privilege, not a label.** Only advertise `raw` after a scene has a verified stateful GPU path (particle textures, field ping-pong, trail/height/density/phase/reaction textures, or graph+field raw composite) and browser QA for that path.
+9. **Particles should usually drive fields.** For RAW candidates such as `amoeba-lamp`, `orbital-shrapnel`, and `ant-signal`, the hero visual should be a density/trail/pheromone/charge field composite rather than CPU dots.
 
 ---
 
@@ -310,16 +313,39 @@ pnpm --filter @hooksjam/pixi-lab-demo exec vite build --outDir dist-fluid-debug 
 
 ---
 
-## Task 8: Build shared field renderer only after two concrete scene ports
+## Task 8: Build shared field renderer only after concrete scene ports
 
-**Objective:** Avoid premature abstraction.
+**Objective:** Avoid premature abstraction while still steering toward the GPU Field Engine direction from `raw-mode-gpu-field-roadmap.md`.
 
 **Rule:** Do not create a giant generic `FieldRenderer` first. First implement:
 1. Fluid Tank Pixi feedback basic + raw split.
 2. One non-fluid Pixi feedback scene, recommended `cosmic-ink-ocean` or `ant-signal`.
-3. Then extract shared helpers for RenderTexture ping-pong, splats, decay, blur, palette mapping, and trail feedback.
+3. One true raw GPU-field/particle scene from the roadmap, recommended `amoeba-lamp`, `orbital-shrapnel`, or `ant-signal` depending on which is smallest and best aligned with existing state.
+4. Then extract shared helpers for RenderTexture/WebGL ping-pong, splats, decay, blur, palette mapping, trail feedback, gradient/normal passes, and particle texture lifecycle.
 
-**Acceptance:** Shared renderer API is based on proven duplication, not guessed architecture.
+**Acceptance:** Shared renderer APIs are based on proven duplication, not guessed architecture. A scene advertises `raw` only after its raw adapter exists, is selectable, and passes browser QA.
+
+---
+
+## Task 8A: RAW MODE roadmap integration
+
+**Objective:** Keep the active implementation loop aligned with James' RAW MODE guidance without overbuilding abstractions.
+
+**Files:**
+- Read: `docs/plans/raw-mode-gpu-field-roadmap.md`
+- Read/update: `docs/plans/render-variant-scene-audit.md`
+- Modify per-scene only after inspecting current model and renderer code.
+
+**Implementation rules:**
+1. Treat `amoeba-lamp`, `orbital-shrapnel`, and `ant-signal` as the strongest first true-raw candidates.
+2. Treat `cosmic-ink-ocean` as still valid for the first non-fluid Pixi feedback extraction slice, not necessarily the first true raw WebGL showcase.
+3. Before adding `raw` to any scene, write or update a mini-plan that names the exact state textures/fields and fallback behavior.
+4. Prefer particles-as-field-sources over visible dot clouds for `amoeba-lamp`, `ant-signal`, `oil-water-universe`, `harmonic-sand`, and `chromatic-avalanche-bowl`.
+5. Prefer particle textures plus trail feedback for `orbital-shrapnel` and `proto-galaxy-forge`.
+6. Prefer scalar ping-pong shader passes for `turing-skin`, `prism-pool`, `neon-river-delta`, and `oil-water-universe`.
+7. Keep graph/mesh identity for `plasma-branch`, `crystal-plasma`, `alien-vascular-tree`, `jelly-web`, and `living-voronoi-tissue`; add raw field overlays only when scoped.
+
+**Acceptance:** Each cron run chooses one narrow slice from the current docs, validates it, and updates the plan with actual evidence.
 
 ---
 
@@ -347,7 +373,7 @@ pnpm --filter @hooksjam/pixi-lab-demo typecheck
 3. Task 4–5: raw quality selection + route/query/UI sanitization.
 4. Task 6: automated and browser QA.
 5. Task 7: render-variant audit document.
-6. Task 8: one non-fluid Pixi feedback candidate, then shared helper extraction only after duplication is proven.
+6. Task 8: one non-fluid Pixi feedback candidate, then one true raw GPU-field candidate from `raw-mode-gpu-field-roadmap.md`, then shared helper extraction only after duplication is proven.
 
 Each run must pull/rebase first, avoid broad rewrites, commit and push only when validation passes, and report what changed plus any remaining verification gaps.
 
