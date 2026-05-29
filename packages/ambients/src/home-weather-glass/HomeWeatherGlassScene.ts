@@ -53,6 +53,8 @@ export class HomeWeatherGlassScene extends Scene {
     super();
   }
 
+  override shouldRender() { return true; }
+
   override onEnter(ctx: GameContext, input: Input): void {
     this.ctx = ctx;
     this.input = input;

@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
 import { Scene } from '../Scene.js';
-import type { GameContext, SimStyle } from '../types.js';
+import type { GameContext, SettingsValue, SimStyle } from '../types.js';
 import type { Input } from '../Input.js';
 
 export interface DomScriptSceneOptions {
@@ -24,6 +24,7 @@ export class DomScriptScene extends Scene {
   private scriptElement: HTMLScriptElement | null = null;
   private previousPixi: typeof PIXI | undefined;
   private currentStyle: SimStyle | null = null;
+  private unsubscribeSettings: (() => void) | null = null;
 
   constructor(private readonly options: DomScriptSceneOptions) {
     super();
@@ -51,6 +52,12 @@ export class DomScriptScene extends Scene {
 
     this.currentStyle = ctx.systems.styleManager?.getStyle() ?? null;
     this.applyStyleToRoot(root, this.currentStyle);
+    this.applySettingsToRoot(root);
+
+    this.unsubscribeSettings = ctx.systems.settings.onChange((key, value) => {
+      if (!this.root) return;
+      this.applySettingsToRoot(this.root, { key: String(key), value });
+    });
 
     const script = document.createElement('script');
     script.text = this.options.script;
@@ -64,8 +71,10 @@ export class DomScriptScene extends Scene {
   onExit(): void {
     this.scriptElement?.remove();
     this.root?.remove();
+    this.unsubscribeSettings?.();
     this.scriptElement = null;
     this.root = null;
+    this.unsubscribeSettings = null;
 
     const hostCanvas = this.ctx?.systems?.pixi?.canvas;
     if (hostCanvas) {
@@ -85,6 +94,14 @@ export class DomScriptScene extends Scene {
     if (this.root) this.applyStyleToRoot(this.root, this.currentStyle);
   }
 
+  setMode(id: string): void {
+    this.root?.dispatchEvent(new CustomEvent('pixi-lab-mode-change', { detail: { mode: id } }));
+  }
+
+  reset(): void {
+    this.root?.dispatchEvent(new CustomEvent('pixi-lab-reset'));
+  }
+
   shouldRender(): boolean {
     return true;
   }
@@ -99,5 +116,17 @@ export class DomScriptScene extends Scene {
     };
     root.dataset.pixiLabStyle = JSON.stringify(payload);
     root.dispatchEvent(new CustomEvent('pixi-lab-style-change', { detail: payload }));
+  }
+
+  private applySettingsToRoot(
+    root: HTMLDivElement,
+    change?: { key: string; value: SettingsValue },
+  ): void {
+    const payload = {
+      settings: this.ctx.systems.settings.getAll(),
+      change,
+    };
+    root.dataset.pixiLabSettings = JSON.stringify(payload.settings);
+    root.dispatchEvent(new CustomEvent('pixi-lab-settings-change', { detail: payload }));
   }
 }
