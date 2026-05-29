@@ -20,8 +20,11 @@
   - decays/warps/blur-composites the previous frame into the next texture
   - renders glow + display sprites back to the Pixi stage
 - Current `RenderQuality` is `basic | enhanced` in `packages/core/src/types.ts`.
-- Current Fluid definition advertises `qualityModes: ['basic', 'enhanced']` and uses a `DomScriptScene` wrapper around `fluid-runtime-script.ts` for both full scene and preview.
-- Current raw WebGL implementation should not disappear; it should become the `raw` quality path.
+- Current Fluid definition advertises `qualityModes: ['basic', 'enhanced']` and still uses a `DomScriptScene` wrapper around `fluid-runtime-script.ts` for both full scene and preview.
+- `packages/simulations/src/fluid-tank/FluidTankScene.ts` already exists and wraps `GpuFluidTankRenderer`, but the definition is not using it. Treat this as an unfinished Pixi Lab scene path: either retire it behind `raw` if it is raw-canvas-owned, or refactor it into the coordinator that selects a Pixi-native renderer for `basic` and raw WebGL for `raw`.
+- `packages/react/src/GameLauncher.tsx` stores one global `pixi-lab:quality` value and passes `definition.capabilities.qualityModes` to `QualitySelector`; implementation must sanitize stored/query quality against the active experience's advertised modes so `raw` never leaks into experiences that do not support it.
+- `packages/core/src/performance/PerformanceGovernor.ts` currently downgrades anything slow to `basic`; `raw` must be sticky/manual and never auto-downgraded unless a user explicitly changes quality.
+- Current raw WebGL implementation should not disappear; it should become the `raw` quality path only.
 - `gpu_field_rendering_simulation_upgrade_report.md` identifies the strongest raw/GPU field candidates and six reusable engine families:
   1. Field Advection Engine
   2. Metaball / Implicit Surface Engine
@@ -29,6 +32,43 @@
   4. Height Field / Normal Engine
   5. Trail Feedback Engine
   6. Graph/Mesh + Field Hybrid Engine
+
+---
+
+## Implementation Guardrails Added After Repo Inspection
+
+1. **Do not make `raw` global by default.** Add `raw` to the shared type, but only expose it when an experience advertises `qualityModes: ['basic', 'enhanced', 'raw']`.
+2. **Sanitize persisted quality.** If `localStorage.getItem('pixi-lab:quality')` is `raw` and the next opened experience lacks `raw`, start that experience at `basic` and overwrite/ignore the stale value.
+3. **Sanitize debug query quality.** `?quality=raw` may select raw only for Fluid or future raw-enabled entries. Invalid query quality falls back to `basic` with no crash.
+4. **Keep previews cheap.** `previewFactory` should keep using a Pixi-safe/basic renderer. Do not run raw WebGL in preview tiles unless a future explicit QA slice proves it is cheap and stable.
+5. **No raw renderer in core API.** Raw WebGL adapters remain scene/package-owned. Core only knows the quality string.
+6. **One default Pixi canvas for `basic`.** The default/basic Fluid route must not create an extra DOM script canvas or standalone `PIXI.Application`.
+7. **No broad abstraction first.** Implement Fluid's split, then one non-fluid Pixi feedback scene, then extract shared helpers from proven duplication.
+
+---
+
+## Task 0: Baseline and route-state verification
+
+**Objective:** Prove the implementer starts from the expected commit and understands the current unfinished Fluid wiring.
+
+**Files to inspect, no edits yet:**
+- `packages/core/src/types.ts`
+- `packages/core/src/performance/PerformanceGovernor.ts`
+- `packages/react/src/GameLauncher.tsx`
+- `packages/demo/src/App.tsx`
+- `packages/simulations/src/fluid-tank/fluid-tank.definition.ts`
+- `packages/simulations/src/fluid-tank/FluidTankScene.ts`
+- `packages/simulations/src/fluid-tank/GpuFluidTankRenderer.ts`
+- `packages/simulations/src/fluid-tank/fluid-runtime-script.ts`
+- `reference/pixi-fluid.html`
+
+**Steps:**
+1. Run `git status --short --branch` and confirm the branch is clean before editing.
+2. Run `git log --oneline -5` and confirm `docs: plan fluid raw render quality split` is included.
+3. Search for `RenderQuality`, `qualityModes`, `fluidEngine`, `fluidGallery`, and `DomScriptScene` usages.
+4. Record any drift from this plan directly in this document before implementing.
+
+**Acceptance:** The first implementation commit starts from a clean branch and does not overwrite unrelated local changes.
 
 ---
 
@@ -59,11 +99,14 @@ export type RenderQuality = 'basic' | 'enhanced' | 'raw';
 **Steps:**
 1. Change `RenderQuality` to `'basic' | 'enhanced' | 'raw'`.
 2. Confirm `GameApp` still defaults to `basic`.
-3. Confirm performance governor does not accidentally downgrade from/to `raw` unless explicitly desired.
-4. If governor only understands `basic/enhanced`, make `raw` sticky/manual: when quality is `raw`, do not auto-govern it unless the user explicitly switches quality.
-5. Run:
+3. Update `PerformanceGovernor.update()` so `raw` returns `null` before considering fallback; `raw` is manual/sticky.
+4. Confirm `GameApp.setQuality()` and the governor callback still emit quality changes for explicit user choices.
+5. Add or update a focused core test for `PerformanceGovernor`: enhanced can fall back to basic under sustained low fps, raw does not auto-fallback.
+6. Search all comparisons such as `quality === 'basic' ? ... : ...`; when raw reaches a generic renderer, it should behave like `enhanced` or be rejected by capabilities rather than crashing.
+7. Run:
    ```bash
    pnpm --filter @hooksjam/pixi-lab-core build
+   pnpm --filter @hooksjam/pixi-lab-core test
    pnpm --filter @hooksjam/pixi-lab-demo typecheck
    ```
 
@@ -95,6 +138,8 @@ export interface SceneRenderVariant {
 ```
 
 **Rule:** This lives in simulations or scene package code. Do not export Fluid-specific renderers from `@hooksjam/pixi-lab-core`.
+
+**Coordinator rule:** A `SceneRenderVariant` must not assume ownership of the app lifecycle. It may own child containers, render textures, filters, generated textures, and raw canvases it creates, but it must clean them in `exit()`/`destroy()` without destroying the shared Pixi app.
 
 **Acceptance:** No changes to public core API except the `raw` quality type unless a truly generic abstraction is needed.
 
@@ -148,7 +193,9 @@ export interface SceneRenderVariant {
   - `basic` → `PixiFeedbackFluidRenderer`
   - `enhanced` → initially `PixiFeedbackFluidRenderer` with higher resolution/glow, or current `basic` alias
   - `raw` → current raw WebGL adapter
-- If using `DomScriptScene` for raw, wrap selection in the factory rather than branching in demo app code.
+- If using `DomScriptScene` for raw, wrap selection in the simulation factory/scene coordinator rather than branching in demo app code. A definition factory may receive context only if the core contract already supports it; otherwise keep factory stable and switch inside the scene via `ctx.quality`/`setQuality()`.
+- Replace the current `fluidTankDefinition.factory` default path so `basic` no longer directly returns `new DomScriptScene(...)`.
+- Keep `previewFactory` on a cheap/basic path. Do not make preview tiles instantiate raw WebGL.
 - Update Fluid capabilities:
   ```ts
   qualityModes: ['basic', 'enhanced', 'raw']
@@ -178,6 +225,12 @@ export interface SceneRenderVariant {
 /pixi-lab/?fluidGallery=1&quality=raw
 ```
 
+**Required UI/runtime behavior:**
+- Parse `quality` once in `packages/demo/src/App.tsx` and pass it to `GameLauncher`/`GameRuntime` through an explicit prop or an existing safe path.
+- Validate parsed quality against `definition.capabilities.qualityModes`; invalid or unsupported values fall back to `basic`.
+- `QualitySelector` options must remain exactly the active definition's advertised modes.
+- If the stored global quality is unsupported for the active definition, use `basic` for that session and do not display raw as selected.
+
 **Acceptance:** Browser console can prove the selected quality and renderer path. Visual checks confirm:
 - `basic`: single Pixi canvas/render texture feedback look
 - `raw`: current raw WebGL dye-advection look
@@ -202,7 +255,9 @@ pnpm --filter @hooksjam/pixi-lab-demo exec vite build --outDir dist-fluid-debug 
 - `/pixi-lab/?fluidEngine=1&quality=basic`
 - `/pixi-lab/?fluidEngine=1&quality=raw`
 - `/pixi-lab/?fluidGallery=1&quality=basic`
+- `/pixi-lab/?fluidGallery=1&quality=raw`
 - `/pixi-lab/` dashboard still shows all entries
+- Open a non-fluid experience after using raw and confirm it starts at `basic` or another supported quality, never an unsupported raw value.
 
 **Acceptance:** Basic and raw are visually distinct and both functional.
 
@@ -276,10 +331,20 @@ pnpm --filter @hooksjam/pixi-lab-simulations typecheck
 pnpm --filter @hooksjam/pixi-lab-demo typecheck
 ```
 
+**Cron/automation behavior:** The autonomous job should implement one cohesive slice per run, in this order:
+1. Task 0–1: shared quality type + sticky raw governor + tests.
+2. Task 2–3: Pixi-native Fluid basic renderer.
+3. Task 4–5: raw quality selection + route/query/UI sanitization.
+4. Task 6: automated and browser QA.
+5. Task 7: render-variant audit document.
+6. Task 8: one non-fluid Pixi feedback candidate, then shared helper extraction only after duplication is proven.
+
+Each run must pull/rebase first, avoid broad rewrites, commit and push only when validation passes, and report what changed plus any remaining verification gaps.
+
 ---
 
 ## Open Questions
 
-1. Should `enhanced` initially mean “same Pixi renderer as basic with higher resolution/glow” or remain existing behavior until each scene opts in?
-2. Should `raw` be globally selectable in the UI immediately, or only enabled when an experience advertises it in `qualityModes`?
-3. Should generated `packages/demo/dist-fluid-debug/` stay committed long-term, or should a later cleanup move it to ignored build output?
+1. **Resolved for implementation:** `enhanced` may initially alias the Pixi-native renderer with higher resolution/glow for Fluid. It must not keep pointing at raw WebGL by accident.
+2. **Resolved for implementation:** `raw` is selectable only when an experience advertises it in `qualityModes`.
+3. **Deferred cleanup:** generated `packages/demo/dist-fluid-debug/` is currently committed. Do not remove it as part of the raw/basic split unless a separate cleanup plan confirms it is safe.
