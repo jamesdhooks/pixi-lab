@@ -12,8 +12,11 @@ import {
 import {
   GpuFluidTankRenderer,
   velocityFromScreenDelta,
+  type FluidSplat,
   type GpuFluidTankOptions,
+  type GpuFluidTankStats,
 } from './GpuFluidTankRenderer.js';
+import { PixiFeedbackFluidRenderer } from './PixiFeedbackFluidRenderer.js';
 import { FLUID_TANK_DEFAULTS } from './fluid-tank.config.js';
 import { boundedCyanStyle } from './styles/bounded-cyan.js';
 import { nebulaOilStyle } from './styles/nebula-oil.js';
@@ -32,19 +35,35 @@ interface FluidRipple {
   life: number;
 }
 
+interface FluidRendererAdapter {
+  readonly canvas?: unknown;
+  readonly layer?: unknown;
+  destroy(): void;
+  resize(width: number, height: number, force?: boolean): void;
+  randomizeDye(seed?: number, seedMotion?: boolean): void;
+  setQuality(quality: RenderQuality): void;
+  setOptions(options: Partial<GpuFluidTankOptions>): void;
+  smallSwirl(x: number, y: number): void;
+  settleVelocity(): void;
+  splat(splat: FluidSplat): void;
+  update(dt: number): void;
+  render(): void;
+  stats(): GpuFluidTankStats;
+}
+
 export const fluidTankStyleManifest: SimStyleManifest = {
   defaultStyleId: 'bounded-cyan',
   capabilities: {
     renderLayers: ['fluid'],
     passes: ['gpuFluid'],
-    qualities: ['basic', 'enhanced'],
+    qualities: ['basic', 'enhanced', 'raw'],
   },
   styles: [boundedCyanStyle, nebulaOilStyle, thermalBloomStyle],
 };
 
 export class FluidTankScene extends SimulationScene {
   readonly name = 'FluidTank';
-  private renderer: GpuFluidTankRenderer | null = null;
+  private renderer: FluidRendererAdapter | null = null;
   private wallLayer: Graphics | null = null;
   private rippleLayer: Graphics | null = null;
   private options: GpuFluidTankOptions | null = null;
@@ -104,7 +123,7 @@ export class FluidTankScene extends SimulationScene {
         exposure: 1.06,
       };
     }
-    this.renderer = new GpuFluidTankRenderer(parent, this.options, ctx.quality);
+    this.renderer = this.createRenderer(parent, ctx.quality);
     this.wallLayer = new Graphics();
     this.rippleLayer = new Graphics();
     this.wallLayer.zIndex = 1;
@@ -213,7 +232,19 @@ export class FluidTankScene extends SimulationScene {
   }
 
   override setQuality(quality: RenderQuality): void {
+    const switchingRenderer = this.renderer !== null && this.usesRawRenderer(quality) !== this.usesRawRenderer(this.quality);
     super.setQuality(quality);
+    if (switchingRenderer && this.options) {
+      const parent = this.ctx_.systems.pixi.canvas.parentElement;
+      if (parent) {
+        this.renderer?.destroy();
+        this.renderer = this.createRenderer(parent, quality);
+        this.renderer.resize(this.ctx_.width, this.ctx_.height, true);
+        this.renderer.randomizeDye(this.options.seed, !(this.debugStill || this.debugNoSeedMotion));
+        this.applyStyleOptions();
+        return;
+      }
+    }
     this.renderer?.setQuality(quality);
   }
 
@@ -228,7 +259,7 @@ export class FluidTankScene extends SimulationScene {
 
   getRenderLayers(): SimRenderLayers {
     return {
-      fluid: this.renderer?.canvas,
+      fluid: this.renderer?.layer ?? this.renderer?.canvas,
     };
   }
 
@@ -253,6 +284,18 @@ export class FluidTankScene extends SimulationScene {
       return;
     }
     this.reset();
+  }
+
+  private createRenderer(parent: HTMLElement, quality: RenderQuality): FluidRendererAdapter {
+    if (!this.options) throw new Error('Fluid Tank renderer options must be initialized before renderer creation.');
+    if (this.usesRawRenderer(quality)) {
+      return new GpuFluidTankRenderer(parent, this.options, quality);
+    }
+    return new PixiFeedbackFluidRenderer(this.ctx_.systems.pixi.app, this.options, quality);
+  }
+
+  private usesRawRenderer(quality: RenderQuality): boolean {
+    return quality === 'raw';
   }
 
   private applyPointerTrails(): void {

@@ -18,10 +18,12 @@
     "prepack": "pnpm build"
   },
   "peerDependencies": {
-    "@hooksjam/pixi-lab-core": "^0.1.0"
+    "@hooksjam/pixi-lab-core": "^0.1.0",
+    "pixi.js": ">=8.0.0"
   },
   "devDependencies": {
     "@hooksjam/pixi-lab-core": "workspace:*",
+    "pixi.js": "^8.18.1",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   },

@@ -176,7 +176,7 @@ export interface SceneRenderVariant {
 - Use existing `GameContext` input snapshots, not DOM-local pointer listeners.
 - Ensure cleanup destroys Pixi containers, filters, textures, render textures, and generated textures.
 
-**Acceptance:** `basic` Fluid Tank renders colorful Pixi-native feedback inside the normal Pixi Lab scene, with no extra DOM script canvas and no raw WebGL context.
+**2026-05-29 slice note:** Task 3 ported the reference Pixi feedback algorithm into `PixiFeedbackFluidRenderer`. The renderer uses the shared Pixi app, RenderTexture ping-pong, displacement/blur feedback, generated soft splat and vector-noise textures, style palettes, live settings-derived force/warp/retention, and scene input snapshots. It does not create a standalone app or DOM-local pointer listeners.
 
 ---
 
