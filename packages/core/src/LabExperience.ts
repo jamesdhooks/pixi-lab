@@ -49,6 +49,8 @@ export interface LabExperienceBase {
   icon: string;
   /** Preferred palette name (from Styles registry) */
   paletteHint?: string;
+  /** Render the Pixi canvas over external/backing scene layers without clearing to an opaque background. */
+  transparentBackground?: boolean;
   /** Which engine features this experience uses */
   capabilities: ExperienceCapabilities;
   /** Zod-free settings field definitions — rendered by SettingsDrawer */

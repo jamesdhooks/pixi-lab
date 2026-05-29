@@ -165,7 +165,7 @@ export class GameApp {
       height: measuredH,
       background: styleRegistry.getPalette(palette ?? definition.paletteHint ?? 'rainbow')
         .background,
-      backgroundAlpha: this.opts.transparent ? 0 : 1,
+      backgroundAlpha: this.opts.transparent || definition.transparentBackground ? 0 : 1,
       // Force WebGL — skips WebGPU auto-detection which adds overhead and can
       // be unstable on embedded GPU drivers (e.g. Raspberry Pi VideoCore).
       preference: 'webgl',

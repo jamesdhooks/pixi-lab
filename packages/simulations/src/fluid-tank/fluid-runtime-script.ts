@@ -1,6 +1,6 @@
-export const fluidTankBareRuntimeScript = `
+export const fluidRuntimeScript = `
 (async () => {
-      const fluidCanvas = document.getElementById("fluid-canvas");
+      const fluidCanvas = document.getElementById("runtime-canvas");
       const pixiLayer = document.getElementById("pixi-layer");
       const fallback = document.getElementById("fallback");
       const fpsEl = document.getElementById("fps");

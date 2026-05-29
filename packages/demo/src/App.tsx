@@ -5,7 +5,6 @@ import { GameLauncher, PreviewTile } from '@hooksjam/pixi-lab-react';
 import { useViewport } from '@hooksjam/pixi-lab-react';
 import { fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
-import { FluidTankBareRuntime } from './FluidTankBareRuntime';
 import { hasPassedDemoQa } from './demoQaStatus';
 
 const ALL_EXPERIENCES: readonly LabExperience[] = [fluidTankDefinition];
@@ -47,11 +46,7 @@ const LOGO_PARTICLES: Array<[number, string, string, string, number, number, num
 
 export function App() {
   const { isMobile, isLandscape } = useViewport();
-  const [active, setActive] = useState<LabExperience | null>(() =>
-    typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('fluidOnly')
-      ? fluidTankDefinition
-      : null,
-  );
+  const [active, setActive] = useState<LabExperience | null>(null);
   const [filter, setFilter] = useState<FilterKind>('all');
   const [dark, setDark] = useState(true);
   const [carouselOpen, setCarouselOpen] = useState(false);
@@ -72,22 +67,16 @@ export function App() {
   const [maxPixels] = useState(() => {
     try { return parseInt(localStorage.getItem('pixi-lab:maxPixels') ?? '0') || undefined; } catch { return undefined; }
   });
+  const routeMode = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      fluidGallery: params.has('fluidGallery'),
+      fluidEngine: params.has('fluidEngine'),
+      fluidReference: params.has('fluidReference'),
+    };
+  }, []);
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  const fluidReferenceMode = searchParams?.has('fluidReference') ?? false;
-  const galleryMode = searchParams?.has('fluidGallery') ?? false;
-  const engineMode = searchParams?.has('fluidEngine') ?? false;
-  const exactReferenceRuntimeMode = fluidReferenceMode || engineMode || !galleryMode;
 
-  if (exactReferenceRuntimeMode) {
-    return (
-      <div className="h-screen w-screen overflow-hidden bg-black">
-        <FluidTankBareRuntime />
-      </div>
-    );
-  }
-
-  // On portrait mobile, force carousel to bottom dock and hide side-picker buttons.
   const effectiveCarouselSide = isMobile && !isLandscape ? 'bottom' : carouselSide;
 
   // Persist maxPixels to localStorage
@@ -95,6 +84,15 @@ export function App() {
     try { localStorage.setItem('pixi-lab:maxPixels', String(maxPixels || '')); } catch {}
   }, [maxPixels]);
 
+  useEffect(() => {
+    if (routeMode.fluidGallery) return;
+    if (routeMode.fluidEngine || routeMode.fluidReference || window.location.pathname.endsWith('/pixi-lab/')) {
+      setAppDemoActive(false);
+      setCarouselOpen(false);
+      setCarouselDocked(false);
+      setActive(fluidTankDefinition);
+    }
+  }, [routeMode]);
 
 
   const availableKinds = useMemo<FilterKind[]>(() => {
@@ -441,6 +439,7 @@ export function App() {
               dockedInset={dockedInset}
               maxPixels={maxPixels}
               transparent={active.kind === 'ambient' || active.kind === 'effect'}
+              autoDemo={routeMode.fluidEngine || routeMode.fluidReference}
               onQuit={() => {
                 setActive(null);
                 setCarouselOpen(false);

@@ -1,10 +1,7 @@
 import {
   Graphics,
-  GpuFluidTankRenderer,
   SimulationScene,
-  velocityFromScreenDelta,
   type GameContext,
-  type GpuFluidTankOptions,
   type Input,
   type RenderQuality,
   type SimRenderLayers,
@@ -12,6 +9,11 @@ import {
   type SimStyleManifest,
   type StagnationReport,
 } from '@hooksjam/pixi-lab-core';
+import {
+  GpuFluidTankRenderer,
+  velocityFromScreenDelta,
+  type GpuFluidTankOptions,
+} from './GpuFluidTankRenderer.js';
 import { FLUID_TANK_DEFAULTS } from './fluid-tank.config.js';
 import { boundedCyanStyle } from './styles/bounded-cyan.js';
 import { nebulaOilStyle } from './styles/nebula-oil.js';
@@ -256,7 +258,7 @@ export class FluidTankScene extends SimulationScene {
   private applyPointerTrails(): void {
     if (!this.renderer) return;
     const snapshot = this.input_.snapshot;
-    for (const pointer of snapshot.pointers.values()) {
+    for (const pointer of Array.from(snapshot.pointers.values())) {
       const previous = this.previousPointers.get(pointer.id);
       if (!previous) {
         this.previousPointers.set(pointer.id, { x: pointer.x, y: pointer.y, movedDistance: 0 });
@@ -285,7 +287,7 @@ export class FluidTankScene extends SimulationScene {
       previous.x = pointer.x;
       previous.y = pointer.y;
     }
-    for (const id of snapshot.justUp) {
+    for (const id of Array.from(snapshot.justUp)) {
       const previous = this.previousPointers.get(id);
       if (previous && previous.movedDistance < 6 && this.interactionMode === 'stir') {
         this.renderer.smallSwirl(

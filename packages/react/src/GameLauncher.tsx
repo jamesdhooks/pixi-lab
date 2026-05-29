@@ -66,6 +66,8 @@ export interface GameLauncherProps {
   onDemoExit?: () => void;
   /** Called after the Pixi runtime is ready and the launcher's initial mode is applied. */
   onRuntimeReady?: () => void;
+  /** Remove the black shell background so the launcher floats as a transparent overlay. */
+  transparent?: boolean;
 }
 
 export function GameLauncher(props: GameLauncherProps) {
@@ -87,6 +89,7 @@ function GameLauncherInner({
   onDemoAdvance,
   onDemoExit,
   onRuntimeReady,
+  transparent = false,
 }: GameLauncherProps) {
   // ViewportProvider is mounted by GameLauncher wrapper; child components read context directly.
   const { isMobile, isLandscape } = useViewportContext();
@@ -393,7 +396,7 @@ function GameLauncherInner({
   }
 
   return (
-    <div className="pixi-lab-runtime-shell fixed top-0 left-0 w-full h-full z-50 overflow-hidden bg-black">
+    <div className={`pixi-lab-runtime-shell fixed top-0 left-0 w-full h-full z-50 overflow-hidden${transparent ? '' : ' bg-black'}`}>
       <style>{RUNTIME_PERF_CSS}</style>
       {/* Game canvas — always mounted */}
       <GameRuntime
@@ -401,6 +404,7 @@ function GameLauncherInner({
         userId={userId}
         mode={autoDemo && definition.capabilities.demo ? 'demo' : 'play'}
         quality={quality}
+        transparent={transparent}
         maxPixels={localMaxPixels}
         onEvent={handleEvent}
         onReady={(app) => {

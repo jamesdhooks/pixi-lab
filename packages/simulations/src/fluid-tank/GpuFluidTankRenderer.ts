@@ -1,5 +1,4 @@
-import type { RenderQuality } from '../types.js';
-import { SeededRng } from '../utils/SeededRng.js';
+import { SeededRng, type RenderQuality } from '@hooksjam/pixi-lab-core';
 
 export interface GpuFluidTankOptions {
   cellSize: number;
@@ -573,7 +572,7 @@ export class GpuFluidTankRenderer {
   destroy(): void {
     this.disposeFramebuffers();
     if (this.gl) {
-      for (const entry of this.programs.values()) {
+      for (const entry of Array.from(this.programs.values())) {
         this.gl.deleteProgram(entry.program);
       }
       if (this.quadBuffer) this.gl.deleteBuffer(this.quadBuffer);
