@@ -100,6 +100,10 @@ Evidence:
 
 Mini-plan: `docs/plans/amoeba-lamp-raw-mode-mini-plan.md`. Do not advertise `raw` on Amoeba Lamp until that adapter is implemented, validated, and browser-smoked.
 
+## 2026-05-29 Amoeba helper slice
+
+Added `AmoebaLampRawSplatMapper` as the first implementation building block for the Amoeba raw adapter. It converts CPU model particles into bounded density/heat splat descriptors suitable for persistent density/heat texture ping-pong injection, with deterministic upload budgeting. This is intentionally a pure helper only; Amoeba Lamp still advertises `basic`/`enhanced` and raw browser QA is deferred until the adapter exists.
+
 ## Acceptance for future raw scenes
 
 A scene may advertise `raw` only when all are true:

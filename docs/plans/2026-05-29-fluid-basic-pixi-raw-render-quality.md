@@ -329,6 +329,8 @@ pnpm --filter @hooksjam/pixi-lab-demo exec vite build --outDir dist-fluid-debug 
 
 **2026-05-29 slice note:** Task 8 validation passed for the first non-fluid Pixi feedback slice (`cosmic-ink-ocean`). The next required pre-raw step inspected `amoeba-lamp`, `ant-signal`, and `orbital-shrapnel` current scene/model code and selected Amoeba Lamp as the smallest valid first true RAW MODE candidate. Added `docs/plans/amoeba-lamp-raw-mode-mini-plan.md` naming density/heat ping-pong textures, fallback behavior, preview behavior, browser QA routes, and validation commands. `raw` is still not advertised on Amoeba Lamp until a concrete adapter lands and passes QA.
 
+**2026-05-29 slice note:** Began the Amoeba Lamp raw implementation path with a focused pure helper rather than wiring `raw` prematurely. Added `AmoebaLampRawSplatMapper` plus tests for bounded normalized density/heat splats and deterministic upload budgeting. This prepares the future density/heat ping-pong adapter while keeping `qualityModes` at `['basic', 'enhanced']` until the adapter and browser QA are complete.
+
 ---
 
 ## Task 8A: RAW MODE roadmap integration

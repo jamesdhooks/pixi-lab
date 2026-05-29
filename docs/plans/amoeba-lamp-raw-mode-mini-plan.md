@@ -135,6 +135,10 @@ pnpm --filter @hooksjam/pixi-lab-demo typecheck
 
 Run browser smoke only after the adapter is wired and `raw` is advertised.
 
+## 2026-05-29 helper slice note
+
+Implemented the first TDD helper for the raw adapter: `packages/simulations/src/amoeba-lamp/AmoebaLampRawSplatMapper.ts`. It maps deterministic CPU particle snapshots into bounded normalized density/heat splats with texture-space centers, deterministic upload budgeting, and explicit radius/heat values for future density/heat ping-pong injection. The RED run failed because the mapper module did not exist; the GREEN run passed `AmoebaLampRawSplatMapper.test.ts`. `raw` remains unadvertised for Amoeba Lamp until the actual scene-owned adapter is implemented and browser-smoked.
+
 ## Non-goals for the first raw slice
 
 - Do not extract a generic GPU Field Engine.
