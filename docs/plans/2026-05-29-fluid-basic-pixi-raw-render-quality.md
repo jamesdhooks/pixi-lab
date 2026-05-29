@@ -325,6 +325,8 @@ pnpm --filter @hooksjam/pixi-lab-demo exec vite build --outDir dist-fluid-debug 
 
 **Acceptance:** Shared renderer APIs are based on proven duplication, not guessed architecture. A scene advertises `raw` only after its raw adapter exists, is selectable, and passes browser QA.
 
+**2026-05-29 slice note:** Began Task 8's first non-fluid Pixi feedback candidate with `cosmic-ink-ocean`. Added a scene-owned `CosmicInkFeedbackRenderer` using the shared Pixi app, ping-pong `RenderTexture`s, blur/glow feedback, generated soft splats, and existing model particles as field sources. Wired `CosmicInkOceanScene` so `basic` now renders through the Pixi feedback path and `enhanced` keeps the feedback path plus a lighter particle overlay; no `raw` quality was advertised. Added focused tests for the pure particle-to-feedback stamp mapper and verified the RED failure before implementation. Browser-smoked the gallery launch after validation: Cosmic Ink Ocean opened with one Pixi canvas, visible feedback rendering, visible settings/quality controls, basic-to-enhanced switching, and no JavaScript console errors.
+
 ---
 
 ## Task 8A: RAW MODE roadmap integration

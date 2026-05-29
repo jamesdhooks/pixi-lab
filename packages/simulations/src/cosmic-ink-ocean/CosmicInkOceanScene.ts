@@ -1,5 +1,4 @@
 import {
-  FieldPaletteRenderer,
   ParticlePointRenderer,
   SimulationScene,
   type GameContext,
@@ -10,6 +9,7 @@ import {
   type StagnationReport,
 } from '@hooksjam/pixi-lab-core';
 import { COSMIC_INK_OCEAN_DEFAULTS } from './cosmic-ink-ocean.config.js';
+import { CosmicInkFeedbackRenderer } from './CosmicInkFeedbackRenderer.js';
 import { CosmicInkOceanModel, type CosmicInkOceanModelOptions } from './CosmicInkOceanModel.js';
 import { deepCurrentStyle } from './styles/deep-current.js';
 import { goldenTideStyle } from './styles/golden-tide.js';
@@ -27,7 +27,7 @@ export const cosmicInkOceanStyleManifest: SimStyleManifest = {
 
 export class CosmicInkOceanScene extends SimulationScene {
   readonly name: string = 'CosmicInkOcean';
-  private fieldRenderer: FieldPaletteRenderer | null = null;
+  private feedbackRenderer: CosmicInkFeedbackRenderer | null = null;
   private particleRenderer: ParticlePointRenderer | null = null;
   private model: CosmicInkOceanModel | null = null;
   private modelOptions: CosmicInkOceanModelOptions | null = null;
@@ -45,8 +45,7 @@ export class CosmicInkOceanScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    this.fieldRenderer = new FieldPaletteRenderer(ctx.systems.pixi.app);
-    this.fieldRenderer.setQuality(ctx.quality);
+    this.feedbackRenderer = new CosmicInkFeedbackRenderer(ctx.systems.pixi.app, ctx.quality);
     if (ctx.quality === 'enhanced') {
       this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
       this.particleRenderer.setQuality(ctx.quality);
@@ -73,9 +72,9 @@ export class CosmicInkOceanScene extends SimulationScene {
   }
 
   override onExit(): void {
-    this.fieldRenderer?.destroy();
+    this.feedbackRenderer?.destroy();
     this.particleRenderer?.destroy();
-    this.fieldRenderer = null;
+    this.feedbackRenderer = null;
     this.particleRenderer = null;
     this.model = null;
     this.modelOptions = null;
@@ -91,13 +90,13 @@ export class CosmicInkOceanScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (!this.model || !this.fieldRenderer) return;
+    if (!this.model || !this.feedbackRenderer) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? nebulaInkStyle;
-    this.fieldRenderer.clear();
-    this.fieldRenderer.renderField('ink', this.model.inkField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.94, gamma: 0.42, zIndex: 0 });
+    const particles = this.model.renderParticles();
+    this.feedbackRenderer.renderParticles(particles, style, this.ctx_.width, this.ctx_.height);
     if (this.particleRenderer) {
       this.particleRenderer.clear();
-      this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.72, zIndex: 1 });
+      this.particleRenderer.renderParticles(particles, style, { sizeScale: 0.52, zIndex: 1 });
     }
     const debug = this.ctx_.systems.debug;
     if (debug?.isEnabled()) {
@@ -123,7 +122,7 @@ export class CosmicInkOceanScene extends SimulationScene {
   override setQuality(quality: RenderQuality): void {
     const prev = this.quality;
     super.setQuality(quality);
-    this.fieldRenderer?.setQuality(quality);
+    this.feedbackRenderer?.setQuality(quality);
     this.particleRenderer?.setQuality(quality);
     if (!this.model || prev === quality) return;
     if (quality === 'enhanced' && !this.particleRenderer) {
@@ -138,9 +137,9 @@ export class CosmicInkOceanScene extends SimulationScene {
 
   getRenderLayers(): SimRenderLayers {
     return {
-      field: this.fieldRenderer?.getLayer('ink'),
+      field: this.feedbackRenderer?.layer,
       particles: this.particleRenderer?.particles,
-      glow: this.fieldRenderer?.getLayer('ink'),
+      glow: this.feedbackRenderer?.layer,
     };
   }
 
