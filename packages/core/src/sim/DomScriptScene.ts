@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
 import { Scene } from '../Scene.js';
-import type { GameContext } from '../types.js';
+import type { GameContext, SimStyle } from '../types.js';
 import type { Input } from '../Input.js';
 
 export interface DomScriptSceneOptions {
@@ -23,6 +23,7 @@ export class DomScriptScene extends Scene {
   private root: HTMLDivElement | null = null;
   private scriptElement: HTMLScriptElement | null = null;
   private previousPixi: typeof PIXI | undefined;
+  private currentStyle: SimStyle | null = null;
 
   constructor(private readonly options: DomScriptSceneOptions) {
     super();
@@ -47,6 +48,9 @@ export class DomScriptScene extends Scene {
     root.className = 'absolute inset-0 h-full w-full overflow-hidden bg-black';
     root.setAttribute('data-pixi-lab-dom-scene', this.name);
     root.innerHTML = this.options.markup;
+
+    this.currentStyle = ctx.systems.styleManager?.getStyle() ?? null;
+    this.applyStyleToRoot(root, this.currentStyle);
 
     const script = document.createElement('script');
     script.text = this.options.script;
@@ -76,7 +80,24 @@ export class DomScriptScene extends Scene {
     }
   }
 
+  setStyle(_id: string): void {
+    this.currentStyle = this.ctx?.systems.styleManager?.getStyle() ?? this.currentStyle;
+    if (this.root) this.applyStyleToRoot(this.root, this.currentStyle);
+  }
+
   shouldRender(): boolean {
     return true;
+  }
+
+  private applyStyleToRoot(root: HTMLDivElement, style: SimStyle | null): void {
+    if (!style) return;
+    const payload = {
+      id: style.id,
+      palette: style.palette,
+      background: style.background,
+      uniforms: style.uniforms,
+    };
+    root.dataset.pixiLabStyle = JSON.stringify(payload);
+    root.dispatchEvent(new CustomEvent('pixi-lab-style-change', { detail: payload }));
   }
 }

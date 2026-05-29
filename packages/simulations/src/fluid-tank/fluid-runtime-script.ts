@@ -43,6 +43,46 @@ export const fluidRuntimeScript = `
         pressure: "24"
       };
 
+      const runtimeRoot = fluidCanvas.closest("[data-pixi-lab-dom-scene]") || document.body;
+      const runtimeStyle = {
+        palette: [0x75ffe6, 0x9dfff4, 0xbcecff],
+        exposure: 1.06,
+        paletteStrength: 0.76
+      };
+
+      function unpackColor(hex) {
+        const value = Number(hex) || 0xffffff;
+        return [
+          ((value >> 16) & 255) / 255,
+          ((value >> 8) & 255) / 255,
+          (value & 255) / 255
+        ];
+      }
+
+      function applyRuntimeStylePayload(payload) {
+        if (!payload) return;
+        if (Array.isArray(payload.palette) && payload.palette.length > 0) {
+          runtimeStyle.palette = payload.palette.slice(0, 4);
+        }
+        const uniforms = payload.uniforms || {};
+        runtimeStyle.exposure = Number(uniforms.exposure ?? runtimeStyle.exposure);
+        runtimeStyle.paletteStrength = Number(uniforms.paletteStrength ?? runtimeStyle.paletteStrength);
+      }
+
+      function readRuntimeStyle() {
+        try {
+          applyRuntimeStylePayload(JSON.parse(runtimeRoot.dataset.pixiLabStyle || "null"));
+        } catch {
+          // Keep defaults when the host has not provided a style yet.
+        }
+      }
+
+      readRuntimeStyle();
+      runtimeRoot.addEventListener("pixi-lab-style-change", (event) => {
+        applyRuntimeStylePayload(event.detail);
+        if (dye && initDyeProgram) initDyeField();
+      });
+
       const BASE_SIM_RESOLUTION = 220;
       const BASE_DYE_RESOLUTION = 950;
 
@@ -169,6 +209,11 @@ export const fluidRuntimeScript = `
         uniform vec2 resolution;
         uniform float seed;
         uniform float cellSize;
+        uniform vec3 palette0;
+        uniform vec3 palette1;
+        uniform vec3 palette2;
+        uniform float paletteStrength;
+        uniform float exposure;
 
         float hash(vec2 p) {
           p = fract(p * vec2(123.34, 456.21));
@@ -224,8 +269,12 @@ export const fluidRuntimeScript = `
           float saturation = 0.72 + 0.26 * medium;
           float value = 0.96 + 0.40 * fine + 0.16 * ribbons;
 
-          vec3 color = hsv2rgb(vec3(hue, saturation, value));
-          color *= 1.04 + 0.20 * ribbons;
+          vec3 rainbow = hsv2rgb(vec3(hue, saturation, value));
+          float band = fract(hue * 1.65 + ribbons * 0.18);
+          vec3 themed = mix(palette0, palette1, smoothstep(0.0, 0.68, band));
+          themed = mix(themed, palette2, smoothstep(0.45, 1.0, band));
+          vec3 color = mix(rainbow, themed * value, clamp(paletteStrength, 0.0, 1.0));
+          color *= exposure * (1.04 + 0.20 * ribbons);
 
           outColor = vec4(color, 1.0);
         }
@@ -779,6 +828,14 @@ export const fluidRuntimeScript = `
         gl.uniform2f(initDyeProgram.uniforms.resolution, dye.width, dye.height);
         gl.uniform1f(initDyeProgram.uniforms.seed, seed);
         gl.uniform1f(initDyeProgram.uniforms.cellSize, CONFIG.CELL_SIZE);
+        const p0 = unpackColor(runtimeStyle.palette[0]);
+        const p1 = unpackColor(runtimeStyle.palette[1] ?? runtimeStyle.palette[0]);
+        const p2 = unpackColor(runtimeStyle.palette[2] ?? runtimeStyle.palette[1] ?? runtimeStyle.palette[0]);
+        gl.uniform3f(initDyeProgram.uniforms.palette0, p0[0], p0[1], p0[2]);
+        gl.uniform3f(initDyeProgram.uniforms.palette1, p1[0], p1[1], p1[2]);
+        gl.uniform3f(initDyeProgram.uniforms.palette2, p2[0], p2[1], p2[2]);
+        gl.uniform1f(initDyeProgram.uniforms.paletteStrength, runtimeStyle.paletteStrength);
+        gl.uniform1f(initDyeProgram.uniforms.exposure, runtimeStyle.exposure);
         blit(dye.read);
         blit(dye.write);
       }
@@ -872,18 +929,6 @@ export const fluidRuntimeScript = `
         const pad = 7;
 
         wallLayer.clear();
-
-        wallLayer
-          .rect(pad, pad, w - pad * 2, h - pad * 2)
-          .stroke({ color: 0xffffff, alpha: 0.24, width: 2 });
-
-        wallLayer
-          .rect(pad + 5, pad + 5, w - (pad + 5) * 2, h - (pad + 5) * 2)
-          .stroke({ color: 0xbcecff, alpha: 0.11, width: 1 });
-
-        wallLayer
-          .rect(pad - 1, pad - 1, w - (pad - 1) * 2, h - (pad - 1) * 2)
-          .stroke({ color: 0x000000, alpha: 0.28, width: 4 });
       }
 
       function resizeCanvas() {

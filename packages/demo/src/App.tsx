@@ -3,11 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff, Play } from 'lucide-react';
 import { GameLauncher, PreviewTile } from '@hooksjam/pixi-lab-react';
 import { useViewport } from '@hooksjam/pixi-lab-react';
-import { fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
+import { AMBIENT_REGISTRY } from '@hooksjam/pixi-lab-ambients';
+import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
+import { SIMULATION_REGISTRY, fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
 import { hasPassedDemoQa } from './demoQaStatus';
 
-const ALL_EXPERIENCES: readonly LabExperience[] = [fluidTankDefinition];
+const ALL_EXPERIENCES: readonly LabExperience[] = [
+  ...GAME_REGISTRY,
+  ...SIMULATION_REGISTRY,
+  ...AMBIENT_REGISTRY,
+];
 const APP_DEMO_INTERVAL_MS = 10_000;
 const APP_DEMO_CROSSFADE_MS = 220;
 const APP_DEMO_PRELOAD_MAX_PIXELS = 147_456;
@@ -86,7 +92,7 @@ export function App() {
 
   useEffect(() => {
     if (routeMode.fluidGallery) return;
-    if (routeMode.fluidEngine || routeMode.fluidReference || window.location.pathname.endsWith('/pixi-lab/')) {
+    if (routeMode.fluidEngine || routeMode.fluidReference) {
       setAppDemoActive(false);
       setCarouselOpen(false);
       setCarouselDocked(false);
@@ -111,13 +117,15 @@ export function App() {
   }, []);
 
   const filtered = useMemo(
-    () =>
-      filter === 'all'
+    () => {
+      if (routeMode.fluidGallery) return [fluidTankDefinition];
+      return filter === 'all'
         ? ALL_EXPERIENCES
         : filter === 'overlays'
           ? ALL_EXPERIENCES.filter((e) => e.kind === 'ambient' || e.kind === 'effect')
-          : ALL_EXPERIENCES.filter((e) => e.kind === filter),
-    [filter],
+          : ALL_EXPERIENCES.filter((e) => e.kind === filter);
+    },
+    [filter, routeMode.fluidGallery],
   );
 
   const carouselItems = useMemo(

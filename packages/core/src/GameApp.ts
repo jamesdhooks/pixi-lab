@@ -187,6 +187,9 @@ export class GameApp {
     this.physicsWorld = new PhysicsWorld();
     this.renderTargets = new RenderTargetPool(this.pixi.renderer);
     this.styleManager = new RenderStyleManager();
+    if (definition.styleManifest) {
+      this.styleManager.setManifest(definition.styleManifest);
+    }
     this.procedural = new ProceduralTextureLibrary(this.pixi.renderer);
     this.gestures = new GestureInterpreter();
     this.governor = new PerformanceGovernor({

@@ -1,7 +1,6 @@
 import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { DomScriptScene } from '@hooksjam/pixi-lab-core';
 import { FluidTankDemoAI } from './FluidTankDemoAI.js';
-import { FluidTankPreviewScene } from './FluidTankPreviewScene.js';
 import { fluidTankStyleManifest } from './FluidTankScene.js';
 import { FLUID_TANK_DEFAULTS, FLUID_TANK_SETTINGS_FIELDS } from './fluid-tank.config.js';
 import { fluidRuntimeMarkup } from './fluid-runtime-markup.js';
@@ -56,7 +55,7 @@ export const fluidTankDefinition: SimulationDefinition = {
   },
   defaultSeed: 260527,
   factory: () => new DomScriptScene({ name: 'Fluid Tank', markup: fluidRuntimeMarkup, script: fluidRuntimeScript }),
-  previewFactory: () => new FluidTankPreviewScene(),
+  previewFactory: () => new DomScriptScene({ name: 'Fluid Tank Preview', markup: fluidRuntimeMarkup, script: fluidRuntimeScript }),
   demoAiFactory: () => new FluidTankDemoAI(),
   tutorialPages: [
     { icon: '~', title: 'Stir The Tank', body: 'Drag through the canvas to inject velocity along the path, just like the standalone prototype.' },
