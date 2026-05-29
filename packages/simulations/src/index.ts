@@ -66,6 +66,7 @@ export { fluidTankDefinition } from './fluid-tank/fluid-tank.definition.js';
 export { FluidTankScene, fluidTankStyleManifest } from './fluid-tank/FluidTankScene.js';
 export { FluidTankPreviewScene } from './fluid-tank/FluidTankPreviewScene.js';
 export { FluidTankDemoAI } from './fluid-tank/FluidTankDemoAI.js';
+export type { SceneRenderVariant } from './rendering/SceneRenderVariant.js';
 
 export { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 export { HarmonicSandScene, harmonicSandStyleManifest } from './harmonic-sand/HarmonicSandScene.js';

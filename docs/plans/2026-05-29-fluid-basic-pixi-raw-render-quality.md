@@ -145,6 +145,8 @@ export interface SceneRenderVariant {
 
 **Acceptance:** No changes to public core API except the `raw` quality type unless a truly generic abstraction is needed.
 
+**2026-05-29 slice note:** Task 2 added `SceneRenderVariant` under simulations with lifecycle/update/render hooks plus optional quality/style/mode/reset hooks. The type is exported from `@hooksjam/pixi-lab-simulations` and remains package-owned, with no new core API.
+
 ---
 
 ## Task 3: Port `reference/pixi-fluid.html` into a Pixi-native Fluid renderer
