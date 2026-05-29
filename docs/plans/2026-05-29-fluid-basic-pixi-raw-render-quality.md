@@ -239,6 +239,8 @@ export interface SceneRenderVariant {
 - `basic`: single Pixi canvas/render texture feedback look
 - `raw`: current raw WebGL dye-advection look
 
+**2026-05-29 slice note:** Task 5 added sanitized host/query startup quality wiring. `GameLauncher` now accepts an optional `initialQuality`, sanitizes query and persisted values against the active experience's `qualityModes`, and overwrites stale unsupported persisted values when no query override is present. Demo routes parse `?quality=basic|enhanced|raw` once and pass it into launched Fluid surfaces; unsupported or invalid query values fall back through the same sanitizer so raw cannot be selected for non-raw experiences. Added `qualitySelection.test.ts` covering raw support, unsupported raw fallback, invalid values, and non-basic fallback modes.
+
 ---
 
 ## Task 6: Verify Fluid implementation
@@ -264,6 +266,8 @@ pnpm --filter @hooksjam/pixi-lab-demo exec vite build --outDir dist-fluid-debug 
 - Open a non-fluid experience after using raw and confirm it starts at `basic` or another supported quality, never an unsupported raw value.
 
 **Acceptance:** Basic and raw are visually distinct and both functional.
+
+**2026-05-29 slice note:** Task 6 validation passed for the raw quality routing slice. Added a focused `PixiFeedbackFluidRenderer` regression test for Pixi `DisplacementFilter.scale` objects that do or do not expose `set()`, then patched the renderer to use the helper. Ran `pnpm test -- packages/simulations/src/fluid-tank/__tests__/PixiFeedbackFluidRenderer.test.ts`, `pnpm --filter @hooksjam/pixi-lab-core build`, `pnpm --filter @hooksjam/pixi-lab-simulations typecheck`, and `pnpm --filter @hooksjam/pixi-lab-demo typecheck`. Browser smoke checks passed for `/pixi-lab/?fluidEngine=1&quality=basic`, `/pixi-lab/?fluidEngine=1&quality=raw`, `/pixi-lab/?fluidGallery=1&quality=basic`, and `/pixi-lab/?fluidGallery=1&quality=raw`, including launching Fluid from the gallery. Basic routes rendered one Pixi canvas; raw routes intentionally rendered the Pixi shell plus the explicit raw WebGL canvas, with no console errors observed.
 
 ---
 

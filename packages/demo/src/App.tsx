@@ -6,7 +6,7 @@ import { useViewport } from '@hooksjam/pixi-lab-react';
 import { AMBIENT_REGISTRY } from '@hooksjam/pixi-lab-ambients';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
 import { SIMULATION_REGISTRY, fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
-import type { LabExperience } from '@hooksjam/pixi-lab-core';
+import type { LabExperience, RenderQuality } from '@hooksjam/pixi-lab-core';
 import { hasPassedDemoQa } from './demoQaStatus';
 
 const ALL_EXPERIENCES: readonly LabExperience[] = [
@@ -21,6 +21,10 @@ const APP_DEMO_PRELOAD_MAX_PIXELS = 147_456;
 type DemoStageSlot = 'a' | 'b';
 
 type FilterKind = 'all' | 'overlays' | LabExperience['kind'];
+
+function parseQueryQuality(value: string | null): RenderQuality | undefined {
+  return value === 'basic' || value === 'enhanced' || value === 'raw' ? value : undefined;
+}
 
 const KIND_LABELS: Record<string, string> = {
   all: 'All',
@@ -79,6 +83,7 @@ export function App() {
       fluidGallery: params.has('fluidGallery'),
       fluidEngine: params.has('fluidEngine'),
       fluidReference: params.has('fluidReference'),
+      quality: parseQueryQuality(params.get('quality')),
     };
   }, []);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -447,6 +452,7 @@ export function App() {
               dockedInset={dockedInset}
               maxPixels={maxPixels}
               transparent={active.kind === 'ambient' || active.kind === 'effect'}
+              initialQuality={routeMode.quality}
               autoDemo={routeMode.fluidEngine || routeMode.fluidReference}
               onQuit={() => {
                 setActive(null);
@@ -836,6 +842,7 @@ interface ExperienceSurfaceProps {
   interactive?: boolean;
   zIndex?: number;
   transparent?: boolean;
+  initialQuality?: RenderQuality;
   onDemoAdvance?: () => void;
   onDemoExit?: () => void;
   onRuntimeReady?: () => void;
@@ -852,6 +859,7 @@ function ExperienceSurface({
   interactive = true,
   zIndex = 1,
   transparent = false,
+  initialQuality,
   onDemoAdvance,
   onDemoExit,
   onRuntimeReady,
@@ -881,6 +889,7 @@ function ExperienceSurface({
           definition={experience}
           maxPixels={maxPixels}
           autoDemo={autoDemo}
+          initialQuality={initialQuality}
           transparent={transparent}
           onDemoAdvance={onDemoAdvance}
           onDemoExit={onDemoExit}

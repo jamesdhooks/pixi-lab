@@ -19,6 +19,7 @@ import { DebugPanel } from './ui/DebugPanel.js';
 import { SimControlPanel } from './ui/SimControlPanel.js';
 import { OverflowMenu } from './ui/OverflowMenu.js';
 import { ViewportProvider, useViewportContext } from './ViewportProvider.js';
+import { sanitizeRenderQuality } from './qualitySelection.js';
 import { nameSuggestions } from '@hooksjam/pixi-lab-core';
 import type { LabExperience, SimulationExperience } from '@hooksjam/pixi-lab-core';
 import type { GameEvent, RenderQuality, ScoreEntry } from '@hooksjam/pixi-lab-core';
@@ -66,6 +67,8 @@ export interface GameLauncherProps {
   onDemoExit?: () => void;
   /** Called after the Pixi runtime is ready and the launcher's initial mode is applied. */
   onRuntimeReady?: () => void;
+  /** Optional host-selected startup quality, sanitized against the active experience. */
+  initialQuality?: RenderQuality;
   /** Remove the black shell background so the launcher floats as a transparent overlay. */
   transparent?: boolean;
 }
@@ -89,6 +92,7 @@ function GameLauncherInner({
   onDemoAdvance,
   onDemoExit,
   onRuntimeReady,
+  initialQuality,
   transparent = false,
 }: GameLauncherProps) {
   // ViewportProvider is mounted by GameLauncher wrapper; child components read context directly.
@@ -106,7 +110,9 @@ function GameLauncherInner({
   const [screensaverActive, setScreensaverActive] = useState(false);
   const [styleId, setStyleId] = useState(definition.styleManifest?.defaultStyleId ?? '');
   const [quality, setQuality] = useState<RenderQuality>(() => {
-    try { return (localStorage.getItem('pixi-lab:quality') as RenderQuality) ?? 'basic'; } catch { return 'basic'; }
+    let storedQuality: string | null = null;
+    try { storedQuality = localStorage.getItem('pixi-lab:quality'); } catch { /* ignore */ }
+    return sanitizeRenderQuality(initialQuality ?? storedQuality, definition.capabilities.qualityModes);
   });
   const [localMaxPixels, setLocalMaxPixels] = useState<number | undefined>(() => {
     try {
@@ -140,6 +146,18 @@ function GameLauncherInner({
   useEffect(() => {
     nameSuggestions.load().then(setSuggestions).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    let storedQuality: string | null = null;
+    try { storedQuality = localStorage.getItem('pixi-lab:quality'); } catch { /* ignore */ }
+    const nextQuality = sanitizeRenderQuality(initialQuality ?? storedQuality, definition.capabilities.qualityModes);
+    setQuality(nextQuality);
+    setRenderedQuality(undefined);
+    appRef.current?.setQuality(nextQuality);
+    if (initialQuality === undefined && storedQuality !== null && storedQuality !== nextQuality) {
+      try { localStorage.setItem('pixi-lab:quality', nextQuality); } catch { /* ignore */ }
+    }
+  }, [definition.id, definition.capabilities.qualityModes, initialQuality]);
 
   const handleEvent = useCallback((event: GameEvent) => {
     switch (event.kind) {

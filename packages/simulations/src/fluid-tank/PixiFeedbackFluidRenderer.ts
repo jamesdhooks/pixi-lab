@@ -31,6 +31,21 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+interface DisplacementScaleLike {
+  x: number;
+  y: number;
+  set?: (x: number, y: number) => void;
+}
+
+export function setDisplacementScale(scale: DisplacementScaleLike, value: number): void {
+  if (scale.set) {
+    scale.set(value, value);
+    return;
+  }
+  scale.x = value;
+  scale.y = value;
+}
+
 function hsvToRgb(h: number, s: number, v: number): number {
   const i = Math.floor(h * 6);
   const f = h * 6 - i;
@@ -254,7 +269,7 @@ export class PixiFeedbackFluidRenderer {
     this.blurFilter.quality = this.blurFilter.strength > 4 ? 4 : 3;
     const warp = this.resolveWarp();
     const force = this.resolveForce();
-    this.displacementFilter.scale.set(10 + warp * 42 + force * 30, 10 + warp * 42 + force * 30);
+    setDisplacementScale(this.displacementFilter.scale, 10 + warp * 42 + force * 30);
     this.prevSprite.texture = this.rtA;
     this.prevSprite.alpha = clamp(this.options.dyePersistence, 0.94, 0.999);
     this.prevSprite.x = -this.simWidth * 0.004;
