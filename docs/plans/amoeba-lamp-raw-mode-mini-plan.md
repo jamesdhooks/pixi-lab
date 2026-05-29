@@ -143,6 +143,10 @@ Implemented the first TDD helper for the raw adapter: `packages/simulations/src/
 
 Tightened the raw splat source contract so future density/heat ping-pong injection uses the model's real particle heat instead of deriving heat from screen position. Added a RED test proving provided heat must be clamped and preserved (`0.08 → 0.15`, `1.7 → 1`), then updated `AmoebaLampRawSplatMapper` and `AmoebaLampModel.particleSnapshot()` to carry heat alongside particle coordinates. This is still a helper-only RAW MODE slice: Amoeba Lamp continues to advertise only `basic`/`enhanced` until the adapter is wired and browser-smoked.
 
+## 2026-05-29 raw field-state helper slice note
+
+Added the next pure raw-adapter building block: `AmoebaLampRawFieldState`. It owns bounded density/heat ping-pong buffers, applies clamped particle splats into active field state, and steps persistent fields with decay, diffusion, and upward heat drift. The RED run failed because the module did not exist; the GREEN run passed `AmoebaLampRawFieldState.test.ts`. This remains a non-browser helper slice, so `amoeba-lamp` still advertises only `basic`/`enhanced` until a scene-owned adapter uses this state path and passes browser QA.
+
 ## Non-goals for the first raw slice
 
 - Do not extract a generic GPU Field Engine.

@@ -108,6 +108,10 @@ Added `AmoebaLampRawSplatMapper` as the first implementation building block for 
 
 Patched the helper contract so raw splats can use actual model particle heat instead of deriving heat from normalized Y position when `heat` is available. `AmoebaLampModel.particleSnapshot()` now exposes heat with coordinates, and the mapper clamps provided heat into the raw upload range. This keeps the future heat ping-pong texture tied to simulation state rather than a screen-space proxy while still leaving `raw` unadvertised until the adapter is implemented and browser-smoked.
 
+## 2026-05-29 Amoeba field-state follow-up
+
+Added `AmoebaLampRawFieldState` as a pure stand-in for the future raw density/heat texture lifecycle. It creates ping-pong density and heat buffers, injects clamped splats, and advances persistent state with decay, diffusion, and upward heat drift. This proves the first adapter state semantics without creating a generic GPU Field Engine or advertising `raw` before a renderer/browser QA slice exists.
+
 ## Acceptance for future raw scenes
 
 A scene may advertise `raw` only when all are true:
