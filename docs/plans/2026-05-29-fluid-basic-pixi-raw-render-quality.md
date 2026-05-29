@@ -112,6 +112,8 @@ export type RenderQuality = 'basic' | 'enhanced' | 'raw';
 
 **Acceptance:** Typecheck/build pass, default launch still uses `basic`.
 
+**2026-05-29 slice note:** Task 1 implemented on `neocloud/pixi-lab-continuous-implementation`: `RenderQuality` now includes `raw`, `PerformanceGovernor.update()` leaves raw quality sticky/manual under sustained low FPS, and the core burst emitter quality caps explicitly handle raw as an enhanced-equivalent generic fallback. Added `PerformanceGovernor.test.ts` covering enhanced→basic fallback and raw no-fallback behavior. The initial RED run failed on the raw sticky assertion before the implementation, then passed after the change.
+
 ---
 
 ## Task 2: Add a generic scene render-variant contract
