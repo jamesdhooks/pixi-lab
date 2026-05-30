@@ -337,6 +337,8 @@ pnpm --filter @hooksjam/pixi-lab-demo exec vite build --outDir dist-fluid-debug 
 
 **2026-05-30 slice note:** Continued the Amoeba Lamp raw path with `AmoebaLampRawTextureUpload`, a pure texture-upload boundary that packs persistent density/heat state into a reusable clamped RGBA buffer for the future scene-owned raw adapter. This remains a helper-only slice; `amoeba-lamp` still advertises only `basic`/`enhanced` pending adapter wiring and browser QA.
 
+**2026-05-30 slice note:** Added `AmoebaLampRawCompositeMapper`, a pure composite-pass helper that maps the packed density/heat upload buffer into styled RGBA membrane pixels with density thresholding, edge glow from local gradients, heat palette tinting, and caller-buffer reuse. This continues the raw adapter foundation without advertising `raw` or creating raw previews before a selectable adapter and browser smoke exist.
+
 ---
 
 ## Task 8A: RAW MODE roadmap integration

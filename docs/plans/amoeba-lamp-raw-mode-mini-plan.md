@@ -155,6 +155,10 @@ Added `AmoebaLampRawTextureUpload` as the next pure adapter boundary. It packs t
 
 Added `AmoebaLampRawFramePipeline` as the next pure scene-owned adapter boundary. It composes the existing particle-to-splat mapper, persistent density/heat ping-pong field state, and RGBA upload packer into a per-frame pipeline that reuses upload storage while texture dimensions stay stable and recreates field/upload buffers only when the raw texture size changes. The RED run failed because the pipeline module did not exist; the GREEN run passed `AmoebaLampRawFramePipeline.test.ts`. This remains helper-only: `amoeba-lamp` still advertises only `basic`/`enhanced` until the Pixi raw adapter is wired and browser-smoked.
 
+## 2026-05-30 composite mapper helper slice note
+
+Added `AmoebaLampRawCompositeMapper` as a pure composite-pass boundary for the future raw adapter. It maps packed density/heat upload buffers through Amoeba style palettes into RGBA membrane pixels, preserves the dark background below the density threshold, supports edge glow from local density gradients, uses heat to tint dense regions toward the warm palette, and reuses caller-provided output buffers. The RED run failed because the composite mapper module did not exist; the GREEN run passed `AmoebaLampRawCompositeMapper.test.ts`. This remains helper-only: `amoeba-lamp` still advertises only `basic`/`enhanced` until a Pixi/raw adapter uses these helpers and browser QA passes.
+
 ## Non-goals for the first raw slice
 
 - Do not extract a generic GPU Field Engine.
