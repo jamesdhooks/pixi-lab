@@ -160,8 +160,8 @@ export class AmoebaLampModel {
     return this.particles.map((p) => ({ x: Number(p.x.toFixed(2)), y: Number(p.y.toFixed(2)), vx: Number(p.vx.toFixed(2)), vy: Number(p.vy.toFixed(2)), heat: Number(p.heat.toFixed(3)), blobId: p.blobId }));
   }
 
-  particleSnapshot(): Array<{ x: number; y: number }> {
-    return this.particles.map((p) => ({ x: p.x, y: p.y }));
+  particleSnapshot(): Array<{ x: number; y: number; heat: number }> {
+    return this.particles.map((p) => ({ x: p.x, y: p.y, heat: p.heat }));
   }
 
   renderParticles(): SimParticle[] {

@@ -1,10 +1,8 @@
 import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
-import { DomScriptScene } from '@hooksjam/pixi-lab-core';
 import { FluidTankDemoAI } from './FluidTankDemoAI.js';
-import { fluidTankStyleManifest } from './FluidTankScene.js';
+import { FluidTankPreviewScene } from './FluidTankPreviewScene.js';
+import { FluidTankScene, fluidTankStyleManifest } from './FluidTankScene.js';
 import { FLUID_TANK_DEFAULTS, FLUID_TANK_SETTINGS_FIELDS } from './fluid-tank.config.js';
-import { fluidRuntimeMarkup } from './fluid-runtime-markup.js';
-import { fluidRuntimeScript } from './fluid-runtime-script.js';
 
 export const fluidTankDefinition: SimulationDefinition = {
   id: 'fluid-tank',
@@ -28,7 +26,7 @@ export const fluidTankDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
+    qualityModes: ['basic', 'enhanced', 'raw'],
     demo: true,
     settings: true,
   },
@@ -54,8 +52,8 @@ export const fluidTankDefinition: SimulationDefinition = {
     severity: 0,
   },
   defaultSeed: 260527,
-  factory: () => new DomScriptScene({ name: 'Fluid Tank', markup: fluidRuntimeMarkup, script: fluidRuntimeScript }),
-  previewFactory: () => new DomScriptScene({ name: 'Fluid Tank Preview', markup: fluidRuntimeMarkup, script: fluidRuntimeScript }),
+  factory: () => new FluidTankScene(),
+  previewFactory: () => new FluidTankPreviewScene(),
   demoAiFactory: () => new FluidTankDemoAI(),
   tutorialPages: [
     { icon: '~', title: 'Stir The Tank', body: 'Drag through the canvas to inject velocity along the path, just like the standalone prototype.' },

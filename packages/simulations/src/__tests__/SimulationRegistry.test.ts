@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { SettingsField, SimulationDefinition } from '@hooksjam/pixi-lab-core';
-import { SIMULATION_REGISTRY, getSimulation } from '../index.js';
+import type { GameContext, SettingsField, SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { DomScriptScene } from '@hooksjam/pixi-lab-core';
+import { FluidTankPreviewScene, FluidTankScene, SIMULATION_REGISTRY, getSimulation } from '../index.js';
 
 const REQUIRED_DEMO_CAPABILITIES = [
   'interactive',
@@ -118,5 +119,21 @@ describe('SIMULATION_REGISTRY', () => {
         }
       }
     }
+  });
+
+  it('keeps Fluid Tank basic/enhanced on the scene path and raw opt-in for the current WebGL renderer', () => {
+    const definition = getSimulation('fluid-tank');
+
+    expect(definition?.capabilities.qualityModes).toEqual(['basic', 'enhanced', 'raw']);
+    expect(definition?.styleManifest.capabilities.qualities).toEqual(['basic', 'enhanced', 'raw']);
+
+    const factoryContext = {} as unknown as GameContext;
+    const scene = definition?.factory(factoryContext);
+    const preview = definition?.previewFactory?.(factoryContext);
+
+    expect(scene).toBeInstanceOf(FluidTankScene);
+    expect(scene).not.toBeInstanceOf(DomScriptScene);
+    expect(preview).toBeInstanceOf(FluidTankPreviewScene);
+    expect(preview).not.toBeInstanceOf(DomScriptScene);
   });
 });

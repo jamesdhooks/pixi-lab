@@ -156,6 +156,9 @@ importers:
       '@hooksjam/pixi-lab-core':
         specifier: workspace:*
         version: link:../core
+      pixi.js:
+        specifier: ^8.18.1
+        version: 8.18.1
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
