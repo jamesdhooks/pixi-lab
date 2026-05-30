@@ -176,7 +176,8 @@ export class FluidTankScene extends SimulationScene {
         this.interactionMode === 'stir'
       ) {
         const stats = this.renderer.stats();
-        const velocity = velocityFromScreenDelta(
+        const velocity = fluidSplatDeltaForQuality(
+          this.quality,
           gesture.dx ?? 0,
           gesture.dy ?? 0,
           this.ctx_.width,
@@ -317,7 +318,7 @@ export class FluidTankScene extends SimulationScene {
       const samples = Math.max(1, Math.min(8, Math.ceil(distance / 18)));
       const forceScale = 1 / Math.sqrt(samples);
       const stats = this.renderer.stats();
-      const velocity = velocityFromScreenDelta(dx, dy, this.ctx_.width, this.ctx_.height, stats.simWidth, stats.simHeight);
+      const velocity = fluidSplatDeltaForQuality(this.quality, dx, dy, this.ctx_.width, this.ctx_.height, stats.simWidth, stats.simHeight);
       for (let i = 1; i <= samples; i++) {
         const t = i / samples;
         this.renderer.splat({
@@ -494,4 +495,23 @@ function isFluidDisplayMode(value: string | null | undefined): value is NonNulla
 
 function numberSetting(value: unknown, fallback: unknown): number {
   return typeof value === 'number' ? value : Number(fallback);
+}
+
+export function fluidSplatDeltaForQuality(
+  quality: RenderQuality,
+  dx: number,
+  dy: number,
+  width: number,
+  height: number,
+  simWidth: number,
+  simHeight: number,
+): { dx: number; dy: number } {
+  if (quality === 'raw') {
+    return velocityFromScreenDelta(dx, dy, width, height, simWidth, simHeight);
+  }
+
+  return {
+    dx: (dx / Math.max(1, width)) * simWidth,
+    dy: (dy / Math.max(1, height)) * simHeight,
+  };
 }

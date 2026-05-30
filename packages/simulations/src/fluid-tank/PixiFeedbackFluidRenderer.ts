@@ -241,8 +241,8 @@ export class PixiFeedbackFluidRenderer {
   splat(splat: FluidSplat): void {
     const x = splat.x * this.simWidth;
     const y = splat.y * this.simHeight;
-    const dx = splat.dx * this.simWidth * 0.018;
-    const dy = splat.dy * this.simHeight * 0.018;
+    const dx = splat.dx;
+    const dy = splat.dy;
     const distance = Math.hypot(dx, dy);
     if (distance < 0.1) return;
     const baseRadius = this.resolveFingerRadius() * (splat.radiusScale ?? 1);
