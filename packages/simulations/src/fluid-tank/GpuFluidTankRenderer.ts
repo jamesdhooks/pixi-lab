@@ -356,7 +356,11 @@ void main() {
 }
       `;
 
-export const RAW_FLUID_CANVAS_Z_INDEX = '3';
+// The raw canvas must sit BELOW the shared PixiJS canvas (z-index 2).
+// PixiJS is initialised with backgroundAlpha:0 for fluid-tank, so its canvas
+// is transparent where nothing is drawn — the fluid shows through from below.
+// Walls and ripples drawn by PixiJS Graphics objects then appear on top.
+export const RAW_FLUID_CANVAS_Z_INDEX = '1';
 
 export class GpuFluidTankRenderer {
   readonly canvas: HTMLCanvasElement;
@@ -394,9 +398,6 @@ export class GpuFluidTankRenderer {
     this.canvas.style.display = 'block';
     this.canvas.style.pointerEvents = 'none';
     this.canvas.style.background = '#020206';
-    // Raw mode owns the visible fluid surface. Keep it above the shared Pixi
-    // canvas; otherwise Pixi's opaque WebGL backbuffer can cover the raw WebGL
-    // adapter and make `raw` appear to be the Pixi/basic renderer.
     this.canvas.style.zIndex = RAW_FLUID_CANVAS_Z_INDEX;
     this.canvas.dataset.pixiLabFluidRenderer = 'raw-webgl';
     parent.appendChild(this.canvas);

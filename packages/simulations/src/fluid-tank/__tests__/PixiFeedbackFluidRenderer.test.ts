@@ -29,8 +29,8 @@ describe('setDisplacementScale', () => {
 });
 
 describe('Fluid Tank raw canvas layering', () => {
-  it('keeps the raw WebGL adapter above the shared Pixi canvas', () => {
-    expect(Number(RAW_FLUID_CANVAS_Z_INDEX)).toBeGreaterThan(2);
+  it('sits below the shared PixiJS canvas (z-index 2) so Pixi overlays appear on top', () => {
+    expect(Number(RAW_FLUID_CANVAS_Z_INDEX)).toBeLessThan(2);
   });
 });
 
