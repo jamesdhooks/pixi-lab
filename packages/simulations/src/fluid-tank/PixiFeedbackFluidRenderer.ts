@@ -269,7 +269,6 @@ export class PixiFeedbackFluidRenderer {
     this.blurFilter.quality = this.blurFilter.strength > 4 ? 4 : 3;
     const warp = this.resolveWarp();
     const force = this.resolveForce();
-    setDisplacementScale(this.displacementFilter.scale, 10 + warp * 42 + force * 30);
     this.prevSprite.texture = this.rtA;
     this.prevSprite.alpha = clamp(this.options.dyePersistence, 0.94, 0.999);
     this.prevSprite.x = -this.simWidth * 0.004;
@@ -277,6 +276,12 @@ export class PixiFeedbackFluidRenderer {
     this.prevSprite.width = this.simWidth * 1.008;
     this.prevSprite.height = this.simHeight * 1.008;
     this.renderTo(this.rtB, this.feedbackContainer, true);
+    // Set displacement scale AFTER the first renderTo so PixiJS has had a chance
+    // to initialise the filter's GPU bind-group resources. Accessing
+    // DisplacementFilter.scale before the filter has been applied triggers
+    // BindGroup.getResource returning null → null[0] crash in PixiJS ≥8.18.
+    // The 1-frame lag on scale is imperceptible in a continuous fluid animation.
+    setDisplacementScale(this.displacementFilter.scale, 10 + warp * 42 + force * 30);
     const temp = this.rtA;
     this.rtA = this.rtB;
     this.rtB = temp;
