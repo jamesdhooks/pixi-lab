@@ -116,6 +116,10 @@ Added `AmoebaLampRawFieldState` as a pure stand-in for the future raw density/he
 
 Added `AmoebaLampRawTextureUpload` as the next raw-adapter helper. It packs persistent density/heat field state into a reusable clamped RGBA upload buffer for the future scene-owned texture adapter, keeping particles as hidden field sources and avoiding a generic GPU Field Engine extraction. Amoeba Lamp still does not advertise `raw` until a selectable adapter and browser QA land.
 
+## 2026-05-30 Amoeba composite mapper follow-up
+
+Added `AmoebaLampRawCompositeMapper` as the next raw-adapter helper. It converts packed persistent density/heat upload buffers into styled RGBA membrane pixels with thresholded background preservation, gradient edge glow, heat-driven warm tinting, and reusable output storage. This proves the first composite-pass semantics without wiring a Pixi/raw adapter or advertising `raw` before browser QA.
+
 ## Acceptance for future raw scenes
 
 A scene may advertise `raw` only when all are true:
