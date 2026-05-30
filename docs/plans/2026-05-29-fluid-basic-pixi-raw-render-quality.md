@@ -272,6 +272,8 @@ pnpm --filter @hooksjam/pixi-lab-demo exec vite build --outDir dist-fluid-debug 
 
 **2026-05-29 slice note:** Task 6 validation passed for the raw quality routing slice. Added a focused `PixiFeedbackFluidRenderer` regression test for Pixi `DisplacementFilter.scale` objects that do or do not expose `set()`, then patched the renderer to use the helper. Ran `pnpm test -- packages/simulations/src/fluid-tank/__tests__/PixiFeedbackFluidRenderer.test.ts`, `pnpm --filter @hooksjam/pixi-lab-core build`, `pnpm --filter @hooksjam/pixi-lab-simulations typecheck`, and `pnpm --filter @hooksjam/pixi-lab-demo typecheck`. Browser smoke checks passed for `/pixi-lab/?fluidEngine=1&quality=basic`, `/pixi-lab/?fluidEngine=1&quality=raw`, `/pixi-lab/?fluidGallery=1&quality=basic`, and `/pixi-lab/?fluidGallery=1&quality=raw`, including launching Fluid from the gallery. Basic routes rendered one Pixi canvas; raw routes intentionally rendered the Pixi shell plus the explicit raw WebGL canvas, with no console errors observed.
 
+**2026-05-30 correction note:** James clarified that `basic` must mimic `reference/pixi-fluid.html` with the Pixi feedback renderer, while `raw` must mimic `reference/fluids.html` with the bare WebGL adapter. The important bridge detail is that the two references use different pointer-delta units: Pixi feedback splats consume render-texture pixel deltas (`to - from` in sim pixels), while raw WebGL splats consume bounded solver-cell velocity from `velocityFromScreenDelta()`. Do not reuse the raw cell-velocity mapper for Pixi feedback routes; doing so makes `basic` fail to match the Pixi reference. Regression coverage should assert this split.
+
 ---
 
 ## Task 7: Candidate scene audit for raw/GPU-field upgrades
