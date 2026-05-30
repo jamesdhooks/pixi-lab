@@ -147,6 +147,10 @@ Tightened the raw splat source contract so future density/heat ping-pong injecti
 
 Added the next pure raw-adapter building block: `AmoebaLampRawFieldState`. It owns bounded density/heat ping-pong buffers, applies clamped particle splats into active field state, and steps persistent fields with decay, diffusion, and upward heat drift. The RED run failed because the module did not exist; the GREEN run passed `AmoebaLampRawFieldState.test.ts`. This remains a non-browser helper slice, so `amoeba-lamp` still advertises only `basic`/`enhanced` until a scene-owned adapter uses this state path and passes browser QA.
 
+## 2026-05-30 texture upload helper slice note
+
+Added `AmoebaLampRawTextureUpload` as the next pure adapter boundary. It packs the persistent density/heat ping-pong state into a clamped RGBA `Uint8Array` upload buffer (`R = density`, `G = heat`, `B = density-minus-heat residue`, `A = 255`) and can reuse a caller-provided buffer so the future raw renderer can avoid per-frame allocation churn. The RED run failed because the upload module did not exist; the GREEN run passed `AmoebaLampRawTextureUpload.test.ts`. This is still helper-only: `amoeba-lamp` continues to advertise only `basic`/`enhanced` until the scene-owned adapter is wired and browser-smoked.
+
 ## Non-goals for the first raw slice
 
 - Do not extract a generic GPU Field Engine.

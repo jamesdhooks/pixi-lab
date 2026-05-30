@@ -333,6 +333,8 @@ pnpm --filter @hooksjam/pixi-lab-demo exec vite build --outDir dist-fluid-debug 
 
 **2026-05-29 slice note:** Continued the Amoeba Lamp raw path with a second pure helper, `AmoebaLampRawFieldState`, covering bounded density/heat ping-pong buffers, splat injection, decay, diffusion, and upward heat drift. This gives the future scene-owned raw adapter concrete state semantics while keeping `raw` unadvertised until the adapter is selectable and browser-smoked.
 
+**2026-05-30 slice note:** Continued the Amoeba Lamp raw path with `AmoebaLampRawTextureUpload`, a pure texture-upload boundary that packs persistent density/heat state into a reusable clamped RGBA buffer for the future scene-owned raw adapter. This remains a helper-only slice; `amoeba-lamp` still advertises only `basic`/`enhanced` pending adapter wiring and browser QA.
+
 ---
 
 ## Task 8A: RAW MODE roadmap integration

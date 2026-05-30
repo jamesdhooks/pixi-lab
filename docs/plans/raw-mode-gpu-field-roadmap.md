@@ -112,6 +112,10 @@ Patched the helper contract so raw splats can use actual model particle heat ins
 
 Added `AmoebaLampRawFieldState` as a pure stand-in for the future raw density/heat texture lifecycle. It creates ping-pong density and heat buffers, injects clamped splats, and advances persistent state with decay, diffusion, and upward heat drift. This proves the first adapter state semantics without creating a generic GPU Field Engine or advertising `raw` before a renderer/browser QA slice exists.
 
+## 2026-05-30 Amoeba texture upload follow-up
+
+Added `AmoebaLampRawTextureUpload` as the next raw-adapter helper. It packs persistent density/heat field state into a reusable clamped RGBA upload buffer for the future scene-owned texture adapter, keeping particles as hidden field sources and avoiding a generic GPU Field Engine extraction. Amoeba Lamp still does not advertise `raw` until a selectable adapter and browser QA land.
+
 ## Acceptance for future raw scenes
 
 A scene may advertise `raw` only when all are true:
