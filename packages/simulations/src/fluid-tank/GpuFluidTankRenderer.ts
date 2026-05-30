@@ -356,6 +356,8 @@ void main() {
 }
       `;
 
+export const RAW_FLUID_CANVAS_Z_INDEX = '3';
+
 export class GpuFluidTankRenderer {
   readonly canvas: HTMLCanvasElement;
   private readonly gl: WebGL2RenderingContext | null;
@@ -392,7 +394,11 @@ export class GpuFluidTankRenderer {
     this.canvas.style.display = 'block';
     this.canvas.style.pointerEvents = 'none';
     this.canvas.style.background = '#020206';
-    this.canvas.style.zIndex = '1';
+    // Raw mode owns the visible fluid surface. Keep it above the shared Pixi
+    // canvas; otherwise Pixi's opaque WebGL backbuffer can cover the raw WebGL
+    // adapter and make `raw` appear to be the Pixi/basic renderer.
+    this.canvas.style.zIndex = RAW_FLUID_CANVAS_Z_INDEX;
+    this.canvas.dataset.pixiLabFluidRenderer = 'raw-webgl';
     parent.appendChild(this.canvas);
 
     this.gl = this.canvas.getContext('webgl2', {
