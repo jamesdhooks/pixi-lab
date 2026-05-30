@@ -98,6 +98,7 @@ export class FluidTankScene extends SimulationScene {
     if (!parent) return;
     parent.style.position = parent.style.position || 'relative';
     ctx.systems.pixi.canvas.style.zIndex = '2';
+    ctx.systems.pixi.canvas.dataset.pixiLabFluidRendererHost = 'pixi-shared';
     const fluidDebugParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : undefined;
     this.debugStill = Boolean(fluidDebugParams?.has('fluidStill'));
     this.debugNoSeedMotion = Boolean(fluidDebugParams?.has('fluidNoSeedMotion'));

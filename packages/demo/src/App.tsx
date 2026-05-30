@@ -98,6 +98,9 @@ export function App() {
   useEffect(() => {
     if (routeMode.fluidGallery) return;
     if (routeMode.fluidEngine || routeMode.fluidReference) {
+      if (routeMode.quality) {
+        try { localStorage.setItem('pixi-lab:quality', routeMode.quality); } catch { /* ignore */ }
+      }
       setAppDemoActive(false);
       setCarouselOpen(false);
       setCarouselDocked(false);
