@@ -356,7 +356,7 @@ export interface SettingsField {
   key: string;
   label: string;
   description?: string;
-  type: 'number' | 'boolean' | 'select';
+  type: 'number' | 'boolean' | 'select' | 'string';
   min?: number;
   max?: number;
   step?: number;

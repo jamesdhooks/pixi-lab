@@ -2,7 +2,7 @@
  * SimControlPanel — stacked horizontal sliders at the bottom of the screen.
  * No card backgrounds, just transparent floating controls.
  */
-import { type ReactNode, useEffect, useState, useCallback } from 'react';
+import { type CSSProperties, type ReactNode, useEffect, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { GameApp, SettingsField } from '@hooksjam/pixi-lab-core';
@@ -26,17 +26,25 @@ function formatValue(value: number, field: SettingsField): string {
 export function SimControlPanel({ app, fields, settingsVersion, headerSlot }: SimControlPanelProps) {
   const { safeArea, isMobile, isLandscape } = useViewportContext();
   const numericFields = fields.filter((f) => f.type === 'number');
+  const selectFields = fields.filter((f) => f.type === 'select');
   const [values, setValues] = useState<Record<string, number>>({});
+  const [selectValues, setSelectValues] = useState<Record<string, string>>({});
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     if (!app) return;
     const init: Record<string, number> = {};
+    const initSelect: Record<string, string> = {};
     for (const f of numericFields) {
       const v = app.settings.get(f.key);
       init[f.key] = typeof v === 'number' ? v : (f.default as number);
     }
+    for (const f of selectFields) {
+      const v = app.settings.get(f.key);
+      initSelect[f.key] = typeof v === 'string' ? v : String(f.default);
+    }
     setValues(init);
+    setSelectValues(initSelect);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app, settingsVersion]);
 
@@ -48,7 +56,15 @@ export function SimControlPanel({ app, fields, settingsVersion, headerSlot }: Si
     [app],
   );
 
-  if (numericFields.length === 0 && !headerSlot) return null;
+  const handleSelectChange = useCallback(
+    (key: string, value: string) => {
+      setSelectValues((prev) => ({ ...prev, [key]: value }));
+      app?.settings.set(key, value);
+    },
+    [app],
+  );
+
+  if (numericFields.length === 0 && selectFields.length === 0 && !headerSlot) return null;
 
   // On desktop, push controls below the HUD (which contains style dropdown on desktop).
   // HUD is ~44px tall (padding + 32px button height). Add gap for breathing room.
@@ -117,10 +133,53 @@ export function SimControlPanel({ app, fields, settingsVersion, headerSlot }: Si
             </motion.div>
           );
         })}
+        {!collapsed && selectFields.map((field) => {
+          const current = selectValues[field.key] ?? String(field.default);
+          const options = field.options ?? [];
+          const isInjectPalette = field.key === 'injectPalette';
+          return (
+            <motion.div
+              key={field.key}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.18, ease: 'easeInOut' }}
+              className="pointer-events-auto flex w-full max-w-xs items-center gap-3 overflow-hidden rounded-full bg-black/25 px-3 py-1"
+            >
+              <span className={labelClass}>{field.label}</span>
+              <div className="flex flex-1 items-center justify-end gap-1.5 overflow-x-auto">
+                {options.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => handleSelectChange(field.key, opt.value)}
+                    title={opt.label}
+                    aria-label={opt.label}
+                    className={[
+                      isInjectPalette
+                        ? 'h-5 w-5 rounded-full border transition-transform'
+                        : 'rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors',
+                      isInjectPalette
+                        ? (current === opt.value
+                            ? 'border-white ring-2 ring-white/55 scale-105'
+                            : 'border-white/35 hover:border-white/75')
+                        : (current === opt.value
+                            ? 'bg-white text-black'
+                            : 'bg-white/10 text-white/80 hover:bg-white/20'),
+                    ].join(' ')}
+                    style={isInjectPalette ? chipStyleForInjectOption(opt.value) : undefined}
+                  >
+                    {!isInjectPalette ? opt.label : ''}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
 
       {/* Collapse/expand chevron — positioned below all controls */}
-      {(numericFields.length > 0 || headerSlot) && (
+      {(numericFields.length > 0 || selectFields.length > 0 || headerSlot) && (
         <button
           onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? 'Expand controls' : 'Collapse controls'}
@@ -131,4 +190,20 @@ export function SimControlPanel({ app, fields, settingsVersion, headerSlot }: Si
       )}
     </motion.div>
   );
+}
+
+function chipStyleForInjectOption(value: string): CSSProperties {
+  if (value === 'cyan') return { background: '#35ffe5' };
+  if (value === 'magenta') return { background: '#ff41dc' };
+  if (value === 'amber') return { background: '#ffbe4a' };
+  if (value === 'rainbow') {
+    return {
+      background:
+        'conic-gradient(from 210deg, #ff4d4d, #ffb84d, #f8ff4d, #4dff8e, #4dd8ff, #824dff, #ff4de3, #ff4d4d)',
+    };
+  }
+  return {
+    background:
+      'linear-gradient(135deg, #35ffe5 0%, #4dd8ff 33%, #ff41dc 66%, #ffbe4a 100%)',
+  };
 }
