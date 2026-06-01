@@ -6,7 +6,7 @@
 
 **Architecture:** Keep Pixi Lab’s public runtime path unchanged (`GameLauncher → GameRuntime → GameApp → LabExperience.factory() → Scene`). Add a render-variant selection layer inside simulations so a scene can choose a Pixi-native renderer for normal/basic quality and a raw WebGL renderer only when the quality is explicitly `raw`. Treat raw renderers as scene-owned adapters, not as core Pixi Lab engine API.
 
-**Tech Stack:** TypeScript, PixiJS v8, Pixi RenderTexture ping-pong, Pixi filters (`DisplacementFilter`, `BlurFilter`), existing `DomScriptScene`, current raw WebGL fluid runtime, existing style/settings bridge.
+**Tech Stack:** TypeScript, PixiJS v8, Pixi RenderTexture ping-pong, Pixi filters (`DisplacementFilter`, `BlurFilter`), typed `DomMountContext`/`DomScriptQualityAdapter` for DOM-owned raw solvers, current raw WebGL fluid runtime, existing style/settings bridge.
 
 ---
 
@@ -42,7 +42,7 @@
 2. **Sanitize persisted quality.** If `localStorage.getItem('pixi-lab:quality')` is `raw` and the next opened experience lacks `raw`, start that experience at `basic` and overwrite/ignore the stale value.
 3. **Sanitize debug query quality.** `?quality=raw` may select raw only for Fluid or future raw-enabled entries. Invalid query quality falls back to `basic` with no crash.
 4. **Keep previews cheap.** `previewFactory` should keep using a Pixi-safe/basic renderer. Do not run raw WebGL in preview tiles unless a future explicit QA slice proves it is cheap and stable.
-5. **No raw renderer in core API.** Raw WebGL adapters remain scene/package-owned. Core only knows the quality string.
+5. **No raw renderer in core API.** Raw adapters remain scene/package-owned. Core knows the quality string and typed DOM bridge primitives only; scene packages decide whether raw is Pixi-owned or DOM/WebGL-owned.
 6. **One default Pixi canvas for `basic`.** The default/basic Fluid route must not create an extra DOM script canvas or standalone `PIXI.Application`.
 7. **No broad abstraction first.** Implement Fluid's split, then one non-fluid Pixi feedback scene, then extract shared helpers from proven duplication.
 8. **Raw mode is a GPU simulation privilege, not a label.** Only advertise `raw` after a scene has a verified stateful GPU path (particle textures, field ping-pong, trail/height/density/phase/reaction textures, or graph+field raw composite) and browser QA for that path.
@@ -86,6 +86,7 @@ export type RenderQuality = 'basic' | 'enhanced' | 'raw';
 - `basic`: engine-safe Pixi renderer. For Fluid Tank this is the Pixi feedback implementation from `reference/pixi-fluid.html` adapted into a scene-owned class. It must run through the shared Pixi Lab `GameApp` Pixi application, not create its own app.
 - `enhanced`: future room for richer Pixi/composited scene variants. Initially it can alias `basic` for Fluid if there is no distinct enhanced implementation yet.
 - `raw`: scene-owned raw WebGL renderer/adapter. For Fluid Tank this is the existing `fluid-runtime-script.ts`/raw WebGL path, exposed intentionally as raw quality.
+- Typed DOM bridge note: Fluid's raw route now uses `mountFluidRuntime(root, ctx: DomMountContext)` through `DomScriptQualityAdapter`. New non-fluid raw scenes should not copy the DOM bridge by default; prefer shared-Pixi adapters when texture uploads or render-texture passes are sufficient.
 
 ---
 
@@ -338,6 +339,10 @@ pnpm --filter @hooksjam/pixi-lab-demo exec vite build --outDir dist-fluid-debug 
 **2026-05-30 slice note:** Continued the Amoeba Lamp raw path with `AmoebaLampRawTextureUpload`, a pure texture-upload boundary that packs persistent density/heat state into a reusable clamped RGBA buffer for the future scene-owned raw adapter. This remains a helper-only slice; `amoeba-lamp` still advertises only `basic`/`enhanced` pending adapter wiring and browser QA.
 
 **2026-05-30 slice note:** Added `AmoebaLampRawCompositeMapper`, a pure composite-pass helper that maps the packed density/heat upload buffer into styled RGBA membrane pixels with density thresholding, edge glow from local gradients, heat palette tinting, and caller-buffer reuse. This continues the raw adapter foundation without advertising `raw` or creating raw previews before a selectable adapter and browser smoke exist.
+
+**2026-05-30 slice note:** Added the first Amoeba Lamp scene-owned raw adapter boundary with `AmoebaLampRawRenderer` and a pure `AmoebaLampRawTextureSizing` helper. The renderer consumes the previously built frame pipeline/composite mapper and uploads a bounded persistent density/heat membrane into a Pixi `BufferImageSource` layer. `AmoebaLampScene` can now route an internal `quality === 'raw'` branch to this adapter, while the public definition and style manifest still advertise only `basic`/`enhanced` until the raw route is intentionally exposed and browser-smoked.
+
+**2026-06-01 engine adaptation note:** Rebased this plan over the typed DOM mount engine changes. The working split is now explicit: Fluid raw stays on the typed DOM/WebGL bridge, while Amoeba raw stays Pixi-owned inside the shared app. If registry tests fail after core bridge/export changes, first rebuild `@hooksjam/pixi-lab-core`; stale `packages/core/dist` can make valid source exports appear missing to package consumers.
 
 ---
 

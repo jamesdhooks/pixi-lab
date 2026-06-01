@@ -6,7 +6,7 @@ Parent roadmap: `docs/plans/raw-mode-gpu-field-roadmap.md`
 
 ## Purpose
 
-Define the first true non-fluid RAW MODE slice before advertising `raw` on `amoeba-lamp`. This plan is intentionally scene-owned and narrow: raw should prove stateful GPU field simulation for a density/metaball organism without introducing a generic GPU Field Engine yet.
+Define the first true non-fluid RAW MODE slice before advertising `raw` on `amoeba-lamp`. This plan is intentionally scene-owned and narrow: raw should prove stateful GPU field simulation for a density/metaball organism without introducing a generic GPU Field Engine yet. After the typed DOM runtime bridge landed, Amoeba's preferred route is explicitly Pixi-owned rather than DOM/WebGL-owned because its raw state can be represented as bounded texture uploads inside the shared `GameApp` Pixi app.
 
 ## Current-code evidence
 
@@ -37,6 +37,8 @@ packages/simulations/src/amoeba-lamp/AmoebaLampRawRenderer.ts
 ```
 
 The adapter should not be exported from core and should not become a generic engine yet.
+
+The adapter should use the shared Pixi application (`GameContext.systems.pixi.app`) and should not create a `DomScriptScene`/DOM bridge. The typed `DomMountContext` path remains appropriate for Fluid's legacy raw WebGL solver, but Amoeba's first raw adapter should stay in the scene package and render through one Pixi canvas.
 
 ### State textures / fields
 
@@ -99,7 +101,9 @@ Use TDD for pure helpers before renderer wiring:
    - Assert bounded normalized splats and heat weights.
 2. Raw quality selection helper if introduced
    - Assert `raw` selects the raw adapter only for `AmoebaLampScene`, while `basic`/`enhanced` preserve current renderer families.
-3. Resource ownership helper if introduced
+3. Raw texture sizing/upload boundary
+   - Assert raw texture budgets are bounded and aspect-preserving, and non-raw qualities do not accidentally allocate raw-sized uploads.
+4. Resource ownership helper if introduced
    - Assert shared Pixi textures are not destroyed when a generated texture fallback is not owned.
 
 Do not test private Pixi internals; keep tests around pure mapper/state-selection logic.
@@ -133,7 +137,7 @@ pnpm --filter @hooksjam/pixi-lab-simulations typecheck
 pnpm --filter @hooksjam/pixi-lab-demo typecheck
 ```
 
-Run browser smoke only after the adapter is wired and `raw` is advertised.
+Run browser smoke after adapter wiring for current advertised modes, and again after `raw` is advertised. If a registry smoke fails immediately after core bridge changes, rebuild `@hooksjam/pixi-lab-core` first so stale package `dist` does not hide the actual source state.
 
 ## 2026-05-29 helper slice note
 
@@ -159,10 +163,19 @@ Added `AmoebaLampRawFramePipeline` as the next pure scene-owned adapter boundary
 
 Added `AmoebaLampRawCompositeMapper` as a pure composite-pass boundary for the future raw adapter. It maps packed density/heat upload buffers through Amoeba style palettes into RGBA membrane pixels, preserves the dark background below the density threshold, supports edge glow from local density gradients, uses heat to tint dense regions toward the warm palette, and reuses caller-provided output buffers. The RED run failed because the composite mapper module did not exist; the GREEN run passed `AmoebaLampRawCompositeMapper.test.ts`. This remains helper-only: `amoeba-lamp` still advertises only `basic`/`enhanced` until a Pixi/raw adapter uses these helpers and browser QA passes.
 
+## 2026-05-30 raw Pixi texture adapter slice note
+
+Added the first scene-owned Pixi raw adapter boundary: `AmoebaLampRawRenderer`. The adapter consumes the existing raw frame pipeline and composite mapper, uploads the styled persistent density/heat membrane into a Pixi `BufferImageSource`, and exposes a single scene layer for the future selectable raw route. Added `AmoebaLampRawTextureSizing` plus RED/GREEN coverage for bounded, aspect-preserving raw texture budgets so the adapter does not allocate full-viewport upload buffers. `AmoebaLampScene` now has an internal `quality === 'raw'` branch for this adapter, but the definition and style manifest still advertise only `basic`/`enhanced`; browser QA and public `raw` exposure remain deferred until the route is intentionally enabled and smoked.
+
+## 2026-06-01 engine-change adaptation note
+
+After rebasing onto the typed DOM mount engine changes, the Amoeba raw adapter still aligns because it does not depend on `DomScriptScene`. The source-level blocker was stale built core output: registry tests resolved `@hooksjam/pixi-lab-core` from `packages/core/dist`, which had not yet exported `DomScriptQualityAdapter`. Rebuilding core fixed the registry smoke. Future raw slices should keep this validation order: rebuild core after bridge/export changes, then run focused raw tests, registry probes, package typecheck/build, and browser smoke.
+
 ## Non-goals for the first raw slice
 
 - Do not extract a generic GPU Field Engine.
 - Do not move raw renderer internals into `@hooksjam/pixi-lab-core`.
+- Do not route Amoeba raw through `DomScriptScene`; reserve the typed DOM bridge for raw adapters that truly need a separate DOM/WebGL solver.
 - Do not make CPU particles the main raw visual; they are density/heat sources.
 - Do not enable raw in previews.
 - Do not advertise `raw` until adapter implementation, tests, typechecks, and browser QA pass.
