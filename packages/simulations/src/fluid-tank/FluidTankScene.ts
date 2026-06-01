@@ -1,4 +1,5 @@
 import {
+  DomScriptQualityAdapter,
   Graphics,
   SimulationScene,
   type GameContext,
@@ -17,8 +18,14 @@ import {
   type GpuFluidTankStats,
 } from './GpuFluidTankRenderer.js';
 import { PixiFeedbackFluidRenderer } from './PixiFeedbackFluidRenderer.js';
+import { fluidRuntimeMarkup } from './fluid-runtime-markup.js';
+import { mountFluidRuntime } from './fluid-runtime-mount.js';
 import { FLUID_TANK_DEFAULTS } from './fluid-tank.config.js';
 import { boundedCyanStyle } from './styles/bounded-cyan.js';
+import { auroraBorealisStyle } from './styles/aurora-borealis.js';
+import { deepOceanStyle } from './styles/deep-ocean.js';
+import { forestMossStyle } from './styles/forest-moss.js';
+import { lavaLampStyle } from './styles/lava-lamp.js';
 import { nebulaOilStyle } from './styles/nebula-oil.js';
 import { thermalBloomStyle } from './styles/thermal-bloom.js';
 
@@ -39,6 +46,7 @@ interface FluidRendererAdapter {
   readonly canvas?: unknown;
   readonly layer?: unknown;
   destroy(): void;
+  inject(x: number, y: number, dx: number, dy: number, intensity?: number): void;
   resize(width: number, height: number, force?: boolean): void;
   randomizeDye(seed?: number, seedMotion?: boolean): void;
   setQuality(quality: RenderQuality): void;
@@ -58,19 +66,25 @@ export const fluidTankStyleManifest: SimStyleManifest = {
     passes: ['gpuFluid'],
     qualities: ['basic', 'enhanced', 'raw'],
   },
-  styles: [boundedCyanStyle, nebulaOilStyle, thermalBloomStyle],
+  styles: [boundedCyanStyle, nebulaOilStyle, thermalBloomStyle, auroraBorealisStyle, deepOceanStyle, lavaLampStyle, forestMossStyle],
 };
 
 export class FluidTankScene extends SimulationScene {
   readonly name = 'FluidTank';
   private renderer: FluidRendererAdapter | null = null;
+  private readonly rawQualityAdapter = new DomScriptQualityAdapter({
+    name: 'Fluid Tank',
+    markup: fluidRuntimeMarkup,
+    mount: mountFluidRuntime,
+    isActiveQuality: (quality) => quality === 'raw',
+  });
   private wallLayer: Graphics | null = null;
   private rippleLayer: Graphics | null = null;
   private options: GpuFluidTankOptions | null = null;
   private previousPointers = new Map<number, PointerTrailPoint>();
   private ripples: FluidRipple[] = [];
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
-  private interactionMode: 'stir' | 'settle' = 'stir';
+  private interactionMode: 'stir' | 'inject' = 'stir';
   private lastCellSize = 0;
   private lastFingerForce = 0;
   private lastFingerRadius = 0;
@@ -79,6 +93,7 @@ export class FluidTankScene extends SimulationScene {
   private lastEddyAssist = 0;
   private lastDyePersistence = 0;
   private lastPressureIterations = 0;
+  private lastInjectColorMode: GpuFluidTankOptions['injectColorMode'] = 'style';
   private lastAmbient = false;
   private lastExposure = 0;
   private lastPaletteKey = '';
@@ -94,11 +109,6 @@ export class FluidTankScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    const parent = ctx.systems.pixi.canvas.parentElement;
-    if (!parent) return;
-    parent.style.position = parent.style.position || 'relative';
-    ctx.systems.pixi.canvas.style.zIndex = '2';
-    ctx.systems.pixi.canvas.dataset.pixiLabFluidRendererHost = 'pixi-shared';
     const fluidDebugParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : undefined;
     this.debugStill = Boolean(fluidDebugParams?.has('fluidStill'));
     this.debugNoSeedMotion = Boolean(fluidDebugParams?.has('fluidNoSeedMotion'));
@@ -124,6 +134,17 @@ export class FluidTankScene extends SimulationScene {
         exposure: 1.06,
       };
     }
+
+    if (this.rawQualityAdapter.sync(ctx.quality, ctx, input).active) {
+      ctx.systems.debug?.setEnabled(false);
+      return;
+    }
+
+    const parent = ctx.systems.pixi.canvas.parentElement;
+    if (!parent) return;
+    parent.style.position = parent.style.position || 'relative';
+    ctx.systems.pixi.canvas.style.zIndex = '2';
+    ctx.systems.pixi.canvas.dataset.pixiLabFluidRendererHost = 'pixi-shared';
     this.renderer = this.createRenderer(parent, ctx.quality);
     this.wallLayer = new Graphics();
     this.rippleLayer = new Graphics();
@@ -141,6 +162,7 @@ export class FluidTankScene extends SimulationScene {
   }
 
   override onExit(): void {
+    this.rawQualityAdapter.unmount();
     this.renderer?.destroy();
     this.wallLayer?.destroy();
     this.rippleLayer?.destroy();
@@ -153,6 +175,10 @@ export class FluidTankScene extends SimulationScene {
   }
 
   override update(dt: number): void {
+    if (this.rawQualityAdapter.isMounted()) {
+      this.rawQualityAdapter.update(dt);
+      return;
+    }
     if (!this.renderer || !this.options) return;
     if (this.debugStill) return;
     if (!this.debugMinimal) this.pollSettings();
@@ -161,8 +187,15 @@ export class FluidTankScene extends SimulationScene {
     const hasHumanPointers = this.input_.snapshot.pointers.size > 0;
     for (const gesture of this.consumeGestures()) {
       if (gesture.kind === 'tap') {
-        if (this.interactionMode === 'settle') {
-          this.renderer.settleVelocity();
+        if (this.interactionMode === 'inject') {
+          this.renderer.inject(
+            gesture.x / Math.max(1, this.ctx_.width),
+            gesture.y / Math.max(1, this.ctx_.height),
+            0,
+            0,
+            1.2,
+          );
+          this.addRipple(gesture.x, gesture.y, 7, 0.82);
         } else {
           this.renderer.smallSwirl(
             gesture.x / Math.max(1, this.ctx_.width),
@@ -170,11 +203,7 @@ export class FluidTankScene extends SimulationScene {
           );
           this.addRipple(gesture.x, gesture.y, 5, 0.8);
         }
-      } else if (
-        !hasHumanPointers &&
-        (gesture.kind === 'drag' || gesture.kind === 'fast_swipe') &&
-        this.interactionMode === 'stir'
-      ) {
+      } else if (!hasHumanPointers && (gesture.kind === 'drag' || gesture.kind === 'fast_swipe')) {
         const stats = this.renderer.stats();
         const velocity = fluidSplatDeltaForQuality(
           this.quality,
@@ -185,12 +214,22 @@ export class FluidTankScene extends SimulationScene {
           stats.simWidth,
           stats.simHeight,
         );
-        this.renderer.splat({
-          x: gesture.x / Math.max(1, this.ctx_.width),
-          y: gesture.y / Math.max(1, this.ctx_.height),
-          dx: velocity.dx,
-          dy: velocity.dy,
-        });
+        if (this.interactionMode === 'inject') {
+          this.renderer.inject(
+            gesture.x / Math.max(1, this.ctx_.width),
+            gesture.y / Math.max(1, this.ctx_.height),
+            velocity.dx,
+            velocity.dy,
+            0.95,
+          );
+        } else {
+          this.renderer.splat({
+            x: gesture.x / Math.max(1, this.ctx_.width),
+            y: gesture.y / Math.max(1, this.ctx_.height),
+            dx: velocity.dx,
+            dy: velocity.dy,
+          });
+        }
       }
     }
     this.renderer.update(dt);
@@ -201,6 +240,10 @@ export class FluidTankScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
+    if (this.rawQualityAdapter.isMounted()) {
+      this.rawQualityAdapter.render(_alpha);
+      return;
+    }
     this.renderer?.render();
     this.drawTankFrame();
     this.drawRipples();
@@ -217,11 +260,16 @@ export class FluidTankScene extends SimulationScene {
   }
 
   override resize(width: number, height: number): void {
+    this.rawQualityAdapter.resize(width, height);
     this.renderer?.resize(width, height);
     this.drawTankFrame(width, height);
   }
 
   override reset(): void {
+    if (this.rawQualityAdapter.isMounted()) {
+      this.rawQualityAdapter.reset();
+      return;
+    }
     if (!this.renderer || !this.options) return;
     const seed = this.options.seed + 1;
     this.options = { ...this.options, seed };
@@ -230,36 +278,65 @@ export class FluidTankScene extends SimulationScene {
   }
 
   override clearEmitters(): void {
+    if (this.rawQualityAdapter.isMounted()) return;
     this.renderer?.settleVelocity();
   }
 
   override setQuality(quality: RenderQuality): void {
-    const switchingRenderer = this.renderer !== null && this.usesRawRenderer(quality) !== this.usesRawRenderer(this.quality);
+    const wasRaw = this.rawQualityAdapter.isMounted();
     super.setQuality(quality);
-    if (switchingRenderer && this.options) {
+    const switchResult = this.rawQualityAdapter.sync(quality, this.ctx_, this.input_);
+
+    if (wasRaw && switchResult.active) return;
+
+    if (wasRaw && switchResult.unmounted && this.options) {
       const parent = this.ctx_.systems.pixi.canvas.parentElement;
-      if (parent) {
-        this.renderer?.destroy();
-        this.renderer = this.createRenderer(parent, quality);
-        this.renderer.resize(this.ctx_.width, this.ctx_.height, true);
-        this.renderer.randomizeDye(this.options.seed, !(this.debugStill || this.debugNoSeedMotion));
-        this.applyStyleOptions();
-        return;
+      if (!parent) return;
+      this.renderer = this.createRenderer(parent, quality);
+      if (!this.wallLayer || !this.rippleLayer) {
+        this.wallLayer = new Graphics();
+        this.rippleLayer = new Graphics();
+        this.wallLayer.zIndex = 1;
+        this.rippleLayer.zIndex = 2;
+        this.ctx_.systems.pixi.stage.sortableChildren = true;
+        this.ctx_.systems.pixi.stage.addChild(this.wallLayer);
+        this.ctx_.systems.pixi.stage.addChild(this.rippleLayer);
       }
+      this.renderer.resize(this.ctx_.width, this.ctx_.height, true);
+      this.renderer.randomizeDye(this.options.seed, !(this.debugStill || this.debugNoSeedMotion));
+      this.applyStyleOptions();
+      return;
     }
+
+    if (!wasRaw && switchResult.mounted) {
+      this.renderer?.destroy();
+      this.renderer = null;
+      this.wallLayer?.destroy();
+      this.rippleLayer?.destroy();
+      this.wallLayer = null;
+      this.rippleLayer = null;
+      this.ctx_.systems.debug?.setEnabled(false);
+      return;
+    }
+
     this.renderer?.setQuality(quality);
   }
 
   override setStyle(styleId: string): void {
     super.setStyle(styleId);
+    this.rawQualityAdapter.setStyle(styleId);
+    if (this.rawQualityAdapter.isMounted()) return;
     this.applyStyleOptions();
   }
 
   override setMode(id: string): void {
-    if (id === 'stir' || id === 'settle') this.interactionMode = id;
+    this.rawQualityAdapter.setMode(id);
+    if (this.rawQualityAdapter.isMounted()) return;
+    if (id === 'stir' || id === 'inject') this.interactionMode = id;
   }
 
   getRenderLayers(): SimRenderLayers {
+    if (this.rawQualityAdapter.isMounted()) return {};
     return {
       fluid: this.renderer?.layer ?? this.renderer?.canvas,
     };
@@ -290,14 +367,10 @@ export class FluidTankScene extends SimulationScene {
 
   private createRenderer(parent: HTMLElement, quality: RenderQuality): FluidRendererAdapter {
     if (!this.options) throw new Error('Fluid Tank renderer options must be initialized before renderer creation.');
-    if (this.usesRawRenderer(quality)) {
+    if (quality === 'raw') {
       return new GpuFluidTankRenderer(parent, this.options, quality);
     }
     return new PixiFeedbackFluidRenderer(this.ctx_.systems.pixi.app, this.options, quality);
-  }
-
-  private usesRawRenderer(quality: RenderQuality): boolean {
-    return quality === 'raw';
   }
 
   private applyPointerTrails(): void {
@@ -315,18 +388,28 @@ export class FluidTankScene extends SimulationScene {
       const distance = Math.hypot(dx, dy);
       if (distance < 1) continue;
       previous.movedDistance += distance;
-      const samples = Math.max(1, Math.min(8, Math.ceil(distance / 18)));
+      const samples = this.interactionMode === 'inject'
+        ? Math.max(1, Math.min(4, Math.ceil(distance / 28)))
+        : Math.max(1, Math.min(8, Math.ceil(distance / 18)));
       const forceScale = 1 / Math.sqrt(samples);
       const stats = this.renderer.stats();
       const velocity = fluidSplatDeltaForQuality(this.quality, dx, dy, this.ctx_.width, this.ctx_.height, stats.simWidth, stats.simHeight);
       for (let i = 1; i <= samples; i++) {
         const t = i / samples;
-        this.renderer.splat({
-          x: (previous.x + dx * t) / Math.max(1, this.ctx_.width),
-          y: (previous.y + dy * t) / Math.max(1, this.ctx_.height),
-          dx: velocity.dx * forceScale,
-          dy: velocity.dy * forceScale,
-        });
+        const px = (previous.x + dx * t) / Math.max(1, this.ctx_.width);
+        const py = (previous.y + dy * t) / Math.max(1, this.ctx_.height);
+        const vx = velocity.dx * forceScale;
+        const vy = velocity.dy * forceScale;
+        if (this.interactionMode === 'inject') {
+          this.renderer.inject(px, py, vx, vy, 0.9);
+        } else {
+          this.renderer.splat({
+            x: px,
+            y: py,
+            dx: vx,
+            dy: vy,
+          });
+        }
       }
       this.addRipple(pointer.x, pointer.y, 3, 0.48);
       previous.x = pointer.x;
@@ -340,8 +423,15 @@ export class FluidTankScene extends SimulationScene {
           previous.y / Math.max(1, this.ctx_.height),
         );
         this.addRipple(previous.x, previous.y, 5, 0.8);
-      } else if (this.interactionMode === 'settle') {
-        this.renderer.settleVelocity();
+      } else if (previous && this.interactionMode === 'inject') {
+        this.renderer.inject(
+          previous.x / Math.max(1, this.ctx_.width),
+          previous.y / Math.max(1, this.ctx_.height),
+          0,
+          0,
+          1.15,
+        );
+        this.addRipple(previous.x, previous.y, 7, 0.82);
       }
       this.previousPointers.delete(id);
     }
@@ -359,6 +449,7 @@ export class FluidTankScene extends SimulationScene {
       next.eddyAssist !== this.lastEddyAssist ||
       next.dyePersistence !== this.lastDyePersistence ||
       next.pressureIterations !== this.lastPressureIterations ||
+      next.injectColorMode !== this.lastInjectColorMode ||
       next.ambient !== this.lastAmbient
     ) {
       this.options = next;
@@ -380,6 +471,7 @@ export class FluidTankScene extends SimulationScene {
       eddyAssist: numberSetting(settings.get('eddyAssist'), FLUID_TANK_DEFAULTS.eddyAssist),
       dyePersistence: numberSetting(settings.get('dyePersistence'), FLUID_TANK_DEFAULTS.dyePersistence),
       pressureIterations: this.preview ? 20 : Math.round(numberSetting(settings.get('pressureIterations'), FLUID_TANK_DEFAULTS.pressureIterations)),
+      injectColorMode: injectColorModeSetting(settings.get('injectPalette'), FLUID_TANK_DEFAULTS.injectPalette),
       ambient: this.preview || Boolean(settings.get('ambient') ?? FLUID_TANK_DEFAULTS.ambient),
       exposure: this.resolveExposure(this.ctx_.systems.styleManager?.getStyle() ?? undefined),
       palette: this.resolvePalette(this.ctx_.systems.styleManager?.getStyle() ?? undefined),
@@ -441,6 +533,7 @@ export class FluidTankScene extends SimulationScene {
     this.lastEddyAssist = options.eddyAssist;
     this.lastDyePersistence = options.dyePersistence;
     this.lastPressureIterations = options.pressureIterations;
+    this.lastInjectColorMode = options.injectColorMode;
     this.lastAmbient = options.ambient;
     this.lastExposure = options.exposure;
     this.lastPaletteKey = options.palette.join(',');
@@ -464,17 +557,8 @@ export class FluidTankScene extends SimulationScene {
 
   private drawTankFrame(width = this.ctx_.width, height = this.ctx_.height): void {
     if (!this.wallLayer) return;
-    const pad = 7;
+    void width; void height;
     this.wallLayer.clear();
-    this.wallLayer
-      .rect(pad, pad, width - pad * 2, height - pad * 2)
-      .stroke({ color: 0xffffff, alpha: 0.24, width: 2 });
-    this.wallLayer
-      .rect(pad + 5, pad + 5, width - (pad + 5) * 2, height - (pad + 5) * 2)
-      .stroke({ color: 0xbcecff, alpha: 0.11, width: 1 });
-    this.wallLayer
-      .rect(pad - 1, pad - 1, width - (pad - 1) * 2, height - (pad - 1) * 2)
-      .stroke({ color: 0x000000, alpha: 0.28, width: 4 });
   }
 
   private drawRipples(): void {
@@ -495,6 +579,23 @@ function isFluidDisplayMode(value: string | null | undefined): value is NonNulla
 
 function numberSetting(value: unknown, fallback: unknown): number {
   return typeof value === 'number' ? value : Number(fallback);
+}
+
+function injectColorModeSetting(
+  value: unknown,
+  fallback: unknown,
+): GpuFluidTankOptions['injectColorMode'] {
+  const candidate = typeof value === 'string' ? value : String(fallback ?? 'style');
+  if (
+    candidate === 'style' ||
+    candidate === 'cyan' ||
+    candidate === 'magenta' ||
+    candidate === 'amber' ||
+    candidate === 'rainbow'
+  ) {
+    return candidate;
+  }
+  return 'style';
 }
 
 export function fluidSplatDeltaForQuality(

@@ -25,7 +25,7 @@ export const fluidRuntimeMarkup = `
     <output id="dyeValue"></output>
     <output id="pressureValue"></output>
     <button id="randomizeBtn" type="button">New dye</button>
-    <button id="settleBtn" type="button">Settle</button>
+    <button id="settleBtn" type="button">Inject drop</button>
     <button id="ambientBtn" type="button">Ambient: off</button>
     <button id="resetBtn" type="button">Reset gentle</button>
   </section>

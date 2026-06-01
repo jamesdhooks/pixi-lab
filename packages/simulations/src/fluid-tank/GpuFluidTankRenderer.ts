@@ -14,6 +14,7 @@ export interface GpuFluidTankOptions {
   paletteStrength: number;
   edgeDarkening: number;
   ambient: boolean;
+  injectColorMode: 'style' | 'cyan' | 'magenta' | 'amber' | 'rainbow';
   seed: number;
   displayMode?: 'dye' | 'velocity' | 'curl' | 'divergence' | 'pressure';
 }
@@ -491,6 +492,55 @@ export class GpuFluidTankRenderer {
     this.clearTarget(this.curlTarget, 0);
   }
 
+  inject(x: number, y: number, dx: number, dy: number, intensity = 1): void {
+    if (!this.supported || !this.velocity || !this.dye) return;
+    const clampedX = clamp01(x);
+    const clampedY = clamp01(1 - y);
+    const radius = this.options.fingerRadius * (0.72 + intensity * 0.52);
+    const spread = this.options.fingerForce * (0.55 + intensity * 0.5);
+    const vx = dx * spread;
+    const vy = -dy * spread - this.options.fingerForce * (0.65 + intensity * 0.35);
+    const speed = Math.hypot(vx, vy);
+    const segments = clamp(Math.ceil(speed / 2.1), 2, 4);
+    const invLen = speed > 0.0001 ? 1 / speed : 0;
+    const ux = vx * invLen;
+    const uy = vy * invLen;
+    const spacing = radius * (0.7 + intensity * 0.16);
+    for (let i = 0; i < segments; i++) {
+      const t = segments <= 1 ? 0 : i / (segments - 1);
+      const px = clamp01(clampedX + ux * (t - 0.5) * spacing);
+      const py = clamp01(clampedY + uy * (t - 0.5) * spacing);
+      this.applySplatTarget(this.velocity, px, py, vx, vy, 0, radius * (0.92 + t * 0.2));
+    }
+    if (this.options.eddyAssist > 0) {
+      this.applySplatTarget(
+        this.velocity,
+        clampedX,
+        clampedY,
+        -vy * this.options.eddyAssist,
+        vx * this.options.eddyAssist,
+        0,
+        radius * 1.22,
+      );
+    }
+    const dyeColor = this.nextInjectColor(clampedX, clampedY, intensity);
+    for (let i = 0; i < segments; i++) {
+      const t = segments <= 1 ? 0 : i / (segments - 1);
+      const px = clamp01(clampedX + ux * (t - 0.5) * spacing);
+      const py = clamp01(clampedY + uy * (t - 0.5) * spacing);
+      this.applySplatTarget(
+        this.dye,
+        px,
+        py,
+        dyeColor[0],
+        dyeColor[1],
+        dyeColor[2],
+        radius * (0.7 + t * 0.18),
+      );
+    }
+    this.splatCount += 1;
+  }
+
   splat(splat: FluidSplat): void {
     if (!this.supported || !this.velocity) return;
     const radius = this.options.fingerRadius * (splat.radiusScale ?? 1);
@@ -713,15 +763,52 @@ export class GpuFluidTankRenderer {
 
   private applySplat(x: number, y: number, vx: number, vy: number, radius: number): void {
     if (!this.gl || !this.velocity) return;
+    this.applySplatTarget(this.velocity, x, y, vx, vy, 0, radius);
+  }
+
+  private applySplatTarget(
+    target: FluidDoubleTarget,
+    x: number,
+    y: number,
+    r: number,
+    g: number,
+    b: number,
+    radius: number,
+  ): void {
+    if (!this.gl) return;
     const program = this.requireProgram('splat');
     this.bind(program);
-    this.gl.uniform1i(program.uniforms.uTarget, this.velocity.read.attach(0));
-    this.gl.uniform1f(program.uniforms.aspectRatio, this.velocity.width / this.velocity.height);
-    this.gl.uniform3f(program.uniforms.color, vx, vy, 0);
+    this.gl.uniform1i(program.uniforms.uTarget, target.read.attach(0));
+    this.gl.uniform1f(program.uniforms.aspectRatio, target.width / target.height);
+    this.gl.uniform3f(program.uniforms.color, r, g, b);
     this.gl.uniform2f(program.uniforms.point, x, y);
     this.gl.uniform1f(program.uniforms.radius, radius * radius);
-    this.blit(this.velocity.write);
-    this.velocity.swap();
+    this.blit(target.write);
+    target.swap();
+  }
+
+  private nextInjectColor(x: number, y: number, intensity: number): [number, number, number] {
+    const mode = this.options.injectColorMode;
+    let base: [number, number, number];
+    if (mode === 'cyan') {
+      base = [0.25, 1.0, 0.92];
+    } else if (mode === 'magenta') {
+      base = [1.0, 0.26, 0.92];
+    } else if (mode === 'amber') {
+      base = [1.0, 0.72, 0.2];
+    } else if (mode === 'rainbow') {
+      const hue = (this.elapsed * 0.12 + x * 0.5 + y * 0.35) % 1;
+      const rainbow = unpackHexColor(hsvToRgb(hue, 0.82, 1));
+      base = [rainbow[0], rainbow[1], rainbow[2]];
+    } else {
+      const palette = this.options.palette;
+      const t = (x * 0.7 + y * 0.31 + this.elapsed * 0.02) % 1;
+      const colorHex = blendPalette(palette, t);
+      base = unpackHexColor(colorHex);
+    }
+
+    const amount = 0.24 + this.options.paletteStrength * 0.24 + intensity * 0.13;
+    return [base[0] * amount, base[1] * amount, base[2] * amount];
   }
 
   private enforceVelocityBoundary(): void {
@@ -954,4 +1041,70 @@ function clamp01(value: number): number {
 
 function randomBetween(rng: SeededRng, min: number, max: number): number {
   return min + rng.next() * (max - min);
+}
+
+function unpackHexColor(hex: number): [number, number, number] {
+  return [
+    ((hex >> 16) & 255) / 255,
+    ((hex >> 8) & 255) / 255,
+    (hex & 255) / 255,
+  ];
+}
+
+function blendPalette(palette: readonly number[], t: number): number {
+  if (palette.length === 0) return 0x9dfff4;
+  if (palette.length === 1) return palette[0] ?? 0x9dfff4;
+  const span = palette.length;
+  const scaled = ((t % 1) + 1) % 1 * span;
+  const index = Math.floor(scaled) % span;
+  const next = (index + 1) % span;
+  const local = scaled - Math.floor(scaled);
+  const eased = local * local * (3 - 2 * local);
+  return blendHex(palette[index] ?? 0xffffff, palette[next] ?? 0xffffff, eased);
+}
+
+function blendHex(a: number, b: number, t: number): number {
+  const r = Math.round((((a >> 16) & 255) * (1 - t)) + (((b >> 16) & 255) * t));
+  const g = Math.round((((a >> 8) & 255) * (1 - t)) + (((b >> 8) & 255) * t));
+  const bl = Math.round(((a & 255) * (1 - t)) + ((b & 255) * t));
+  return (r << 16) | (g << 8) | bl;
+}
+
+function hsvToRgb(h: number, s: number, v: number): number {
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+  let r = v;
+  let g = t;
+  let b = p;
+  switch (i % 6) {
+    case 1:
+      r = q;
+      g = v;
+      b = p;
+      break;
+    case 2:
+      r = p;
+      g = v;
+      b = t;
+      break;
+    case 3:
+      r = p;
+      g = q;
+      b = v;
+      break;
+    case 4:
+      r = t;
+      g = p;
+      b = v;
+      break;
+    case 5:
+      r = v;
+      g = p;
+      b = q;
+      break;
+  }
+  return ((r * 255) << 16) | ((g * 255) << 8) | (b * 255);
 }
