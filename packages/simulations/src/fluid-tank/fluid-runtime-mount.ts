@@ -1,35 +1,42 @@
-export const fluidRuntimeScript = `
-(async () => {
-      const fluidCanvas = document.getElementById("runtime-canvas");
-      const pixiLayer = document.getElementById("pixi-layer");
-      const fallback = document.getElementById("fallback");
-      const fpsEl = document.getElementById("fps");
-      const gridEl = document.getElementById("grid");
-      const modeEl = document.getElementById("mode");
-      const stirsEl = document.getElementById("stirs");
-      const controls = document.getElementById("controls");
+// @ts-nocheck — this file is auto-generated from fluid-runtime-script.ts (converted JS);
+// full TypeScript annotation of 1800 lines of GPU simulation code is deferred.
+import type { DomMountContext } from '@hooksjam/pixi-lab-core';
+
+export function mountFluidRuntime(root: HTMLDivElement, ctx: DomMountContext): () => void {
+  let pixiApp: import('pixi.js').Application | null = null;
+  const unsubs: Array<() => void> = [];
+
+  (async () => {
+      const fluidCanvas = root.querySelector('#runtime-canvas');
+      const pixiLayer = root.querySelector('#pixi-layer');
+      const fallback = root.querySelector('#fallback');
+      const fpsEl = root.querySelector('#fps');
+      const gridEl = root.querySelector('#grid');
+      const modeEl = root.querySelector('#mode');
+      const stirsEl = root.querySelector('#stirs');
+      const controls = root.querySelector('#controls');
 
       const ui = {
-        cellSize: document.getElementById("cellSize"),
-        fingerForce: document.getElementById("fingerForce"),
-        fingerRadius: document.getElementById("fingerRadius"),
-        viscosity: document.getElementById("viscosity"),
-        curl: document.getElementById("curl"),
-        eddy: document.getElementById("eddy"),
-        dyePersistence: document.getElementById("dyePersistence"),
-        pressure: document.getElementById("pressure"),
-        cellSizeValue: document.getElementById("cellSizeValue"),
-        forceValue: document.getElementById("forceValue"),
-        radiusValue: document.getElementById("radiusValue"),
-        viscosityValue: document.getElementById("viscosityValue"),
-        curlValue: document.getElementById("curlValue"),
-        eddyValue: document.getElementById("eddyValue"),
-        dyeValue: document.getElementById("dyeValue"),
-        pressureValue: document.getElementById("pressureValue"),
-        randomizeBtn: document.getElementById("randomizeBtn"),
-        settleBtn: document.getElementById("settleBtn"),
-        ambientBtn: document.getElementById("ambientBtn"),
-        resetBtn: document.getElementById("resetBtn")
+        cellSize: root.querySelector('#cellSize'),
+        fingerForce: root.querySelector('#fingerForce'),
+        fingerRadius: root.querySelector('#fingerRadius'),
+        viscosity: root.querySelector('#viscosity'),
+        curl: root.querySelector('#curl'),
+        eddy: root.querySelector('#eddy'),
+        dyePersistence: root.querySelector('#dyePersistence'),
+        pressure: root.querySelector('#pressure'),
+        cellSizeValue: root.querySelector('#cellSizeValue'),
+        forceValue: root.querySelector('#forceValue'),
+        radiusValue: root.querySelector('#radiusValue'),
+        viscosityValue: root.querySelector('#viscosityValue'),
+        curlValue: root.querySelector('#curlValue'),
+        eddyValue: root.querySelector('#eddyValue'),
+        dyeValue: root.querySelector('#dyeValue'),
+        pressureValue: root.querySelector('#pressureValue'),
+        randomizeBtn: root.querySelector('#randomizeBtn'),
+        settleBtn: root.querySelector('#settleBtn'),
+        ambientBtn: root.querySelector('#ambientBtn'),
+        resetBtn: root.querySelector('#resetBtn')
       };
 
       const DEFAULTS = {
@@ -43,12 +50,94 @@ export const fluidRuntimeScript = `
         pressure: "24"
       };
 
-      const runtimeRoot = fluidCanvas.closest("[data-pixi-lab-dom-scene]") || document.body;
+      const CONFIG = {
+        CELL_SIZE: 1.2,
+        SIM_RESOLUTION: 183,
+        DYE_RESOLUTION: 792,
+        VELOCITY_DISSIPATION: 0.986,
+        DENSITY_DISSIPATION: 0.9996,
+        PRESSURE_ITERATIONS: 24,
+        CURL: 6.0,
+        STIR_RADIUS: 0.026,
+        FINGER_FORCE: 8.0,
+        EDDY_ASSIST: 0.0,
+        INJECT_COLOR_MODE: "style",
+        EXPOSURE: 1.06,
+        AMBIENT: false,
+        INIT_MODE: "cloud",      // cloud | voronoi | random | image
+        INIT_IMAGE_URL: ""       // only used when INIT_MODE === 'image'
+      };
+
       const runtimeStyle = {
         palette: [0x75ffe6, 0x9dfff4, 0xbcecff],
         exposure: 1.06,
         paletteStrength: 0.76
       };
+      let interactionMode = "stir";
+
+      function applyRuntimeSettingsPayload(payload, changedKey = null) {
+        if (!payload || typeof payload !== "object") return false;
+        let needsRebuild = false;
+
+        const cellSize = Number(payload.cellSize);
+        const currentCellSize = CONFIG.CELL_SIZE;
+        if (Number.isFinite(cellSize) && (changedKey === null || changedKey === "cellSize")) {
+          ui.cellSize.value = String(cellSize);
+          needsRebuild = changedKey === "cellSize" && Math.abs(currentCellSize - cellSize) > 0.0001;
+        }
+
+        const fingerForce = Number(payload.fingerForce);
+        if (Number.isFinite(fingerForce)) ui.fingerForce.value = String(fingerForce);
+
+        const fingerRadius = Number(payload.fingerRadius);
+        if (Number.isFinite(fingerRadius)) ui.fingerRadius.value = String(fingerRadius);
+
+        const viscosity = Number(payload.viscosity);
+        if (Number.isFinite(viscosity)) ui.viscosity.value = String(viscosity);
+
+        const curl = Number(payload.curl);
+        if (Number.isFinite(curl)) ui.curl.value = String(curl);
+
+        const eddyAssist = Number(payload.eddyAssist);
+        if (Number.isFinite(eddyAssist)) ui.eddy.value = String(eddyAssist);
+
+        const dyePersistence = Number(payload.dyePersistence);
+        if (Number.isFinite(dyePersistence)) ui.dyePersistence.value = String(dyePersistence);
+
+        const pressureIterations = Number(payload.pressureIterations);
+        if (Number.isFinite(pressureIterations)) ui.pressure.value = String(Math.round(pressureIterations));
+
+        const injectPalette = String(payload.injectPalette ?? "style");
+        if (
+          injectPalette === "style" ||
+          injectPalette === "cyan" ||
+          injectPalette === "magenta" ||
+          injectPalette === "amber" ||
+          injectPalette === "rainbow"
+        ) {
+          CONFIG.INJECT_COLOR_MODE = injectPalette;
+        }
+
+        if (typeof payload.ambient === "boolean") {
+          CONFIG.AMBIENT = payload.ambient;
+        }
+
+        const initMode = String(payload.initMode ?? "");
+        if (["cloud", "voronoi", "random", "image"].includes(initMode)) {
+          CONFIG.INIT_MODE = initMode;
+        }
+
+        const initImageUrl = typeof payload.initImageUrl === "string" ? payload.initImageUrl.trim() : "";
+        if (initImageUrl) {
+          CONFIG.INIT_IMAGE_URL = initImageUrl;
+          // If a URL was just set, promote mode to image automatically
+          CONFIG.INIT_MODE = "image";
+        }
+
+        return needsRebuild;
+      }
+
+
 
       function unpackColor(hex) {
         const value = Number(hex) || 0xffffff;
@@ -57,6 +146,34 @@ export const fluidRuntimeScript = `
           ((value >> 8) & 255) / 255,
           (value & 255) / 255
         ];
+      }
+
+      function rgbToHue(r, g, b) {
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const d = max - min;
+        if (d < 0.0001) return 0.0; // achromatic — default to red hue
+        let h;
+        if (max === r) h = ((g - b) / d + 6) % 6;
+        else if (max === g) h = (b - r) / d + 2;
+        else h = (r - g) / d + 4;
+        return h / 6.0;
+      }
+
+      function hsvToRgb(h, s, v) {
+        const i = Math.floor(h * 6);
+        const f = h * 6 - i;
+        const p = v * (1 - s);
+        const q = v * (1 - f * s);
+        const t = v * (1 - (1 - f) * s);
+        switch (i % 6) {
+          case 0: return [v, t, p];
+          case 1: return [q, v, p];
+          case 2: return [p, v, t];
+          case 3: return [p, q, v];
+          case 4: return [t, p, v];
+          default: return [v, p, q];
+        }
       }
 
       function applyRuntimeStylePayload(payload) {
@@ -69,43 +186,53 @@ export const fluidRuntimeScript = `
         runtimeStyle.paletteStrength = Number(uniforms.paletteStrength ?? runtimeStyle.paletteStrength);
       }
 
-      function readRuntimeStyle() {
-        try {
-          applyRuntimeStylePayload(JSON.parse(runtimeRoot.dataset.pixiLabStyle || "null"));
-        } catch {
-          // Keep defaults when the host has not provided a style yet.
-        }
-      }
 
-      readRuntimeStyle();
-      runtimeRoot.addEventListener("pixi-lab-style-change", (event) => {
-        applyRuntimeStylePayload(event.detail);
-        if (dye && initDyeProgram) initDyeField();
-      });
+
+      // Read initial state synchronously (before any async work).
+      // NOTE: applyControlValues() is intentionally NOT called here — it references
+      // BASE_SIM_RESOLUTION (declared later) and would throw a TDZ ReferenceError.
+      // The onSettingsChange callback below handles the initial delivery after the
+      // IIFE has run past all const declarations.
+      applyRuntimeStylePayload(ctx.getStyle());
+      applyRuntimeSettingsPayload(ctx.getSettings());
+      updateModeLabel();
+
+      // Subscribe to future changes
+      unsubs.push(
+        ctx.onStyleChange((payload) => {
+          applyRuntimeStylePayload(payload);
+          if (simReady) initDyeField();
+        }),
+        ctx.onSettingsChange((all, change) => {
+          const needsRebuild = applyRuntimeSettingsPayload(all, change?.key ?? undefined);
+          if (simReady) {
+            applyControlValues();
+            updateModeLabel();
+            if (needsRebuild) scheduleRebuild();
+          }
+        }),
+        ctx.onReset(() => {
+          if (simReady) resetGentleDefaults();
+        }),
+        ctx.onModeChange((mode) => {
+          interactionMode = mode === "inject" ? "inject" : "stir";
+          if (simReady) updateModeLabel();
+        }),
+      );
+
+      // Guard flag: true only after dye/velocity are initialized (post-await).
+      // Callbacks that fire before init completes should skip simulation ops.
+      let simReady = false;
 
       const BASE_SIM_RESOLUTION = 220;
       const BASE_DYE_RESOLUTION = 950;
-
-      const CONFIG = {
-        CELL_SIZE: 1.2,
-        SIM_RESOLUTION: 183,
-        DYE_RESOLUTION: 792,
-        VELOCITY_DISSIPATION: 0.986,
-        DENSITY_DISSIPATION: 0.9996,
-        PRESSURE_ITERATIONS: 24,
-        CURL: 6.0,
-        STIR_RADIUS: 0.026,
-        FINGER_FORCE: 8.0,
-        EDDY_ASSIST: 0.0,
-        EXPOSURE: 1.06,
-        AMBIENT: false
-      };
 
       let stirs = 0;
       let elapsed = 0;
       let lastAmbient = 0;
       let seed = Math.random() * 1000;
       let rebuildTimer = null;
+      let resizeDebounce = null;
       const activePointers = new Map();
       const ripples = [];
 
@@ -134,6 +261,7 @@ export const fluidRuntimeScript = `
       }
 
       const app = new PIXI.Application();
+      pixiApp = app;
 
       await app.init({
         resizeTo: window,
@@ -180,7 +308,7 @@ export const fluidRuntimeScript = `
       gl.disable(gl.DEPTH_TEST);
       gl.disable(gl.CULL_FACE);
 
-      const baseVertexShader = \`#version 300 es
+      const baseVertexShader = `#version 300 es
         layout(location = 0) in vec2 aPosition;
         out vec2 vUv;
 
@@ -188,9 +316,9 @@ export const fluidRuntimeScript = `
           vUv = aPosition * 0.5 + 0.5;
           gl_Position = vec4(aPosition, 0.0, 1.0);
         }
-      \`;
+      `;
 
-      const clearShader = \`#version 300 es
+      const clearShader = `#version 300 es
         precision highp float;
         in vec2 vUv;
         out vec4 outColor;
@@ -199,9 +327,9 @@ export const fluidRuntimeScript = `
         void main() {
           outColor = vec4(value, value, value, 1.0);
         }
-      \`;
+      `;
 
-      const initDyeShader = \`#version 300 es
+      const initDyeShader = `#version 300 es
         precision highp float;
         in vec2 vUv;
         out vec4 outColor;
@@ -209,11 +337,13 @@ export const fluidRuntimeScript = `
         uniform vec2 resolution;
         uniform float seed;
         uniform float cellSize;
-        uniform vec3 palette0;
-        uniform vec3 palette1;
-        uniform vec3 palette2;
+        // Palette is passed as hues (0-1) so vivid brightness is always guaranteed,
+        // regardless of how dark the source hex color is (e.g. 0x3311ff).
+        uniform float paletteHue0;
+        uniform float paletteHue1;
+        uniform float paletteHue2;
+        uniform float paletteHue3;
         uniform float paletteStrength;
-        uniform float exposure;
 
         float hash(vec2 p) {
           p = fract(p * vec2(123.34, 456.21));
@@ -253,6 +383,28 @@ export const fluidRuntimeScript = `
           return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
         }
 
+        // Branchless hue lookup — all four uniforms always referenced,
+        // preventing dead-code elimination on aggressive GPU drivers.
+        float hueAt(float index) {
+          float h = paletteHue0;
+          h = mix(h, paletteHue1, step(1.0, index));
+          h = mix(h, paletteHue2, step(2.0, index));
+          h = mix(h, paletteHue3, step(3.0, index));
+          return h;
+        }
+
+        void promoteTop(inout float primaryW, inout float primaryI, inout float secondaryW, inout float secondaryI, float weight, float index) {
+          if (weight > primaryW) {
+            secondaryW = primaryW;
+            secondaryI = primaryI;
+            primaryW = weight;
+            primaryI = index;
+          } else if (weight > secondaryW) {
+            secondaryW = weight;
+            secondaryI = index;
+          }
+        }
+
         void main() {
           float aspect = resolution.x / resolution.y;
           float scale = 1.0 / max(cellSize, 0.35);
@@ -260,27 +412,44 @@ export const fluidRuntimeScript = `
           vec2 s1 = vec2(seed * 1.37, seed * 2.11);
           vec2 s2 = vec2(seed * 3.19, seed * 0.73);
 
-          float large = fbm(p * 2.1 * scale + s1);
-          float medium = fbm(p * 5.6 * scale + s2);
-          float fine = fbm(p * 12.0 * scale - s1 * 0.42);
-          float ribbons = 0.5 + 0.5 * sin((p.x * 1.4 * scale - p.y * 0.8 * scale + large * 2.8 + seed * 0.07) * 6.2831853);
+          float cloudA = fbm(p * 1.7 * scale + s1 * 0.31 + vec2(4.1, -2.8));
+          float cloudB = fbm(p * 3.05 * scale - s2 * 0.27 + vec2(-6.2, 3.9));
+          float cloudC = fbm(p * 5.4 * scale + s1 * 0.13 - s2 * 0.09 + vec2(2.4, 7.1));
+          float cloudD = fbm(p * 2.45 * scale - s1 * 0.21 + s2 * 0.14 + vec2(-4.9, -1.7));
+          float mist   = fbm(p * 11.2 * scale + s2 * 0.53);
 
-          float hue = fract(large * 0.76 + medium * 0.31 + ribbons * 0.22 + seed * 0.113);
-          float saturation = 0.72 + 0.26 * medium;
-          float value = 0.96 + 0.40 * fine + 0.16 * ribbons;
+          float w0 = pow(0.04 + cloudA, 5.6);
+          float w1 = pow(0.04 + cloudB, 5.6);
+          float w2 = pow(0.04 + cloudC, 5.6);
+          float w3 = pow(0.04 + cloudD, 5.6);
 
-          vec3 rainbow = hsv2rgb(vec3(hue, saturation, value));
-          float band = fract(hue * 1.65 + ribbons * 0.18);
-          vec3 themed = mix(palette0, palette1, smoothstep(0.0, 0.68, band));
-          themed = mix(themed, palette2, smoothstep(0.45, 1.0, band));
-          vec3 color = mix(rainbow, themed * value, clamp(paletteStrength, 0.0, 1.0));
-          color *= exposure * (1.04 + 0.20 * ribbons);
+          float primaryW = -1.0; float secondaryW = -1.0;
+          float primaryI = 0.0;  float secondaryI = 1.0;
+          promoteTop(primaryW, primaryI, secondaryW, secondaryI, w0, 0.0);
+          promoteTop(primaryW, primaryI, secondaryW, secondaryI, w1, 1.0);
+          promoteTop(primaryW, primaryI, secondaryW, secondaryI, w2, 2.0);
+          promoteTop(primaryW, primaryI, secondaryW, secondaryI, w3, 3.0);
 
-          outColor = vec4(color, 1.0);
+          // Use the dominant region's hue directly — no cross-hue blending.
+          // Blending toward a secondary hue on the "short arc" often passes through
+          // red (e.g. pink→amber crosses 0°/red), inserting colours not in the palette.
+          // Instead we modulate saturation at region boundaries to give soft transitions
+          // without introducing spurious hues.
+          float purity     = smoothstep(0.28, 0.86, primaryW / max(primaryW + secondaryW, 0.0001));
+          float hue        = hueAt(primaryI);
+
+          // Saturation and brightness are always high — mirrors the reference fluids.html
+          // approach. Dark palette chips (e.g. 0x3311ff) produce vivid blue-violet because
+          // we use only the hue, not the dim RGB value.
+          float region     = smoothstep(0.2, 0.8, cloudA * 0.55 + cloudB * 0.3 + cloudC * 0.15);
+          float saturation = clamp((0.78 + 0.20 * cloudC + 0.22 * paletteStrength) * (0.72 + 0.28 * purity), 0.0, 1.0);
+          float brightness = 1.05 + 0.40 * region + 0.14 * mist; // HDR, tone-mapped by display
+
+          outColor = vec4(hsv2rgb(vec3(hue, saturation, brightness)), 1.0);
         }
-      \`;
+      `;
 
-      const splatShader = \`#version 300 es
+      const splatShader = `#version 300 es
         precision highp float;
         precision highp sampler2D;
         in vec2 vUv;
@@ -299,9 +468,9 @@ export const fluidRuntimeScript = `
           vec3 base = texture(uTarget, vUv).rgb;
           outColor = vec4(base + color * splat, 1.0);
         }
-      \`;
+      `;
 
-      const advectionShader = \`#version 300 es
+      const advectionShader = `#version 300 es
         precision highp float;
         precision highp sampler2D;
         in vec2 vUv;
@@ -319,9 +488,9 @@ export const fluidRuntimeScript = `
           coord = clamp(coord, vec2(0.001), vec2(0.999));
           outColor = texture(uSource, coord) * dissipation;
         }
-      \`;
+      `;
 
-      const boundaryShader = \`#version 300 es
+      const boundaryShader = `#version 300 es
         precision highp float;
         precision highp sampler2D;
         in vec2 vUv;
@@ -352,9 +521,9 @@ export const fluidRuntimeScript = `
           velocity *= mix(wallDamping, 1.0, wall);
           outColor = vec4(velocity, 0.0, 1.0);
         }
-      \`;
+      `;
 
-      const divergenceShader = \`#version 300 es
+      const divergenceShader = `#version 300 es
         precision highp float;
         precision highp sampler2D;
         in vec2 vUv;
@@ -380,9 +549,9 @@ export const fluidRuntimeScript = `
           float divergence = 0.5 * (R - L + T - B);
           outColor = vec4(divergence, 0.0, 0.0, 1.0);
         }
-      \`;
+      `;
 
-      const curlShader = \`#version 300 es
+      const curlShader = `#version 300 es
         precision highp float;
         precision highp sampler2D;
         in vec2 vUv;
@@ -407,9 +576,9 @@ export const fluidRuntimeScript = `
           float curl = R - L - T + B;
           outColor = vec4(curl, 0.0, 0.0, 1.0);
         }
-      \`;
+      `;
 
-      const vorticityShader = \`#version 300 es
+      const vorticityShader = `#version 300 es
         precision highp float;
         precision highp sampler2D;
         in vec2 vUv;
@@ -438,9 +607,9 @@ export const fluidRuntimeScript = `
           velocity = clamp(velocity, vec2(-260.0), vec2(260.0));
           outColor = vec4(velocity, 0.0, 1.0);
         }
-      \`;
+      `;
 
-      const pressureShader = \`#version 300 es
+      const pressureShader = `#version 300 es
         precision highp float;
         precision highp sampler2D;
         in vec2 vUv;
@@ -467,9 +636,9 @@ export const fluidRuntimeScript = `
           float pressure = (L + R + B + T - divergence) * 0.25;
           outColor = vec4(pressure, 0.0, 0.0, 1.0);
         }
-      \`;
+      `;
 
-      const gradientSubtractShader = \`#version 300 es
+      const gradientSubtractShader = `#version 300 es
         precision highp float;
         precision highp sampler2D;
         in vec2 vUv;
@@ -497,9 +666,9 @@ export const fluidRuntimeScript = `
           velocity -= 0.5 * vec2(R - L, T - B);
           outColor = vec4(velocity, 0.0, 1.0);
         }
-      \`;
+      `;
 
-      const displayShader = \`#version 300 es
+      const displayShader = `#version 300 es
         precision highp float;
         precision highp sampler2D;
         in vec2 vUv;
@@ -526,8 +695,12 @@ export const fluidRuntimeScript = `
           glow *= 0.075;
 
           c += glow;
+          float preToneBlue = smoothstep(0.015, 0.16, c.b - max(c.r, c.g));
+          c += vec3(0.0, 0.012, 0.085) * preToneBlue;
           c = 1.0 - exp(-c * exposure);
           c = pow(c, vec3(0.9));
+          float postToneBlue = smoothstep(0.015, 0.16, c.b - max(c.r, c.g));
+          c = mix(c, vec3(c.r * 0.9 + 0.02, c.g * 0.94 + 0.035, max(c.b, 0.34)), postToneBlue * 0.46);
 
           float edge = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
           float wallShadow = smoothstep(0.0, 0.035, edge);
@@ -541,7 +714,7 @@ export const fluidRuntimeScript = `
 
           outColor = vec4(max(c, 0.0), 1.0);
         }
-      \`;
+      `;
 
       function compileShader(type, source) {
         const shader = gl.createShader(type);
@@ -603,7 +776,6 @@ export const fluidRuntimeScript = `
       }
 
       let clearProgram;
-      let initDyeProgram;
       let splatProgram;
       let advectionProgram;
       let boundaryProgram;
@@ -616,7 +788,6 @@ export const fluidRuntimeScript = `
 
       try {
         clearProgram = new Program(clearShader);
-        initDyeProgram = new Program(initDyeShader);
         splatProgram = new Program(splatShader);
         advectionProgram = new Program(advectionShader);
         boundaryProgram = new Program(boundaryShader);
@@ -783,6 +954,7 @@ export const fluidRuntimeScript = `
       let pressure;
       let divergence;
       let curl;
+      // Mark sim as ready once dye & velocity are in scope (set below after initFramebuffers)
 
       function disposeFramebuffers() {
         for (const target of [velocity, dye, pressure]) {
@@ -820,24 +992,184 @@ export const fluidRuntimeScript = `
         clearFBO(divergence, 0);
         clearFBO(curl, 0);
 
-        gridEl.textContent = \`\${simRes.width}×\${simRes.height} / \${dyeRes.width}×\${dyeRes.height}\`;
+        gridEl.textContent = `${simRes.width}×${simRes.height} / ${dyeRes.width}×${dyeRes.height}`;
+      }
+
+      // ─── dye initialisation helpers ───────────────────────────────────────
+
+      function uploadDyePixels(data, w, h) {
+        gl.bindTexture(gl.TEXTURE_2D, dye.read.texture);
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, w, h, gl.RGBA, gl.FLOAT, data);
+        gl.bindTexture(gl.TEXTURE_2D, dye.write.texture);
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, w, h, gl.RGBA, gl.FLOAT, data);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+      }
+
+      function palHdrRgb(ci) {
+        const pal = runtimeStyle.palette;
+        const nc  = Math.max(1, pal.length);
+        const hex = pal[Math.min(ci, nc - 1)];
+        const hue = rgbToHue(((hex >> 16) & 0xff) / 255,
+                              ((hex >>  8) & 0xff) / 255,
+                              ( hex        & 0xff) / 255);
+        return hsvToRgb(hue, 0.88, 1.28);
+      }
+
+      function makeFbmHelpers(seedVal) {
+        const S = ((Math.abs(seedVal) * 1e6 + 1) >>> 0) || 0xdeadbeef;
+        function h2(ix, iy) {
+          let v = ((ix * 1619) ^ (iy * 31337) ^ S) >>> 0;
+          v = (Math.imul(v ^ (v >>> 16), 0x45d9f3b)) >>> 0;
+          v = (Math.imul(v ^ (v >>> 16), 0x45d9f3b)) >>> 0;
+          return (v ^ (v >>> 16)) >>> 0;
+        }
+        function vn(x, y) {
+          const ix = Math.floor(x), iy = Math.floor(y);
+          const fx = x - ix, fy = y - iy;
+          const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+          const N = 4294967296;
+          const a = h2(ix,   iy  ) / N, bv = h2(ix + 1, iy  ) / N;
+          const c = h2(ix,   iy+1) / N, dv = h2(ix + 1, iy+1) / N;
+          return (a + (bv - a) * ux) * (1 - uy) + (c + (dv - c) * ux) * uy;
+        }
+        function fbm(x, y) {
+          let v = 0, amp = 0.5;
+          for (let i = 0; i < 4; i++) {
+            v += amp * vn(x, y); x = x * 2.03 + 17.17; y = y * 2.03 + 31.71; amp *= 0.52;
+          }
+          return v;
+        }
+        function ss(a, b, x) {
+          const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+          return t * t * (3 - 2 * t);
+        }
+        return { fbm, ss };
+      }
+
+      function initDyeCloud(w, h) {
+        const data = new Float32Array(w * h * 4);
+        const c0 = palHdrRgb(0), c1 = palHdrRgb(1), c2 = palHdrRgb(2);
+        const { fbm, ss } = makeFbmHelpers(seed);
+        const sc = 3.5 / Math.max(w, h);
+        for (let py = 0; py < h; py++) {
+          for (let px = 0; px < w; px++) {
+            const nx = px * sc, ny = py * sc;
+            const n1 = fbm(nx,       ny      );
+            const n2 = fbm(nx + 7.3, ny + 4.1);
+            const t1 = ss(0.46, 0.74, n1);
+            const t2 = ss(0.50, 0.76, n2);
+            let r = c0[0] + (c1[0] - c0[0]) * t1;
+            let g = c0[1] + (c1[1] - c0[1]) * t1;
+            let b = c0[2] + (c1[2] - c0[2]) * t1;
+            r += (c2[0] - r) * t2; g += (c2[1] - g) * t2; b += (c2[2] - b) * t2;
+            const idx = (py * w + px) * 4;
+            data[idx] = r; data[idx+1] = g; data[idx+2] = b; data[idx+3] = 1.0;
+          }
+        }
+        uploadDyePixels(data, w, h);
+      }
+
+      function initDyeVoronoi(w, h) {
+        const pal = runtimeStyle.palette;
+        const nc  = Math.max(1, pal.length);
+        const hues = Array.from({ length: nc }, (_, ci) => {
+          const hex = pal[ci];
+          return rgbToHue(((hex >> 16) & 0xff) / 255, ((hex >> 8) & 0xff) / 255, (hex & 0xff) / 255);
+        });
+        // Seeded PRNG for seed placement
+        let rng = ((Math.abs(seed) * 1e6 + 1) >>> 0) || 0xdeadbeef;
+        const rand = () => {
+          rng = (rng + 0x6D2B79F5) >>> 0;
+          let t = Math.imul(rng ^ (rng >>> 15), 1 | rng);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+        const SEEDS_PER = 5;
+        const total = nc * SEEDS_PER;
+        const sx = new Float32Array(total), sy = new Float32Array(total), sh = new Float32Array(total);
+        for (let i = 0; i < total; i++) {
+          sx[i] = rand() * w; sy[i] = rand() * h; sh[i] = hues[i % nc];
+        }
+        const data = new Float32Array(w * h * 4);
+        for (let py = 0; py < h; py++) {
+          for (let px = 0; px < w; px++) {
+            let minD = 1e30, hue = sh[0];
+            for (let s = 0; s < total; s++) {
+              const dx = px - sx[s], dy = py - sy[s];
+              const d = dx*dx + dy*dy;
+              if (d < minD) { minD = d; hue = sh[s]; }
+            }
+            const [r, g, b] = hsvToRgb(hue, 0.88, 1.28);
+            const idx = (py * w + px) * 4;
+            data[idx] = r; data[idx+1] = g; data[idx+2] = b; data[idx+3] = 1.0;
+          }
+        }
+        uploadDyePixels(data, w, h);
+      }
+
+      function initDyeImage(w, h) {
+        const url = CONFIG.INIT_IMAGE_URL;
+        if (!url) { initDyeCloud(w, h); return; }
+
+        // Canvas 2D has Y=0 at top; WebGL textures have Y=0 at bottom — flip rows.
+        function canvasToFloat(raw) {
+          const data = new Float32Array(w * h * 4);
+          for (let py = 0; py < h; py++) {
+            const srcRow = (h - 1 - py) * w; // flipped source row
+            const dstRow = py * w;
+            for (let px = 0; px < w; px++) {
+              const s = (srcRow + px) * 4, d = (dstRow + px) * 4;
+              const ri = raw[s]   / 255, gi = raw[s+1] / 255, bi = raw[s+2] / 255;
+              const luma = ri * 0.2126 + gi * 0.7152 + bi * 0.0722;
+              const boost = luma < 0.08 ? 1.5 : 1.0;
+              data[d]   = ri * boost;
+              data[d+1] = gi * boost;
+              data[d+2] = bi * boost;
+              data[d+3] = 1.0;
+            }
+          }
+          return data;
+        }
+
+        function drawAndUpload(imgEl) {
+          const c2d = Object.assign(document.createElement("canvas"), { width: w, height: h });
+          const ctx2d = c2d.getContext("2d");
+          ctx2d.drawImage(imgEl, 0, 0, w, h);
+          const raw = ctx2d.getImageData(0, 0, w, h).data;
+          if (dye) uploadDyePixels(canvasToFloat(raw), w, h);
+        }
+
+        function loadViaBlob(src) {
+          const img = new Image();
+          img.onload = () => drawAndUpload(img);
+          img.onerror = () => { if (dye) initDyeCloud(dye.width, dye.height); };
+          img.src = src;
+        }
+
+        // Try direct load first (works for same-origin / CORS-enabled hosts).
+        // On failure, retry through corsproxy.io which re-serves with CORS headers.
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => drawAndUpload(img);
+        img.onerror = () => {
+          const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(url);
+          loadViaBlob(proxyUrl);
+        };
+        img.src = url;
       }
 
       function initDyeField() {
-        initDyeProgram.bind();
-        gl.uniform2f(initDyeProgram.uniforms.resolution, dye.width, dye.height);
-        gl.uniform1f(initDyeProgram.uniforms.seed, seed);
-        gl.uniform1f(initDyeProgram.uniforms.cellSize, CONFIG.CELL_SIZE);
-        const p0 = unpackColor(runtimeStyle.palette[0]);
-        const p1 = unpackColor(runtimeStyle.palette[1] ?? runtimeStyle.palette[0]);
-        const p2 = unpackColor(runtimeStyle.palette[2] ?? runtimeStyle.palette[1] ?? runtimeStyle.palette[0]);
-        gl.uniform3f(initDyeProgram.uniforms.palette0, p0[0], p0[1], p0[2]);
-        gl.uniform3f(initDyeProgram.uniforms.palette1, p1[0], p1[1], p1[2]);
-        gl.uniform3f(initDyeProgram.uniforms.palette2, p2[0], p2[1], p2[2]);
-        gl.uniform1f(initDyeProgram.uniforms.paletteStrength, runtimeStyle.paletteStrength);
-        gl.uniform1f(initDyeProgram.uniforms.exposure, runtimeStyle.exposure);
-        blit(dye.read);
-        blit(dye.write);
+        const w = dye.width, h = dye.height;
+        const mode = CONFIG.INIT_MODE === "random"
+          ? (Math.random() < 0.5 ? "cloud" : "voronoi")
+          : CONFIG.INIT_MODE;
+        if (mode === "image") {
+          initDyeImage(w, h);
+        } else if (mode === "voronoi") {
+          initDyeVoronoi(w, h);
+        } else {
+          initDyeCloud(w, h);
+        }
       }
 
       function enforceVelocityBoundary() {
@@ -875,6 +1207,81 @@ export const fluidRuntimeScript = `
         if (countStir) {
           stirs += 1;
           stirsEl.textContent = stirs.toString();
+        }
+      }
+
+      function nextInjectColor(x, y, strength = 1) {
+        const mode = CONFIG.INJECT_COLOR_MODE;
+        let vivid;
+        if (mode === "cyan") {
+          vivid = [0.25, 1.0, 0.92];
+        } else if (mode === "magenta") {
+          vivid = [1.0, 0.26, 0.92];
+        } else if (mode === "amber") {
+          vivid = [1.0, 0.72, 0.2];
+        } else if (mode === "rainbow") {
+          vivid = hsvToRgb((elapsed * 0.14 + x * 0.52 + y * 0.31) % 1, 0.84, 1.0);
+        } else {
+          const palette = runtimeStyle.palette;
+          const t = ((x * 0.71 + y * 0.29 + elapsed * 0.02) % 1 + 1) % 1;
+          const span = Math.max(1, palette.length);
+          const scaled = t * span;
+          const idx = Math.floor(scaled) % span;
+          const a = unpackColor(palette[idx] ?? 0x9dfff4);
+          vivid = [a[0], a[1], a[2]];
+        }
+        const luma = vivid[0] * 0.2126 + vivid[1] * 0.7152 + vivid[2] * 0.0722;
+        if (luma < 0.38) {
+          // Scale up rather than additive lift: blue channels are already at 1.0
+          // so additive lift can't raise luma — scale allows HDR values > 1.0
+          // which is valid for RGBA16F dye targets.
+          const scale = Math.min(0.38 / Math.max(luma, 0.025), 5.0);
+          vivid = [vivid[0] * scale, vivid[1] * scale, vivid[2] * scale];
+        }
+        const amount = 0.24 + runtimeStyle.paletteStrength * 0.28 + strength * 0.14;
+        return [vivid[0] * amount, vivid[1] * amount, vivid[2] * amount];
+      }
+
+      function injectDrop(x, y, vx, vy, strength = 1, countStir = true) {
+        const radius = 0.78 + strength * 0.58;
+        const spreadScale = 0.52 + strength * 0.44;
+        const downBias = 0.62 + strength * 0.36;
+        splatVelocity(x, y, vx * spreadScale, vy * spreadScale - downBias, radius, countStir);
+
+        if (CONFIG.EDDY_ASSIST > 0) {
+          splatVelocity(
+            x,
+            y,
+            -(vy * spreadScale) * CONFIG.EDDY_ASSIST,
+            (vx * spreadScale) * CONFIG.EDDY_ASSIST,
+            radius * 1.2,
+            false
+          );
+        }
+
+        const dyeColor = nextInjectColor(x, y, strength);
+        splatProgram.bind();
+        gl.uniform1i(splatProgram.uniforms.uTarget, dye.read.attach(0));
+        gl.uniform1f(splatProgram.uniforms.aspectRatio, dye.width / dye.height);
+        gl.uniform3f(splatProgram.uniforms.color, dyeColor[0], dyeColor[1], dyeColor[2]);
+        gl.uniform2f(splatProgram.uniforms.point, clamp01(x), clamp01(y));
+        gl.uniform1f(splatProgram.uniforms.radius, (CONFIG.STIR_RADIUS * radius * 0.95) ** 2);
+        blit(dye.write);
+        dye.swap();
+      }
+
+      function injectStroke(x, y, vx, vy, strength = 1, countStir = true) {
+        const speed = Math.hypot(vx, vy);
+        const segments = clamp(Math.ceil(speed / 1.8), 1, 3);
+        const invLen = speed > 0.0001 ? 1 / speed : 0;
+        const ux = vx * invLen;
+        const uy = vy * invLen;
+        const spacing = CONFIG.STIR_RADIUS * (0.65 + strength * 0.2);
+        for (let i = 0; i < segments; i++) {
+          const t = segments <= 1 ? 0 : i / (segments - 1);
+          const px = x + ux * (t - 0.5) * spacing;
+          const py = y + uy * (t - 0.5) * spacing;
+          injectDrop(px, py, vx, vy, strength, countStir && i === segments - 1);
         }
       }
 
@@ -1011,6 +1418,49 @@ export const fluidRuntimeScript = `
         });
       }
 
+      function injectDyeTrail(previous, current) {
+        const dxPx = current.cssX - previous.cssX;
+        const dyPx = current.cssY - previous.cssY;
+        const distancePx = Math.hypot(dxPx, dyPx);
+
+        if (distancePx < 1.0) {
+          return;
+        }
+
+        previous.movedDistance += distancePx;
+
+        const samples = clamp(Math.ceil(distancePx / 24), 1, 6);
+        const forceScale = 1 / Math.sqrt(samples);
+
+        let vxCells = (dxPx / current.rect.width) * velocity.width;
+        let vyCells = (-dyPx / current.rect.height) * velocity.height;
+        const magnitude = Math.hypot(vxCells, vyCells);
+        const maxMagnitude = 8.5;
+
+        if (magnitude > maxMagnitude) {
+          const scale = maxMagnitude / magnitude;
+          vxCells *= scale;
+          vyCells *= scale;
+        }
+
+        vxCells *= forceScale;
+        vyCells *= forceScale;
+
+        for (let i = 1; i <= samples; i++) {
+          const t = i / samples;
+          const x = lerp(previous.x, current.x, t);
+          const y = lerp(previous.y, current.y, t);
+          injectStroke(x, y, vxCells, vyCells, 0.95, i === samples);
+        }
+
+        ripples.push({
+          x: current.cssX,
+          y: current.cssY,
+          radius: 4,
+          life: 0.54
+        });
+      }
+
       function onPointerDown(event) {
         app.canvas.setPointerCapture?.(event.pointerId);
 
@@ -1040,7 +1490,11 @@ export const fluidRuntimeScript = `
         }
 
         const p = pointerInfo(event);
-        injectFingerTrail(previous, p);
+        if (interactionMode === "inject") {
+          injectDyeTrail(previous, p);
+        } else {
+          injectFingerTrail(previous, p);
+        }
 
         previous.x = p.x;
         previous.y = p.y;
@@ -1058,7 +1512,17 @@ export const fluidRuntimeScript = `
         const p = pointerInfo(event);
 
         if (previous.movedDistance < 6) {
-          smallClickSwirl(p.x, p.y, p.cssX, p.cssY);
+          if (interactionMode === "inject") {
+            injectDrop(p.x, p.y, 0, 0, 1.2, true);
+            ripples.push({
+              x: p.cssX,
+              y: p.cssY,
+              radius: 7,
+              life: 0.82
+            });
+          } else {
+            smallClickSwirl(p.x, p.y, p.cssX, p.cssY);
+          }
         }
 
         activePointers.delete(event.pointerId);
@@ -1191,7 +1655,8 @@ export const fluidRuntimeScript = `
       }
 
       function updateModeLabel() {
-        modeEl.textContent = CONFIG.AMBIENT ? "finger stir + ambient" : "finger stir";
+        const prefix = interactionMode === "inject" ? "dye inject" : "finger stir";
+        modeEl.textContent = CONFIG.AMBIENT ? prefix + " + ambient" : prefix;
         ui.ambientBtn.textContent = CONFIG.AMBIENT ? "Ambient: on" : "Ambient: off";
         ui.ambientBtn.classList.toggle("active", CONFIG.AMBIENT);
       }
@@ -1220,14 +1685,14 @@ export const fluidRuntimeScript = `
         const viewportMin = Math.max(1, Math.min(window.innerWidth, window.innerHeight));
         const approxSimCellPx = viewportMin / Math.max(1, CONFIG.SIM_RESOLUTION);
 
-        ui.cellSizeValue.textContent = \`~\${approxSimCellPx.toFixed(1)}px cells\`;
-        ui.forceValue.textContent = \`\${fingerForce.toFixed(1)}\`;
-        ui.radiusValue.textContent = \`\${Math.round(fingerRadius * 1000)} px-ish\`;
-        ui.viscosityValue.textContent = \`\${Math.round(viscosity * 100)}%\`;
-        ui.curlValue.textContent = \`\${curl.toFixed(1)}\`;
-        ui.eddyValue.textContent = \`\${eddy.toFixed(2)}\`;
+        ui.cellSizeValue.textContent = `~${approxSimCellPx.toFixed(1)}px cells`;
+        ui.forceValue.textContent = `${fingerForce.toFixed(1)}`;
+        ui.radiusValue.textContent = `${Math.round(fingerRadius * 1000)} px-ish`;
+        ui.viscosityValue.textContent = `${Math.round(viscosity * 100)}%`;
+        ui.curlValue.textContent = `${curl.toFixed(1)}`;
+        ui.eddyValue.textContent = `${eddy.toFixed(2)}`;
         ui.dyeValue.textContent = dyePersistence.toFixed(4);
-        ui.pressureValue.textContent = \`\${pressureIterations}\`;
+        ui.pressureValue.textContent = `${pressureIterations}`;
       }
 
       function rebuildSimulation() {
@@ -1277,14 +1742,19 @@ export const fluidRuntimeScript = `
       });
 
       ui.randomizeBtn.addEventListener("click", randomizeFluid);
-      ui.settleBtn.addEventListener("click", settleVelocity);
+      ui.settleBtn.addEventListener("click", () => {
+        injectDrop(0.5, 0.5, 0, 0, 1.25, true);
+      });
       ui.ambientBtn.addEventListener("click", () => {
         CONFIG.AMBIENT = !CONFIG.AMBIENT;
         updateModeLabel();
       });
       ui.resetBtn.addEventListener("click", resetGentleDefaults);
 
-      window.addEventListener("resize", resizeCanvas);
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeDebounce);
+        resizeDebounce = setTimeout(resizeCanvas, 120);
+      });
 
       window.addEventListener("keydown", (event) => {
         if (event.key === " " || event.code === "Space") {
@@ -1302,6 +1772,7 @@ export const fluidRuntimeScript = `
         applyControlValues();
         updateModeLabel();
         resizeCanvas();
+        simReady = true;
       } catch (error) {
         console.error(error);
         showFallback();
@@ -1312,7 +1783,6 @@ export const fluidRuntimeScript = `
         const dt = Math.min(ticker.deltaMS / 1000, 0.032);
         elapsed += dt;
 
-        resizeCanvas();
         ambientStir();
         step(dt);
         renderFluid();
@@ -1321,4 +1791,12 @@ export const fluidRuntimeScript = `
         fpsEl.textContent = Math.round(app.ticker.FPS).toString();
       });
     })();
-`;
+
+  return () => {
+    unsubs.forEach((u) => u());
+    if (pixiApp) {
+      pixiApp.destroy(true);
+      pixiApp = null;
+    }
+  };
+}

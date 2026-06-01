@@ -35,12 +35,17 @@ export const fluidTankDefinition: SimulationDefinition = {
   styleManifest: fluidTankStyleManifest,
   modes: [
     { id: 'stir', label: 'Stir', icon: '~', description: 'Drag to inject velocity along your finger path.' },
-    { id: 'settle', label: 'Settle', icon: '○', description: 'Tap to clear fluid velocity while keeping the dye.' },
+    {
+      id: 'inject',
+      label: 'Inject',
+      icon: '●',
+      description: 'Tap or drag to drip extra dye and push a spreading force into the fluid.',
+    },
   ],
   gestureMap: {
-    tap: 'create a small swirl or settle the velocity in settle mode',
-    drag: 'inject bounded velocity along the pointer path',
-    fast_swipe: 'stir the tank with a stronger sweep',
+    tap: 'create a small swirl, or inject a concentrated dye drip in inject mode',
+    drag: 'stir velocity in stir mode, or drip dye with spreading force in inject mode',
+    fast_swipe: 'stir the tank with a stronger sweep or inject a stronger dye stream in inject mode',
   },
   directorEvents: [
     { id: 'ambient-eddy', label: 'Ambient Eddy', minIntervalMs: 5000, maxIntervalMs: 11000, intensity: 0.35 },
@@ -57,7 +62,7 @@ export const fluidTankDefinition: SimulationDefinition = {
   demoAiFactory: () => new FluidTankDemoAI(),
   tutorialPages: [
     { icon: '~', title: 'Stir The Tank', body: 'Drag through the canvas to inject velocity along the path, just like the standalone prototype.' },
-    { icon: '○', title: 'Settle Mode', body: 'Switch to Settle and tap when you want to calm the fluid without losing the dye.' },
+    { icon: '●', title: 'Inject Mode', body: 'Switch to Inject to drip extra dye and push a soft spreading force under your pointer.' },
     { icon: '⚙', title: 'Fluid Controls', body: 'Use settings for cell size, finger force, swirl memory, dye persistence, pressure solve, eddy assist, and ambient stirring.' },
   ],
 };
