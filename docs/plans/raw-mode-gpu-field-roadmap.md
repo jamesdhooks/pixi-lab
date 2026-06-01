@@ -136,6 +136,10 @@ Rebased the raw plan over the new typed DOM runtime bridge. The forward path is 
 - Treat a core rebuild as mandatory before registry probes whenever core bridge exports change; the observed blocker was stale `packages/core/dist` missing `DomScriptQualityAdapter`, not a source-level adapter mismatch.
 - Next implementation slice should expose Amoeba `raw` only after adding an explicit QA route/selector coverage and smoke-testing basic, enhanced, raw, plus raw-leakage into a non-raw simulation.
 
+## 2026-06-01 Amoeba raw exposure slice
+
+Exposed Amoeba Lamp `raw` through `capabilities.qualityModes` and the style manifest after the Pixi-owned `AmoebaLampRawRenderer` landed. Added registry coverage proving only `amoeba-lamp` and `fluid-tank` advertise raw, while Amoeba's factory/preview stay on normal scene classes rather than `DomScriptScene`. Browser QA verified Amoeba basic/enhanced/raw launch with one shared Pixi canvas and no console errors, and confirmed `?quality=raw` sanitizes to basic for Harmonic Sand as a non-raw simulation.
+
 ## Acceptance for future raw scenes
 
 A scene may advertise `raw` only when all are true:

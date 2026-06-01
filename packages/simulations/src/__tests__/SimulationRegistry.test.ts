@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GameContext, SettingsField, SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { DomScriptScene } from '@hooksjam/pixi-lab-core';
-import { FluidTankPreviewScene, FluidTankScene, SIMULATION_REGISTRY, getSimulation } from '../index.js';
+import { AmoebaLampPreviewScene, AmoebaLampScene, FluidTankPreviewScene, FluidTankScene, SIMULATION_REGISTRY, getSimulation } from '../index.js';
 
 const REQUIRED_DEMO_CAPABILITIES = [
   'interactive',
@@ -135,5 +135,30 @@ describe('SIMULATION_REGISTRY', () => {
     expect(scene).not.toBeInstanceOf(DomScriptScene);
     expect(preview).toBeInstanceOf(FluidTankPreviewScene);
     expect(preview).not.toBeInstanceOf(DomScriptScene);
+  });
+
+  it('advertises Amoeba Lamp raw only after its Pixi-owned adapter is selectable', () => {
+    const definition = getSimulation('amoeba-lamp');
+
+    expect(definition?.capabilities.qualityModes).toEqual(['basic', 'enhanced', 'raw']);
+    expect(definition?.styleManifest.capabilities.qualities).toEqual(['basic', 'enhanced', 'raw']);
+
+    const factoryContext = {} as unknown as GameContext;
+    const scene = definition?.factory(factoryContext);
+    const preview = definition?.previewFactory?.(factoryContext);
+
+    expect(scene).toBeInstanceOf(AmoebaLampScene);
+    expect(scene).not.toBeInstanceOf(DomScriptScene);
+    expect(preview).toBeInstanceOf(AmoebaLampPreviewScene);
+    expect(preview).not.toBeInstanceOf(DomScriptScene);
+  });
+
+  it('keeps raw opt-in scoped to simulations that explicitly support it', () => {
+    const rawCapableIds = SIMULATION_REGISTRY
+      .filter((definition) => (definition.capabilities.qualityModes ?? []).includes('raw'))
+      .map((definition) => definition.id)
+      .sort();
+
+    expect(rawCapableIds).toEqual(['amoeba-lamp', 'fluid-tank']);
   });
 });
