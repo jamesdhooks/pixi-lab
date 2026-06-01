@@ -120,7 +120,17 @@ export { NoopRenderPass, type RenderPass, type RenderPassContext } from './rende
 
 // Simulation primitives
 export { SimulationScene } from './sim/SimulationScene.js';
-export { DomScriptScene, type DomScriptSceneOptions } from './sim/DomScriptScene.js';
+export {
+  DomScriptScene,
+  type DomSceneOptions,
+  type DomMountContext,
+  type DomStylePayload,
+} from './sim/DomScriptScene.js';
+export {
+  DomScriptQualityAdapter,
+  type DomScriptQualityAdapterOptions,
+  type DomScriptQualitySwitchResult,
+} from './sim/DomScriptQualityAdapter.js';
 export { ScalarField } from './sim/fields/ScalarField.js';
 export { DensityField } from './sim/fields/DensityField.js';
 export { TrailField } from './sim/fields/TrailField.js';
