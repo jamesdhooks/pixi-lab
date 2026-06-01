@@ -24,7 +24,7 @@ export const amoebaLampStyleManifest: SimStyleManifest = {
   capabilities: {
     renderLayers: ['particles', 'density', 'glow', 'debug'],
     passes: ['densityMetaball', 'paletteMap', 'edgeGlow', 'normalLighting', 'distortion', 'bloom', 'contourBands'],
-    qualities: ['basic', 'enhanced'],
+    qualities: ['basic', 'enhanced', 'raw'],
   },
   styles: [bioPlasmaStyle, oilSlickStyle, toxicLagoonStyle],
 };
