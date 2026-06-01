@@ -165,6 +165,9 @@ function FieldRow({
         {field.type === 'select' && (
           <CustomSelect field={field} value={value} onChange={onChange} />
         )}
+        {field.type === 'string' && (
+          <StringInput value={value} onChange={onChange} />
+        )}
       </div>
     </div>
   );
@@ -217,6 +220,26 @@ function NumberSlider({
       />
       <span className="w-9 text-right text-sm tabular-nums text-white/60">{num}</span>
     </div>
+  );
+}
+
+// ── String input ──────────────────────────────────────────────────────────────
+
+function StringInput({ value, onChange }: { value: unknown; onChange: (v: unknown) => void }) {
+  const [draft, setDraft] = useState(typeof value === 'string' ? value : '');
+
+  const commit = () => onChange(draft);
+
+  return (
+    <input
+      type="text"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') { commit(); (e.target as HTMLInputElement).blur(); } }}
+      placeholder="https://…"
+      className="w-44 rounded-xl bg-white/10 px-3 py-2 text-sm text-white ring-1 ring-white/15 placeholder:text-white/30 focus:outline-none focus:ring-white/40"
+    />
   );
 }
 

@@ -362,8 +362,8 @@ function GameLauncherInner({
   const hasModes = (definition.modes?.length ?? 0) > 1;
   const hasQualityModes = (definition.capabilities.qualityModes?.length ?? 0) > 0;
   const isSimulation = definition.kind === 'simulation';
-  const topNumericFields = (definition.settingsFields ?? []).filter(
-    (f) => f.type === 'number' && (!f.visibleModes || f.visibleModes.includes(modeId)),
+  const topControlFields = (definition.settingsFields ?? []).filter(
+    (f) => (f.type === 'number' || f.type === 'select') && (!f.visibleModes || f.visibleModes.includes(modeId)),
   );
 
   // On mobile portrait, style + mode are shown at the top of SimControlPanel instead of HUD/OverflowMenu.
@@ -619,17 +619,19 @@ function GameLauncherInner({
               open={settingsOpen}
               onClose={handleCloseSettings}
               settings={appRef.current.settings}
-              fields={definition.settingsFields ?? []}
+              fields={(definition.settingsFields ?? []).filter(
+                (f) => !f.visibleModes || f.visibleModes.includes(modeId),
+              )}
               maxPixels={localMaxPixels}
               onMaxPixelsChange={handleMaxPixelsChange}
             />
           )}
 
           {/* Top: numeric sliders for any experience that exposes number settings */}
-          {(topNumericFields.length > 0 || controlsHeaderSlot) && (
+          {(topControlFields.length > 0 || controlsHeaderSlot) && (
             <SimControlPanel
               app={appInstance}
-              fields={topNumericFields}
+              fields={topControlFields}
               settingsVersion={settingsVersion}
               headerSlot={controlsHeaderSlot}
             />
