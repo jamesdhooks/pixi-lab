@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GameContext, SettingsField, SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { DomScriptScene } from '@hooksjam/pixi-lab-core';
-import { AmoebaLampPreviewScene, AmoebaLampScene, FluidTankPreviewScene, FluidTankScene, SIMULATION_REGISTRY, getSimulation } from '../index.js';
+import { AmoebaLampPreviewScene, AmoebaLampScene, FluidTankPreviewScene, FluidTankScene, OrbitalShrapnelPreviewScene, OrbitalShrapnelScene, SIMULATION_REGISTRY, getSimulation } from '../index.js';
 
 const REQUIRED_DEMO_CAPABILITIES = [
   'interactive',
@@ -153,12 +153,28 @@ describe('SIMULATION_REGISTRY', () => {
     expect(preview).not.toBeInstanceOf(DomScriptScene);
   });
 
+  it('advertises Orbital Shrapnel raw only after its Pixi-owned trail texture adapter is selectable', () => {
+    const definition = getSimulation('orbital-shrapnel');
+
+    expect(definition?.capabilities.qualityModes).toEqual(['basic', 'enhanced', 'raw']);
+    expect(definition?.styleManifest.capabilities.qualities).toEqual(['basic', 'enhanced', 'raw']);
+
+    const factoryContext = {} as unknown as GameContext;
+    const scene = definition?.factory(factoryContext);
+    const preview = definition?.previewFactory?.(factoryContext);
+
+    expect(scene).toBeInstanceOf(OrbitalShrapnelScene);
+    expect(scene).not.toBeInstanceOf(DomScriptScene);
+    expect(preview).toBeInstanceOf(OrbitalShrapnelPreviewScene);
+    expect(preview).not.toBeInstanceOf(DomScriptScene);
+  });
+
   it('keeps raw opt-in scoped to simulations that explicitly support it', () => {
     const rawCapableIds = SIMULATION_REGISTRY
       .filter((definition) => (definition.capabilities.qualityModes ?? []).includes('raw'))
       .map((definition) => definition.id)
       .sort();
 
-    expect(rawCapableIds).toEqual(['amoeba-lamp', 'fluid-tank']);
+    expect(rawCapableIds).toEqual(['amoeba-lamp', 'fluid-tank', 'orbital-shrapnel']);
   });
 });

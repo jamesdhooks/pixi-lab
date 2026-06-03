@@ -140,6 +140,10 @@ Rebased the raw plan over the new typed DOM runtime bridge. The forward path is 
 
 Exposed Amoeba Lamp `raw` through `capabilities.qualityModes` and the style manifest after the Pixi-owned `AmoebaLampRawRenderer` landed. Added registry coverage proving only `amoeba-lamp` and `fluid-tank` advertise raw, while Amoeba's factory/preview stay on normal scene classes rather than `DomScriptScene`. Browser QA verified Amoeba basic/enhanced/raw launch with one shared Pixi canvas and no console errors, and confirmed `?quality=raw` sanitizes to basic for Harmonic Sand as a non-raw simulation.
 
+## 2026-06-01 Orbital Shrapnel raw planning/helper slice
+
+Started the next measured RAW MODE candidate after Amoeba by adding `docs/plans/orbital-shrapnel-raw-mode-mini-plan.md` and the first pure helper, `OrbitalShrapnelRawTexturePlan`. The helper plans bounded particle-state texture capacity and aspect-preserving trail texture dimensions across current `basic`/`enhanced` and future `raw`, while proving raw-sized upload budgets do not leak into non-raw qualities. This is intentionally helper-only: `orbital-shrapnel` still advertises only `basic`/`enhanced`, previews remain Pixi-safe, and browser QA is deferred until a selectable renderer exists.
+
 ## Acceptance for future raw scenes
 
 A scene may advertise `raw` only when all are true:
