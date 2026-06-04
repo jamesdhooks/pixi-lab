@@ -33,6 +33,12 @@ export function findQueryExperience(value: string | null, experiences: readonly 
   return experiences.find((experience) => experience.id.toLowerCase() === normalized);
 }
 
+export function queryQualityForExperience(experience: LabExperience, requested: RenderQuality | undefined): RenderQuality | undefined {
+  if (!requested) return undefined;
+  const supported = experience.capabilities.qualityModes ?? ['basic', 'enhanced'];
+  return supported.includes(requested) ? requested : 'basic';
+}
+
 const KIND_LABELS: Record<string, string> = {
   all: 'All',
   game: 'Games',
@@ -470,7 +476,7 @@ export function App() {
               dockedInset={dockedInset}
               maxPixels={maxPixels}
               transparent={active.kind === 'ambient' || active.kind === 'effect'}
-              initialQuality={routeMode.quality}
+              initialQuality={queryQualityForExperience(active, routeMode.quality)}
               autoDemo={routeMode.fluidEngine || routeMode.fluidReference}
               onQuit={() => {
                 setActive(null);
