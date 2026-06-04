@@ -37,6 +37,25 @@ export interface RGBA {
 // ── Runtime mode ──────────────────────────────────────────────────────────────
 
 export type GameMode = 'play' | 'screensaver' | 'demo' | 'paused';
+
+/**
+ * Rendering backend selected by the host or an experience-specific adapter.
+ * Pixi remains the default backend for the shared Lab Runtime; higher-powered
+ * backends are opt-in per experience rather than global quality levels.
+ */
+export type RendererBackend = 'pixi' | 'webgl2' | 'three' | 'webgpu';
+
+/**
+ * Budget/profile hint within a backend. Profiles describe runtime cost/intent;
+ * they should not imply a different rendering engine by themselves.
+ */
+export type RenderProfile = 'preview' | 'standard' | 'high';
+
+/**
+ * Legacy quality selector used by existing scenes and demo routes. Keep `raw`
+ * scoped to experiences that explicitly advertise it while migration moves new
+ * runtime-facing code toward RendererBackend + RenderProfile terminology.
+ */
 export type RenderQuality = 'basic' | 'enhanced' | 'raw';
 export type ExperienceKind = 'game' | 'simulation' | 'ambient' | 'effect' | 'toy';
 export type ExperienceRenderMode =
