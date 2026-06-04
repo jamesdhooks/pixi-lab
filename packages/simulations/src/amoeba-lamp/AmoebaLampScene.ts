@@ -39,6 +39,7 @@ export class AmoebaLampScene extends SimulationScene {
   private model: AmoebaLampModel | null = null;
   private modelOptions: AmoebaLampModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
+  private rawUnavailableReason: string | null = null;
   /** Cached settings values — detect changes each update tick and apply live. */
   private lastSurfaceTension = 0;
   private lastBuoyancy = 0;
@@ -55,12 +56,10 @@ export class AmoebaLampScene extends SimulationScene {
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
     if (ctx.quality === 'raw') {
-      this.rawRenderer = new AmoebaLampRawRenderer(ctx.systems.pixi.app, ctx.quality);
+      this.createRawRenderer(ctx.systems.pixi.app, ctx.quality);
+      if (!this.rawRenderer) this.createEnhancedRenderers(ctx.systems.pixi.app, 'enhanced', true);
     } else if (ctx.quality === 'enhanced') {
-      this.densityRenderer = new DensityMetaballRenderer(ctx.systems.pixi.app);
-      this.densityRenderer.setQuality(ctx.quality);
-      this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
-      this.particleRenderer.setQuality(ctx.quality);
+      this.createEnhancedRenderers(ctx.systems.pixi.app, ctx.quality);
     } else {
       this.fieldFallbackRenderer = new FieldPaletteRenderer(ctx.systems.pixi.app);
       this.fieldFallbackRenderer.setQuality(ctx.quality);
@@ -167,20 +166,31 @@ export class AmoebaLampScene extends SimulationScene {
     this.model.update(dt);
     this.stagnationReport = this.model.detectStagnation(dt);
     if (this.stagnationReport.stagnant) this.stabilize();
+    if (this.rawUnavailableReason) {
+      this.stagnationReport = {
+        stagnant: false,
+        severity: 0,
+        reason: this.rawUnavailableReason,
+      };
+    }
   }
 
   override render(_alpha: number): void {
     if (!this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? bioPlasmaStyle;
     if (this.rawRenderer) {
-      this.rawRenderer.clear();
-      this.rawRenderer.render({
-        particles: this.model.particleSnapshot(),
-        style,
-        width: this.ctx_.width,
-        height: this.ctx_.height,
-        densityRadius: this.modelOptions?.densityRadius ?? this.lastDensityRadius,
-      });
+      try {
+        this.rawRenderer.clear();
+        this.rawRenderer.render({
+          particles: this.model.particleSnapshot(),
+          style,
+          width: this.ctx_.width,
+          height: this.ctx_.height,
+          densityRadius: this.modelOptions?.densityRadius ?? this.lastDensityRadius,
+        });
+      } catch (error) {
+        this.fallbackFromRawRenderer(error);
+      }
     } else if (this.densityRenderer) {
       this.densityRenderer.clear();
       this.densityRenderer.renderDensity(this.model.densityField, this.ctx_.width, this.ctx_.height, style);
@@ -228,16 +238,14 @@ export class AmoebaLampScene extends SimulationScene {
       this.fieldFallbackRenderer = null;
       this.particleRenderer?.destroy();
       this.particleRenderer = null;
-      this.rawRenderer = new AmoebaLampRawRenderer(pixi, quality);
+      this.createRawRenderer(pixi, quality);
+      if (!this.rawRenderer) this.createEnhancedRenderers(pixi, 'enhanced', true);
     } else if (quality === 'enhanced') {
       this.rawRenderer?.destroy();
       this.rawRenderer = null;
       this.fieldFallbackRenderer?.destroy();
       this.fieldFallbackRenderer = null;
-      this.densityRenderer = new DensityMetaballRenderer(pixi);
-      this.densityRenderer.setQuality(quality);
-      this.particleRenderer = new ParticlePointRenderer(pixi);
-      this.particleRenderer.setQuality(quality);
+      this.createEnhancedRenderers(pixi, quality);
     } else {
       this.rawRenderer?.destroy();
       this.rawRenderer = null;
@@ -248,6 +256,40 @@ export class AmoebaLampScene extends SimulationScene {
       this.fieldFallbackRenderer = new FieldPaletteRenderer(pixi);
       this.fieldFallbackRenderer.setQuality(quality);
     }
+  }
+
+  private createRawRenderer(pixi: GameContext['systems']['pixi']['app'], quality: RenderQuality): void {
+    this.rawUnavailableReason = null;
+    try {
+      this.rawRenderer = new AmoebaLampRawRenderer(pixi, quality);
+    } catch (error) {
+      this.rawRenderer = null;
+      this.rawUnavailableReason = this.describeRawFailure(error);
+    }
+  }
+
+  private fallbackFromRawRenderer(error: unknown): void {
+    this.rawUnavailableReason = this.describeRawFailure(error);
+    this.rawRenderer?.destroy();
+    this.rawRenderer = null;
+    const pixi = this.ctx_.systems.pixi.app;
+    if (!this.densityRenderer) this.createEnhancedRenderers(pixi, 'enhanced', true);
+  }
+
+  private createEnhancedRenderers(pixi: GameContext['systems']['pixi']['app'], quality: RenderQuality, preserveRawUnavailableReason = false): void {
+    const rawUnavailableReason = this.rawUnavailableReason;
+    this.densityRenderer?.destroy();
+    this.particleRenderer?.destroy();
+    this.densityRenderer = new DensityMetaballRenderer(pixi);
+    this.densityRenderer.setQuality(quality);
+    this.particleRenderer = new ParticlePointRenderer(pixi);
+    this.particleRenderer.setQuality(quality);
+    this.rawUnavailableReason = preserveRawUnavailableReason ? rawUnavailableReason : null;
+  }
+
+  private describeRawFailure(error: unknown): string {
+    const detail = error instanceof Error && error.message.length > 0 ? `: ${error.message}` : '';
+    return `Amoeba Lamp raw renderer unavailable; falling back to enhanced Pixi renderer${detail}`;
   }
 
   override setMode(id: string): void {
