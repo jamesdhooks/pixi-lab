@@ -32,6 +32,10 @@ Use these terms for new architecture work:
 - Keep Pixi as the default shared backend and preserve existing demo/gallery discovery while adding backend-neutral vocabulary.
 - Add small pure helpers/types before runtime rewiring, then validate with focused package checks.
 
+## Implemented bridge slice
+
+`packages/core/src/runtime/RenderBackendProfile.ts` provides a pure bridge from existing `qualityModes` to backend/profile candidates. It keeps current scene behavior intact while giving host UI/runtime code backend-neutral terms to consume. The bridge also centralizes legacy quality sanitization so unsupported `raw` requests fall back to Pixi-safe modes unless an experience explicitly advertises `raw`.
+
 ## Next smallest slice
 
-Add a pure capability mapper that can translate existing `qualityModes` into backend/profile candidates for the host UI without changing scene behavior. It should preserve current raw scoping: unsupported experiences must still sanitize raw requests back to Pixi-safe defaults.
+Use the bridge in the demo/runtime quality selection path so UI copy can present backend/profile intent without changing route semantics. Keep persisted/query `raw` requests scoped through each experience's advertised capabilities, then add a focused React/runtime test around the sanitizer path.

@@ -35,6 +35,8 @@ export type {
   Rect,
   RGBA,
   GameMode,
+  RendererBackend,
+  RenderProfile,
   RenderQuality,
   ExperienceKind,
   ExperienceRenderMode,
@@ -105,6 +107,12 @@ export { styleRegistry, PALETTES, DEFAULT_STYLE } from './render/Styles.js';
 export { RenderTargetPool, type RenderTargetRequest, type RenderTargetStats } from './render/RenderTargetPool.js';
 export { PingPong } from './render/PingPong.js';
 export { RenderStyleManager } from './render/RenderStyleManager.js';
+export {
+  mapQualityModesToBackendProfiles,
+  sanitizeLegacyRenderQuality,
+  toRenderBackendProfileCandidate,
+  type RenderBackendProfileCandidate,
+} from './runtime/RenderBackendProfile.js';
 export { SimulationCanvasLayer } from './render/SimulationCanvasLayer.js';
 export type { EmitterMarker } from './render/SimulationCanvasLayer.js';
 export { FieldPaletteRenderer, type FieldPaletteRenderOptions } from './render/FieldPaletteRenderer.js';
