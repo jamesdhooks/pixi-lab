@@ -22,8 +22,15 @@ type DemoStageSlot = 'a' | 'b';
 
 type FilterKind = 'all' | 'overlays' | LabExperience['kind'];
 
-function parseQueryQuality(value: string | null): RenderQuality | undefined {
+export function parseQueryQuality(value: string | null): RenderQuality | undefined {
   return value === 'basic' || value === 'enhanced' || value === 'raw' ? value : undefined;
+}
+
+export function findQueryExperience(value: string | null, experiences: readonly LabExperience[]): LabExperience | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized.length === 0) return undefined;
+  return experiences.find((experience) => experience.id.toLowerCase() === normalized);
 }
 
 const KIND_LABELS: Record<string, string> = {
@@ -83,6 +90,7 @@ export function App() {
       fluidGallery: params.has('fluidGallery'),
       fluidEngine: params.has('fluidEngine'),
       fluidReference: params.has('fluidReference'),
+      experience: findQueryExperience(params.get('experience'), ALL_EXPERIENCES),
       quality: parseQueryQuality(params.get('quality')),
     };
   }, []);
@@ -105,6 +113,13 @@ export function App() {
       setCarouselOpen(false);
       setCarouselDocked(false);
       setActive(fluidTankDefinition);
+      return;
+    }
+    if (routeMode.experience) {
+      setAppDemoActive(false);
+      setCarouselOpen(false);
+      setCarouselDocked(false);
+      setActive(routeMode.experience);
     }
   }, [routeMode]);
 
