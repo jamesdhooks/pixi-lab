@@ -19,11 +19,8 @@ import { DebugPanel } from './ui/DebugPanel.js';
 import { SimControlPanel } from './ui/SimControlPanel.js';
 import { OverflowMenu } from './ui/OverflowMenu.js';
 import { ViewportProvider, useViewportContext } from './ViewportProvider.js';
-import { resolveRenderSelection } from './qualitySelection.js';
+import { resolveRenderSelection, resolveStoredRenderSelection } from './qualitySelection.js';
 import {
-  parseRenderBackendProfileStorage,
-  resolveRenderBackendProfileStorageSelection,
-  getSupportedRenderQualityModes,
   serializeRenderBackendProfileStorage,
   nameSuggestions,
 } from '@hooksjam/pixi-lab-core';
@@ -61,20 +58,6 @@ function writeStoredRenderSelection(selection: RenderBackendProfileSelection): v
   } catch {
     /* ignore */
   }
-}
-
-function resolveStoredRenderSelection(
-  storedSelection: unknown,
-  storedQuality: string | null,
-  supportedModes: readonly RenderQuality[] | undefined,
-): RenderBackendProfileSelection {
-  const parsedSelection = parseRenderBackendProfileStorage(storedSelection);
-  if (parsedSelection) {
-    const supported = getSupportedRenderQualityModes({ qualityModes: supportedModes });
-    return resolveRenderBackendProfileStorageSelection(parsedSelection, supported);
-  }
-
-  return resolveRenderSelection(storedQuality, supportedModes);
 }
 
 const RUNTIME_PERF_CSS = `

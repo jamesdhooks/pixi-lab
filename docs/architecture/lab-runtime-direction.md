@@ -112,6 +112,10 @@ The active-experience Lab Runtime readout still shows the resolved backend/profi
 
 `GameLauncher` now writes a backend-neutral `pixi-lab:renderSelection` storage snapshot beside the existing legacy `pixi-lab:quality` key. Startup still honors `initialQuality` first and falls back to the legacy key when no descriptor exists, but persisted descriptors resolve through shared core sanitization before any scene receives a `RenderQuality`. This lets host/runtime state remember `backend/profile` vocabulary without globally exposing raw or changing current scene contracts.
 
+## Persisted descriptor regression slice
+
+`packages/react/src/qualitySelection.ts` now exports `resolveStoredRenderSelection()` as the pure React launcher boundary for combining the backend-neutral storage snapshot with the legacy `pixi-lab:quality` fallback. Focused tests prove persisted `webgl2/high/raw` is downgraded for experiences that do not advertise `raw`, preserved for opt-in raw experiences, and ignored in favor of the legacy key when the descriptor snapshot is invalid.
+
 ## Next smallest slice
 
-Add a focused React launcher regression around persisted `pixi-lab:renderSelection` fallback/sanitization so future storage changes cannot reintroduce global raw leakage.
+Move the `GameLauncher` startup/persistence storage keys behind a tiny exported constants/helper module so host shells and future debug tooling do not duplicate `pixi-lab:renderSelection` or `pixi-lab:quality` string literals.

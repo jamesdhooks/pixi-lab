@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RenderQuality } from '@hooksjam/pixi-lab-core';
-import { resolveRenderSelection, sanitizeRenderQuality } from '../qualitySelection.js';
+import { resolveRenderSelection, resolveStoredRenderSelection, sanitizeRenderQuality } from '../qualitySelection.js';
 
 describe('sanitizeRenderQuality', () => {
   it('keeps raw only when the active experience advertises raw', () => {
@@ -57,6 +57,44 @@ describe('resolveRenderSelection', () => {
 
   it('resolves omitted quality capabilities through the shared Pixi default selection', () => {
     expect(resolveRenderSelection('enhanced', undefined)).toEqual({
+      backend: 'pixi',
+      profile: 'high',
+      legacyQuality: 'enhanced',
+    });
+  });
+});
+
+describe('resolveStoredRenderSelection', () => {
+  it('sanitizes persisted backend/profile state against the active experience capabilities', () => {
+    expect(
+      resolveStoredRenderSelection(
+        { backend: 'webgl2', profile: 'high', quality: 'raw' },
+        'enhanced',
+        ['basic', 'enhanced'],
+      ),
+    ).toEqual({
+      backend: 'pixi',
+      profile: 'standard',
+      legacyQuality: 'basic',
+    });
+  });
+
+  it('keeps persisted raw selections only for experiences that explicitly advertise raw', () => {
+    expect(
+      resolveStoredRenderSelection(
+        { backend: 'webgl2', profile: 'high', quality: 'raw' },
+        'basic',
+        ['basic', 'enhanced', 'raw'],
+      ),
+    ).toEqual({
+      backend: 'webgl2',
+      profile: 'high',
+      legacyQuality: 'raw',
+    });
+  });
+
+  it('falls back to the legacy quality key when the backend/profile snapshot is invalid', () => {
+    expect(resolveStoredRenderSelection('raw', 'enhanced', ['basic', 'enhanced'])).toEqual({
       backend: 'pixi',
       profile: 'high',
       legacyQuality: 'enhanced',
