@@ -80,6 +80,10 @@ Demo route parsing now accepts future `backend` and `profile` query params throu
 
 The active-experience Lab Runtime readout now exposes a small `Backend/profile link` affordance that serializes the current descriptor with `backend=<renderer>&profile=<profile>` through `buildExperienceBackendProfileRoute()`. Normal gallery launch URLs remain legacy-compatible; the new link is scoped to an explicit developer/debug affordance after an experience has resolved its runtime descriptor.
 
+## Host-visible label helper slice
+
+`formatRenderBackendProfileSelection()` centralizes human-facing labels for the backend/profile descriptor. Demo UI now renders the Lab Runtime readout from this shared helper instead of exposing raw enum values directly, keeping host-facing vocabulary on `PixiJS / Standard`, `PixiJS / High`, or opt-in `WebGL2 / High` while preserving the legacy `RenderQuality` value only as scene compatibility state.
+
 ## Next smallest slice
 
-Add a focused browser smoke for the Lab Runtime readout/link: launch an experience, confirm the link preserves the selected experience plus backend/profile params, verify unsupported global `webgl2/high` still sanitizes back to Pixi-safe startup values, and keep raw/high-powered routes opt-in per experience.
+Add a focused browser smoke for the Lab Runtime readout/link: launch an experience, confirm the readout uses the shared labels, confirm the link preserves the selected experience plus backend/profile params, verify unsupported global `webgl2/high` still sanitizes back to Pixi-safe startup values, and keep raw/high-powered routes opt-in per experience.

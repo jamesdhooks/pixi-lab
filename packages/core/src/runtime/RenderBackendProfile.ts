@@ -21,6 +21,12 @@ export interface RenderBackendProfileSelection {
   readonly legacyQuality: RenderQuality;
 }
 
+export interface RenderBackendProfileSelectionLabel {
+  readonly backendLabel: string;
+  readonly profileLabel: string;
+  readonly summary: string;
+}
+
 export interface RenderBackendProfileQueryRequest {
   readonly backend?: unknown;
   readonly profile?: unknown;
@@ -61,6 +67,19 @@ const LEGACY_QUALITY_CANDIDATES: Record<RenderQuality, RenderBackendProfileCandi
     profile: 'high',
     legacyLabel: 'Raw',
   },
+};
+
+const RENDERER_BACKEND_LABELS: Record<RendererBackend, string> = {
+  pixi: 'PixiJS',
+  webgl2: 'WebGL2',
+  three: 'Three.js',
+  webgpu: 'WebGPU',
+};
+
+const RENDER_PROFILE_LABELS: Record<RenderProfile, string> = {
+  preview: 'Preview',
+  standard: 'Standard',
+  high: 'High',
 };
 
 export function toRenderBackendProfileCandidate(quality: RenderQuality): RenderBackendProfileCandidate {
@@ -173,6 +192,19 @@ export function resolveRenderBackendProfileQuerySelection(
     supportedQualityModes,
     fallbackQuality,
   );
+}
+
+export function formatRenderBackendProfileSelection(
+  selection: RenderBackendProfileSelection,
+): RenderBackendProfileSelectionLabel {
+  const backendLabel = RENDERER_BACKEND_LABELS[selection.backend];
+  const profileLabel = RENDER_PROFILE_LABELS[selection.profile];
+
+  return {
+    backendLabel,
+    profileLabel,
+    summary: `${backendLabel} / ${profileLabel}`,
+  };
 }
 
 export function serializeRenderBackendProfileRoute(

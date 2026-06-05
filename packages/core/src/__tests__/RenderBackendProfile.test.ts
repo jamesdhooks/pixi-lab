@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatRenderBackendProfileSelection,
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
   isRenderProfile,
@@ -154,5 +155,19 @@ describe('RenderBackendProfile', () => {
         { includeLegacyQuality: true },
       ),
     ).toEqual({ backend: 'pixi', profile: 'high', quality: 'enhanced' });
+  });
+
+  it('formats host-visible backend/profile labels without exposing legacy quality terminology', () => {
+    expect(
+      formatRenderBackendProfileSelection({
+        backend: 'webgl2',
+        profile: 'high',
+        legacyQuality: 'raw',
+      }),
+    ).toEqual({
+      backendLabel: 'WebGL2',
+      profileLabel: 'High',
+      summary: 'WebGL2 / High',
+    });
   });
 });

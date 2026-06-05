@@ -7,6 +7,7 @@ import { AMBIENT_REGISTRY } from '@hooksjam/pixi-lab-ambients';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
 import { SIMULATION_REGISTRY, fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
 import {
+  formatRenderBackendProfileSelection,
   resolveRenderBackendProfileQuerySelection,
   serializeRenderBackendProfileRoute,
   type LabExperience,
@@ -234,6 +235,10 @@ export function App() {
   const appDemoVisibleReady = appDemoCrossfading && appDemoPendingSlot
     ? appDemoStageReady[appDemoPendingSlot]
     : appDemoStageReady[appDemoFrontSlot];
+  const renderSelectionLabel = useMemo(
+    () => (renderSelection ? formatRenderBackendProfileSelection(renderSelection) : null),
+    [renderSelection],
+  );
 
   const activeCarouselIndex = useMemo(
     () => (active ? carouselItems.findIndex((e) => e.id === active.id) : -1),
@@ -549,11 +554,11 @@ export function App() {
         </div>
       )}
 
-      {active && !appDemoActive && renderSelection && (
+      {active && !appDemoActive && renderSelection && renderSelectionLabel && (
         <div className="pointer-events-none fixed left-3 top-3 z-[70] rounded-lg bg-black/55 px-2.5 py-2 text-[10px] font-semibold uppercase leading-tight tracking-wide text-slate-100">
           <div className="text-[9px] text-cyan-200">Lab Runtime</div>
           <div>
-            Backend {renderSelection.backend} · Profile {renderSelection.profile}
+            {renderSelectionLabel.summary}
           </div>
           <a
             className="pointer-events-auto mt-1 inline-block text-[9px] normal-case tracking-normal text-cyan-200 underline decoration-cyan-200/50 underline-offset-2 hover:text-cyan-100"

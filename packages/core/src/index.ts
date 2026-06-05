@@ -108,6 +108,7 @@ export { RenderTargetPool, type RenderTargetRequest, type RenderTargetStats } fr
 export { PingPong } from './render/PingPong.js';
 export { RenderStyleManager } from './render/RenderStyleManager.js';
 export {
+  formatRenderBackendProfileSelection,
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
   isRenderProfile,
@@ -123,6 +124,7 @@ export {
   type RenderBackendProfileQueryRequest,
   type RenderBackendProfileRouteParams,
   type RenderBackendProfileSelection,
+  type RenderBackendProfileSelectionLabel,
   type SerializeRenderBackendProfileRouteOptions,
 } from './runtime/RenderBackendProfile.js';
 export { SimulationCanvasLayer } from './render/SimulationCanvasLayer.js';
