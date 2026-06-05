@@ -6,7 +6,7 @@ import { useViewport } from '@hooksjam/pixi-lab-react';
 import { AMBIENT_REGISTRY } from '@hooksjam/pixi-lab-ambients';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
 import { SIMULATION_REGISTRY, fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
-import type { LabExperience, RenderQuality } from '@hooksjam/pixi-lab-core';
+import type { LabExperience, RenderBackendProfileSelection, RenderQuality } from '@hooksjam/pixi-lab-core';
 import { hasPassedDemoQa } from './demoQaStatus';
 
 const ALL_EXPERIENCES: readonly LabExperience[] = [
@@ -76,6 +76,7 @@ export function App() {
   const [carouselFilter, setCarouselFilter] = useState<FilterKind>('all');
   const [carouselSide, setCarouselSide] = useState<'bottom' | 'left' | 'right'>('bottom');
   const [carouselDocked, setCarouselDocked] = useState(false);
+  const [renderSelection, setRenderSelection] = useState<RenderBackendProfileSelection | null>(null);
   const [appDemoActive, setAppDemoActive] = useState(false);
   const [appDemoIndex, setAppDemoIndex] = useState(0);
   const [appDemoFrontSlot, setAppDemoFrontSlot] = useState<DemoStageSlot>('a');
@@ -108,6 +109,10 @@ export function App() {
   useEffect(() => {
     try { localStorage.setItem('pixi-lab:maxPixels', String(maxPixels || '')); } catch {}
   }, [maxPixels]);
+
+  useEffect(() => {
+    setRenderSelection(null);
+  }, [active?.id]);
 
   useEffect(() => {
     if (routeMode.fluidGallery) return;
@@ -477,6 +482,7 @@ export function App() {
               maxPixels={maxPixels}
               transparent={active.kind === 'ambient' || active.kind === 'effect'}
               initialQuality={queryQualityForExperience(active, routeMode.quality)}
+              onRenderSelectionChange={setRenderSelection}
               autoDemo={routeMode.fluidEngine || routeMode.fluidReference}
               onQuit={() => {
                 setActive(null);
@@ -498,6 +504,15 @@ export function App() {
             <div className="bg-gradient-to-r from-violet-300 via-sky-200 to-cyan-200 bg-clip-text text-[9px] font-semibold uppercase leading-tight tracking-wide text-transparent">
               Demo mode
             </div>
+          </div>
+        </div>
+      )}
+
+      {active && !appDemoActive && renderSelection && (
+        <div className="pointer-events-none fixed left-3 top-3 z-[70] rounded-lg bg-black/55 px-2.5 py-2 text-[10px] font-semibold uppercase leading-tight tracking-wide text-slate-100">
+          <div className="text-[9px] text-cyan-200">Lab Runtime</div>
+          <div>
+            Backend {renderSelection.backend} · Profile {renderSelection.profile}
           </div>
         </div>
       )}
@@ -867,6 +882,7 @@ interface ExperienceSurfaceProps {
   zIndex?: number;
   transparent?: boolean;
   initialQuality?: RenderQuality;
+  onRenderSelectionChange?: (selection: RenderBackendProfileSelection) => void;
   onDemoAdvance?: () => void;
   onDemoExit?: () => void;
   onRuntimeReady?: () => void;
@@ -884,6 +900,7 @@ function ExperienceSurface({
   zIndex = 1,
   transparent = false,
   initialQuality,
+  onRenderSelectionChange,
   onDemoAdvance,
   onDemoExit,
   onRuntimeReady,
@@ -914,6 +931,7 @@ function ExperienceSurface({
           maxPixels={maxPixels}
           autoDemo={autoDemo}
           initialQuality={initialQuality}
+          onRenderSelectionChange={onRenderSelectionChange}
           transparent={transparent}
           onDemoAdvance={onDemoAdvance}
           onDemoExit={onDemoExit}

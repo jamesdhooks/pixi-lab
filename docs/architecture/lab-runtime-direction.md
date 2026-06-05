@@ -56,6 +56,10 @@ Use these terms for new architecture work:
 
 `GameLauncher` now exposes `onRenderSelectionChange(selection)` so host apps and future debug/launcher UI can observe the backend-neutral `backend`, `profile`, and `legacyQuality` descriptor without changing current route params or scene contracts. This keeps Pixi-safe legacy `RenderQuality` plumbing in place while establishing a stable host boundary for backend/profile state.
 
+## Demo host readout slice
+
+`packages/demo/src/App.tsx` now consumes `GameLauncher`'s `onRenderSelectionChange()` callback for the active experience and shows a small Lab Runtime readout with the resolved renderer backend and render profile. This is intentionally host-only telemetry: it does not change route params, persisted quality, scene startup, preview behavior, or the legacy `quality=basic|enhanced|raw` compatibility contract.
+
 ## Next smallest slice
 
-Document how future `backend` and `profile` query params should coexist with the legacy `quality` param, then add a demo-host readout or telemetry hook that consumes `onRenderSelectionChange()` without altering scene startup behavior.
+Document how future `backend` and `profile` query params should coexist with the legacy `quality` param, then add a pure parser/resolver for those params that keeps `quality` as the backward-compatible fallback until route migration is explicitly enabled.
