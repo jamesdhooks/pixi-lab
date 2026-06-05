@@ -23,6 +23,11 @@ describe('sanitizeRenderQuality', () => {
     const standardOnly = ['enhanced'] satisfies RenderQuality[];
     expect(sanitizeRenderQuality('raw', standardOnly)).toBe('enhanced');
   });
+
+  it('uses the shared Pixi-safe default modes when capabilities omit quality modes', () => {
+    expect(sanitizeRenderQuality('enhanced', undefined)).toBe('enhanced');
+    expect(sanitizeRenderQuality('raw', undefined)).toBe('basic');
+  });
 });
 
 describe('resolveRenderSelection', () => {
@@ -47,6 +52,14 @@ describe('resolveRenderSelection', () => {
       backend: 'webgl2',
       profile: 'high',
       legacyQuality: 'raw',
+    });
+  });
+
+  it('resolves omitted quality capabilities through the shared Pixi default selection', () => {
+    expect(resolveRenderSelection('enhanced', undefined)).toEqual({
+      backend: 'pixi',
+      profile: 'high',
+      legacyQuality: 'enhanced',
     });
   });
 });

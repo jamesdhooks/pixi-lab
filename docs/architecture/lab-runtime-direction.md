@@ -92,6 +92,10 @@ The active-experience Lab Runtime readout now exposes a small `Backend/profile l
 
 `DEFAULT_RENDER_QUALITY_MODES` and `getSupportedRenderQualityModes()` now live in the core runtime bridge so host shells do not duplicate the implicit Pixi-safe fallback for older experiences that omit `capabilities.qualityModes`. Demo query routing consumes the helper before resolving backend/profile params, keeping missing capability metadata on `pixi` + `standard|high` while unsupported raw/high-powered requests still fall back unless the experience explicitly advertises raw.
 
+## React shared default adoption slice
+
+`packages/react/src/qualitySelection.ts` now imports `isRenderQuality()` and `getSupportedRenderQualityModes()` from the shared core runtime bridge instead of carrying a React-local quality enum and `['basic']` fallback. Omitted `capabilities.qualityModes` now resolve through the same Pixi-safe default modes in React launcher startup/persisted quality repair and demo query routing, so `enhanced` remains available for legacy experiences while unsupported `raw` still falls back unless explicitly advertised.
+
 ## Next smallest slice
 
-Adopt `getSupportedRenderQualityModes()` in the React launcher quality plumbing so persisted/startup quality repair and demo query routing use the same default capability source, then run focused React/core/demo quality tests.
+Add a small React `QualitySelector` regression that proves omitted quality capabilities render the shared Pixi-safe `basic`/`enhanced` options, then inspect whether the demo readout/link should hide backend/profile params for the default Pixi selection outside explicit debug UI.

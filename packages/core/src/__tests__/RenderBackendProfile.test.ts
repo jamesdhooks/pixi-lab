@@ -28,9 +28,11 @@ describe('RenderBackendProfile', () => {
 
   it('centralizes default supported modes as Pixi-safe runtime capabilities', () => {
     expect(DEFAULT_RENDER_QUALITY_MODES).toEqual(['basic', 'enhanced']);
+    const readonlyRawModes = ['raw'] as const;
+
     expect(getSupportedRenderQualityModes(undefined)).toEqual(['basic', 'enhanced']);
     expect(getSupportedRenderQualityModes({ qualityModes: [] })).toEqual(['basic', 'enhanced']);
-    expect(getSupportedRenderQualityModes({ qualityModes: ['raw'] })).toEqual(['raw']);
+    expect(getSupportedRenderQualityModes({ qualityModes: readonlyRawModes })).toEqual(['raw']);
   });
 
   it('keeps raw modeled as an opt-in WebGL2 high profile candidate', () => {
