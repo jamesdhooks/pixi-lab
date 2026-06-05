@@ -112,6 +112,7 @@ export {
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
   isRenderProfile,
+  isRenderQuality,
   isRendererBackend,
   mapQualityModesToBackendProfiles,
   resolveRenderBackendProfileQuerySelection,

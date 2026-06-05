@@ -94,6 +94,10 @@ export function isRenderProfile(value: unknown): value is RenderProfile {
   return typeof value === 'string' && RENDER_PROFILES.includes(value as RenderProfile);
 }
 
+export function isRenderQuality(value: unknown): value is RenderQuality {
+  return typeof value === 'string' && value in LEGACY_QUALITY_CANDIDATES;
+}
+
 export function mapQualityModesToBackendProfiles(
   qualityModes: readonly RenderQuality[],
 ): RenderBackendProfileCandidate[] {
@@ -183,12 +187,10 @@ export function resolveRenderBackendProfileQuerySelection(
     }
   }
 
-  const requestedQuality = typeof request.quality === 'string' ? request.quality : undefined;
+  const requestedQuality = isRenderQuality(request.quality) ? request.quality : undefined;
 
   return resolveRenderBackendProfileSelection(
-    requestedQuality && requestedQuality in LEGACY_QUALITY_CANDIDATES
-      ? (requestedQuality as RenderQuality)
-      : undefined,
+    requestedQuality,
     supportedQualityModes,
     fallbackQuality,
   );

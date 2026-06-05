@@ -84,6 +84,10 @@ The active-experience Lab Runtime readout now exposes a small `Backend/profile l
 
 `formatRenderBackendProfileSelection()` centralizes human-facing labels for the backend/profile descriptor. Demo UI now renders the Lab Runtime readout from this shared helper instead of exposing raw enum values directly, keeping host-facing vocabulary on `PixiJS / Standard`, `PixiJS / High`, or opt-in `WebGL2 / High` while preserving the legacy `RenderQuality` value only as scene compatibility state.
 
+## Shared legacy quality guard slice
+
+`isRenderQuality()` now lives beside the backend/profile resolver in core so host route parsing can validate legacy `quality=basic|enhanced|raw` values through the shared Lab Runtime boundary instead of duplicating string checks in each app shell. Demo query parsing delegates to this guard before resolving backend/profile state, keeping legacy compatibility narrow while future host code consumes backend/profile descriptors.
+
 ## Next smallest slice
 
 Add a focused browser smoke for the Lab Runtime readout/link: launch an experience, confirm the readout uses the shared labels, confirm the link preserves the selected experience plus backend/profile params, verify unsupported global `webgl2/high` still sanitizes back to Pixi-safe startup values, and keep raw/high-powered routes opt-in per experience.

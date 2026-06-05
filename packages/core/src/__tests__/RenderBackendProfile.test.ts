@@ -4,6 +4,7 @@ import {
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
   isRenderProfile,
+  isRenderQuality,
   isRendererBackend,
   mapQualityModesToBackendProfiles,
   resolveRenderBackendProfileQuerySelection,
@@ -93,6 +94,15 @@ describe('RenderBackendProfile', () => {
     expect(isRendererBackend('canvas2d')).toBe(false);
     expect(isRenderProfile('preview')).toBe(true);
     expect(isRenderProfile('ultra')).toBe(false);
+  });
+
+  it('validates legacy render quality values at the shared runtime boundary', () => {
+    expect(isRenderQuality('basic')).toBe(true);
+    expect(isRenderQuality('enhanced')).toBe(true);
+    expect(isRenderQuality('raw')).toBe(true);
+    expect(isRenderQuality('RAW')).toBe(false);
+    expect(isRenderQuality('ultra')).toBe(false);
+    expect(isRenderQuality(undefined)).toBe(false);
   });
 
   it('prefers supported backend/profile query params over legacy quality fallback', () => {

@@ -8,6 +8,7 @@ import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
 import { SIMULATION_REGISTRY, fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
 import {
   formatRenderBackendProfileSelection,
+  isRenderQuality,
   resolveRenderBackendProfileQuerySelection,
   serializeRenderBackendProfileRoute,
   type LabExperience,
@@ -30,7 +31,7 @@ type DemoStageSlot = 'a' | 'b';
 type FilterKind = 'all' | 'overlays' | LabExperience['kind'];
 
 export function parseQueryQuality(value: string | null): RenderQuality | undefined {
-  return value === 'basic' || value === 'enhanced' || value === 'raw' ? value : undefined;
+  return isRenderQuality(value) ? value : undefined;
 }
 
 export function findQueryExperience(value: string | null, experiences: readonly LabExperience[]): LabExperience | undefined {
