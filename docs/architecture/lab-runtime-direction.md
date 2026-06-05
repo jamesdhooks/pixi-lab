@@ -52,6 +52,10 @@ Use these terms for new architecture work:
 
 `GameLauncher` now stores the resolved render selection descriptor as runtime state and derives the legacy scene `quality` from `selection.legacyQuality`. Startup, persisted quality repair, and explicit quality changes all flow through `resolveRenderSelection()`, so the launcher can retain backend/profile state without changing current `quality=basic|enhanced|raw` URL and scene compatibility.
 
+## Host-visible descriptor callback slice
+
+`GameLauncher` now exposes `onRenderSelectionChange(selection)` so host apps and future debug/launcher UI can observe the backend-neutral `backend`, `profile`, and `legacyQuality` descriptor without changing current route params or scene contracts. This keeps Pixi-safe legacy `RenderQuality` plumbing in place while establishing a stable host boundary for backend/profile state.
+
 ## Next smallest slice
 
-Expose the current backend/profile descriptor to a host-visible boundary without changing routes yet. A low-risk option is to add a small React helper or callback surface for launcher/debug UI to read `backend`, `profile`, and `legacyQuality`, then document how future `backend` and `profile` query params should coexist with the legacy `quality` param.
+Document how future `backend` and `profile` query params should coexist with the legacy `quality` param, then add a demo-host readout or telemetry hook that consumes `onRenderSelectionChange()` without altering scene startup behavior.

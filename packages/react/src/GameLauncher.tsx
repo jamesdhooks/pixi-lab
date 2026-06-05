@@ -69,6 +69,12 @@ export interface GameLauncherProps {
   onRuntimeReady?: () => void;
   /** Optional host-selected startup quality, sanitized against the active experience. */
   initialQuality?: RenderQuality;
+  /**
+   * Called whenever the launcher resolves renderer backend/profile state.
+   * Hosts can observe this backend-neutral descriptor while scenes continue to
+   * receive the legacy RenderQuality value during migration.
+   */
+  onRenderSelectionChange?: (selection: RenderBackendProfileSelection) => void;
   /** Remove the black shell background so the launcher floats as a transparent overlay. */
   transparent?: boolean;
 }
@@ -93,6 +99,7 @@ function GameLauncherInner({
   onDemoExit,
   onRuntimeReady,
   initialQuality,
+  onRenderSelectionChange,
   transparent = false,
 }: GameLauncherProps) {
   // ViewportProvider is mounted by GameLauncher wrapper; child components read context directly.
@@ -114,6 +121,11 @@ function GameLauncherInner({
     try { storedQuality = localStorage.getItem('pixi-lab:quality'); } catch { /* ignore */ }
     return resolveRenderSelection(initialQuality ?? storedQuality, definition.capabilities.qualityModes);
   });
+
+  useEffect(() => {
+    onRenderSelectionChange?.(renderSelection);
+  }, [onRenderSelectionChange, renderSelection]);
+
   const quality = renderSelection.legacyQuality;
   const [localMaxPixels, setLocalMaxPixels] = useState<number | undefined>(() => {
     try {
