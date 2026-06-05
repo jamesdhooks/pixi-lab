@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RenderQuality } from '@hooksjam/pixi-lab-core';
-import { sanitizeRenderQuality } from '../qualitySelection.js';
+import { resolveRenderSelection, sanitizeRenderQuality } from '../qualitySelection.js';
 
 describe('sanitizeRenderQuality', () => {
   it('keeps raw only when the active experience advertises raw', () => {
@@ -22,5 +22,31 @@ describe('sanitizeRenderQuality', () => {
   it('delegates unsupported raw fallback through the shared runtime bridge', () => {
     const standardOnly = ['enhanced'] satisfies RenderQuality[];
     expect(sanitizeRenderQuality('raw', standardOnly)).toBe('enhanced');
+  });
+});
+
+describe('resolveRenderSelection', () => {
+  it('exposes the backend/profile descriptor while preserving legacy quality', () => {
+    expect(resolveRenderSelection('enhanced', ['basic', 'enhanced'])).toEqual({
+      backend: 'pixi',
+      profile: 'high',
+      legacyQuality: 'enhanced',
+    });
+  });
+
+  it('keeps unsupported raw requests scoped out of React runtime state', () => {
+    expect(resolveRenderSelection('raw', ['basic', 'enhanced'])).toEqual({
+      backend: 'pixi',
+      profile: 'standard',
+      legacyQuality: 'basic',
+    });
+  });
+
+  it('keeps opt-in raw routes represented as WebGL2 high profile selections', () => {
+    expect(resolveRenderSelection('raw', ['basic', 'enhanced', 'raw'])).toEqual({
+      backend: 'webgl2',
+      profile: 'high',
+      legacyQuality: 'raw',
+    });
   });
 });

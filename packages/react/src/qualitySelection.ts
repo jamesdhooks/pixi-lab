@@ -1,5 +1,6 @@
 import {
-  sanitizeLegacyRenderQuality,
+  resolveRenderBackendProfileSelection,
+  type RenderBackendProfileSelection,
   type RenderQuality,
 } from '@hooksjam/pixi-lab-core';
 
@@ -13,7 +14,14 @@ export function sanitizeRenderQuality(
   requested: unknown,
   supportedModes: readonly RenderQuality[] | undefined,
 ): RenderQuality {
+  return resolveRenderSelection(requested, supportedModes).legacyQuality;
+}
+
+export function resolveRenderSelection(
+  requested: unknown,
+  supportedModes: readonly RenderQuality[] | undefined,
+): RenderBackendProfileSelection {
   const fallbackModes: readonly RenderQuality[] = ['basic'];
   const supported = supportedModes && supportedModes.length > 0 ? supportedModes : fallbackModes;
-  return sanitizeLegacyRenderQuality(isRenderQuality(requested) ? requested : undefined, supported);
+  return resolveRenderBackendProfileSelection(isRenderQuality(requested) ? requested : undefined, supported);
 }

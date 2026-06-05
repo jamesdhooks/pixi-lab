@@ -7,7 +7,7 @@
 export { ExperienceRuntime, GameRuntime, SimulationRuntime, type ExperienceRuntimeProps, type GameRuntimeProps } from './GameRuntime.js';
 export { GameTile, PreviewTile, type GameTileProps, type PreviewTileProps } from './GameTile.js';
 export { GameLauncher, type GameLauncherProps } from './GameLauncher.js';
-export { isRenderQuality, sanitizeRenderQuality } from './qualitySelection.js';
+export { isRenderQuality, resolveRenderSelection, sanitizeRenderQuality } from './qualitySelection.js';
 export { Gallery, type GalleryProps } from './Gallery.js';
 export { AmbientLayer, type AmbientLayerProps } from './AmbientLayer.js';
 export { ForegroundAmbientOverlay, type ForegroundAmbientOverlayProps } from './ForegroundAmbientOverlay.js';
