@@ -20,13 +20,62 @@ import { SimControlPanel } from './ui/SimControlPanel.js';
 import { OverflowMenu } from './ui/OverflowMenu.js';
 import { ViewportProvider, useViewportContext } from './ViewportProvider.js';
 import { resolveRenderSelection } from './qualitySelection.js';
-import { nameSuggestions } from '@hooksjam/pixi-lab-core';
+import {
+  parseRenderBackendProfileStorage,
+  resolveRenderBackendProfileStorageSelection,
+  getSupportedRenderQualityModes,
+  serializeRenderBackendProfileStorage,
+  nameSuggestions,
+} from '@hooksjam/pixi-lab-core';
 import type { LabExperience, SimulationExperience } from '@hooksjam/pixi-lab-core';
 import type { GameEvent, RenderBackendProfileSelection, RenderQuality, ScoreEntry } from '@hooksjam/pixi-lab-core';
 import type { GameApp } from '@hooksjam/pixi-lab-core';
 import type { IntroHint } from './ui/IntroCard.js';
 
 type Shell = 'playing' | 'gameover';
+
+const LEGACY_RENDER_QUALITY_STORAGE_KEY = 'pixi-lab:quality';
+const RENDER_SELECTION_STORAGE_KEY = 'pixi-lab:renderSelection';
+
+function readStoredRenderSelection(): unknown {
+  try {
+    const storedSelection = localStorage.getItem(RENDER_SELECTION_STORAGE_KEY);
+    return storedSelection ? JSON.parse(storedSelection) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function readStoredLegacyRenderQuality(): string | null {
+  try {
+    return localStorage.getItem(LEGACY_RENDER_QUALITY_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredRenderSelection(selection: RenderBackendProfileSelection): void {
+  try {
+    localStorage.setItem(LEGACY_RENDER_QUALITY_STORAGE_KEY, selection.legacyQuality);
+    localStorage.setItem(RENDER_SELECTION_STORAGE_KEY, JSON.stringify(serializeRenderBackendProfileStorage(selection)));
+  } catch {
+    /* ignore */
+  }
+}
+
+function resolveStoredRenderSelection(
+  storedSelection: unknown,
+  storedQuality: string | null,
+  supportedModes: readonly RenderQuality[] | undefined,
+): RenderBackendProfileSelection {
+  const parsedSelection = parseRenderBackendProfileStorage(storedSelection);
+  if (parsedSelection) {
+    const supported = getSupportedRenderQualityModes({ qualityModes: supportedModes });
+    return resolveRenderBackendProfileStorageSelection(parsedSelection, supported);
+  }
+
+  return resolveRenderSelection(storedQuality, supportedModes);
+}
 
 const RUNTIME_PERF_CSS = `
 .pixi-lab-runtime-shell [class*="backdrop-blur"] {
@@ -117,9 +166,11 @@ function GameLauncherInner({
   const [screensaverActive, setScreensaverActive] = useState(false);
   const [styleId, setStyleId] = useState(definition.styleManifest?.defaultStyleId ?? '');
   const [renderSelection, setRenderSelection] = useState<RenderBackendProfileSelection>(() => {
-    let storedQuality: string | null = null;
-    try { storedQuality = localStorage.getItem('pixi-lab:quality'); } catch { /* ignore */ }
-    return resolveRenderSelection(initialQuality ?? storedQuality, definition.capabilities.qualityModes);
+    const storedQuality = readStoredLegacyRenderQuality();
+    const storedSelection = readStoredRenderSelection();
+    return initialQuality !== undefined
+      ? resolveRenderSelection(initialQuality, definition.capabilities.qualityModes)
+      : resolveStoredRenderSelection(storedSelection, storedQuality, definition.capabilities.qualityModes);
   });
 
   useEffect(() => {
@@ -161,15 +212,17 @@ function GameLauncherInner({
   }, []);
 
   useEffect(() => {
-    let storedQuality: string | null = null;
-    try { storedQuality = localStorage.getItem('pixi-lab:quality'); } catch { /* ignore */ }
-    const nextSelection = resolveRenderSelection(initialQuality ?? storedQuality, definition.capabilities.qualityModes);
+    const storedQuality = readStoredLegacyRenderQuality();
+    const storedSelection = readStoredRenderSelection();
+    const nextSelection = initialQuality !== undefined
+      ? resolveRenderSelection(initialQuality, definition.capabilities.qualityModes)
+      : resolveStoredRenderSelection(storedSelection, storedQuality, definition.capabilities.qualityModes);
     const nextQuality = nextSelection.legacyQuality;
     setRenderSelection(nextSelection);
     setRenderedQuality(undefined);
     appRef.current?.setQuality(nextQuality);
-    if (initialQuality === undefined && storedQuality !== null && storedQuality !== nextQuality) {
-      try { localStorage.setItem('pixi-lab:quality', nextQuality); } catch { /* ignore */ }
+    if (initialQuality === undefined) {
+      writeStoredRenderSelection(nextSelection);
     }
   }, [definition.id, definition.capabilities.qualityModes, initialQuality]);
 
@@ -259,7 +312,7 @@ function GameLauncherInner({
       setRenderSelection(nextSelection);
       setRenderedQuality(undefined); // user picked explicitly; clear any fallback indicator
       appRef.current?.setQuality(nextSelection.legacyQuality);
-      try { localStorage.setItem('pixi-lab:quality', nextSelection.legacyQuality); } catch { /* ignore */ }
+      writeStoredRenderSelection(nextSelection);
     },
     [definition.capabilities.qualityModes],
   );

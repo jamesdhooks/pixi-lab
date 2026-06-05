@@ -108,6 +108,10 @@ The active-experience Lab Runtime readout still shows the resolved backend/profi
 
 `isDefaultRenderBackendProfileSelection()` now lives in core beside the backend/profile resolver so host shells can share the default route visibility policy instead of hard-coding `pixi` + `standard` checks locally. Demo route serialization consumes this helper while retaining the same public URL behavior: default Pixi standard links omit backend/profile params, and non-default or opt-in high-powered selections remain explicit.
 
+## Persisted descriptor storage slice
+
+`GameLauncher` now writes a backend-neutral `pixi-lab:renderSelection` storage snapshot beside the existing legacy `pixi-lab:quality` key. Startup still honors `initialQuality` first and falls back to the legacy key when no descriptor exists, but persisted descriptors resolve through shared core sanitization before any scene receives a `RenderQuality`. This lets host/runtime state remember `backend/profile` vocabulary without globally exposing raw or changing current scene contracts.
+
 ## Next smallest slice
 
-Inspect whether persisted runtime state should begin storing backend/profile descriptors beside the legacy `quality` key without changing scene contracts.
+Add a focused React launcher regression around persisted `pixi-lab:renderSelection` fallback/sanitization so future storage changes cannot reintroduce global raw leakage.

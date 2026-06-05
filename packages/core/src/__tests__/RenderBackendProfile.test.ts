@@ -10,10 +10,13 @@ import {
   isRenderQuality,
   isRendererBackend,
   mapQualityModesToBackendProfiles,
+  parseRenderBackendProfileStorage,
   resolveRenderBackendProfileQuerySelection,
   resolveRenderBackendProfileSelection,
+  resolveRenderBackendProfileStorageSelection,
   sanitizeLegacyRenderQuality,
   serializeRenderBackendProfileRoute,
+  serializeRenderBackendProfileStorage,
   toRenderBackendProfileCandidate,
 } from '../runtime/RenderBackendProfile.js';
 
@@ -215,5 +218,42 @@ describe('RenderBackendProfile', () => {
         legacyQuality: 'raw',
       }),
     ).toBe(false);
+  });
+
+  it('serializes backend/profile state for storage beside legacy quality', () => {
+    expect(
+      serializeRenderBackendProfileStorage({
+        backend: 'pixi',
+        profile: 'high',
+        legacyQuality: 'enhanced',
+      }),
+    ).toEqual({ backend: 'pixi', profile: 'high', quality: 'enhanced' });
+  });
+
+  it('parses persisted backend/profile state without accepting unknown values', () => {
+    expect(
+      parseRenderBackendProfileStorage({
+        backend: 'webgl2',
+        profile: 'ultra',
+        quality: 'raw',
+      }),
+    ).toEqual({ backend: 'webgl2', quality: 'raw' });
+    expect(parseRenderBackendProfileStorage('raw')).toBeUndefined();
+  });
+
+  it('resolves persisted backend/profile state through experience-scoped capabilities', () => {
+    expect(
+      resolveRenderBackendProfileStorageSelection(
+        { backend: 'webgl2', profile: 'high', quality: 'raw' },
+        ['basic', 'enhanced'],
+      ),
+    ).toEqual({ backend: 'pixi', profile: 'standard', legacyQuality: 'basic' });
+
+    expect(
+      resolveRenderBackendProfileStorageSelection(
+        { backend: 'webgl2', profile: 'high', quality: 'raw' },
+        ['basic', 'enhanced', 'raw'],
+      ),
+    ).toEqual({ backend: 'webgl2', profile: 'high', legacyQuality: 'raw' });
   });
 });

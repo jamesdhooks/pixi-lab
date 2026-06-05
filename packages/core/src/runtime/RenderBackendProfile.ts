@@ -41,6 +41,12 @@ export interface RenderBackendProfileRouteParams {
   readonly quality?: RenderQuality;
 }
 
+export interface RenderBackendProfileStorageSnapshot {
+  readonly backend?: RendererBackend;
+  readonly profile?: RenderProfile;
+  readonly quality?: RenderQuality;
+}
+
 export interface SerializeRenderBackendProfileRouteOptions {
   /**
    * Keep the legacy `quality` param alongside backend/profile params for
@@ -234,4 +240,45 @@ export function serializeRenderBackendProfileRoute(
     profile: selection.profile,
     ...(options.includeLegacyQuality ? { quality: selection.legacyQuality } : {}),
   };
+}
+
+export function serializeRenderBackendProfileStorage(
+  selection: RenderBackendProfileSelection,
+): RenderBackendProfileStorageSnapshot {
+  return {
+    backend: selection.backend,
+    profile: selection.profile,
+    quality: selection.legacyQuality,
+  };
+}
+
+export function parseRenderBackendProfileStorage(
+  value: unknown,
+): RenderBackendProfileStorageSnapshot | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  return {
+    ...(isRendererBackend(record.backend) ? { backend: record.backend } : {}),
+    ...(isRenderProfile(record.profile) ? { profile: record.profile } : {}),
+    ...(isRenderQuality(record.quality) ? { quality: record.quality } : {}),
+  };
+}
+
+export function resolveRenderBackendProfileStorageSelection(
+  storedSelection: RenderBackendProfileStorageSnapshot | undefined,
+  supportedQualityModes: readonly RenderQuality[],
+  fallbackQuality: RenderQuality = 'basic',
+): RenderBackendProfileSelection {
+  return resolveRenderBackendProfileQuerySelection(
+    {
+      backend: storedSelection?.backend,
+      profile: storedSelection?.profile,
+      quality: storedSelection?.quality,
+    },
+    supportedQualityModes,
+    fallbackQuality,
+  );
 }

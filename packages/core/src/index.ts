@@ -118,10 +118,13 @@ export {
   isRenderQuality,
   isRendererBackend,
   mapQualityModesToBackendProfiles,
+  parseRenderBackendProfileStorage,
   resolveRenderBackendProfileQuerySelection,
   resolveRenderBackendProfileSelection,
+  resolveRenderBackendProfileStorageSelection,
   sanitizeLegacyRenderQuality,
   serializeRenderBackendProfileRoute,
+  serializeRenderBackendProfileStorage,
   toRenderBackendProfileCandidate,
   type RenderBackendProfileCandidate,
   type RenderBackendProfileGroup,
@@ -129,6 +132,7 @@ export {
   type RenderBackendProfileRouteParams,
   type RenderBackendProfileSelection,
   type RenderBackendProfileSelectionLabel,
+  type RenderBackendProfileStorageSnapshot,
   type SerializeRenderBackendProfileRouteOptions,
 } from './runtime/RenderBackendProfile.js';
 export { SimulationCanvasLayer } from './render/SimulationCanvasLayer.js';
