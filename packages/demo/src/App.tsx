@@ -555,6 +555,12 @@ export function App() {
           <div>
             Backend {renderSelection.backend} · Profile {renderSelection.profile}
           </div>
+          <a
+            className="pointer-events-auto mt-1 inline-block text-[9px] normal-case tracking-normal text-cyan-200 underline decoration-cyan-200/50 underline-offset-2 hover:text-cyan-100"
+            href={buildExperienceBackendProfileRoute(active, renderSelection)}
+          >
+            Backend/profile link
+          </a>
         </div>
       )}
 

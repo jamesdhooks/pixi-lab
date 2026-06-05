@@ -76,6 +76,10 @@ Demo route parsing now accepts future `backend` and `profile` query params throu
 
 `packages/demo/src/App.tsx` now has `buildExperienceBackendProfileRoute()` as the narrow demo/internal path for composing `experience=<id>` links with backend/profile params. It delegates backend/profile serialization to the shared core helper and deliberately omits legacy `quality`, keeping the migration scoped to explicit internal links instead of changing public launch URL behavior globally.
 
+## Demo backend/profile link slice
+
+The active-experience Lab Runtime readout now exposes a small `Backend/profile link` affordance that serializes the current descriptor with `backend=<renderer>&profile=<profile>` through `buildExperienceBackendProfileRoute()`. Normal gallery launch URLs remain legacy-compatible; the new link is scoped to an explicit developer/debug affordance after an experience has resolved its runtime descriptor.
+
 ## Next smallest slice
 
-Wire `buildExperienceBackendProfileRoute()` into a visible developer/debug affordance only if the demo needs shareable backend/profile links. Keep normal gallery launch URLs legacy-compatible until enough host code consumes backend/profile descriptors directly.
+Add a focused browser smoke for the Lab Runtime readout/link: launch an experience, confirm the link preserves the selected experience plus backend/profile params, verify unsupported global `webgl2/high` still sanitizes back to Pixi-safe startup values, and keep raw/high-powered routes opt-in per experience.
