@@ -219,6 +219,12 @@ export function formatRenderBackendProfileSelection(
   };
 }
 
+export function isDefaultRenderBackendProfileSelection(
+  selection: RenderBackendProfileSelection,
+): boolean {
+  return selection.backend === 'pixi' && selection.profile === 'standard';
+}
+
 export function serializeRenderBackendProfileRoute(
   selection: RenderBackendProfileSelection,
   options: SerializeRenderBackendProfileRouteOptions = {},

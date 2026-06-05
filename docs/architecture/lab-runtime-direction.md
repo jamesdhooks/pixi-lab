@@ -104,6 +104,10 @@ The active-experience Lab Runtime readout now exposes a small `Backend/profile l
 
 The active-experience Lab Runtime readout still shows the resolved backend/profile label, but the explicit `Backend/profile link` now hides for the default `pixi` + `standard` selection. `buildExperienceBackendProfileRoute()` also keeps that default route to `?experience=<id>` with no backend/profile params, while non-default selections such as `pixi` + `high` or opt-in `webgl2` + `high` continue to expose the migration link. This keeps public/default demo links legacy-clean without removing backend-neutral telemetry.
 
+## Shared default descriptor helper slice
+
+`isDefaultRenderBackendProfileSelection()` now lives in core beside the backend/profile resolver so host shells can share the default route visibility policy instead of hard-coding `pixi` + `standard` checks locally. Demo route serialization consumes this helper while retaining the same public URL behavior: default Pixi standard links omit backend/profile params, and non-default or opt-in high-powered selections remain explicit.
+
 ## Next smallest slice
 
-Move the default-route visibility policy into a shared core or React host helper only if another host needs it; otherwise inspect whether persisted runtime state should begin storing backend/profile descriptors beside the legacy `quality` key without changing scene contracts.
+Inspect whether persisted runtime state should begin storing backend/profile descriptors beside the legacy `quality` key without changing scene contracts.

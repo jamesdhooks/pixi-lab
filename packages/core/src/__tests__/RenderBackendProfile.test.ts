@@ -5,6 +5,7 @@ import {
   getSupportedRenderQualityModes,
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
+  isDefaultRenderBackendProfileSelection,
   isRenderProfile,
   isRenderQuality,
   isRendererBackend,
@@ -190,5 +191,29 @@ describe('RenderBackendProfile', () => {
       profileLabel: 'High',
       summary: 'WebGL2 / High',
     });
+  });
+
+  it('identifies the Pixi standard descriptor as the default route selection', () => {
+    expect(
+      isDefaultRenderBackendProfileSelection({
+        backend: 'pixi',
+        profile: 'standard',
+        legacyQuality: 'basic',
+      }),
+    ).toBe(true);
+    expect(
+      isDefaultRenderBackendProfileSelection({
+        backend: 'pixi',
+        profile: 'high',
+        legacyQuality: 'enhanced',
+      }),
+    ).toBe(false);
+    expect(
+      isDefaultRenderBackendProfileSelection({
+        backend: 'webgl2',
+        profile: 'high',
+        legacyQuality: 'raw',
+      }),
+    ).toBe(false);
   });
 });

@@ -9,6 +9,7 @@ import { SIMULATION_REGISTRY, fluidTankDefinition } from '@hooksjam/pixi-lab-sim
 import {
   formatRenderBackendProfileSelection,
   getSupportedRenderQualityModes,
+  isDefaultRenderBackendProfileSelection,
   isRenderQuality,
   resolveRenderBackendProfileQuerySelection,
   serializeRenderBackendProfileRoute,
@@ -67,7 +68,7 @@ export function queryQualityForExperience(
 }
 
 export function shouldExposeExperienceBackendProfileRoute(selection: RenderBackendProfileSelection): boolean {
-  return selection.backend !== 'pixi' || selection.profile !== 'standard';
+  return !isDefaultRenderBackendProfileSelection(selection);
 }
 
 export function buildExperienceBackendProfileRoute(

@@ -113,6 +113,7 @@ export {
   getSupportedRenderQualityModes,
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
+  isDefaultRenderBackendProfileSelection,
   isRenderProfile,
   isRenderQuality,
   isRendererBackend,
