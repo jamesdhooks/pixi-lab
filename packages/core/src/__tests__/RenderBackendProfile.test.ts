@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
+  isRenderProfile,
+  isRendererBackend,
   mapQualityModesToBackendProfiles,
+  resolveRenderBackendProfileQuerySelection,
   resolveRenderBackendProfileSelection,
   sanitizeLegacyRenderQuality,
   toRenderBackendProfileCandidate,
@@ -77,6 +80,52 @@ describe('RenderBackendProfile', () => {
 
   it('keeps unsupported raw startup quality out of the selection descriptor', () => {
     expect(resolveRenderBackendProfileSelection('raw', ['basic', 'enhanced'])).toEqual({
+      backend: 'pixi',
+      profile: 'standard',
+      legacyQuality: 'basic',
+    });
+  });
+
+  it('validates backend and profile query values without accepting arbitrary strings', () => {
+    expect(isRendererBackend('webgl2')).toBe(true);
+    expect(isRendererBackend('canvas2d')).toBe(false);
+    expect(isRenderProfile('preview')).toBe(true);
+    expect(isRenderProfile('ultra')).toBe(false);
+  });
+
+  it('prefers supported backend/profile query params over legacy quality fallback', () => {
+    expect(
+      resolveRenderBackendProfileQuerySelection(
+        { backend: 'pixi', profile: 'high', quality: 'basic' },
+        ['basic', 'enhanced', 'raw'],
+      ),
+    ).toEqual({
+      backend: 'pixi',
+      profile: 'high',
+      legacyQuality: 'enhanced',
+    });
+  });
+
+  it('keeps unsupported backend/profile query params scoped out and falls back to legacy quality', () => {
+    expect(
+      resolveRenderBackendProfileQuerySelection(
+        { backend: 'webgl2', profile: 'high', quality: 'enhanced' },
+        ['basic', 'enhanced'],
+      ),
+    ).toEqual({
+      backend: 'pixi',
+      profile: 'high',
+      legacyQuality: 'enhanced',
+    });
+  });
+
+  it('falls back to Pixi-safe default when query params request unsupported raw globally', () => {
+    expect(
+      resolveRenderBackendProfileQuerySelection(
+        { backend: 'webgpu', profile: 'high', quality: 'raw' },
+        ['basic', 'enhanced'],
+      ),
+    ).toEqual({
       backend: 'pixi',
       profile: 'standard',
       legacyQuality: 'basic',

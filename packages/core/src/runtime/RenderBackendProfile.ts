@@ -1,5 +1,8 @@
 import type { RenderProfile, RenderQuality, RendererBackend } from '../types.js';
 
+const RENDERER_BACKENDS: readonly RendererBackend[] = ['pixi', 'webgl2', 'three', 'webgpu'];
+const RENDER_PROFILES: readonly RenderProfile[] = ['preview', 'standard', 'high'];
+
 export interface RenderBackendProfileCandidate {
   readonly quality: RenderQuality;
   readonly backend: RendererBackend;
@@ -16,6 +19,12 @@ export interface RenderBackendProfileSelection {
   readonly backend: RendererBackend;
   readonly profile: RenderProfile;
   readonly legacyQuality: RenderQuality;
+}
+
+export interface RenderBackendProfileQueryRequest {
+  readonly backend?: unknown;
+  readonly profile?: unknown;
+  readonly quality?: unknown;
 }
 
 const LEGACY_QUALITY_CANDIDATES: Record<RenderQuality, RenderBackendProfileCandidate> = {
@@ -41,6 +50,14 @@ const LEGACY_QUALITY_CANDIDATES: Record<RenderQuality, RenderBackendProfileCandi
 
 export function toRenderBackendProfileCandidate(quality: RenderQuality): RenderBackendProfileCandidate {
   return LEGACY_QUALITY_CANDIDATES[quality];
+}
+
+export function isRendererBackend(value: unknown): value is RendererBackend {
+  return typeof value === 'string' && RENDERER_BACKENDS.includes(value as RendererBackend);
+}
+
+export function isRenderProfile(value: unknown): value is RenderProfile {
+  return typeof value === 'string' && RENDER_PROFILES.includes(value as RenderProfile);
 }
 
 export function mapQualityModesToBackendProfiles(
@@ -108,4 +125,37 @@ export function resolveRenderBackendProfileSelection(
     profile: candidate.profile,
     legacyQuality,
   };
+}
+
+export function resolveRenderBackendProfileQuerySelection(
+  request: RenderBackendProfileQueryRequest,
+  supportedQualityModes: readonly RenderQuality[],
+  fallbackQuality: RenderQuality = 'basic',
+): RenderBackendProfileSelection {
+  const requestedBackend = isRendererBackend(request.backend) ? request.backend : undefined;
+  const requestedProfile = isRenderProfile(request.profile) ? request.profile : undefined;
+
+  if (requestedBackend && requestedProfile) {
+    const backendProfileMatch = mapQualityModesToBackendProfiles(supportedQualityModes).find(
+      (candidate) => candidate.backend === requestedBackend && candidate.profile === requestedProfile,
+    );
+
+    if (backendProfileMatch) {
+      return {
+        backend: backendProfileMatch.backend,
+        profile: backendProfileMatch.profile,
+        legacyQuality: backendProfileMatch.quality,
+      };
+    }
+  }
+
+  const requestedQuality = typeof request.quality === 'string' ? request.quality : undefined;
+
+  return resolveRenderBackendProfileSelection(
+    requestedQuality && requestedQuality in LEGACY_QUALITY_CANDIDATES
+      ? (requestedQuality as RenderQuality)
+      : undefined,
+    supportedQualityModes,
+    fallbackQuality,
+  );
 }

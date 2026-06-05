@@ -110,12 +110,16 @@ export { RenderStyleManager } from './render/RenderStyleManager.js';
 export {
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
+  isRenderProfile,
+  isRendererBackend,
   mapQualityModesToBackendProfiles,
+  resolveRenderBackendProfileQuerySelection,
   resolveRenderBackendProfileSelection,
   sanitizeLegacyRenderQuality,
   toRenderBackendProfileCandidate,
   type RenderBackendProfileCandidate,
   type RenderBackendProfileGroup,
+  type RenderBackendProfileQueryRequest,
   type RenderBackendProfileSelection,
 } from './runtime/RenderBackendProfile.js';
 export { SimulationCanvasLayer } from './render/SimulationCanvasLayer.js';

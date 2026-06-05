@@ -60,6 +60,10 @@ Use these terms for new architecture work:
 
 `packages/demo/src/App.tsx` now consumes `GameLauncher`'s `onRenderSelectionChange()` callback for the active experience and shows a small Lab Runtime readout with the resolved renderer backend and render profile. This is intentionally host-only telemetry: it does not change route params, persisted quality, scene startup, preview behavior, or the legacy `quality=basic|enhanced|raw` compatibility contract.
 
+## Query migration parser slice
+
+`resolveRenderBackendProfileQuerySelection()` adds a pure bridge for future `backend` and `profile` query params while keeping legacy `quality` as the backward-compatible fallback. Backend/profile params win only when they map to an advertised experience capability; unsupported pairs such as global `webgl2/high` or `webgpu/high` fall back through the same legacy quality sanitizer, so raw/high-powered routes remain opt-in per experience.
+
 ## Next smallest slice
 
-Document how future `backend` and `profile` query params should coexist with the legacy `quality` param, then add a pure parser/resolver for those params that keeps `quality` as the backward-compatible fallback until route migration is explicitly enabled.
+Wire demo route parsing to call the new query resolver internally while continuing to emit legacy `quality=basic|enhanced|raw` params until a route migration flag is explicitly approved.
