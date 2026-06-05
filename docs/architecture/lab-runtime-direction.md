@@ -48,6 +48,10 @@ Use these terms for new architecture work:
 
 `packages/react/src/qualitySelection.ts` now exports `resolveRenderSelection()`, a React-facing helper that returns the shared `backend/profile/legacyQuality` descriptor for startup and route state. Existing callers can continue using `sanitizeRenderQuality()` for scene compatibility, while new host/runtime code can consume backend-neutral state without reinterpreting `basic | enhanced | raw` locally.
 
+## GameLauncher descriptor state slice
+
+`GameLauncher` now stores the resolved render selection descriptor as runtime state and derives the legacy scene `quality` from `selection.legacyQuality`. Startup, persisted quality repair, and explicit quality changes all flow through `resolveRenderSelection()`, so the launcher can retain backend/profile state without changing current `quality=basic|enhanced|raw` URL and scene compatibility.
+
 ## Next smallest slice
 
-Thread `resolveRenderSelection()` into `GameLauncher`'s startup/current-quality state so the launcher can retain a backend-neutral descriptor alongside the legacy scene quality. Keep URL/query compatibility as `quality=basic|enhanced|raw` until a later slice introduces explicit `backend` and `profile` route params.
+Expose the current backend/profile descriptor to a host-visible boundary without changing routes yet. A low-risk option is to add a small React helper or callback surface for launcher/debug UI to read `backend`, `profile`, and `legacyQuality`, then document how future `backend` and `profile` query params should coexist with the legacy `quality` param.
