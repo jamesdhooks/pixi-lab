@@ -8,6 +8,7 @@ import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
 import { SIMULATION_REGISTRY, fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
 import {
   resolveRenderBackendProfileQuerySelection,
+  serializeRenderBackendProfileRoute,
   type LabExperience,
   type RenderBackendProfileSelection,
   type RenderQuality,
@@ -60,6 +61,22 @@ export function queryQualityForExperience(
   params: Pick<URLSearchParams, 'get'>,
 ): RenderQuality | undefined {
   return queryRenderSelectionForExperience(experience, params)?.legacyQuality;
+}
+
+export function buildExperienceBackendProfileRoute(
+  experience: LabExperience,
+  selection: RenderBackendProfileSelection,
+): string {
+  const params = new URLSearchParams({ experience: experience.id });
+  const routeParams = serializeRenderBackendProfileRoute(selection);
+
+  const backend = routeParams.backend ?? selection.backend;
+  const profile = routeParams.profile ?? selection.profile;
+
+  if (backend) params.set('backend', backend);
+  if (profile) params.set('profile', profile);
+
+  return `?${params.toString()}`;
 }
 
 const KIND_LABELS: Record<string, string> = {

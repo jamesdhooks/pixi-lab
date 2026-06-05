@@ -72,6 +72,10 @@ Demo route parsing now accepts future `backend` and `profile` query params throu
 
 `serializeRenderBackendProfileRoute()` provides a pure host-route helper for internal links that need to mirror the active descriptor as `backend=<renderer>&profile=<profile>`. It intentionally omits legacy `quality` by default so public/default demo routes can continue using backward-compatible `quality=basic|enhanced|raw` serialization elsewhere. Compatibility test links can opt into including `quality` when they need both vocabularies side by side.
 
+## Demo internal route helper slice
+
+`packages/demo/src/App.tsx` now has `buildExperienceBackendProfileRoute()` as the narrow demo/internal path for composing `experience=<id>` links with backend/profile params. It delegates backend/profile serialization to the shared core helper and deliberately omits legacy `quality`, keeping the migration scoped to explicit internal links instead of changing public launch URL behavior globally.
+
 ## Next smallest slice
 
-Use `serializeRenderBackendProfileRoute()` in a narrowly scoped demo/internal test-link path, not as a global route migration. Keep public launch URLs legacy-compatible until enough host code consumes backend/profile descriptors directly.
+Wire `buildExperienceBackendProfileRoute()` into a visible developer/debug affordance only if the demo needs shareable backend/profile links. Keep normal gallery launch URLs legacy-compatible until enough host code consumes backend/profile descriptors directly.

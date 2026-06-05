@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
 import {
+  buildExperienceBackendProfileRoute,
   findQueryExperience,
   parseQueryQuality,
   queryQualityForExperience,
@@ -57,5 +58,15 @@ describe('demo query routing helpers', () => {
       profile: 'high',
       legacyQuality: 'enhanced',
     });
+  });
+
+  it('builds internal backend/profile experience routes without globally serializing legacy quality', () => {
+    expect(
+      buildExperienceBackendProfileRoute(EXPERIENCES[0], {
+        backend: 'webgl2',
+        profile: 'high',
+        legacyQuality: 'raw',
+      }),
+    ).toBe('?experience=amoeba-lamp&backend=webgl2&profile=high');
   });
 });
