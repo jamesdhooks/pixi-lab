@@ -8,6 +8,7 @@ import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
 import { SIMULATION_REGISTRY, fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
 import {
   formatRenderBackendProfileSelection,
+  getSupportedRenderQualityModes,
   isRenderQuality,
   resolveRenderBackendProfileQuerySelection,
   serializeRenderBackendProfileRoute,
@@ -51,7 +52,7 @@ export function queryRenderSelectionForExperience(
 
   if (!backend && !profile && !requestedQuality) return undefined;
 
-  const supported = experience.capabilities.qualityModes ?? ['basic', 'enhanced'];
+  const supported = getSupportedRenderQualityModes(experience.capabilities);
   return resolveRenderBackendProfileQuerySelection(
     { backend, profile, quality: requestedQuality },
     supported,

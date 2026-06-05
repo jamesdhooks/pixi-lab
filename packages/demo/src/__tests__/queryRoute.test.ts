@@ -42,6 +42,17 @@ describe('demo query routing helpers', () => {
     expect(queryQualityForExperience(EXPERIENCES[0], params(''))).toBeUndefined();
   });
 
+  it('uses shared Pixi-safe default capabilities when an experience has no quality modes', () => {
+    const legacyExperience = { id: 'legacy-toy', name: 'Legacy Toy', capabilities: {} } as LabExperience;
+
+    expect(queryQualityForExperience(legacyExperience, params('quality=raw'))).toBe('basic');
+    expect(queryRenderSelectionForExperience(legacyExperience, params('backend=pixi&profile=high'))).toEqual({
+      backend: 'pixi',
+      profile: 'high',
+      legacyQuality: 'enhanced',
+    });
+  });
+
   it('prefers supported backend/profile params while preserving legacy quality launch values', () => {
     expect(queryRenderSelectionForExperience(EXPERIENCES[0], params('backend=webgl2&profile=high'))).toEqual({
       backend: 'webgl2',

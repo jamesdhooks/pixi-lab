@@ -88,6 +88,10 @@ The active-experience Lab Runtime readout now exposes a small `Backend/profile l
 
 `isRenderQuality()` now lives beside the backend/profile resolver in core so host route parsing can validate legacy `quality=basic|enhanced|raw` values through the shared Lab Runtime boundary instead of duplicating string checks in each app shell. Demo query parsing delegates to this guard before resolving backend/profile state, keeping legacy compatibility narrow while future host code consumes backend/profile descriptors.
 
+## Shared default capability slice
+
+`DEFAULT_RENDER_QUALITY_MODES` and `getSupportedRenderQualityModes()` now live in the core runtime bridge so host shells do not duplicate the implicit Pixi-safe fallback for older experiences that omit `capabilities.qualityModes`. Demo query routing consumes the helper before resolving backend/profile params, keeping missing capability metadata on `pixi` + `standard|high` while unsupported raw/high-powered requests still fall back unless the experience explicitly advertises raw.
+
 ## Next smallest slice
 
-Add a focused browser smoke for the Lab Runtime readout/link: launch an experience, confirm the readout uses the shared labels, confirm the link preserves the selected experience plus backend/profile params, verify unsupported global `webgl2/high` still sanitizes back to Pixi-safe startup values, and keep raw/high-powered routes opt-in per experience.
+Adopt `getSupportedRenderQualityModes()` in the React launcher quality plumbing so persisted/startup quality repair and demo query routing use the same default capability source, then run focused React/core/demo quality tests.

@@ -108,7 +108,9 @@ export { RenderTargetPool, type RenderTargetRequest, type RenderTargetStats } fr
 export { PingPong } from './render/PingPong.js';
 export { RenderStyleManager } from './render/RenderStyleManager.js';
 export {
+  DEFAULT_RENDER_QUALITY_MODES,
   formatRenderBackendProfileSelection,
+  getSupportedRenderQualityModes,
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
   isRenderProfile,

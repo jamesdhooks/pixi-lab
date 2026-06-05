@@ -1,7 +1,9 @@
-import type { RenderProfile, RenderQuality, RendererBackend } from '../types.js';
+import type { ExperienceCapabilities, RenderProfile, RenderQuality, RendererBackend } from '../types.js';
 
 const RENDERER_BACKENDS: readonly RendererBackend[] = ['pixi', 'webgl2', 'three', 'webgpu'];
 const RENDER_PROFILES: readonly RenderProfile[] = ['preview', 'standard', 'high'];
+
+export const DEFAULT_RENDER_QUALITY_MODES: readonly RenderQuality[] = ['basic', 'enhanced'];
 
 export interface RenderBackendProfileCandidate {
   readonly quality: RenderQuality;
@@ -102,6 +104,14 @@ export function mapQualityModesToBackendProfiles(
   qualityModes: readonly RenderQuality[],
 ): RenderBackendProfileCandidate[] {
   return qualityModes.map(toRenderBackendProfileCandidate);
+}
+
+export function getSupportedRenderQualityModes(
+  capabilities: Pick<ExperienceCapabilities, 'qualityModes'> | undefined,
+): readonly RenderQuality[] {
+  return capabilities?.qualityModes && capabilities.qualityModes.length > 0
+    ? capabilities.qualityModes
+    : DEFAULT_RENDER_QUALITY_MODES;
 }
 
 export function groupBackendProfileCandidates(

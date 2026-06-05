@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_RENDER_QUALITY_MODES,
   formatRenderBackendProfileSelection,
+  getSupportedRenderQualityModes,
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
   isRenderProfile,
@@ -22,6 +24,13 @@ describe('RenderBackendProfile', () => {
       { quality: 'basic', backend: 'pixi', profile: 'standard', legacyLabel: 'Basic' },
       { quality: 'enhanced', backend: 'pixi', profile: 'high', legacyLabel: 'Enhanced' },
     ]);
+  });
+
+  it('centralizes default supported modes as Pixi-safe runtime capabilities', () => {
+    expect(DEFAULT_RENDER_QUALITY_MODES).toEqual(['basic', 'enhanced']);
+    expect(getSupportedRenderQualityModes(undefined)).toEqual(['basic', 'enhanced']);
+    expect(getSupportedRenderQualityModes({ qualityModes: [] })).toEqual(['basic', 'enhanced']);
+    expect(getSupportedRenderQualityModes({ qualityModes: ['raw'] })).toEqual(['raw']);
   });
 
   it('keeps raw modeled as an opt-in WebGL2 high profile candidate', () => {
