@@ -64,6 +64,10 @@ Use these terms for new architecture work:
 
 `resolveRenderBackendProfileQuerySelection()` adds a pure bridge for future `backend` and `profile` query params while keeping legacy `quality` as the backward-compatible fallback. Backend/profile params win only when they map to an advertised experience capability; unsupported pairs such as global `webgl2/high` or `webgpu/high` fall back through the same legacy quality sanitizer, so raw/high-powered routes remain opt-in per experience.
 
+## Demo query resolver slice
+
+Demo route parsing now accepts future `backend` and `profile` query params through the shared resolver while continuing to pass only the sanitized legacy `quality` value into current scenes. Legacy `quality=basic|enhanced|raw` remains supported and unchanged. Backend/profile params only select capabilities advertised by the active experience, so requests such as global `webgl2/high` still fall back to Pixi-safe launch values unless that experience explicitly exposes the raw route.
+
 ## Next smallest slice
 
-Wire demo route parsing to call the new query resolver internally while continuing to emit legacy `quality=basic|enhanced|raw` params until a route migration flag is explicitly approved.
+Add a small host-route serialization helper that can optionally mirror the current descriptor into `backend=<renderer>&profile=<profile>` links for internal testing while preserving legacy `quality` URLs as the public/default route format.

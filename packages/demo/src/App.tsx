@@ -6,7 +6,12 @@ import { useViewport } from '@hooksjam/pixi-lab-react';
 import { AMBIENT_REGISTRY } from '@hooksjam/pixi-lab-ambients';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
 import { SIMULATION_REGISTRY, fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
-import type { LabExperience, RenderBackendProfileSelection, RenderQuality } from '@hooksjam/pixi-lab-core';
+import {
+  resolveRenderBackendProfileQuerySelection,
+  type LabExperience,
+  type RenderBackendProfileSelection,
+  type RenderQuality,
+} from '@hooksjam/pixi-lab-core';
 import { hasPassedDemoQa } from './demoQaStatus';
 
 const ALL_EXPERIENCES: readonly LabExperience[] = [
@@ -33,10 +38,28 @@ export function findQueryExperience(value: string | null, experiences: readonly 
   return experiences.find((experience) => experience.id.toLowerCase() === normalized);
 }
 
-export function queryQualityForExperience(experience: LabExperience, requested: RenderQuality | undefined): RenderQuality | undefined {
-  if (!requested) return undefined;
+export function queryRenderSelectionForExperience(
+  experience: LabExperience,
+  params: Pick<URLSearchParams, 'get'>,
+): RenderBackendProfileSelection | undefined {
+  const backend = params.get('backend');
+  const profile = params.get('profile');
+  const requestedQuality = parseQueryQuality(params.get('quality'));
+
+  if (!backend && !profile && !requestedQuality) return undefined;
+
   const supported = experience.capabilities.qualityModes ?? ['basic', 'enhanced'];
-  return supported.includes(requested) ? requested : 'basic';
+  return resolveRenderBackendProfileQuerySelection(
+    { backend, profile, quality: requestedQuality },
+    supported,
+  );
+}
+
+export function queryQualityForExperience(
+  experience: LabExperience,
+  params: Pick<URLSearchParams, 'get'>,
+): RenderQuality | undefined {
+  return queryRenderSelectionForExperience(experience, params)?.legacyQuality;
 }
 
 const KIND_LABELS: Record<string, string> = {
@@ -98,7 +121,7 @@ export function App() {
       fluidEngine: params.has('fluidEngine'),
       fluidReference: params.has('fluidReference'),
       experience: findQueryExperience(params.get('experience'), ALL_EXPERIENCES),
-      quality: parseQueryQuality(params.get('quality')),
+      queryParams: params,
     };
   }, []);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -117,8 +140,9 @@ export function App() {
   useEffect(() => {
     if (routeMode.fluidGallery) return;
     if (routeMode.fluidEngine || routeMode.fluidReference) {
-      if (routeMode.quality) {
-        try { localStorage.setItem('pixi-lab:quality', routeMode.quality); } catch { /* ignore */ }
+      const fluidQuality = queryQualityForExperience(fluidTankDefinition, routeMode.queryParams);
+      if (fluidQuality) {
+        try { localStorage.setItem('pixi-lab:quality', fluidQuality); } catch { /* ignore */ }
       }
       setAppDemoActive(false);
       setCarouselOpen(false);
@@ -481,7 +505,7 @@ export function App() {
               dockedInset={dockedInset}
               maxPixels={maxPixels}
               transparent={active.kind === 'ambient' || active.kind === 'effect'}
-              initialQuality={queryQualityForExperience(active, routeMode.quality)}
+              initialQuality={queryQualityForExperience(active, routeMode.queryParams)}
               onRenderSelectionChange={setRenderSelection}
               autoDemo={routeMode.fluidEngine || routeMode.fluidReference}
               onQuit={() => {
