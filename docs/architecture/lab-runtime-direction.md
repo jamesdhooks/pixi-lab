@@ -100,6 +100,10 @@ The active-experience Lab Runtime readout now exposes a small `Backend/profile l
 
 `QualitySelector` now treats omitted `options` as omitted experience quality capabilities and resolves them through the shared core `getSupportedRenderQualityModes()` helper. A focused React element regression proves the selector renders Pixi-safe `Basic` and `Enhanced` controls with backend/profile labels when older experiences omit `capabilities.qualityModes`, keeping the UI default aligned with route/runtime sanitization.
 
+## Demo default route visibility slice
+
+The active-experience Lab Runtime readout still shows the resolved backend/profile label, but the explicit `Backend/profile link` now hides for the default `pixi` + `standard` selection. `buildExperienceBackendProfileRoute()` also keeps that default route to `?experience=<id>` with no backend/profile params, while non-default selections such as `pixi` + `high` or opt-in `webgl2` + `high` continue to expose the migration link. This keeps public/default demo links legacy-clean without removing backend-neutral telemetry.
+
 ## Next smallest slice
 
-Inspect whether the demo readout/link should hide backend/profile params for the default Pixi selection outside explicit debug UI, then add the smallest host-level regression around that visibility/serialization behavior.
+Move the default-route visibility policy into a shared core or React host helper only if another host needs it; otherwise inspect whether persisted runtime state should begin storing backend/profile descriptors beside the legacy `quality` key without changing scene contracts.

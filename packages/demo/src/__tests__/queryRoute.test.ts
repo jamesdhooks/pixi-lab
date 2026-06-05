@@ -6,6 +6,7 @@ import {
   parseQueryQuality,
   queryQualityForExperience,
   queryRenderSelectionForExperience,
+  shouldExposeExperienceBackendProfileRoute,
 } from '../App';
 
 const EXPERIENCES = [
@@ -79,5 +80,33 @@ describe('demo query routing helpers', () => {
         legacyQuality: 'raw',
       }),
     ).toBe('?experience=amoeba-lamp&backend=webgl2&profile=high');
+  });
+
+  it('keeps default Pixi standard routes legacy-clean and hides the explicit migration link', () => {
+    const selection = {
+      backend: 'pixi',
+      profile: 'standard',
+      legacyQuality: 'basic',
+    } as const;
+
+    expect(shouldExposeExperienceBackendProfileRoute(selection)).toBe(false);
+    expect(buildExperienceBackendProfileRoute(EXPERIENCES[1], selection)).toBe('?experience=fluid-tank');
+  });
+
+  it('exposes the explicit backend/profile link for non-default profiles', () => {
+    expect(
+      shouldExposeExperienceBackendProfileRoute({
+        backend: 'pixi',
+        profile: 'high',
+        legacyQuality: 'enhanced',
+      }),
+    ).toBe(true);
+    expect(
+      shouldExposeExperienceBackendProfileRoute({
+        backend: 'webgl2',
+        profile: 'high',
+        legacyQuality: 'raw',
+      }),
+    ).toBe(true);
   });
 });

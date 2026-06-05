@@ -66,18 +66,24 @@ export function queryQualityForExperience(
   return queryRenderSelectionForExperience(experience, params)?.legacyQuality;
 }
 
+export function shouldExposeExperienceBackendProfileRoute(selection: RenderBackendProfileSelection): boolean {
+  return selection.backend !== 'pixi' || selection.profile !== 'standard';
+}
+
 export function buildExperienceBackendProfileRoute(
   experience: LabExperience,
   selection: RenderBackendProfileSelection,
 ): string {
   const params = new URLSearchParams({ experience: experience.id });
-  const routeParams = serializeRenderBackendProfileRoute(selection);
 
-  const backend = routeParams.backend ?? selection.backend;
-  const profile = routeParams.profile ?? selection.profile;
+  if (shouldExposeExperienceBackendProfileRoute(selection)) {
+    const routeParams = serializeRenderBackendProfileRoute(selection);
+    const backend = routeParams.backend ?? selection.backend;
+    const profile = routeParams.profile ?? selection.profile;
 
-  if (backend) params.set('backend', backend);
-  if (profile) params.set('profile', profile);
+    if (backend) params.set('backend', backend);
+    if (profile) params.set('profile', profile);
+  }
 
   return `?${params.toString()}`;
 }
@@ -562,12 +568,14 @@ export function App() {
           <div>
             {renderSelectionLabel.summary}
           </div>
-          <a
-            className="pointer-events-auto mt-1 inline-block text-[9px] normal-case tracking-normal text-cyan-200 underline decoration-cyan-200/50 underline-offset-2 hover:text-cyan-100"
-            href={buildExperienceBackendProfileRoute(active, renderSelection)}
-          >
-            Backend/profile link
-          </a>
+          {shouldExposeExperienceBackendProfileRoute(renderSelection) && (
+            <a
+              className="pointer-events-auto mt-1 inline-block text-[9px] normal-case tracking-normal text-cyan-200 underline decoration-cyan-200/50 underline-offset-2 hover:text-cyan-100"
+              href={buildExperienceBackendProfileRoute(active, renderSelection)}
+            >
+              Backend/profile link
+            </a>
+          )}
         </div>
       )}
 
