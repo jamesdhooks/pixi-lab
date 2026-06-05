@@ -116,11 +116,14 @@ export {
   resolveRenderBackendProfileQuerySelection,
   resolveRenderBackendProfileSelection,
   sanitizeLegacyRenderQuality,
+  serializeRenderBackendProfileRoute,
   toRenderBackendProfileCandidate,
   type RenderBackendProfileCandidate,
   type RenderBackendProfileGroup,
   type RenderBackendProfileQueryRequest,
+  type RenderBackendProfileRouteParams,
   type RenderBackendProfileSelection,
+  type SerializeRenderBackendProfileRouteOptions,
 } from './runtime/RenderBackendProfile.js';
 export { SimulationCanvasLayer } from './render/SimulationCanvasLayer.js';
 export type { EmitterMarker } from './render/SimulationCanvasLayer.js';

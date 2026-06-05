@@ -27,6 +27,21 @@ export interface RenderBackendProfileQueryRequest {
   readonly quality?: unknown;
 }
 
+export interface RenderBackendProfileRouteParams {
+  readonly backend?: RendererBackend;
+  readonly profile?: RenderProfile;
+  readonly quality?: RenderQuality;
+}
+
+export interface SerializeRenderBackendProfileRouteOptions {
+  /**
+   * Keep the legacy `quality` param alongside backend/profile params for
+   * compatibility links. Public/demo default routes can leave this disabled and
+   * continue serializing only `quality` elsewhere.
+   */
+  readonly includeLegacyQuality?: boolean;
+}
+
 const LEGACY_QUALITY_CANDIDATES: Record<RenderQuality, RenderBackendProfileCandidate> = {
   basic: {
     quality: 'basic',
@@ -158,4 +173,15 @@ export function resolveRenderBackendProfileQuerySelection(
     supportedQualityModes,
     fallbackQuality,
   );
+}
+
+export function serializeRenderBackendProfileRoute(
+  selection: RenderBackendProfileSelection,
+  options: SerializeRenderBackendProfileRouteOptions = {},
+): RenderBackendProfileRouteParams {
+  return {
+    backend: selection.backend,
+    profile: selection.profile,
+    ...(options.includeLegacyQuality ? { quality: selection.legacyQuality } : {}),
+  };
 }

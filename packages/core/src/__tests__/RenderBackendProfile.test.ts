@@ -8,6 +8,7 @@ import {
   resolveRenderBackendProfileQuerySelection,
   resolveRenderBackendProfileSelection,
   sanitizeLegacyRenderQuality,
+  serializeRenderBackendProfileRoute,
   toRenderBackendProfileCandidate,
 } from '../runtime/RenderBackendProfile.js';
 
@@ -130,5 +131,28 @@ describe('RenderBackendProfile', () => {
       profile: 'standard',
       legacyQuality: 'basic',
     });
+  });
+
+  it('serializes backend/profile route params without legacy quality by default', () => {
+    expect(
+      serializeRenderBackendProfileRoute({
+        backend: 'webgl2',
+        profile: 'high',
+        legacyQuality: 'raw',
+      }),
+    ).toEqual({ backend: 'webgl2', profile: 'high' });
+  });
+
+  it('can mirror legacy quality for compatibility test links', () => {
+    expect(
+      serializeRenderBackendProfileRoute(
+        {
+          backend: 'pixi',
+          profile: 'high',
+          legacyQuality: 'enhanced',
+        },
+        { includeLegacyQuality: true },
+      ),
+    ).toEqual({ backend: 'pixi', profile: 'high', quality: 'enhanced' });
   });
 });

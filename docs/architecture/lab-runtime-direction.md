@@ -68,6 +68,10 @@ Use these terms for new architecture work:
 
 Demo route parsing now accepts future `backend` and `profile` query params through the shared resolver while continuing to pass only the sanitized legacy `quality` value into current scenes. Legacy `quality=basic|enhanced|raw` remains supported and unchanged. Backend/profile params only select capabilities advertised by the active experience, so requests such as global `webgl2/high` still fall back to Pixi-safe launch values unless that experience explicitly exposes the raw route.
 
+## Route serialization helper slice
+
+`serializeRenderBackendProfileRoute()` provides a pure host-route helper for internal links that need to mirror the active descriptor as `backend=<renderer>&profile=<profile>`. It intentionally omits legacy `quality` by default so public/default demo routes can continue using backward-compatible `quality=basic|enhanced|raw` serialization elsewhere. Compatibility test links can opt into including `quality` when they need both vocabularies side by side.
+
 ## Next smallest slice
 
-Add a small host-route serialization helper that can optionally mirror the current descriptor into `backend=<renderer>&profile=<profile>` links for internal testing while preserving legacy `quality` URLs as the public/default route format.
+Use `serializeRenderBackendProfileRoute()` in a narrowly scoped demo/internal test-link path, not as a global route migration. Keep public launch URLs legacy-compatible until enough host code consumes backend/profile descriptors directly.
