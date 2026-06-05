@@ -12,6 +12,12 @@ export interface RenderBackendProfileGroup {
   readonly candidates: readonly RenderBackendProfileCandidate[];
 }
 
+export interface RenderBackendProfileSelection {
+  readonly backend: RendererBackend;
+  readonly profile: RenderProfile;
+  readonly legacyQuality: RenderQuality;
+}
+
 const LEGACY_QUALITY_CANDIDATES: Record<RenderQuality, RenderBackendProfileCandidate> = {
   basic: {
     quality: 'basic',
@@ -83,4 +89,23 @@ export function sanitizeLegacyRenderQuality(
   }
 
   return supportedQualityModes[0] ?? fallbackQuality;
+}
+
+export function resolveRenderBackendProfileSelection(
+  requestedQuality: RenderQuality | undefined,
+  supportedQualityModes: readonly RenderQuality[],
+  fallbackQuality: RenderQuality = 'basic',
+): RenderBackendProfileSelection {
+  const legacyQuality = sanitizeLegacyRenderQuality(
+    requestedQuality,
+    supportedQualityModes,
+    fallbackQuality,
+  );
+  const candidate = toRenderBackendProfileCandidate(legacyQuality);
+
+  return {
+    backend: candidate.backend,
+    profile: candidate.profile,
+    legacyQuality,
+  };
 }

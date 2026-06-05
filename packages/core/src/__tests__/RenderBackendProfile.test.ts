@@ -3,6 +3,7 @@ import {
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
   mapQualityModesToBackendProfiles,
+  resolveRenderBackendProfileSelection,
   sanitizeLegacyRenderQuality,
   toRenderBackendProfileCandidate,
 } from '../runtime/RenderBackendProfile.js';
@@ -64,5 +65,21 @@ describe('RenderBackendProfile', () => {
     const supported: RenderQuality[] = ['enhanced'];
 
     expect(sanitizeLegacyRenderQuality(undefined, supported, 'basic')).toBe('enhanced');
+  });
+
+  it('resolves a backend/profile selection descriptor from legacy startup quality', () => {
+    expect(resolveRenderBackendProfileSelection('enhanced', ['basic', 'enhanced'])).toEqual({
+      backend: 'pixi',
+      profile: 'high',
+      legacyQuality: 'enhanced',
+    });
+  });
+
+  it('keeps unsupported raw startup quality out of the selection descriptor', () => {
+    expect(resolveRenderBackendProfileSelection('raw', ['basic', 'enhanced'])).toEqual({
+      backend: 'pixi',
+      profile: 'standard',
+      legacyQuality: 'basic',
+    });
   });
 });

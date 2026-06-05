@@ -111,10 +111,12 @@ export {
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
   mapQualityModesToBackendProfiles,
+  resolveRenderBackendProfileSelection,
   sanitizeLegacyRenderQuality,
   toRenderBackendProfileCandidate,
   type RenderBackendProfileCandidate,
   type RenderBackendProfileGroup,
+  type RenderBackendProfileSelection,
 } from './runtime/RenderBackendProfile.js';
 export { SimulationCanvasLayer } from './render/SimulationCanvasLayer.js';
 export type { EmitterMarker } from './render/SimulationCanvasLayer.js';

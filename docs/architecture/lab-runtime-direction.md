@@ -36,10 +36,14 @@ Use these terms for new architecture work:
 
 `packages/core/src/runtime/RenderBackendProfile.ts` provides a pure bridge from existing `qualityModes` to backend/profile candidates. It keeps current scene behavior intact while giving host UI/runtime code backend-neutral terms to consume. The bridge also centralizes legacy quality sanitization so unsupported `raw` requests fall back to Pixi-safe modes unless an experience explicitly advertises `raw`.
 
+## Host selection descriptor slice
+
+`resolveRenderBackendProfileSelection()` now returns a small host/runtime descriptor with `backend`, `profile`, and the sanitized `legacyQuality`. This gives route/query/runtime state one backend-neutral object to carry while existing scenes continue receiving `RenderQuality`. The descriptor deliberately derives from advertised experience capabilities, so `raw` remains scoped to experiences that opt in.
+
 ## React runtime adoption slice
 
 `packages/react/src/qualitySelection.ts` now delegates persisted/query startup quality sanitization to the shared runtime bridge. `QualitySelector` groups options by renderer backend and derives button labels/tooltips from backend/profile candidates, keeping legacy route values intact while surfacing the new vocabulary at the host UI boundary.
 
 ## Next smallest slice
 
-Add a small backend/profile selection descriptor for host/runtime state so future route/query params can move from legacy `quality=basic|enhanced|raw` toward explicit `backend=<pixi|webgl2>` and `profile=<preview|standard|high>` values without changing existing scene contracts in the same slice.
+Thread the host selection descriptor into `packages/react/src/qualitySelection.ts` or adjacent runtime state so React callers can read `backend/profile` without remapping legacy quality themselves. Keep URL/query compatibility as `quality=basic|enhanced|raw` until a later slice introduces explicit `backend` and `profile` route params.
