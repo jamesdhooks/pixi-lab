@@ -18,4 +18,9 @@ describe('sanitizeRenderQuality', () => {
     const rawOnly = ['raw'] satisfies RenderQuality[];
     expect(sanitizeRenderQuality('basic', rawOnly)).toBe('raw');
   });
+
+  it('delegates unsupported raw fallback through the shared runtime bridge', () => {
+    const standardOnly = ['enhanced'] satisfies RenderQuality[];
+    expect(sanitizeRenderQuality('raw', standardOnly)).toBe('enhanced');
+  });
 });

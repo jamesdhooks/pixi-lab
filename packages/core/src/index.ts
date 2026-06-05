@@ -108,10 +108,13 @@ export { RenderTargetPool, type RenderTargetRequest, type RenderTargetStats } fr
 export { PingPong } from './render/PingPong.js';
 export { RenderStyleManager } from './render/RenderStyleManager.js';
 export {
+  groupBackendProfileCandidates,
+  groupQualityModesByBackend,
   mapQualityModesToBackendProfiles,
   sanitizeLegacyRenderQuality,
   toRenderBackendProfileCandidate,
   type RenderBackendProfileCandidate,
+  type RenderBackendProfileGroup,
 } from './runtime/RenderBackendProfile.js';
 export { SimulationCanvasLayer } from './render/SimulationCanvasLayer.js';
 export type { EmitterMarker } from './render/SimulationCanvasLayer.js';

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  groupBackendProfileCandidates,
+  groupQualityModesByBackend,
   mapQualityModesToBackendProfiles,
   sanitizeLegacyRenderQuality,
   toRenderBackendProfileCandidate,
@@ -22,6 +24,32 @@ describe('RenderBackendProfile', () => {
       profile: 'high',
       legacyLabel: 'Raw',
     });
+  });
+
+  it('groups advertised qualities by backend without changing legacy route order', () => {
+    expect(groupQualityModesByBackend(['basic', 'enhanced', 'raw'])).toEqual([
+      {
+        backend: 'pixi',
+        candidates: [
+          { quality: 'basic', backend: 'pixi', profile: 'standard', legacyLabel: 'Basic' },
+          { quality: 'enhanced', backend: 'pixi', profile: 'high', legacyLabel: 'Enhanced' },
+        ],
+      },
+      {
+        backend: 'webgl2',
+        candidates: [{ quality: 'raw', backend: 'webgl2', profile: 'high', legacyLabel: 'Raw' }],
+      },
+    ]);
+  });
+
+  it('preserves explicitly provided backend candidate order when grouping', () => {
+    const raw = toRenderBackendProfileCandidate('raw');
+    const basic = toRenderBackendProfileCandidate('basic');
+
+    expect(groupBackendProfileCandidates([raw, basic])).toEqual([
+      { backend: 'webgl2', candidates: [raw] },
+      { backend: 'pixi', candidates: [basic] },
+    ]);
   });
 
   it('sanitizes unsupported raw requests back to a supported Pixi-safe quality', () => {

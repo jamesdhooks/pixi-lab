@@ -7,6 +7,11 @@ export interface RenderBackendProfileCandidate {
   readonly legacyLabel: string;
 }
 
+export interface RenderBackendProfileGroup {
+  readonly backend: RendererBackend;
+  readonly candidates: readonly RenderBackendProfileCandidate[];
+}
+
 const LEGACY_QUALITY_CANDIDATES: Record<RenderQuality, RenderBackendProfileCandidate> = {
   basic: {
     quality: 'basic',
@@ -36,6 +41,32 @@ export function mapQualityModesToBackendProfiles(
   qualityModes: readonly RenderQuality[],
 ): RenderBackendProfileCandidate[] {
   return qualityModes.map(toRenderBackendProfileCandidate);
+}
+
+export function groupBackendProfileCandidates(
+  candidates: readonly RenderBackendProfileCandidate[],
+): RenderBackendProfileGroup[] {
+  const groups: RenderBackendProfileGroup[] = [];
+
+  for (const candidate of candidates) {
+    const existingGroup = groups.find((group) => group.backend === candidate.backend);
+    if (existingGroup) {
+      groups[groups.indexOf(existingGroup)] = {
+        backend: existingGroup.backend,
+        candidates: [...existingGroup.candidates, candidate],
+      };
+    } else {
+      groups.push({ backend: candidate.backend, candidates: [candidate] });
+    }
+  }
+
+  return groups;
+}
+
+export function groupQualityModesByBackend(
+  qualityModes: readonly RenderQuality[],
+): RenderBackendProfileGroup[] {
+  return groupBackendProfileCandidates(mapQualityModesToBackendProfiles(qualityModes));
 }
 
 export function sanitizeLegacyRenderQuality(
