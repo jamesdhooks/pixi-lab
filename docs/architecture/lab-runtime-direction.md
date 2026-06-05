@@ -96,6 +96,10 @@ The active-experience Lab Runtime readout now exposes a small `Backend/profile l
 
 `packages/react/src/qualitySelection.ts` now imports `isRenderQuality()` and `getSupportedRenderQualityModes()` from the shared core runtime bridge instead of carrying a React-local quality enum and `['basic']` fallback. Omitted `capabilities.qualityModes` now resolve through the same Pixi-safe default modes in React launcher startup/persisted quality repair and demo query routing, so `enhanced` remains available for legacy experiences while unsupported `raw` still falls back unless explicitly advertised.
 
+## React QualitySelector default capability slice
+
+`QualitySelector` now treats omitted `options` as omitted experience quality capabilities and resolves them through the shared core `getSupportedRenderQualityModes()` helper. A focused React element regression proves the selector renders Pixi-safe `Basic` and `Enhanced` controls with backend/profile labels when older experiences omit `capabilities.qualityModes`, keeping the UI default aligned with route/runtime sanitization.
+
 ## Next smallest slice
 
-Add a small React `QualitySelector` regression that proves omitted quality capabilities render the shared Pixi-safe `basic`/`enhanced` options, then inspect whether the demo readout/link should hide backend/profile params for the default Pixi selection outside explicit debug UI.
+Inspect whether the demo readout/link should hide backend/profile params for the default Pixi selection outside explicit debug UI, then add the smallest host-level regression around that visibility/serialization behavior.

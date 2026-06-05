@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import {
+  getSupportedRenderQualityModes,
   groupQualityModesByBackend,
   toRenderBackendProfileCandidate,
   type RenderQuality,
@@ -13,13 +14,15 @@ export interface QualitySelectorProps {
    * from `value`, the rendered tier is highlighted in red to signal fallback.
    */
   renderedValue?: RenderQuality;
-  options: readonly RenderQuality[];
+  options?: readonly RenderQuality[];
   onChange: (quality: RenderQuality) => void;
 }
 
 export function QualitySelector({ value, renderedValue, options, onChange }: QualitySelectorProps) {
   const hasFallback = renderedValue !== undefined && renderedValue !== value;
-  const backendGroups = groupQualityModesByBackend(options);
+  const backendGroups = groupQualityModesByBackend(
+    getSupportedRenderQualityModes(options === undefined ? undefined : { qualityModes: options }),
+  );
 
   return (
     <motion.div
