@@ -383,6 +383,8 @@ export interface SettingsField {
   default: SettingsValue;
   /** If set, the field is only shown when the active interaction mode is in this list. */
   visibleModes?: string[];
+  /** If set, the field is only shown for these engine configurations / legacy render qualities. */
+  visibleQualities?: RenderQuality[];
 }
 
 // ── Game Definition ───────────────────────────────────────────────────────────

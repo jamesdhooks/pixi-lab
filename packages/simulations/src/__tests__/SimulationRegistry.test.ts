@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GameContext, SettingsField, SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { DomScriptScene } from '@hooksjam/pixi-lab-core';
-import { AmoebaLampPreviewScene, AmoebaLampScene, FluidTankPreviewScene, FluidTankScene, OrbitalShrapnelPreviewScene, OrbitalShrapnelScene, SIMULATION_REGISTRY, getSimulation } from '../index.js';
+import { AmoebaLampPreviewScene, AmoebaLampScene, FluidTankPreviewScene, FluidTankScene, OrbitalShrapnelPreviewScene, OrbitalShrapnelScene, RawFluidTankScene, SIMULATION_REGISTRY, getSimulation } from '../index.js';
 
 const REQUIRED_DEMO_CAPABILITIES = [
   'interactive',
@@ -72,6 +72,7 @@ describe('SIMULATION_REGISTRY', () => {
       expect(definition.stagnationPolicy, `${definition.id}.stagnationPolicy`).toBeDefined();
       expect(definition.settingsFields, `${definition.id}.settingsFields`).toBeDefined();
       expect(definition.settingsFields?.length ?? 0, `${definition.id}.settingsFields`).toBeGreaterThan(0);
+      expect(definition.capabilities.settings, `${definition.id}.capabilities.settings`).toBe(true);
       expect(definition.configDefaults, `${definition.id}.configDefaults`).toBeDefined();
     }
   });
@@ -121,18 +122,23 @@ describe('SIMULATION_REGISTRY', () => {
     }
   });
 
-  it('keeps Fluid Tank basic/enhanced on the scene path and raw opt-in for the current WebGL renderer', () => {
+  it('keeps Fluid Tank basic/enhanced on the Pixi scene path and raw on the dedicated raw scene path', () => {
     const definition = getSimulation('fluid-tank');
 
     expect(definition?.capabilities.qualityModes).toEqual(['basic', 'enhanced', 'raw']);
     expect(definition?.styleManifest.capabilities.qualities).toEqual(['basic', 'enhanced', 'raw']);
 
-    const factoryContext = {} as unknown as GameContext;
-    const scene = definition?.factory(factoryContext);
-    const preview = definition?.previewFactory?.(factoryContext);
+    const basicScene = definition?.factory({ quality: 'basic' } as unknown as GameContext);
+    const enhancedScene = definition?.factory({ quality: 'enhanced' } as unknown as GameContext);
+    const rawScene = definition?.factory({ quality: 'raw' } as unknown as GameContext);
+    const preview = definition?.previewFactory?.({ quality: 'raw' } as unknown as GameContext);
 
-    expect(scene).toBeInstanceOf(FluidTankScene);
-    expect(scene).not.toBeInstanceOf(DomScriptScene);
+    expect(basicScene).toBeInstanceOf(FluidTankScene);
+    expect(basicScene).not.toBeInstanceOf(DomScriptScene);
+    expect(enhancedScene).toBeInstanceOf(FluidTankScene);
+    expect(enhancedScene).not.toBeInstanceOf(DomScriptScene);
+    expect(rawScene).toBeInstanceOf(RawFluidTankScene);
+    expect(rawScene).toBeInstanceOf(DomScriptScene);
     expect(preview).toBeInstanceOf(FluidTankPreviewScene);
     expect(preview).not.toBeInstanceOf(DomScriptScene);
   });
@@ -175,6 +181,6 @@ describe('SIMULATION_REGISTRY', () => {
       .map((definition) => definition.id)
       .sort();
 
-    expect(rawCapableIds).toEqual(['amoeba-lamp', 'fluid-tank', 'orbital-shrapnel']);
+    expect(rawCapableIds).toEqual(['amoeba-lamp', 'fluid-tank', 'harmonic-sand', 'orbital-shrapnel']);
   });
 });

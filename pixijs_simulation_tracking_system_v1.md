@@ -6,6 +6,24 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Engine Configuration + Raw WebGL2 Architecture Reset
+
+Scope:
+- introduced first-class engine configuration mapping while preserving legacy quality tokens for compatibility
+- moved visible launcher/runtime controls to “Engine configuration” and retained the `QualitySelector` alias for existing callers
+- added Raw WebGL2 scene infrastructure and raw-specific Harmonic Sand / Fluid Tank scene paths
+- routed Harmonic Sand and Fluid Tank raw launches through dedicated raw scene factories instead of broadening the legacy Pixi scene paths
+- updated demo runtime compatibility helpers and architecture notes for backend/profile route handling
+
+Validation notes:
+- focused architecture tests passed for render backend profiles, raw WebGL2 scene lifecycle, engine selector UI, query routes, and simulation registry
+- full automated gate passed: `pnpm build`, `pnpm --recursive typecheck`, and `pnpm test`
+- built `packages/simulations/dist/index.js` registry QA passed for 22 simulations with no missing capabilities/settings/config/schema issues
+- browser smoke passed for Harmonic Sand Basic/Enhanced/Raw and Fluid Tank Basic/Enhanced/Raw at `http://127.0.0.1:5173/pixi-lab/`; engine selector rendered, canvases mounted, runtime readouts matched the active backend/profile, and browser console stayed clean
+- `pnpm lint` remains blocked because the repo has no ESLint configuration file for the configured lint script, not because this slice introduced lint findings
+
+---
+
 ## 2026-05-28 — Post-Backlog Registry + Gallery Smoke Refresh
 
 Scope:

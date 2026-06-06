@@ -2,6 +2,7 @@ import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { HARMONIC_SAND_DEFAULTS, HARMONIC_SAND_SETTINGS_FIELDS } from './harmonic-sand.config.js';
 import { HarmonicSandPreviewScene } from './HarmonicSandPreviewScene.js';
 import { HarmonicSandScene, harmonicSandStyleManifest } from './HarmonicSandScene.js';
+import { RawHarmonicSandScene } from './RawHarmonicSandScene.js';
 import { HarmonicSandDemoAI } from './HarmonicSandDemoAI.js';
 
 export const harmonicSandDefinition: SimulationDefinition = {
@@ -25,9 +26,9 @@ export const harmonicSandDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
+    qualityModes: ['basic', 'enhanced', 'raw'],
     demo: true,
-    settings: false,
+    settings: true,
   },
   settingsFields: HARMONIC_SAND_SETTINGS_FIELDS,
   configDefaults: HARMONIC_SAND_DEFAULTS,
@@ -51,7 +52,7 @@ export const harmonicSandDefinition: SimulationDefinition = {
     severity: 0,
   },
   defaultSeed: 240524,
-  factory: () => new HarmonicSandScene(),
+  factory: (ctx) => (ctx.quality === 'raw' ? new RawHarmonicSandScene() : new HarmonicSandScene()),
   previewFactory: () => new HarmonicSandPreviewScene(),
   demoAiFactory: () => new HarmonicSandDemoAI(),
   tutorialPages: [

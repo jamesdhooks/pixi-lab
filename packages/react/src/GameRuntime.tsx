@@ -121,7 +121,7 @@ export function GameRuntime({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [definition.id]); // Only re-create when game changes
+  }, [definition.id, quality]); // Re-create when the experience or engine configuration changes
 
   useEffect(() => {
     appRef.current?.setSleepMode((sleepMode ?? false) || (lowMotion ?? false));

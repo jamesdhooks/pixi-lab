@@ -14,7 +14,7 @@ import { HUD } from './ui/HUD.js';
 import { ModeToggle } from './ui/ModeToggle.js';
 import { SettingsDrawer } from './ui/SettingsDrawer.js';
 import { StylePicker } from './ui/StylePicker.js';
-import { QualitySelector } from './ui/QualitySelector.js';
+import { EngineConfigurationSelector } from './ui/QualitySelector.js';
 import { DebugPanel } from './ui/DebugPanel.js';
 import { SimControlPanel } from './ui/SimControlPanel.js';
 import { OverflowMenu } from './ui/OverflowMenu.js';
@@ -412,9 +412,11 @@ function GameLauncherInner({
   const hasModes = (definition.modes?.length ?? 0) > 1;
   const hasQualityModes = (definition.capabilities.qualityModes?.length ?? 0) > 0;
   const isSimulation = definition.kind === 'simulation';
-  const topControlFields = (definition.settingsFields ?? []).filter(
-    (f) => (f.type === 'number' || f.type === 'select') && (!f.visibleModes || f.visibleModes.includes(modeId)),
-  );
+  const isFieldVisible = (f: NonNullable<LabExperience['settingsFields']>[number]) =>
+    (!f.visibleModes || f.visibleModes.includes(modeId)) &&
+    (!f.visibleQualities || f.visibleQualities.includes(quality));
+  const visibleSettingsFields = (definition.settingsFields ?? []).filter(isFieldVisible);
+  const topControlFields = visibleSettingsFields.filter((f) => f.type === 'number' || f.type === 'select');
 
   // On mobile portrait, style + mode are shown at the top of SimControlPanel instead of HUD/OverflowMenu.
   const controlsHeaderSlot =
@@ -456,9 +458,7 @@ function GameLauncherInner({
         .map((m) => ({ label: m.label, action: m.description! }));
 
   // Append a slider hint if the experience has numeric settings visible at default mode
-  const defaultNumericFields = (definition.settingsFields ?? []).filter(
-    (f) => f.type === 'number' && (!f.visibleModes || f.visibleModes.includes(modeId)),
-  );
+  const defaultNumericFields = visibleSettingsFields.filter((f) => f.type === 'number');
   if (defaultNumericFields.length > 0) {
     introHints.push({ label: 'Sliders', action: 'adjust physics and visual settings at the top' });
   }
@@ -536,7 +536,7 @@ function GameLauncherInner({
             }
           />
 
-          {/* Top-right controls: quality, reset, settings, hide-ui, demo — adaptive via OverflowMenu */}
+          {/* Top-right controls: engine configuration, reset, settings, hide-ui, demo — adaptive via OverflowMenu */}
           <OverflowMenu
             items={[
               // On mobile portrait, style + mode move from HUD center into the overflow sheet.
@@ -576,10 +576,10 @@ function GameLauncherInner({
               },
               {
                 key: 'quality',
-                label: 'Quality',
+                label: 'Engine configuration',
                 hidden: !hasQualityModes,
                 node: (
-                  <QualitySelector
+                  <EngineConfigurationSelector
                     value={quality}
                     renderedValue={renderedQuality}
                     options={definition.capabilities.qualityModes!}
@@ -669,9 +669,7 @@ function GameLauncherInner({
               open={settingsOpen}
               onClose={handleCloseSettings}
               settings={appRef.current.settings}
-              fields={(definition.settingsFields ?? []).filter(
-                (f) => !f.visibleModes || f.visibleModes.includes(modeId),
-              )}
+              fields={visibleSettingsFields}
               maxPixels={localMaxPixels}
               onMaxPixelsChange={handleMaxPixelsChange}
             />

@@ -132,6 +132,10 @@ Fluid-specific compatibility routes now persist through `writeCompatibilityRende
 
 `packages/demo/src/demoRuntime.ts` now owns the demo host's pure query, compatibility-storage, backend/profile route, and runtime readout helpers. `App.tsx` imports those boundaries instead of exporting helper logic from the component file, keeping the demo host closer to composition/state while tests target the backend-neutral runtime module directly.
 
+## Fluid compatibility route action slice
+
+`applyCompatibilityRouteRenderSelection()` is now the named demo runtime action for Fluid compatibility routes that need to bridge query `backend/profile` or legacy `quality` params into both storage keys before launching the current scene contract. `App.tsx` delegates the Fluid engine/reference special case to this helper, keeping route effects declarative while preserving the same opt-in raw scoping and legacy storage behavior.
+
 ## Next smallest slice
 
-Move the Fluid compatibility launch special case out of `App.tsx` into a named demo runtime action helper so route-mode effects can remain declarative and easier to test without mounting the full app shell.
+Introduce a focused regression around the Fluid compatibility route effect in the demo shell, proving `fluidEngine`/`fluidReference` launches call the shared action path without mounting a raw route for experiences that do not advertise it.

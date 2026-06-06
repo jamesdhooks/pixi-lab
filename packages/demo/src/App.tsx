@@ -9,11 +9,10 @@ import { SIMULATION_REGISTRY, fluidTankDefinition } from '@hooksjam/pixi-lab-sim
 import { type LabExperience, type RenderBackendProfileSelection, type RenderQuality } from '@hooksjam/pixi-lab-core';
 import { hasPassedDemoQa } from './demoQaStatus';
 import {
+  applyCompatibilityRouteRenderSelection,
   buildExperienceRuntimeViewModel,
   findQueryExperience,
   queryQualityForExperience,
-  queryRenderSelectionForExperience,
-  writeCompatibilityRenderSelection,
 } from './demoRuntime';
 
 const ALL_EXPERIENCES: readonly LabExperience[] = [
@@ -107,10 +106,7 @@ export function App() {
   useEffect(() => {
     if (routeMode.fluidGallery) return;
     if (routeMode.fluidEngine || routeMode.fluidReference) {
-      const fluidSelection = queryRenderSelectionForExperience(fluidTankDefinition, routeMode.queryParams);
-      if (fluidSelection) {
-        try { writeCompatibilityRenderSelection(fluidSelection); } catch { /* ignore */ }
-      }
+      try { applyCompatibilityRouteRenderSelection(fluidTankDefinition, routeMode.queryParams); } catch { /* ignore */ }
       setAppDemoActive(false);
       setCarouselOpen(false);
       setCarouselDocked(false);

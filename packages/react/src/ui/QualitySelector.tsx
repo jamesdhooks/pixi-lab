@@ -1,79 +1,64 @@
 import { motion } from 'framer-motion';
 import {
-  getSupportedRenderQualityModes,
-  groupQualityModesByBackend,
-  toRenderBackendProfileCandidate,
+  getSupportedEngineConfigurations,
+  toEngineConfiguration,
   type RenderQuality,
 } from '@hooksjam/pixi-lab-core';
 
-export interface QualitySelectorProps {
+export interface EngineConfigurationSelectorProps {
   value: RenderQuality;
   /**
    * The quality level actually being rendered. May differ from `value` when the
    * performance governor falls back to a lower tier. When provided and different
-   * from `value`, the rendered tier is highlighted in red to signal fallback.
+   * from `value`, the rendered engine/profile is shown as a fallback note.
    */
   renderedValue?: RenderQuality;
   options?: readonly RenderQuality[];
   onChange: (quality: RenderQuality) => void;
 }
 
-export function QualitySelector({ value, renderedValue, options, onChange }: QualitySelectorProps) {
+function optionLabel(quality: RenderQuality): string {
+  return toEngineConfiguration(quality).label;
+}
+
+export function EngineConfigurationSelector({ value, renderedValue, options, onChange }: EngineConfigurationSelectorProps) {
   const hasFallback = renderedValue !== undefined && renderedValue !== value;
-  const backendGroups = groupQualityModesByBackend(
-    getSupportedRenderQualityModes(options === undefined ? undefined : { qualityModes: options }),
+  const engineConfigurations = getSupportedEngineConfigurations(
+    options === undefined ? undefined : { qualityModes: options },
   );
+  const renderedLabel = hasFallback && renderedValue ? optionLabel(renderedValue) : null;
 
   return (
-    <motion.div
+    <motion.label
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="flex h-8 items-center gap-0.5 rounded-xl bg-black/30 px-1 backdrop-blur-md"
-      aria-label="Renderer backend and profile options"
+      className="flex h-8 items-center gap-2 rounded-xl bg-black/30 px-2 backdrop-blur-md"
     >
-      {backendGroups.map((group, groupIndex) => (
-        <div key={group.backend} className="flex items-center gap-0.5" data-renderer-backend={group.backend}>
-          {groupIndex > 0 ? <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-white/10" /> : null}
-          <span className="sr-only">{group.backend} backend</span>
-          {group.candidates.map(({ quality: q, backend, profile, legacyLabel }) => {
-            const isSelected = q === value;
-            const isRendered = q === (renderedValue ?? value);
-            const isFallback = hasFallback && isRendered;
-            const renderedCandidate = toRenderBackendProfileCandidate(renderedValue ?? value);
-            const title = isFallback
-              ? `Performance fallback to ${renderedCandidate.backend} / ${renderedCandidate.profile}`
-              : `${legacyLabel}: ${backend} / ${profile}`;
-
-            let cls: string;
-            if (isFallback) {
-              // Rendered tier during fallback — red highlight
-              cls = 'bg-red-500/20 text-red-300/80';
-            } else if (isSelected) {
-              // User-selected tier (and it's actually rendering)
-              cls = 'bg-white/20 text-white';
-            } else if (hasFallback && isSelected) {
-              // User wants this tier but engine fell back — faint ring
-              cls = 'text-white/40 ring-1 ring-white/20';
-            } else {
-              cls = 'text-white/50 hover:text-white/80';
-            }
-
-            return (
-              <button
-                key={q}
-                type="button"
-                onClick={() => onChange(q)}
-                title={title}
-                aria-label={`${legacyLabel} render option, ${backend} backend, ${profile} profile`}
-                className={`h-6 rounded-lg px-2.5 text-xs font-semibold capitalize transition-colors ${cls}`}
-              >
-                {legacyLabel}
-              </button>
-            );
-          })}
-        </div>
-      ))}
-    </motion.div>
+      <span className="hidden text-[10px] font-semibold uppercase tracking-[0.22em] text-white/35 sm:inline">
+        Engine
+      </span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as RenderQuality)}
+        aria-label="Engine configuration"
+        title={hasFallback && renderedLabel ? `Performance fallback to ${renderedLabel}` : 'Engine configuration'}
+        className="h-6 min-w-36 rounded-lg border border-white/10 bg-black/40 px-2 text-xs font-semibold text-white outline-none transition-colors hover:bg-black/55 focus:border-white/35 focus:ring-1 focus:ring-white/20"
+      >
+        {engineConfigurations.map((configuration) => (
+          <option key={configuration.id} value={configuration.legacyQuality}>
+            {configuration.label}
+          </option>
+        ))}
+      </select>
+      {hasFallback && renderedLabel ? (
+        <span className="hidden text-[10px] font-medium text-red-300/80 lg:inline" title={`Performance fallback to ${renderedLabel}`}>
+          rendering {renderedLabel}
+        </span>
+      ) : null}
+    </motion.label>
   );
 }
+
+export const QualitySelector = EngineConfigurationSelector;
+export type QualitySelectorProps = EngineConfigurationSelectorProps;

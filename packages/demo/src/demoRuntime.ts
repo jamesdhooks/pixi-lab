@@ -59,6 +59,18 @@ export function writeCompatibilityRenderSelection(
   );
 }
 
+export function applyCompatibilityRouteRenderSelection(
+  experience: LabExperience,
+  params: Pick<URLSearchParams, 'get'>,
+  storage: Pick<Storage, 'setItem'> = localStorage,
+): RenderBackendProfileSelection | undefined {
+  const selection = queryRenderSelectionForExperience(experience, params);
+  if (!selection) return undefined;
+
+  writeCompatibilityRenderSelection(selection, storage);
+  return selection;
+}
+
 export interface ExperienceRuntimeViewModel {
   readonly label: string;
   readonly backendProfileRoute: string | null;

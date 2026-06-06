@@ -112,6 +112,7 @@ export {
   LEGACY_RENDER_QUALITY_STORAGE_KEY,
   RENDER_SELECTION_STORAGE_KEY,
   formatRenderBackendProfileSelection,
+  getSupportedEngineConfigurations,
   getSupportedRenderQualityModes,
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
@@ -127,7 +128,9 @@ export {
   sanitizeLegacyRenderQuality,
   serializeRenderBackendProfileRoute,
   serializeRenderBackendProfileStorage,
+  toEngineConfiguration,
   toRenderBackendProfileCandidate,
+  type EngineConfiguration,
   type RenderBackendProfileCandidate,
   type RenderBackendProfileGroup,
   type RenderBackendProfileQueryRequest,
@@ -149,6 +152,16 @@ export { EmitterMarkerRenderer } from './render/EmitterMarkerRenderer.js';
 export { ProceduralTextureLibrary, type ProceduralTextureId } from './render/procedural/ProceduralTextureLibrary.js';
 export { createSharedPass, SHARED_RENDER_PASS_IDS } from './render/passes/SharedPasses.js';
 export { NoopRenderPass, type RenderPass, type RenderPassContext } from './render/passes/RenderPass.js';
+export {
+  RawWebGL2Scene,
+  colorNumberToRgb,
+  compileRawWebGL2Shader,
+  finiteNumberSetting,
+  linkRawWebGL2Program,
+  type RawWebGL2ProgramSources,
+  type RawWebGL2RenderState,
+  type RawWebGL2SceneOptions,
+} from './render/raw/RawWebGL2Scene.js';
 
 // Simulation primitives
 export { SimulationScene } from './sim/SimulationScene.js';

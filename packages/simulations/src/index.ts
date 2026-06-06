@@ -64,12 +64,14 @@ export { ElectroOsmoticAmoebaModel, type ElectroOsmoticAmoebaModelOptions, type 
 
 export { fluidTankDefinition } from './fluid-tank/fluid-tank.definition.js';
 export { FluidTankScene, fluidTankStyleManifest } from './fluid-tank/FluidTankScene.js';
+export { RawFluidTankScene } from './fluid-tank/RawFluidTankScene.js';
 export { FluidTankPreviewScene } from './fluid-tank/FluidTankPreviewScene.js';
 export { FluidTankDemoAI } from './fluid-tank/FluidTankDemoAI.js';
 export type { SceneRenderVariant } from './rendering/SceneRenderVariant.js';
 
 export { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 export { HarmonicSandScene, harmonicSandStyleManifest } from './harmonic-sand/HarmonicSandScene.js';
+export { RawHarmonicSandScene } from './harmonic-sand/RawHarmonicSandScene.js';
 export { HarmonicSandPreviewScene } from './harmonic-sand/HarmonicSandPreviewScene.js';
 export { HarmonicSandModel, type HarmonicEmitter, type HarmonicSandModelOptions } from './harmonic-sand/HarmonicSandModel.js';
 

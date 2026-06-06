@@ -4,6 +4,7 @@ import {
   LEGACY_RENDER_QUALITY_STORAGE_KEY,
   RENDER_SELECTION_STORAGE_KEY,
   formatRenderBackendProfileSelection,
+  getSupportedEngineConfigurations,
   getSupportedRenderQualityModes,
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
@@ -19,6 +20,7 @@ import {
   sanitizeLegacyRenderQuality,
   serializeRenderBackendProfileRoute,
   serializeRenderBackendProfileStorage,
+  toEngineConfiguration,
   toRenderBackendProfileCandidate,
 } from '../runtime/RenderBackendProfile.js';
 
@@ -39,6 +41,33 @@ describe('RenderBackendProfile', () => {
     expect(getSupportedRenderQualityModes(undefined)).toEqual(['basic', 'enhanced']);
     expect(getSupportedRenderQualityModes({ qualityModes: [] })).toEqual(['basic', 'enhanced']);
     expect(getSupportedRenderQualityModes({ qualityModes: readonlyRawModes })).toEqual(['raw']);
+  });
+
+
+  it('exposes host-facing engine configurations without requiring UI callers to format legacy quality labels', () => {
+    expect(getSupportedEngineConfigurations({ qualityModes: ['basic', 'raw'] })).toEqual([
+      {
+        id: 'basic',
+        backend: 'pixi',
+        profile: 'standard',
+        label: 'PixiJS / Standard · Basic',
+        legacyQuality: 'basic',
+      },
+      {
+        id: 'raw',
+        backend: 'webgl2',
+        profile: 'high',
+        label: 'WebGL2 / High · Raw',
+        legacyQuality: 'raw',
+      },
+    ]);
+    expect(toEngineConfiguration('enhanced')).toEqual({
+      id: 'enhanced',
+      backend: 'pixi',
+      profile: 'high',
+      label: 'PixiJS / High · Enhanced',
+      legacyQuality: 'enhanced',
+    });
   });
 
   it('centralizes host storage keys at the runtime boundary', () => {

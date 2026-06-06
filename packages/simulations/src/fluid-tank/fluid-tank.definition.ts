@@ -2,6 +2,7 @@ import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { FluidTankDemoAI } from './FluidTankDemoAI.js';
 import { FluidTankPreviewScene } from './FluidTankPreviewScene.js';
 import { FluidTankScene, fluidTankStyleManifest } from './FluidTankScene.js';
+import { RawFluidTankScene } from './RawFluidTankScene.js';
 import { FLUID_TANK_DEFAULTS, FLUID_TANK_SETTINGS_FIELDS } from './fluid-tank.config.js';
 
 export const fluidTankDefinition: SimulationDefinition = {
@@ -57,7 +58,7 @@ export const fluidTankDefinition: SimulationDefinition = {
     severity: 0,
   },
   defaultSeed: 260527,
-  factory: () => new FluidTankScene(),
+  factory: (ctx) => (ctx.quality === 'raw' ? new RawFluidTankScene() : new FluidTankScene()),
   previewFactory: () => new FluidTankPreviewScene(),
   demoAiFactory: () => new FluidTankDemoAI(),
   tutorialPages: [

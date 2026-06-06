@@ -14,6 +14,19 @@ export interface RenderBackendProfileCandidate {
   readonly legacyLabel: string;
 }
 
+/**
+ * Host-facing engine configuration. `legacyQuality` is retained as the
+ * compatibility token consumed by existing scene/runtime hooks while the UI and
+ * route layer migrate to backend/profile terminology.
+ */
+export interface EngineConfiguration {
+  readonly id: RenderQuality;
+  readonly backend: RendererBackend;
+  readonly profile: RenderProfile;
+  readonly label: string;
+  readonly legacyQuality: RenderQuality;
+}
+
 export interface RenderBackendProfileGroup {
   readonly backend: RendererBackend;
   readonly candidates: readonly RenderBackendProfileCandidate[];
@@ -112,6 +125,29 @@ export function mapQualityModesToBackendProfiles(
   qualityModes: readonly RenderQuality[],
 ): RenderBackendProfileCandidate[] {
   return qualityModes.map(toRenderBackendProfileCandidate);
+}
+
+export function toEngineConfiguration(quality: RenderQuality): EngineConfiguration {
+  const candidate = toRenderBackendProfileCandidate(quality);
+  const label = formatRenderBackendProfileSelection({
+    backend: candidate.backend,
+    profile: candidate.profile,
+    legacyQuality: quality,
+  });
+
+  return {
+    id: quality,
+    backend: candidate.backend,
+    profile: candidate.profile,
+    label: `${label.summary} · ${candidate.legacyLabel}`,
+    legacyQuality: quality,
+  };
+}
+
+export function getSupportedEngineConfigurations(
+  capabilities: { readonly qualityModes?: readonly RenderQuality[] } | undefined,
+): EngineConfiguration[] {
+  return getSupportedRenderQualityModes(capabilities).map(toEngineConfiguration);
 }
 
 export function getSupportedRenderQualityModes(

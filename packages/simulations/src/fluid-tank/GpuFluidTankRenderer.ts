@@ -363,8 +363,13 @@ void main() {
 // Walls and ripples drawn by PixiJS Graphics objects then appear on top.
 export const RAW_FLUID_CANVAS_Z_INDEX = '1';
 
+export interface GpuFluidTankRendererMount {
+  canvas?: HTMLCanvasElement;
+}
+
 export class GpuFluidTankRenderer {
   readonly canvas: HTMLCanvasElement;
+  private readonly ownsCanvas: boolean;
   private readonly gl: WebGL2RenderingContext | null;
   private rng: SeededRng;
   private readonly textureFilter: number;
@@ -387,11 +392,12 @@ export class GpuFluidTankRenderer {
   private splatCount = 0;
   private shaderSeed = 0;
 
-  constructor(parent: HTMLElement, options: GpuFluidTankOptions, quality: RenderQuality = 'basic') {
+  constructor(parent: HTMLElement, options: GpuFluidTankOptions, quality: RenderQuality = 'basic', mount: GpuFluidTankRendererMount = {}) {
     this.options = { ...options };
     this.quality = quality;
     this.rng = new SeededRng(options.seed);
-    this.canvas = document.createElement('canvas');
+    this.ownsCanvas = !mount.canvas;
+    this.canvas = mount.canvas ?? document.createElement('canvas');
     this.canvas.style.position = 'absolute';
     this.canvas.style.inset = '0';
     this.canvas.style.width = '100%';
@@ -401,7 +407,7 @@ export class GpuFluidTankRenderer {
     this.canvas.style.background = '#020206';
     this.canvas.style.zIndex = RAW_FLUID_CANVAS_Z_INDEX;
     this.canvas.dataset.pixiLabFluidRenderer = 'raw-webgl';
-    parent.appendChild(this.canvas);
+    if (this.ownsCanvas) parent.appendChild(this.canvas);
 
     this.gl = this.canvas.getContext('webgl2', {
       alpha: false,
@@ -635,7 +641,7 @@ export class GpuFluidTankRenderer {
       if (this.quadBuffer) this.gl.deleteBuffer(this.quadBuffer);
       if (this.quadVao) this.gl.deleteVertexArray(this.quadVao);
     }
-    this.canvas.remove();
+    if (this.ownsCanvas) this.canvas.remove();
   }
 
   private initializeGl(): void {
