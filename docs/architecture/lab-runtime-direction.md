@@ -128,6 +128,10 @@ Fluid-specific compatibility routes now persist through `writeCompatibilityRende
 
 `buildExperienceRuntimeViewModel()` is now the demo host's pure boundary for turning an active experience plus resolved backend/profile descriptor into readout UI data. The React component consumes this reusable view model instead of formatting labels and link visibility inline, so future debug panels can reuse the same backend-neutral host state without reaching into legacy scene quality plumbing.
 
+## Demo host runtime module slice
+
+`packages/demo/src/demoRuntime.ts` now owns the demo host's pure query, compatibility-storage, backend/profile route, and runtime readout helpers. `App.tsx` imports those boundaries instead of exporting helper logic from the component file, keeping the demo host closer to composition/state while tests target the backend-neutral runtime module directly.
+
 ## Next smallest slice
 
-Move route-query and compatibility-storage helpers out of `packages/demo/src/App.tsx` into a small demo host runtime module so `App` keeps only composition/state and tests target a non-component boundary.
+Move the Fluid compatibility launch special case out of `App.tsx` into a named demo runtime action helper so route-mode effects can remain declarative and easier to test without mounting the full app shell.

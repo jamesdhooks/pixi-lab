@@ -10,7 +10,7 @@ import {
   queryRenderSelectionForExperience,
   shouldExposeExperienceBackendProfileRoute,
   writeCompatibilityRenderSelection,
-} from '../App';
+} from '../demoRuntime';
 
 const EXPERIENCES = [
   { id: 'amoeba-lamp', name: 'Amoeba Lamp', capabilities: { qualityModes: ['basic', 'enhanced', 'raw'] } },
