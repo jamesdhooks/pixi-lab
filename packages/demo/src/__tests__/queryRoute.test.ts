@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
+import { LEGACY_RENDER_QUALITY_STORAGE_KEY, RENDER_SELECTION_STORAGE_KEY } from '@hooksjam/pixi-lab-core';
 import {
   buildExperienceBackendProfileRoute,
   findQueryExperience,
@@ -7,6 +8,7 @@ import {
   queryQualityForExperience,
   queryRenderSelectionForExperience,
   shouldExposeExperienceBackendProfileRoute,
+  writeCompatibilityRenderSelection,
 } from '../App';
 
 const EXPERIENCES = [
@@ -108,5 +110,23 @@ describe('demo query routing helpers', () => {
         legacyQuality: 'raw',
       }),
     ).toBe(true);
+  });
+
+  it('persists compatibility routes through legacy quality and backend/profile storage', () => {
+    const stored = new Map<string, string>();
+
+    writeCompatibilityRenderSelection(
+      {
+        backend: 'webgl2',
+        profile: 'high',
+        legacyQuality: 'raw',
+      },
+      { setItem: (key, value) => { stored.set(key, value); } },
+    );
+
+    expect(stored.get(LEGACY_RENDER_QUALITY_STORAGE_KEY)).toBe('raw');
+    expect(stored.get(RENDER_SELECTION_STORAGE_KEY)).toBe(
+      JSON.stringify({ backend: 'webgl2', profile: 'high', quality: 'raw' }),
+    );
   });
 });

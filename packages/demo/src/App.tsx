@@ -11,7 +11,10 @@ import {
   getSupportedRenderQualityModes,
   isDefaultRenderBackendProfileSelection,
   isRenderQuality,
+  LEGACY_RENDER_QUALITY_STORAGE_KEY,
+  RENDER_SELECTION_STORAGE_KEY,
   resolveRenderBackendProfileQuerySelection,
+  serializeRenderBackendProfileStorage,
   serializeRenderBackendProfileRoute,
   type LabExperience,
   type RenderBackendProfileSelection,
@@ -65,6 +68,17 @@ export function queryQualityForExperience(
   params: Pick<URLSearchParams, 'get'>,
 ): RenderQuality | undefined {
   return queryRenderSelectionForExperience(experience, params)?.legacyQuality;
+}
+
+export function writeCompatibilityRenderSelection(
+  selection: RenderBackendProfileSelection,
+  storage: Pick<Storage, 'setItem'> = localStorage,
+): void {
+  storage.setItem(LEGACY_RENDER_QUALITY_STORAGE_KEY, selection.legacyQuality);
+  storage.setItem(
+    RENDER_SELECTION_STORAGE_KEY,
+    JSON.stringify(serializeRenderBackendProfileStorage(selection)),
+  );
 }
 
 export function shouldExposeExperienceBackendProfileRoute(selection: RenderBackendProfileSelection): boolean {
@@ -167,9 +181,9 @@ export function App() {
   useEffect(() => {
     if (routeMode.fluidGallery) return;
     if (routeMode.fluidEngine || routeMode.fluidReference) {
-      const fluidQuality = queryQualityForExperience(fluidTankDefinition, routeMode.queryParams);
-      if (fluidQuality) {
-        try { localStorage.setItem('pixi-lab:quality', fluidQuality); } catch { /* ignore */ }
+      const fluidSelection = queryRenderSelectionForExperience(fluidTankDefinition, routeMode.queryParams);
+      if (fluidSelection) {
+        try { writeCompatibilityRenderSelection(fluidSelection); } catch { /* ignore */ }
       }
       setAppDemoActive(false);
       setCarouselOpen(false);

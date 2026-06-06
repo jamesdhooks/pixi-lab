@@ -21,6 +21,8 @@ import { OverflowMenu } from './ui/OverflowMenu.js';
 import { ViewportProvider, useViewportContext } from './ViewportProvider.js';
 import { resolveRenderSelection, resolveStoredRenderSelection } from './qualitySelection.js';
 import {
+  LEGACY_RENDER_QUALITY_STORAGE_KEY,
+  RENDER_SELECTION_STORAGE_KEY,
   serializeRenderBackendProfileStorage,
   nameSuggestions,
 } from '@hooksjam/pixi-lab-core';
@@ -30,9 +32,6 @@ import type { GameApp } from '@hooksjam/pixi-lab-core';
 import type { IntroHint } from './ui/IntroCard.js';
 
 type Shell = 'playing' | 'gameover';
-
-const LEGACY_RENDER_QUALITY_STORAGE_KEY = 'pixi-lab:quality';
-const RENDER_SELECTION_STORAGE_KEY = 'pixi-lab:renderSelection';
 
 function readStoredRenderSelection(): unknown {
   try {

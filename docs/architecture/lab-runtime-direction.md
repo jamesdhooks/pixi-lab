@@ -116,6 +116,14 @@ The active-experience Lab Runtime readout still shows the resolved backend/profi
 
 `packages/react/src/qualitySelection.ts` now exports `resolveStoredRenderSelection()` as the pure React launcher boundary for combining the backend-neutral storage snapshot with the legacy `pixi-lab:quality` fallback. Focused tests prove persisted `webgl2/high/raw` is downgraded for experiences that do not advertise `raw`, preserved for opt-in raw experiences, and ignored in favor of the legacy key when the descriptor snapshot is invalid.
 
+## Shared storage key slice
+
+`LEGACY_RENDER_QUALITY_STORAGE_KEY` and `RENDER_SELECTION_STORAGE_KEY` now live in the core runtime bridge beside the backend/profile storage serializers. React launcher persistence and the demo's legacy Fluid route compatibility write both consume those shared constants, so future host/debug tooling can refer to one Lab Runtime storage boundary instead of duplicating `pixi-lab:quality` or `pixi-lab:renderSelection` string literals.
+
+## Fluid compatibility persistence slice
+
+Fluid-specific compatibility routes now persist through `writeCompatibilityRenderSelection()`, which writes both the legacy `pixi-lab:quality` value and the shared backend/profile `pixi-lab:renderSelection` snapshot. This keeps `quality=basic|enhanced|raw` links backward-compatible while aligning special-case Fluid launches with the same Lab Runtime storage boundary used by `GameLauncher`.
+
 ## Next smallest slice
 
-Move the `GameLauncher` startup/persistence storage keys behind a tiny exported constants/helper module so host shells and future debug tooling do not duplicate `pixi-lab:renderSelection` or `pixi-lab:quality` string literals.
+Move the demo's active readout/link state from local `renderSelection` state toward a small host-runtime view model helper that can be reused by future debug panels without reaching into scene-specific quality plumbing.

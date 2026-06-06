@@ -4,6 +4,8 @@ const RENDERER_BACKENDS: readonly RendererBackend[] = ['pixi', 'webgl2', 'three'
 const RENDER_PROFILES: readonly RenderProfile[] = ['preview', 'standard', 'high'];
 
 export const DEFAULT_RENDER_QUALITY_MODES: readonly RenderQuality[] = ['basic', 'enhanced'];
+export const LEGACY_RENDER_QUALITY_STORAGE_KEY = 'pixi-lab:quality';
+export const RENDER_SELECTION_STORAGE_KEY = 'pixi-lab:renderSelection';
 
 export interface RenderBackendProfileCandidate {
   readonly quality: RenderQuality;

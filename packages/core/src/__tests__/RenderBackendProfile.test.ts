@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_RENDER_QUALITY_MODES,
+  LEGACY_RENDER_QUALITY_STORAGE_KEY,
+  RENDER_SELECTION_STORAGE_KEY,
   formatRenderBackendProfileSelection,
   getSupportedRenderQualityModes,
   groupBackendProfileCandidates,
@@ -37,6 +39,11 @@ describe('RenderBackendProfile', () => {
     expect(getSupportedRenderQualityModes(undefined)).toEqual(['basic', 'enhanced']);
     expect(getSupportedRenderQualityModes({ qualityModes: [] })).toEqual(['basic', 'enhanced']);
     expect(getSupportedRenderQualityModes({ qualityModes: readonlyRawModes })).toEqual(['raw']);
+  });
+
+  it('centralizes host storage keys at the runtime boundary', () => {
+    expect(LEGACY_RENDER_QUALITY_STORAGE_KEY).toBe('pixi-lab:quality');
+    expect(RENDER_SELECTION_STORAGE_KEY).toBe('pixi-lab:renderSelection');
   });
 
   it('keeps raw modeled as an opt-in WebGL2 high profile candidate', () => {
