@@ -6,6 +6,17 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Engine Configuration Route Resolver Slice
+
+Scope:
+- added `resolveEngineConfigurationQuerySelection(...)` so demo routes prefer explicit engine configuration metadata instead of legacy quality-mode backend guesses.
+- switched demo query selection to `getSupportedEngineConfigurations(...)`, preserving legacy `quality` deep links as a compatibility bridge.
+- added regression coverage for Pixi-owned raw routes: unsupported WebGL2 route params fall back safely, while `quality=raw` resolves to Pixi high raw when the definition declares it.
+
+Validation:
+- `pnpm --filter @hooksjam/pixi-lab-core -s build` passed.
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts packages/demo/src/__tests__/queryRoute.test.ts` passed.
+
 ## 2026-06-06 — Engine Configuration Factory Slice
 
 Scope:

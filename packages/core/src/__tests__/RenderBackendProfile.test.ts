@@ -15,6 +15,7 @@ import {
   isRendererBackend,
   mapQualityModesToBackendProfiles,
   parseRenderBackendProfileStorage,
+  resolveEngineConfigurationQuerySelection,
   resolveRenderBackendProfileQuerySelection,
   resolveRenderBackendProfileSelection,
   resolveRenderBackendProfileStorageSelection,
@@ -240,6 +241,32 @@ describe('RenderBackendProfile', () => {
       backend: 'pixi',
       profile: 'standard',
       legacyQuality: 'basic',
+    });
+  });
+
+  it('resolves query params through explicit engine configurations before legacy quality mappings', () => {
+    const configurations = createEngineConfigurations(['basic', 'enhanced', 'raw'], { rawBackend: 'pixi' });
+
+    expect(
+      resolveEngineConfigurationQuerySelection(
+        { backend: 'webgl2', profile: 'high', quality: 'raw' },
+        configurations,
+      ),
+    ).toEqual({
+      backend: 'pixi',
+      profile: 'high',
+      legacyQuality: 'raw',
+    });
+
+    expect(
+      resolveEngineConfigurationQuerySelection(
+        { backend: 'pixi', profile: 'high', quality: 'basic' },
+        configurations,
+      ),
+    ).toEqual({
+      backend: 'pixi',
+      profile: 'high',
+      legacyQuality: 'enhanced',
     });
   });
 

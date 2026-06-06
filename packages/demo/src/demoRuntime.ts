@@ -1,11 +1,11 @@
 import {
   formatRenderBackendProfileSelection,
-  getSupportedRenderQualityModes,
+  getSupportedEngineConfigurations,
   isDefaultRenderBackendProfileSelection,
   isRenderQuality,
   LEGACY_RENDER_QUALITY_STORAGE_KEY,
   RENDER_SELECTION_STORAGE_KEY,
-  resolveRenderBackendProfileQuerySelection,
+  resolveEngineConfigurationQuerySelection,
   serializeRenderBackendProfileStorage,
   serializeRenderBackendProfileRoute,
   type LabExperience,
@@ -34,8 +34,8 @@ export function queryRenderSelectionForExperience(
 
   if (!backend && !profile && !requestedQuality) return undefined;
 
-  const supported = getSupportedRenderQualityModes(experience.capabilities);
-  return resolveRenderBackendProfileQuerySelection(
+  const supported = getSupportedEngineConfigurations(experience.capabilities);
+  return resolveEngineConfigurationQuerySelection(
     { backend, profile, quality: requestedQuality },
     supported,
   );

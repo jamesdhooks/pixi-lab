@@ -266,6 +266,48 @@ export function resolveRenderBackendProfileQuerySelection(
   );
 }
 
+export function resolveEngineConfigurationQuerySelection(
+  request: RenderBackendProfileQueryRequest,
+  engineConfigurations: readonly EngineConfiguration[],
+  fallbackQuality: RenderQuality = 'basic',
+): RenderBackendProfileSelection {
+  const requestedBackend = isRendererBackend(request.backend) ? request.backend : undefined;
+  const requestedProfile = isRenderProfile(request.profile) ? request.profile : undefined;
+
+  if (requestedBackend && requestedProfile) {
+    const engineConfigurationMatch = engineConfigurations.find(
+      (configuration) => configuration.backend === requestedBackend && configuration.profile === requestedProfile,
+    );
+
+    if (engineConfigurationMatch) {
+      return {
+        backend: engineConfigurationMatch.backend,
+        profile: engineConfigurationMatch.profile,
+        legacyQuality: engineConfigurationMatch.legacyQuality,
+      };
+    }
+  }
+
+  const requestedQuality = isRenderQuality(request.quality) ? request.quality : undefined;
+  const qualityMatch = requestedQuality
+    ? engineConfigurations.find((configuration) => configuration.legacyQuality === requestedQuality)
+    : undefined;
+
+  if (qualityMatch) {
+    return {
+      backend: qualityMatch.backend,
+      profile: qualityMatch.profile,
+      legacyQuality: qualityMatch.legacyQuality,
+    };
+  }
+
+  return resolveRenderBackendProfileSelection(
+    requestedQuality,
+    engineConfigurations.map((configuration) => configuration.legacyQuality),
+    fallbackQuality,
+  );
+}
+
 export function formatRenderBackendProfileSelection(
   selection: RenderBackendProfileSelection,
 ): RenderBackendProfileSelectionLabel {

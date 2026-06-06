@@ -124,6 +124,7 @@ export {
   isRendererBackend,
   mapQualityModesToBackendProfiles,
   parseRenderBackendProfileStorage,
+  resolveEngineConfigurationQuerySelection,
   resolveRenderBackendProfileQuerySelection,
   resolveRenderBackendProfileSelection,
   resolveRenderBackendProfileStorageSelection,

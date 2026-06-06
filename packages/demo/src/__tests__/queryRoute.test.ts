@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
-import { LEGACY_RENDER_QUALITY_STORAGE_KEY, RENDER_SELECTION_STORAGE_KEY } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, LEGACY_RENDER_QUALITY_STORAGE_KEY, RENDER_SELECTION_STORAGE_KEY } from '@hooksjam/pixi-lab-core';
 import {
   applyCompatibilityRouteRenderSelection,
   buildExperienceBackendProfileRoute,
@@ -13,14 +13,15 @@ import {
   writeCompatibilityRenderSelection,
 } from '../demoRuntime';
 
-const RESET_ENGINE_CONFIGURATIONS = [
-  { id: 'basic', backend: 'pixi', profile: 'standard', label: 'PixiJS / Standard · Basic', legacyQuality: 'basic' },
-  { id: 'enhanced', backend: 'pixi', profile: 'high', label: 'PixiJS / High · Enhanced', legacyQuality: 'enhanced' },
-  { id: 'raw', backend: 'webgl2', profile: 'high', label: 'WebGL2 / High · Raw', legacyQuality: 'raw' },
-] as const;
+const RESET_ENGINE_CONFIGURATIONS = createEngineConfigurations(['basic', 'enhanced', 'raw']);
+const PIXI_RAW_ENGINE_CONFIGURATIONS = createEngineConfigurations(['basic', 'enhanced', 'raw'], { rawBackend: 'pixi' });
 
 const EXPERIENCES = [
-  { id: 'amoeba-lamp', name: 'Amoeba Lamp', capabilities: { qualityModes: ['basic', 'enhanced', 'raw'] } },
+  {
+    id: 'amoeba-lamp',
+    name: 'Amoeba Lamp',
+    capabilities: { qualityModes: ['basic', 'enhanced', 'raw'], engineConfigurations: PIXI_RAW_ENGINE_CONFIGURATIONS },
+  },
   {
     id: 'fluid-tank',
     name: 'Fluid Tank',
@@ -77,8 +78,8 @@ describe('demo query routing helpers', () => {
   });
 
   it('prefers supported backend/profile params while preserving legacy quality launch values', () => {
-    expect(queryRenderSelectionForExperience(EXPERIENCES[0], params('backend=webgl2&profile=high'))).toEqual({
-      backend: 'webgl2',
+    expect(queryRenderSelectionForExperience(EXPERIENCES[0], params('backend=webgl2&profile=high&quality=raw'))).toEqual({
+      backend: 'pixi',
       profile: 'high',
       legacyQuality: 'raw',
     });
@@ -158,13 +159,13 @@ describe('demo query routing helpers', () => {
 
     expect(
       buildExperienceRuntimeViewModel(EXPERIENCES[0], {
-        backend: 'webgl2',
+        backend: 'pixi',
         profile: 'high',
         legacyQuality: 'raw',
       }),
     ).toEqual({
-      label: 'WebGL2 / High',
-      backendProfileRoute: '?experience=amoeba-lamp&backend=webgl2&profile=high',
+      label: 'PixiJS / High',
+      backendProfileRoute: '?experience=amoeba-lamp&backend=pixi&profile=high',
     });
   });
 
@@ -201,7 +202,7 @@ describe('demo query routing helpers', () => {
     );
   });
 
-  it('applies compatibility route render selection through one demo runtime action', () => {
+  it('scopes unsupported backend/profile compatibility routes through explicit engine configurations', () => {
     const stored = new Map<string, string>();
     const selection = applyCompatibilityRouteRenderSelection(
       EXPERIENCES[0],
@@ -209,10 +210,25 @@ describe('demo query routing helpers', () => {
       { setItem: (key, value) => { stored.set(key, value); } },
     );
 
-    expect(selection).toEqual({ backend: 'webgl2', profile: 'high', legacyQuality: 'raw' });
+    expect(selection).toEqual({ backend: 'pixi', profile: 'standard', legacyQuality: 'basic' });
+    expect(stored.get(LEGACY_RENDER_QUALITY_STORAGE_KEY)).toBe('basic');
+    expect(stored.get(RENDER_SELECTION_STORAGE_KEY)).toBe(
+      JSON.stringify({ backend: 'pixi', profile: 'standard', quality: 'basic' }),
+    );
+  });
+
+  it('bridges legacy raw quality routes to Pixi-owned raw engine configurations', () => {
+    const stored = new Map<string, string>();
+    const selection = applyCompatibilityRouteRenderSelection(
+      EXPERIENCES[0],
+      params('backend=webgl2&profile=high&quality=raw'),
+      { setItem: (key, value) => { stored.set(key, value); } },
+    );
+
+    expect(selection).toEqual({ backend: 'pixi', profile: 'high', legacyQuality: 'raw' });
     expect(stored.get(LEGACY_RENDER_QUALITY_STORAGE_KEY)).toBe('raw');
     expect(stored.get(RENDER_SELECTION_STORAGE_KEY)).toBe(
-      JSON.stringify({ backend: 'webgl2', profile: 'high', quality: 'raw' }),
+      JSON.stringify({ backend: 'pixi', profile: 'high', quality: 'raw' }),
     );
   });
 });
