@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ReactElement, ReactNode } from 'react';
-import { EngineConfigurationSelector, QualitySelector } from './QualitySelector.js';
+import { EngineConfigurationSelector } from './EngineConfigurationSelector.js';
+import { QualitySelector } from './QualitySelector.js';
 
 function isReactElement(value: ReactNode): value is ReactElement<{ children?: ReactNode; value?: string; title?: string; 'aria-label'?: string }> {
   return typeof value === 'object' && value !== null && 'props' in value;
@@ -46,7 +47,7 @@ describe('EngineConfigurationSelector', () => {
   });
 
   it('includes raw mode as a selectable WebGL2 engine configuration when supported', () => {
-    const element = QualitySelector({
+    const element = EngineConfigurationSelector({
       value: 'raw',
       options: ['basic', 'enhanced', 'raw'],
       onChange: () => undefined,
@@ -60,9 +61,8 @@ describe('EngineConfigurationSelector', () => {
       'WebGL2 / High · Raw',
     ]);
   });
-});
-
 
   it('keeps the legacy QualitySelector export as a compatibility alias', () => {
     expect(QualitySelector).toBe(EngineConfigurationSelector);
   });
+});

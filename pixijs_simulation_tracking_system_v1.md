@@ -6,6 +6,22 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Fluid Raw Adapter Removal + Selector Terminology Slice
+
+Scope:
+- removed the obsolete Fluid Tank standalone DOM/script runtime files after raw launch moved to `RawFluidTankScene`
+- kept the shared legacy DOM script adapter compatibility surface intact while deleting Fluid-specific dead code
+- moved the real React selector implementation to `EngineConfigurationSelector.tsx` and reduced `QualitySelector.tsx` to a compatibility shim
+- updated architecture notes so the next reset slice targets launcher variable/prop terminology instead of already-completed Fluid route action regression work
+
+Validation notes:
+- focused tests passed for the engine selector, simulation registry, and raw WebGL2 scene lifecycle (15 tests)
+- `pnpm typecheck` passed after deleting the Fluid runtime remnants and moving selector implementation
+- full gate passed: `pnpm test` (55 files / 318 tests) and `pnpm build`
+- browser smoke passed for Fluid Tank raw and Harmonic Sand raw via `backend=webgl2&profile=high`; engine selector showed `WebGL2 / High · Raw`, canvases mounted, runtime readouts included `WEBGL2`/`HIGH`, and browser console stayed clean
+
+---
+
 ## 2026-06-06 — Explicit Engine Configuration Contract Slice
 
 Scope:

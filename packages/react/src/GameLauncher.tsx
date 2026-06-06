@@ -14,7 +14,7 @@ import { HUD } from './ui/HUD.js';
 import { ModeToggle } from './ui/ModeToggle.js';
 import { SettingsDrawer } from './ui/SettingsDrawer.js';
 import { StylePicker } from './ui/StylePicker.js';
-import { EngineConfigurationSelector } from './ui/QualitySelector.js';
+import { EngineConfigurationSelector } from './ui/EngineConfigurationSelector.js';
 import { DebugPanel } from './ui/DebugPanel.js';
 import { SimControlPanel } from './ui/SimControlPanel.js';
 import { OverflowMenu } from './ui/OverflowMenu.js';

@@ -136,6 +136,14 @@ Fluid-specific compatibility routes now persist through `writeCompatibilityRende
 
 `applyCompatibilityRouteRenderSelection()` is now the named demo runtime action for Fluid compatibility routes that need to bridge query `backend/profile` or legacy `quality` params into both storage keys before launching the current scene contract. `App.tsx` delegates the Fluid engine/reference special case to this helper, keeping route effects declarative while preserving the same opt-in raw scoping and legacy storage behavior.
 
+## Fluid raw dead-adapter cleanup slice
+
+Fluid Tank raw now depends on its dedicated `RawFluidTankScene` path rather than the older generated standalone DOM/script runtime files. The Fluid-specific `fluid-runtime-markup` and `fluid-runtime-mount` remnants were removed after registry coverage proved Fluid raw remains advertised through explicit engine configurations and focused tests proved no active imports depend on the old mount path.
+
+## Selector terminology cleanup slice
+
+The actual React engine selector implementation now lives in `EngineConfigurationSelector.tsx`. `QualitySelector.tsx` remains only as a compatibility shim exporting the legacy alias and props type, so new host/runtime imports use backend-neutral vocabulary while existing callers can migrate incrementally.
+
 ## Next smallest slice
 
-Introduce a focused regression around the Fluid compatibility route effect in the demo shell, proving `fluidEngine`/`fluidReference` launches call the shared action path without mounting a raw route for experiences that do not advertise it.
+Continue shrinking legacy quality terminology at host boundaries: rename internal launcher variables and prop comments around `initialQuality`, `renderedQuality`, and `handleQualityChange` where they can become engine-selection descriptors without changing scene-facing `RenderQuality` compatibility.
