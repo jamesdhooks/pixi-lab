@@ -99,11 +99,11 @@ export function DebugPanel({ app }: DebugPanelProps) {
               <StatRow label="awake" value={stats?.awakeBodies != null ? String(stats.awakeBodies) : '—'} />
               <StatRow
                 label="logical"
-                value={stats ? `${stats.canvasW} × ${stats.canvasH}` : '—'}
+                value={stats ? `${stats.canvasW} × ${stats.canvasH}` : '—'}
               />
               <StatRow
                 label="buffer"
-                value={stats ? `${stats.bufferW ?? stats.canvasW} × ${stats.bufferH ?? stats.canvasH}` : '—'}
+                value={stats ? `${stats.bufferW ?? stats.canvasW} × ${stats.bufferH ?? stats.canvasH}` : '—'}
               />
               <StatRow
                 label="res"

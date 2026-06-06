@@ -116,7 +116,6 @@ describe('MyceliumLatticeModel', () => {
   });
 
   it('stabilize adds new growth when stagnant', () => {
-    const model = createModel();
     // Exhaust tips by running many ticks on a small grid with high probability.
     const highProb = new MyceliumLatticeModel({
       seed: 1, width: 200, height: 100, columns: 16, rows: 8,

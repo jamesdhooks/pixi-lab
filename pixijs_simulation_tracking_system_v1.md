@@ -6,6 +6,20 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Lint Gate Restoration Slice
+
+Scope:
+- added a root ESLint config matching the installed TypeScript ESLint stack and the repo’s underscore placeholder convention
+- added `eslint-plugin-react-hooks` so existing hook dependency suppression comments resolve correctly
+- fixed the actual lint findings: empty storage catch, irregular DebugPanel spacing glyphs, and one unused Mycelium Lattice test local
+
+Validation notes:
+- `pnpm lint` now passes; the previous missing-config blocker is resolved
+- `pnpm typecheck` passed
+- focused Mycelium Lattice model test passed (11 tests)
+
+---
+
 ## 2026-06-06 — Launcher Engine Boundary Naming Slice
 
 Scope:

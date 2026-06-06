@@ -96,7 +96,11 @@ export function App() {
 
   // Persist maxPixels to localStorage
   useEffect(() => {
-    try { localStorage.setItem('pixi-lab:maxPixels', String(maxPixels || '')); } catch {}
+    try {
+      localStorage.setItem('pixi-lab:maxPixels', String(maxPixels || ''));
+    } catch {
+      // Storage can be unavailable in private/sandboxed contexts.
+    }
   }, [maxPixels]);
 
   useEffect(() => {
