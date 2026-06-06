@@ -6,6 +6,19 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Engine Configuration Factory Slice
+
+Scope:
+- added `createEngineConfigurations(...)` at the core runtime boundary so definitions can declare first-class engine configs without hand-written labels/backend/profile objects.
+- moved Amoeba Lamp, Fluid Tank, Harmonic Sand Plate, and Orbital Shrapnel onto the shared helper.
+- preserved Pixi-owned raw compatibility for Amoeba/Orbital through an explicit `rawBackend: 'pixi'` option while WebGL2 raw demos keep the default raw backend.
+
+Validation:
+- `pnpm --filter @hooksjam/pixi-lab-core -s build` passed to refresh workspace package exports.
+- `pnpm -s typecheck` passed.
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts packages/simulations/src/__tests__/SimulationRegistry.test.ts` passed.
+- `search_files` confirmed no remaining hand-written `engineConfigurations: [` arrays in `packages/simulations/src`.
+
 ## 2026-06-06 — Raw-Capable Engine Configuration Declarations Slice
 
 Scope:

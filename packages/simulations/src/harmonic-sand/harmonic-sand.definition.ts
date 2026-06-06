@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { HARMONIC_SAND_DEFAULTS, HARMONIC_SAND_SETTINGS_FIELDS } from './harmonic-sand.config.js';
 import { HarmonicSandPreviewScene } from './HarmonicSandPreviewScene.js';
 import { HarmonicSandScene, harmonicSandStyleManifest } from './HarmonicSandScene.js';
@@ -27,11 +27,7 @@ export const harmonicSandDefinition: SimulationDefinition = {
     proceduralTextures: true,
     renderTargetPool: true,
     qualityModes: ['basic', 'enhanced', 'raw'],
-    engineConfigurations: [
-      { id: 'basic', backend: 'pixi', profile: 'standard', label: 'PixiJS / Standard · Basic', legacyQuality: 'basic' },
-      { id: 'enhanced', backend: 'pixi', profile: 'high', label: 'PixiJS / High · Enhanced', legacyQuality: 'enhanced' },
-      { id: 'raw', backend: 'webgl2', profile: 'high', label: 'WebGL2 / High · Raw', legacyQuality: 'raw' },
-    ],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced', 'raw']),
     demo: true,
     settings: true,
   },

@@ -3,6 +3,7 @@ import {
   DEFAULT_RENDER_QUALITY_MODES,
   LEGACY_RENDER_QUALITY_STORAGE_KEY,
   RENDER_SELECTION_STORAGE_KEY,
+  createEngineConfigurations,
   formatRenderBackendProfileSelection,
   getSupportedEngineConfigurations,
   getSupportedRenderQualityModes,
@@ -70,6 +71,42 @@ describe('RenderBackendProfile', () => {
     });
   });
 
+
+  it('creates explicit engine configurations for raw-capable definitions without hand-written labels', () => {
+    expect(createEngineConfigurations(['basic', 'enhanced', 'raw'])).toEqual([
+      {
+        id: 'basic',
+        backend: 'pixi',
+        profile: 'standard',
+        label: 'PixiJS / Standard · Basic',
+        legacyQuality: 'basic',
+      },
+      {
+        id: 'enhanced',
+        backend: 'pixi',
+        profile: 'high',
+        label: 'PixiJS / High · Enhanced',
+        legacyQuality: 'enhanced',
+      },
+      {
+        id: 'raw',
+        backend: 'webgl2',
+        profile: 'high',
+        label: 'WebGL2 / High · Raw',
+        legacyQuality: 'raw',
+      },
+    ]);
+
+    expect(createEngineConfigurations(['raw'], { rawBackend: 'pixi' })).toEqual([
+      {
+        id: 'raw',
+        backend: 'pixi',
+        profile: 'high',
+        label: 'PixiJS / High · Raw',
+        legacyQuality: 'raw',
+      },
+    ]);
+  });
 
   it('prefers explicit engine configuration declarations while preserving legacy quality compatibility', () => {
     const configurations = [

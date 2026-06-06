@@ -114,21 +114,36 @@ export function mapQualityModesToBackendProfiles(
   return qualityModes.map(toRenderBackendProfileCandidate);
 }
 
-export function toEngineConfiguration(quality: RenderQuality): EngineConfiguration {
+export interface CreateEngineConfigurationsOptions {
+  readonly rawBackend?: RendererBackend;
+}
+
+export function toEngineConfiguration(
+  quality: RenderQuality,
+  options: CreateEngineConfigurationsOptions = {},
+): EngineConfiguration {
   const candidate = toRenderBackendProfileCandidate(quality);
+  const backend = quality === 'raw' && options.rawBackend ? options.rawBackend : candidate.backend;
   const label = formatRenderBackendProfileSelection({
-    backend: candidate.backend,
+    backend,
     profile: candidate.profile,
     legacyQuality: quality,
   });
 
   return {
     id: quality,
-    backend: candidate.backend,
+    backend,
     profile: candidate.profile,
     label: `${label.summary} · ${candidate.legacyLabel}`,
     legacyQuality: quality,
   };
+}
+
+export function createEngineConfigurations(
+  qualityModes: readonly RenderQuality[],
+  options: CreateEngineConfigurationsOptions = {},
+): EngineConfiguration[] {
+  return qualityModes.map((quality) => toEngineConfiguration(quality, options));
 }
 
 export function getSupportedEngineConfigurations(
@@ -141,7 +156,7 @@ export function getSupportedEngineConfigurations(
     return capabilities.engineConfigurations;
   }
 
-  return getSupportedRenderQualityModes(capabilities).map(toEngineConfiguration);
+  return getSupportedRenderQualityModes(capabilities).map((quality) => toEngineConfiguration(quality));
 }
 
 export function getSupportedRenderQualityModes(
