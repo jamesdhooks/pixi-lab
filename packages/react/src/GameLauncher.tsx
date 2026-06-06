@@ -98,7 +98,7 @@ export interface GameLauncherProps {
   onDemoExit?: () => void;
   /** Called after the Pixi runtime is ready and the launcher's initial mode is applied. */
   onRuntimeReady?: () => void;
-  /** Optional host-selected startup quality, sanitized against the active experience. */
+  /** Optional host-selected startup legacy token, sanitized against the active experience. */
   initialQuality?: RenderQuality;
   /**
    * Called whenever the launcher resolves renderer backend/profile state.
@@ -159,15 +159,15 @@ function GameLauncherInner({
     onRenderSelectionChange?.(renderSelection);
   }, [onRenderSelectionChange, renderSelection]);
 
-  const quality = renderSelection.legacyQuality;
+  const sceneLegacyQuality = renderSelection.legacyQuality;
   const [localMaxPixels, setLocalMaxPixels] = useState<number | undefined>(() => {
     try {
       const stored = parseInt(localStorage.getItem('pixi-lab:maxPixels') ?? '');
       return (isNaN(stored) || stored === 0) ? maxPixels : stored;
     } catch { return maxPixels; }
   });
-  /** Tracks the quality tier actually being rendered (may differ from `quality` on fallback). */
-  const [renderedQuality, setRenderedQuality] = useState<RenderQuality | undefined>(undefined);
+  /** Tracks the legacy quality tier actually being rendered (may differ from `sceneLegacyQuality` on fallback). */
+  const [renderedLegacyQuality, setRenderedLegacyQuality] = useState<RenderQuality | undefined>(undefined);
   const [modeId, setModeId] = useState(() => definition.modes?.[0]?.id ?? '');
   const appRef = useRef<GameApp | null>(null);
   /** State mirror of appRef — triggers a re-render when the engine is ready so
@@ -201,7 +201,7 @@ function GameLauncherInner({
       : resolveStoredRenderSelection(storedSelection, storedQuality, definition.capabilities);
     const nextQuality = nextSelection.legacyQuality;
     setRenderSelection(nextSelection);
-    setRenderedQuality(undefined);
+    setRenderedLegacyQuality(undefined);
     appRef.current?.setQuality(nextQuality);
     if (initialQuality === undefined) {
       writeStoredRenderSelection(nextSelection);
@@ -228,7 +228,7 @@ function GameLauncherInner({
       case 'quality_change':
         // Governor-triggered fallback — track actual rendered quality separately.
         if (event.payload && 'quality' in event.payload) {
-          setRenderedQuality(event.payload.quality as RenderQuality);
+          setRenderedLegacyQuality(event.payload.quality as RenderQuality);
         }
         break;
       case 'style_change':
@@ -288,11 +288,11 @@ function GameLauncherInner({
     try { localStorage.setItem('pixi-lab:maxPixels', String(v ?? '')); } catch { /* ignore */ }
   }, []);
 
-  const handleQualityChange = useCallback(
-    (nextQuality: RenderQuality) => {
-      const nextSelection = resolveRenderSelection(nextQuality, definition.capabilities);
+  const handleEngineConfigurationChange = useCallback(
+    (nextLegacyQuality: RenderQuality) => {
+      const nextSelection = resolveRenderSelection(nextLegacyQuality, definition.capabilities);
       setRenderSelection(nextSelection);
-      setRenderedQuality(undefined); // user picked explicitly; clear any fallback indicator
+      setRenderedLegacyQuality(undefined); // user picked explicitly; clear any fallback indicator
       appRef.current?.setQuality(nextSelection.legacyQuality);
       writeStoredRenderSelection(nextSelection);
     },
@@ -414,7 +414,7 @@ function GameLauncherInner({
   const isSimulation = definition.kind === 'simulation';
   const isFieldVisible = (f: NonNullable<LabExperience['settingsFields']>[number]) =>
     (!f.visibleModes || f.visibleModes.includes(modeId)) &&
-    (!f.visibleQualities || f.visibleQualities.includes(quality));
+    (!f.visibleQualities || f.visibleQualities.includes(sceneLegacyQuality));
   const visibleSettingsFields = (definition.settingsFields ?? []).filter(isFieldVisible);
   const topControlFields = visibleSettingsFields.filter((f) => f.type === 'number' || f.type === 'select');
 
@@ -471,7 +471,7 @@ function GameLauncherInner({
         definition={definition}
         userId={userId}
         mode={autoDemo && definition.capabilities.demo ? 'demo' : 'play'}
-        quality={quality}
+        quality={sceneLegacyQuality}
         transparent={transparent}
         maxPixels={localMaxPixels}
         onEvent={handleEvent}
@@ -580,11 +580,11 @@ function GameLauncherInner({
                 hidden: !hasQualityModes,
                 node: (
                   <EngineConfigurationSelector
-                    value={quality}
-                    renderedValue={renderedQuality}
-                    options={definition.capabilities.qualityModes}
+                    value={sceneLegacyQuality}
+                    renderedValue={renderedLegacyQuality}
                     configurations={definition.capabilities.engineConfigurations}
-                    onChange={handleQualityChange}
+                    options={definition.capabilities.qualityModes}
+                    onChange={handleEngineConfigurationChange}
                   />
                 ),
               },

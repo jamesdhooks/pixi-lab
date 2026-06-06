@@ -6,6 +6,19 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Launcher Engine Boundary Naming Slice
+
+Scope:
+- renamed launcher internals from generic `quality`/`renderedQuality`/`handleQualityChange` toward `sceneLegacyQuality`, `renderedLegacyQuality`, and `handleEngineConfigurationChange`
+- kept the public `initialQuality` prop and scene-facing `RenderQuality` calls intact as explicit compatibility APIs
+- clarified comments so host code talks about backend/profile render selection while scenes still receive the legacy token during migration
+
+Validation notes:
+- `pnpm typecheck` passed
+- focused route + selector tests passed (15 tests)
+
+---
+
 ## 2026-06-06 — Fluid Raw Adapter Removal + Selector Terminology Slice
 
 Scope:
