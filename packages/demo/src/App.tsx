@@ -81,6 +81,11 @@ export function writeCompatibilityRenderSelection(
   );
 }
 
+export interface ExperienceRuntimeViewModel {
+  readonly label: string;
+  readonly backendProfileRoute: string | null;
+}
+
 export function shouldExposeExperienceBackendProfileRoute(selection: RenderBackendProfileSelection): boolean {
   return !isDefaultRenderBackendProfileSelection(selection);
 }
@@ -101,6 +106,18 @@ export function buildExperienceBackendProfileRoute(
   }
 
   return `?${params.toString()}`;
+}
+
+export function buildExperienceRuntimeViewModel(
+  experience: LabExperience,
+  selection: RenderBackendProfileSelection,
+): ExperienceRuntimeViewModel {
+  return {
+    label: formatRenderBackendProfileSelection(selection).summary,
+    backendProfileRoute: shouldExposeExperienceBackendProfileRoute(selection)
+      ? buildExperienceBackendProfileRoute(experience, selection)
+      : null,
+  };
 }
 
 const KIND_LABELS: Record<string, string> = {
@@ -258,9 +275,9 @@ export function App() {
   const appDemoVisibleReady = appDemoCrossfading && appDemoPendingSlot
     ? appDemoStageReady[appDemoPendingSlot]
     : appDemoStageReady[appDemoFrontSlot];
-  const renderSelectionLabel = useMemo(
-    () => (renderSelection ? formatRenderBackendProfileSelection(renderSelection) : null),
-    [renderSelection],
+  const runtimeViewModel = useMemo(
+    () => (active && renderSelection ? buildExperienceRuntimeViewModel(active, renderSelection) : null),
+    [active, renderSelection],
   );
 
   const activeCarouselIndex = useMemo(
@@ -577,16 +594,16 @@ export function App() {
         </div>
       )}
 
-      {active && !appDemoActive && renderSelection && renderSelectionLabel && (
+      {active && !appDemoActive && runtimeViewModel && (
         <div className="pointer-events-none fixed left-3 top-3 z-[70] rounded-lg bg-black/55 px-2.5 py-2 text-[10px] font-semibold uppercase leading-tight tracking-wide text-slate-100">
           <div className="text-[9px] text-cyan-200">Lab Runtime</div>
           <div>
-            {renderSelectionLabel.summary}
+            {runtimeViewModel.label}
           </div>
-          {shouldExposeExperienceBackendProfileRoute(renderSelection) && (
+          {runtimeViewModel.backendProfileRoute && (
             <a
               className="pointer-events-auto mt-1 inline-block text-[9px] normal-case tracking-normal text-cyan-200 underline decoration-cyan-200/50 underline-offset-2 hover:text-cyan-100"
-              href={buildExperienceBackendProfileRoute(active, renderSelection)}
+              href={runtimeViewModel.backendProfileRoute}
             >
               Backend/profile link
             </a>

@@ -124,6 +124,10 @@ The active-experience Lab Runtime readout still shows the resolved backend/profi
 
 Fluid-specific compatibility routes now persist through `writeCompatibilityRenderSelection()`, which writes both the legacy `pixi-lab:quality` value and the shared backend/profile `pixi-lab:renderSelection` snapshot. This keeps `quality=basic|enhanced|raw` links backward-compatible while aligning special-case Fluid launches with the same Lab Runtime storage boundary used by `GameLauncher`.
 
+## Demo host runtime view-model slice
+
+`buildExperienceRuntimeViewModel()` is now the demo host's pure boundary for turning an active experience plus resolved backend/profile descriptor into readout UI data. The React component consumes this reusable view model instead of formatting labels and link visibility inline, so future debug panels can reuse the same backend-neutral host state without reaching into legacy scene quality plumbing.
+
 ## Next smallest slice
 
-Move the demo's active readout/link state from local `renderSelection` state toward a small host-runtime view model helper that can be reused by future debug panels without reaching into scene-specific quality plumbing.
+Move route-query and compatibility-storage helpers out of `packages/demo/src/App.tsx` into a small demo host runtime module so `App` keeps only composition/state and tests target a non-component boundary.

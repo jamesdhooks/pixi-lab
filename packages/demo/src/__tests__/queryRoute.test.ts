@@ -3,6 +3,7 @@ import type { LabExperience } from '@hooksjam/pixi-lab-core';
 import { LEGACY_RENDER_QUALITY_STORAGE_KEY, RENDER_SELECTION_STORAGE_KEY } from '@hooksjam/pixi-lab-core';
 import {
   buildExperienceBackendProfileRoute,
+  buildExperienceRuntimeViewModel,
   findQueryExperience,
   parseQueryQuality,
   queryQualityForExperience,
@@ -110,6 +111,30 @@ describe('demo query routing helpers', () => {
         legacyQuality: 'raw',
       }),
     ).toBe(true);
+  });
+
+  it('builds a host runtime view model without leaking backend/profile params for defaults', () => {
+    expect(
+      buildExperienceRuntimeViewModel(EXPERIENCES[1], {
+        backend: 'pixi',
+        profile: 'standard',
+        legacyQuality: 'basic',
+      }),
+    ).toEqual({
+      label: 'PixiJS / Standard',
+      backendProfileRoute: null,
+    });
+
+    expect(
+      buildExperienceRuntimeViewModel(EXPERIENCES[0], {
+        backend: 'webgl2',
+        profile: 'high',
+        legacyQuality: 'raw',
+      }),
+    ).toEqual({
+      label: 'WebGL2 / High',
+      backendProfileRoute: '?experience=amoeba-lamp&backend=webgl2&profile=high',
+    });
   });
 
   it('persists compatibility routes through legacy quality and backend/profile storage', () => {
