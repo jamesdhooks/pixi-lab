@@ -6,6 +6,20 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Raw-Capable Engine Configuration Declarations Slice
+
+Scope:
+- added explicit backend/profile `engineConfigurations` declarations to Amoeba Lamp and Orbital Shrapnel Field
+- broadened the simulation registry guard so every raw-capable simulation declares engine configurations aligned with its legacy compatibility modes
+- distinguished Pixi-owned raw adapters from WebGL2 raw scene paths in the guardrail labels
+
+Validation notes:
+- focused simulation registry test passed (9 tests)
+- `pnpm lint` passed
+- `pnpm typecheck` passed
+
+---
+
 ## 2026-06-06 — Lint Gate Restoration Slice
 
 Scope:

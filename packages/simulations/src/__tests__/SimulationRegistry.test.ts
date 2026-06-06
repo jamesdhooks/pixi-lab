@@ -184,17 +184,18 @@ describe('SIMULATION_REGISTRY', () => {
     expect(rawCapableIds).toEqual(['amoeba-lamp', 'fluid-tank', 'harmonic-sand', 'orbital-shrapnel']);
   });
 
-  it('keeps reset demo engine configuration declarations aligned with legacy compatibility modes', () => {
-    for (const id of ['fluid-tank', 'harmonic-sand'] as const) {
+  it('keeps raw-capable simulation engine configuration declarations aligned with legacy compatibility modes', () => {
+    for (const id of ['amoeba-lamp', 'fluid-tank', 'harmonic-sand', 'orbital-shrapnel'] as const) {
       const definition = getSimulation(id);
       const qualityModes = definition?.capabilities.qualityModes ?? [];
-      const engineModes = definition?.capabilities.engineConfigurations?.map((configuration) => configuration.legacyQuality) ?? [];
+      const engineConfigurations = definition?.capabilities.engineConfigurations ?? [];
+      const engineModes = engineConfigurations.map((configuration) => configuration.legacyQuality);
 
-      expect(engineModes).toEqual(qualityModes);
-      expect(definition?.capabilities.engineConfigurations?.map((configuration) => configuration.label)).toEqual([
+      expect(engineModes, `${id}.engineConfigurations.legacyQuality`).toEqual(qualityModes);
+      expect(engineConfigurations.map((configuration) => configuration.label), `${id}.engineConfigurations.label`).toEqual([
         'PixiJS / Standard · Basic',
         'PixiJS / High · Enhanced',
-        'WebGL2 / High · Raw',
+        id === 'fluid-tank' || id === 'harmonic-sand' ? 'WebGL2 / High · Raw' : 'PixiJS / High · Raw',
       ]);
     }
   });

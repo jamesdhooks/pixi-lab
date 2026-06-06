@@ -26,6 +26,11 @@ export const amoebaLampDefinition: SimulationDefinition = {
     proceduralTextures: true,
     renderTargetPool: true,
     qualityModes: ['basic', 'enhanced', 'raw'],
+    engineConfigurations: [
+      { id: 'basic', backend: 'pixi', profile: 'standard', label: 'PixiJS / Standard · Basic', legacyQuality: 'basic' },
+      { id: 'enhanced', backend: 'pixi', profile: 'high', label: 'PixiJS / High · Enhanced', legacyQuality: 'enhanced' },
+      { id: 'raw', backend: 'pixi', profile: 'high', label: 'PixiJS / High · Raw', legacyQuality: 'raw' },
+    ],
     demo: true,
     settings: true,
   },
