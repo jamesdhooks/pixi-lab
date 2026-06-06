@@ -59,6 +59,7 @@ export type {
   SettingsField,
   GameCapabilities,
   ExperienceCapabilities,
+  EngineConfiguration,
   ExperienceMode,
   AmbientDataSource,
   AmbientDataBinding,
@@ -130,7 +131,6 @@ export {
   serializeRenderBackendProfileStorage,
   toEngineConfiguration,
   toRenderBackendProfileCandidate,
-  type EngineConfiguration,
   type RenderBackendProfileCandidate,
   type RenderBackendProfileGroup,
   type RenderBackendProfileQueryRequest,
@@ -217,3 +217,4 @@ export { ScreensaverManager } from './screensaver/ScreensaverManager.js';
 export type { HighScoreProvider, SubmitScoreInput } from './scoring/HighScoreProvider.js';
 export { ApiHighScoreProvider, NoopHighScoreProvider } from './scoring/HighScoreProvider.js';
 export { NameSuggestions, nameSuggestions } from './scoring/NameSuggestions.js';
+

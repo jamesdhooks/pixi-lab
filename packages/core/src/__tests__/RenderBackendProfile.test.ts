@@ -70,6 +70,17 @@ describe('RenderBackendProfile', () => {
     });
   });
 
+
+  it('prefers explicit engine configuration declarations while preserving legacy quality compatibility', () => {
+    const configurations = [
+      { id: 'raw' as const, backend: 'webgl2' as const, profile: 'high' as const, label: 'Custom Raw', legacyQuality: 'raw' as const },
+      { id: 'basic' as const, backend: 'pixi' as const, profile: 'standard' as const, label: 'Custom Basic', legacyQuality: 'basic' as const },
+    ];
+
+    expect(getSupportedEngineConfigurations({ engineConfigurations: configurations, qualityModes: ['enhanced'] })).toBe(configurations);
+    expect(getSupportedRenderQualityModes({ engineConfigurations: configurations, qualityModes: ['enhanced'] })).toEqual(['raw', 'basic']);
+  });
+
   it('centralizes host storage keys at the runtime boundary', () => {
     expect(LEGACY_RENDER_QUALITY_STORAGE_KEY).toBe('pixi-lab:quality');
     expect(RENDER_SELECTION_STORAGE_KEY).toBe('pixi-lab:renderSelection');
@@ -293,3 +304,4 @@ describe('RenderBackendProfile', () => {
     ).toEqual({ backend: 'webgl2', profile: 'high', legacyQuality: 'raw' });
   });
 });
+

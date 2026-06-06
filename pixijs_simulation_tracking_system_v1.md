@@ -6,6 +6,21 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Explicit Engine Configuration Contract Slice
+
+Scope:
+- moved `EngineConfiguration` into the shared core type contract and allowed capabilities to advertise explicit backend/profile engine configurations
+- updated core helpers, React launch state, and the engine selector to prefer `engineConfigurations` while preserving `qualityModes`/legacy quality compatibility
+- migrated Harmonic Sand Plate and Fluid Tank reset demos to declare explicit Basic/Enhanced/Raw engine configurations
+- added Fluid raw compatibility-route regression coverage and registry guards that keep explicit engine configurations aligned with legacy compatibility tokens
+
+Validation notes:
+- focused contract tests passed for render backend profiles, engine selector UI, quality-selection compatibility, query routes, and simulation registry (61 tests)
+- full automated gate passed after the slice: `pnpm typecheck`, `pnpm test` (55 files / 317 tests), and `pnpm build`
+- browser smoke passed for Fluid Tank raw and Harmonic Sand raw via backend/profile deep links; engine selector selected `WebGL2 / High · Raw`, canvases mounted, runtime readouts showed `WEBGL2 / HIGH`, and console stayed clean
+
+---
+
 ## 2026-06-06 — Engine Configuration + Raw WebGL2 Architecture Reset
 
 Scope:

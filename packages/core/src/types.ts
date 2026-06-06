@@ -57,6 +57,20 @@ export type RenderProfile = 'preview' | 'standard' | 'high';
  * runtime-facing code toward RendererBackend + RenderProfile terminology.
  */
 export type RenderQuality = 'basic' | 'enhanced' | 'raw';
+
+/**
+ * Host-facing engine configuration. `legacyQuality` is retained as the
+ * compatibility token consumed by existing scene/runtime hooks while the UI and
+ * route layer migrate to backend/profile terminology.
+ */
+export interface EngineConfiguration {
+  readonly id: RenderQuality;
+  readonly backend: RendererBackend;
+  readonly profile: RenderProfile;
+  readonly label: string;
+  readonly legacyQuality: RenderQuality;
+}
+
 export type ExperienceKind = 'game' | 'simulation' | 'ambient' | 'effect' | 'toy';
 export type ExperienceRenderMode =
   | 'fullscreen'
@@ -419,7 +433,13 @@ export interface GameCapabilities {
   burstEmitters?: boolean;
   lowMotion?: boolean;
   sleepMode?: boolean;
+  /**
+   * Legacy render quality tokens retained for route/storage compatibility. New
+   * launcher UI should prefer `engineConfigurations` when present.
+   */
   qualityModes?: RenderQuality[];
+  /** Backend/profile engine options surfaced by the launcher. */
+  engineConfigurations?: EngineConfiguration[];
   /** Scene supports a reset action (drain + restart cycle). */
   reset?: boolean;
   /** Simulation supports a demo mode with an AI controller. */
@@ -503,3 +523,4 @@ export interface GameEvent {
 declare namespace React {
   type ReactNode = unknown;
 }
+

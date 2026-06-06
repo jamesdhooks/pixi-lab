@@ -4,37 +4,50 @@ import {
   parseRenderBackendProfileStorage,
   resolveRenderBackendProfileSelection,
   resolveRenderBackendProfileStorageSelection,
+  type ExperienceCapabilities,
   type RenderBackendProfileSelection,
   type RenderQuality,
 } from '@hooksjam/pixi-lab-core';
 
 export { isRenderQuality } from '@hooksjam/pixi-lab-core';
 
+type EngineConfigurationSupport = ExperienceCapabilities | readonly RenderQuality[] | undefined;
+
+function isRenderQualityArray(value: EngineConfigurationSupport): value is readonly RenderQuality[] {
+  return Array.isArray(value);
+}
+
+function getSupportedModes(support: EngineConfigurationSupport): readonly RenderQuality[] {
+  if (isRenderQualityArray(support)) return support;
+  return getSupportedRenderQualityModes(support as ExperienceCapabilities | undefined);
+}
+
 export function sanitizeRenderQuality(
   requested: unknown,
-  supportedModes: readonly RenderQuality[] | undefined,
+  support: EngineConfigurationSupport,
 ): RenderQuality {
-  return resolveRenderSelection(requested, supportedModes).legacyQuality;
+  return resolveRenderSelection(requested, support).legacyQuality;
 }
 
 export function resolveRenderSelection(
   requested: unknown,
-  supportedModes: readonly RenderQuality[] | undefined,
+  support: EngineConfigurationSupport,
 ): RenderBackendProfileSelection {
-  const supported = getSupportedRenderQualityModes({ qualityModes: supportedModes });
+  const supported = getSupportedModes(support);
   return resolveRenderBackendProfileSelection(isRenderQuality(requested) ? requested : undefined, supported);
 }
 
 export function resolveStoredRenderSelection(
   storedSelection: unknown,
   storedQuality: string | null,
-  supportedModes: readonly RenderQuality[] | undefined,
+  support: EngineConfigurationSupport,
 ): RenderBackendProfileSelection {
   const parsedSelection = parseRenderBackendProfileStorage(storedSelection);
   if (parsedSelection) {
-    const supported = getSupportedRenderQualityModes({ qualityModes: supportedModes });
+    const supported = getSupportedModes(support);
     return resolveRenderBackendProfileStorageSelection(parsedSelection, supported);
   }
 
-  return resolveRenderSelection(storedQuality, supportedModes);
+  return resolveRenderSelection(storedQuality, support);
 }
+

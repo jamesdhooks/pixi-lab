@@ -151,8 +151,8 @@ function GameLauncherInner({
     const storedQuality = readStoredLegacyRenderQuality();
     const storedSelection = readStoredRenderSelection();
     return initialQuality !== undefined
-      ? resolveRenderSelection(initialQuality, definition.capabilities.qualityModes)
-      : resolveStoredRenderSelection(storedSelection, storedQuality, definition.capabilities.qualityModes);
+      ? resolveRenderSelection(initialQuality, definition.capabilities)
+      : resolveStoredRenderSelection(storedSelection, storedQuality, definition.capabilities);
   });
 
   useEffect(() => {
@@ -197,8 +197,8 @@ function GameLauncherInner({
     const storedQuality = readStoredLegacyRenderQuality();
     const storedSelection = readStoredRenderSelection();
     const nextSelection = initialQuality !== undefined
-      ? resolveRenderSelection(initialQuality, definition.capabilities.qualityModes)
-      : resolveStoredRenderSelection(storedSelection, storedQuality, definition.capabilities.qualityModes);
+      ? resolveRenderSelection(initialQuality, definition.capabilities)
+      : resolveStoredRenderSelection(storedSelection, storedQuality, definition.capabilities);
     const nextQuality = nextSelection.legacyQuality;
     setRenderSelection(nextSelection);
     setRenderedQuality(undefined);
@@ -206,7 +206,7 @@ function GameLauncherInner({
     if (initialQuality === undefined) {
       writeStoredRenderSelection(nextSelection);
     }
-  }, [definition.id, definition.capabilities.qualityModes, initialQuality]);
+  }, [definition.id, definition.capabilities, initialQuality]);
 
   const handleEvent = useCallback((event: GameEvent) => {
     switch (event.kind) {
@@ -290,13 +290,13 @@ function GameLauncherInner({
 
   const handleQualityChange = useCallback(
     (nextQuality: RenderQuality) => {
-      const nextSelection = resolveRenderSelection(nextQuality, definition.capabilities.qualityModes);
+      const nextSelection = resolveRenderSelection(nextQuality, definition.capabilities);
       setRenderSelection(nextSelection);
       setRenderedQuality(undefined); // user picked explicitly; clear any fallback indicator
       appRef.current?.setQuality(nextSelection.legacyQuality);
       writeStoredRenderSelection(nextSelection);
     },
-    [definition.capabilities.qualityModes],
+    [definition.capabilities],
   );
 
   const enterDemoMode = useCallback((app: GameApp | null = appRef.current) => {
@@ -582,7 +582,8 @@ function GameLauncherInner({
                   <EngineConfigurationSelector
                     value={quality}
                     renderedValue={renderedQuality}
-                    options={definition.capabilities.qualityModes!}
+                    options={definition.capabilities.qualityModes}
+                    configurations={definition.capabilities.engineConfigurations}
                     onChange={handleQualityChange}
                   />
                 ),
@@ -762,3 +763,4 @@ function GameLauncherInner({
     </div>
   );
 }
+

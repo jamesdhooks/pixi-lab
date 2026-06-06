@@ -28,6 +28,11 @@ export const fluidTankDefinition: SimulationDefinition = {
     proceduralTextures: true,
     renderTargetPool: true,
     qualityModes: ['basic', 'enhanced', 'raw'],
+    engineConfigurations: [
+      { id: 'basic', backend: 'pixi', profile: 'standard', label: 'PixiJS / Standard · Basic', legacyQuality: 'basic' },
+      { id: 'enhanced', backend: 'pixi', profile: 'high', label: 'PixiJS / High · Enhanced', legacyQuality: 'enhanced' },
+      { id: 'raw', backend: 'webgl2', profile: 'high', label: 'WebGL2 / High · Raw', legacyQuality: 'raw' },
+    ],
     demo: true,
     settings: true,
   },
@@ -67,3 +72,4 @@ export const fluidTankDefinition: SimulationDefinition = {
     { icon: '⚙', title: 'Fluid Controls', body: 'Use settings for cell size, finger force, swirl memory, dye persistence, pressure solve, eddy assist, and ambient stirring.' },
   ],
 };
+

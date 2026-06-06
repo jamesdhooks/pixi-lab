@@ -1,4 +1,4 @@
-import type { RenderProfile, RenderQuality, RendererBackend } from '../types.js';
+import type { EngineConfiguration, RenderProfile, RenderQuality, RendererBackend } from '../types.js';
 
 const RENDERER_BACKENDS: readonly RendererBackend[] = ['pixi', 'webgl2', 'three', 'webgpu'];
 const RENDER_PROFILES: readonly RenderProfile[] = ['preview', 'standard', 'high'];
@@ -12,19 +12,6 @@ export interface RenderBackendProfileCandidate {
   readonly backend: RendererBackend;
   readonly profile: RenderProfile;
   readonly legacyLabel: string;
-}
-
-/**
- * Host-facing engine configuration. `legacyQuality` is retained as the
- * compatibility token consumed by existing scene/runtime hooks while the UI and
- * route layer migrate to backend/profile terminology.
- */
-export interface EngineConfiguration {
-  readonly id: RenderQuality;
-  readonly backend: RendererBackend;
-  readonly profile: RenderProfile;
-  readonly label: string;
-  readonly legacyQuality: RenderQuality;
 }
 
 export interface RenderBackendProfileGroup {
@@ -145,14 +132,28 @@ export function toEngineConfiguration(quality: RenderQuality): EngineConfigurati
 }
 
 export function getSupportedEngineConfigurations(
-  capabilities: { readonly qualityModes?: readonly RenderQuality[] } | undefined,
-): EngineConfiguration[] {
+  capabilities: {
+    readonly engineConfigurations?: readonly EngineConfiguration[];
+    readonly qualityModes?: readonly RenderQuality[];
+  } | undefined,
+): readonly EngineConfiguration[] {
+  if (capabilities?.engineConfigurations && capabilities.engineConfigurations.length > 0) {
+    return capabilities.engineConfigurations;
+  }
+
   return getSupportedRenderQualityModes(capabilities).map(toEngineConfiguration);
 }
 
 export function getSupportedRenderQualityModes(
-  capabilities: { readonly qualityModes?: readonly RenderQuality[] } | undefined,
+  capabilities: {
+    readonly engineConfigurations?: readonly EngineConfiguration[];
+    readonly qualityModes?: readonly RenderQuality[];
+  } | undefined,
 ): readonly RenderQuality[] {
+  if (capabilities?.engineConfigurations && capabilities.engineConfigurations.length > 0) {
+    return capabilities.engineConfigurations.map((configuration) => configuration.legacyQuality);
+  }
+
   return capabilities?.qualityModes && capabilities.qualityModes.length > 0
     ? capabilities.qualityModes
     : DEFAULT_RENDER_QUALITY_MODES;
@@ -320,3 +321,4 @@ export function resolveRenderBackendProfileStorageSelection(
     fallbackQuality,
   );
 }
+

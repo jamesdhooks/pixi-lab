@@ -183,4 +183,20 @@ describe('SIMULATION_REGISTRY', () => {
 
     expect(rawCapableIds).toEqual(['amoeba-lamp', 'fluid-tank', 'harmonic-sand', 'orbital-shrapnel']);
   });
+
+  it('keeps reset demo engine configuration declarations aligned with legacy compatibility modes', () => {
+    for (const id of ['fluid-tank', 'harmonic-sand'] as const) {
+      const definition = getSimulation(id);
+      const qualityModes = definition?.capabilities.qualityModes ?? [];
+      const engineModes = definition?.capabilities.engineConfigurations?.map((configuration) => configuration.legacyQuality) ?? [];
+
+      expect(engineModes).toEqual(qualityModes);
+      expect(definition?.capabilities.engineConfigurations?.map((configuration) => configuration.label)).toEqual([
+        'PixiJS / Standard · Basic',
+        'PixiJS / High · Enhanced',
+        'WebGL2 / High · Raw',
+      ]);
+    }
+  });
 });
+

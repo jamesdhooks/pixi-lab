@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import {
   getSupportedEngineConfigurations,
   toEngineConfiguration,
+  type EngineConfiguration,
   type RenderQuality,
 } from '@hooksjam/pixi-lab-core';
 
@@ -13,7 +14,10 @@ export interface EngineConfigurationSelectorProps {
    * from `value`, the rendered engine/profile is shown as a fallback note.
    */
   renderedValue?: RenderQuality;
+  /** Legacy quality-token options retained for compatibility. */
   options?: readonly RenderQuality[];
+  /** Preferred backend/profile engine configurations. */
+  configurations?: readonly EngineConfiguration[];
   onChange: (quality: RenderQuality) => void;
 }
 
@@ -21,10 +25,10 @@ function optionLabel(quality: RenderQuality): string {
   return toEngineConfiguration(quality).label;
 }
 
-export function EngineConfigurationSelector({ value, renderedValue, options, onChange }: EngineConfigurationSelectorProps) {
+export function EngineConfigurationSelector({ value, renderedValue, options, configurations, onChange }: EngineConfigurationSelectorProps) {
   const hasFallback = renderedValue !== undefined && renderedValue !== value;
   const engineConfigurations = getSupportedEngineConfigurations(
-    options === undefined ? undefined : { qualityModes: options },
+    configurations === undefined ? (options === undefined ? undefined : { qualityModes: options }) : { engineConfigurations: configurations },
   );
   const renderedLabel = hasFallback && renderedValue ? optionLabel(renderedValue) : null;
 
@@ -62,3 +66,4 @@ export function EngineConfigurationSelector({ value, renderedValue, options, onC
 
 export const QualitySelector = EngineConfigurationSelector;
 export type QualitySelectorProps = EngineConfigurationSelectorProps;
+

@@ -13,10 +13,24 @@ import {
   writeCompatibilityRenderSelection,
 } from '../demoRuntime';
 
+const RESET_ENGINE_CONFIGURATIONS = [
+  { id: 'basic', backend: 'pixi', profile: 'standard', label: 'PixiJS / Standard · Basic', legacyQuality: 'basic' },
+  { id: 'enhanced', backend: 'pixi', profile: 'high', label: 'PixiJS / High · Enhanced', legacyQuality: 'enhanced' },
+  { id: 'raw', backend: 'webgl2', profile: 'high', label: 'WebGL2 / High · Raw', legacyQuality: 'raw' },
+] as const;
+
 const EXPERIENCES = [
   { id: 'amoeba-lamp', name: 'Amoeba Lamp', capabilities: { qualityModes: ['basic', 'enhanced', 'raw'] } },
-  { id: 'fluid-tank', name: 'Fluid Tank', capabilities: { qualityModes: ['basic', 'enhanced'] } },
-  { id: 'harmonic-sand', name: 'Harmonic Sand Plate', capabilities: { qualityModes: ['basic', 'enhanced'], settings: true } },
+  {
+    id: 'fluid-tank',
+    name: 'Fluid Tank',
+    capabilities: { qualityModes: ['basic', 'enhanced', 'raw'], engineConfigurations: RESET_ENGINE_CONFIGURATIONS },
+  },
+  {
+    id: 'harmonic-sand',
+    name: 'Harmonic Sand Plate',
+    capabilities: { qualityModes: ['basic', 'enhanced', 'raw'], engineConfigurations: RESET_ENGINE_CONFIGURATIONS, settings: true },
+  },
 ] as LabExperience[];
 
 function params(query: string): URLSearchParams {
@@ -44,9 +58,9 @@ describe('demo query routing helpers', () => {
 
   it('sanitizes query quality against the selected experience before launch', () => {
     expect(queryQualityForExperience(EXPERIENCES[0], params('quality=raw'))).toBe('raw');
-    expect(queryQualityForExperience(EXPERIENCES[1], params('quality=raw'))).toBe('basic');
+    expect(queryQualityForExperience(EXPERIENCES[1], params('quality=raw'))).toBe('raw');
     expect(queryQualityForExperience(EXPERIENCES[1], params('quality=enhanced'))).toBe('enhanced');
-    expect(queryQualityForExperience(EXPERIENCES[2], params('quality=raw'))).toBe('basic');
+    expect(queryQualityForExperience(EXPERIENCES[2], params('quality=raw'))).toBe('raw');
     expect(queryQualityForExperience(EXPERIENCES[2], params('quality=enhanced'))).toBe('enhanced');
     expect(queryQualityForExperience(EXPERIENCES[0], params(''))).toBeUndefined();
   });
@@ -69,9 +83,9 @@ describe('demo query routing helpers', () => {
       legacyQuality: 'raw',
     });
     expect(queryRenderSelectionForExperience(EXPERIENCES[1], params('backend=webgl2&profile=high'))).toEqual({
-      backend: 'pixi',
-      profile: 'standard',
-      legacyQuality: 'basic',
+      backend: 'webgl2',
+      profile: 'high',
+      legacyQuality: 'raw',
     });
     expect(queryRenderSelectionForExperience(EXPERIENCES[1], params('backend=pixi&profile=high&quality=basic'))).toEqual({
       backend: 'pixi',
@@ -172,6 +186,21 @@ describe('demo query routing helpers', () => {
     );
   });
 
+  it('applies Fluid raw compatibility route render selection through one demo runtime action', () => {
+    const stored = new Map<string, string>();
+    const selection = applyCompatibilityRouteRenderSelection(
+      EXPERIENCES[1],
+      params('backend=webgl2&profile=high'),
+      { setItem: (key, value) => { stored.set(key, value); } },
+    );
+
+    expect(selection).toEqual({ backend: 'webgl2', profile: 'high', legacyQuality: 'raw' });
+    expect(stored.get(LEGACY_RENDER_QUALITY_STORAGE_KEY)).toBe('raw');
+    expect(stored.get(RENDER_SELECTION_STORAGE_KEY)).toBe(
+      JSON.stringify({ backend: 'webgl2', profile: 'high', quality: 'raw' }),
+    );
+  });
+
   it('applies compatibility route render selection through one demo runtime action', () => {
     const stored = new Map<string, string>();
     const selection = applyCompatibilityRouteRenderSelection(
@@ -187,3 +216,4 @@ describe('demo query routing helpers', () => {
     );
   });
 });
+
