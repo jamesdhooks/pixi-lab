@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { MYCELIUM_LATTICE_DEFAULTS, MYCELIUM_LATTICE_SETTINGS_FIELDS } from './mycelium-lattice.config.js';
 import { MyceliumLatticeDemoAI } from './MyceliumLatticeDemoAI.js';
 import { MyceliumLatticePreviewScene } from './MyceliumLatticePreviewScene.js';
@@ -51,6 +51,7 @@ export const myceliumLatticeDefinition: SimulationDefinition = {
     proceduralTextures: true,
     renderTargetPool: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
   },
   factory:        () => new MyceliumLatticeScene(),
   previewFactory: () => new MyceliumLatticePreviewScene(),

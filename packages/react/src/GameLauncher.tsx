@@ -23,6 +23,7 @@ import { resolveRenderSelection, resolveStoredRenderSelection } from './qualityS
 import {
   LEGACY_RENDER_QUALITY_STORAGE_KEY,
   RENDER_SELECTION_STORAGE_KEY,
+  isEngineConfigurationVisible,
   serializeRenderBackendProfileStorage,
   nameSuggestions,
 } from '@hooksjam/pixi-lab-core';
@@ -413,8 +414,7 @@ function GameLauncherInner({
   const hasQualityModes = (definition.capabilities.qualityModes?.length ?? 0) > 0;
   const isSimulation = definition.kind === 'simulation';
   const isFieldVisible = (f: NonNullable<LabExperience['settingsFields']>[number]) =>
-    (!f.visibleModes || f.visibleModes.includes(modeId)) &&
-    (!f.visibleQualities || f.visibleQualities.includes(sceneLegacyQuality));
+    (!f.visibleModes || f.visibleModes.includes(modeId)) && isEngineConfigurationVisible(f, renderSelection);
   const visibleSettingsFields = (definition.settingsFields ?? []).filter(isFieldVisible);
   const topControlFields = visibleSettingsFields.filter((f) => f.type === 'number' || f.type === 'select');
 

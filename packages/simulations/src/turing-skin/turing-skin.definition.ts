@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { TURING_SKIN_DEFAULTS, TURING_SKIN_SETTINGS_FIELDS } from './turing-skin.config.js';
 import { TuringSkinDemoAI } from './TuringSkinDemoAI.js';
 import { TuringSkinPreviewScene } from './TuringSkinPreviewScene.js';
@@ -26,6 +26,7 @@ export const turingSkinDefinition: SimulationDefinition = {
     proceduralTextures: true,
     renderTargetPool: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

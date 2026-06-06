@@ -1,4 +1,10 @@
-import type { EngineConfiguration, RenderProfile, RenderQuality, RendererBackend } from '../types.js';
+import type {
+  EngineConfiguration,
+  EngineConfigurationVisibility,
+  RenderProfile,
+  RenderQuality,
+  RendererBackend,
+} from '../types.js';
 
 const RENDERER_BACKENDS: readonly RendererBackend[] = ['pixi', 'webgl2', 'three', 'webgpu'];
 const RENDER_PROFILES: readonly RenderProfile[] = ['preview', 'standard', 'high'];
@@ -144,6 +150,21 @@ export function createEngineConfigurations(
   options: CreateEngineConfigurationsOptions = {},
 ): EngineConfiguration[] {
   return qualityModes.map((quality) => toEngineConfiguration(quality, options));
+}
+
+export function isEngineConfigurationVisible(
+  field: {
+    readonly visibleEngineConfigurations?: readonly EngineConfigurationVisibility[];
+    readonly visibleQualities?: readonly RenderQuality[];
+  },
+  selection: RenderBackendProfileSelection,
+): boolean {
+  if (field.visibleEngineConfigurations && field.visibleEngineConfigurations.length > 0) {
+    const backendProfile = `${selection.backend}/${selection.profile}` as EngineConfigurationVisibility;
+    return field.visibleEngineConfigurations.includes(selection.legacyQuality) || field.visibleEngineConfigurations.includes(backendProfile);
+  }
+
+  return !field.visibleQualities || field.visibleQualities.includes(selection.legacyQuality);
 }
 
 export function getSupportedEngineConfigurations(

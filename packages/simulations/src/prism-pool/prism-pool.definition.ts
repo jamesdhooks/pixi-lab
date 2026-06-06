@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { PRISM_POOL_DEFAULTS, PRISM_POOL_SETTINGS_FIELDS } from './prism-pool.config.js';
 import { PrismPoolDemoAI } from './PrismPoolDemoAI.js';
 import { PrismPoolPreviewScene } from './PrismPoolPreviewScene.js';
@@ -26,6 +26,7 @@ export const prismPoolDefinition: SimulationDefinition = {
     proceduralTextures: true,
     renderTargetPool: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { ALIEN_VASCULAR_TREE_DEFAULTS, ALIEN_VASCULAR_TREE_SETTINGS_FIELDS } from './alien-vascular-tree.config.js';
 import { AlienVascularTreeDemoAI } from './AlienVascularTreeDemoAI.js';
 import { AlienVascularTreePreviewScene } from './AlienVascularTreePreviewScene.js';
@@ -26,6 +26,7 @@ export const alienVascularTreeDefinition: SimulationDefinition = {
     proceduralTextures: true,
     renderTargetPool: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

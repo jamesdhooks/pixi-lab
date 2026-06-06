@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { CELLULAR_OCEAN_DEFAULTS, CELLULAR_OCEAN_SETTINGS_FIELDS } from './cellular-ocean.config.js';
 import { CellularOceanDemoAI } from './CellularOceanDemoAI.js';
 import { CellularOceanPreviewScene } from './CellularOceanPreviewScene.js';
@@ -26,6 +26,7 @@ export const cellularOceanDefinition: SimulationDefinition = {
     proceduralTextures: true,
     renderTargetPool: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

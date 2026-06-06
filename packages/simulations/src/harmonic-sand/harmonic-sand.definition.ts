@@ -62,4 +62,3 @@ export const harmonicSandDefinition: SimulationDefinition = {
     { icon: '✕', title: 'Remove a Source', body: 'Double-tap an emitter to delete it.' },
   ],
 };
-

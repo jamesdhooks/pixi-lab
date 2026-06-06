@@ -6,6 +6,18 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Engine Configuration Settings Visibility Slice
+
+Scope:
+- added `visibleEngineConfigurations` as the engine-first settings-field visibility filter while keeping `visibleQualities` as a legacy compatibility fallback.
+- routed launcher settings visibility through shared core helper `isEngineConfigurationVisible(...)` so fields can target `backend/profile` tokens such as `webgl2/high` instead of only legacy quality ids.
+- migrated Harmonic Sand raw-only settings onto `visibleEngineConfigurations: ['webgl2/high']` and declared explicit Basic/Enhanced engine configurations for the remaining 18 non-raw simulation definitions.
+
+Validation:
+- `pnpm --filter @hooksjam/pixi-lab-core -s build` passed.
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts packages/simulations/src/__tests__/SimulationRegistry.test.ts` passed (37 tests).
+- `pnpm -s typecheck`, `pnpm -s lint`, `pnpm -s build`, and `git diff --check` passed.
+
 ## 2026-06-06 — Engine Configuration Route Resolver Slice
 
 Scope:

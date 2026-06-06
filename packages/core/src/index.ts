@@ -119,6 +119,7 @@ export {
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
   isDefaultRenderBackendProfileSelection,
+  isEngineConfigurationVisible,
   isRenderProfile,
   isRenderQuality,
   isRendererBackend,

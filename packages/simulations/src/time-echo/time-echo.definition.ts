@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { TIME_ECHO_DEFAULTS, TIME_ECHO_SETTINGS_FIELDS } from './time-echo.config.js';
 import { TimeEchoDemoAI } from './TimeEchoDemoAI.js';
 import { TimeEchoPreviewScene } from './TimeEchoPreviewScene.js';
@@ -26,6 +26,7 @@ export const timeEchoDefinition: SimulationDefinition = {
     proceduralTextures: true,
     renderTargetPool: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

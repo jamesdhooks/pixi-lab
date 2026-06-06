@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { COSMIC_INK_OCEAN_DEFAULTS, COSMIC_INK_OCEAN_SETTINGS_FIELDS } from './cosmic-ink-ocean.config.js';
 import { CosmicInkOceanDemoAI } from './CosmicInkOceanDemoAI.js';
 import { CosmicInkOceanPreviewScene } from './CosmicInkOceanPreviewScene.js';
@@ -26,6 +26,7 @@ export const cosmicInkOceanDefinition: SimulationDefinition = {
     proceduralTextures: true,
     renderTargetPool: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

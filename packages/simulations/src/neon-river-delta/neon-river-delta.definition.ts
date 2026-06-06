@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { NEON_RIVER_DELTA_DEFAULTS, NEON_RIVER_DELTA_SETTINGS_FIELDS } from './neon-river-delta.config.js';
 import { NeonRiverDeltaDemoAI } from './NeonRiverDeltaDemoAI.js';
 import { NeonRiverDeltaPreviewScene } from './NeonRiverDeltaPreviewScene.js';
@@ -26,6 +26,7 @@ export const neonRiverDeltaDefinition: SimulationDefinition = {
     proceduralTextures: true,
     renderTargetPool: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

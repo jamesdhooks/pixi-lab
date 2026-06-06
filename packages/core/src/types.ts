@@ -71,6 +71,8 @@ export interface EngineConfiguration {
   readonly legacyQuality: RenderQuality;
 }
 
+export type EngineConfigurationVisibility = RenderQuality | `${RendererBackend}/${RenderProfile}`;
+
 export type ExperienceKind = 'game' | 'simulation' | 'ambient' | 'effect' | 'toy';
 export type ExperienceRenderMode =
   | 'fullscreen'
@@ -397,6 +399,8 @@ export interface SettingsField {
   default: SettingsValue;
   /** If set, the field is only shown when the active interaction mode is in this list. */
   visibleModes?: string[];
+  /** If set, the field is only shown for these backend/profile engine configurations. Legacy quality ids remain accepted during migration. */
+  visibleEngineConfigurations?: EngineConfigurationVisibility[];
   /** If set, the field is only shown for these engine configurations / legacy render qualities. */
   visibleQualities?: RenderQuality[];
 }

@@ -68,4 +68,3 @@ export const fluidTankDefinition: SimulationDefinition = {
     { icon: '⚙', title: 'Fluid Controls', body: 'Use settings for cell size, finger force, swirl memory, dye persistence, pressure solve, eddy assist, and ambient stirring.' },
   ],
 };
-

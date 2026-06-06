@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { JELLY_WEB_DEFAULTS, JELLY_WEB_SETTINGS_FIELDS } from './jelly-web.config.js';
 import { JellyWebDemoAI } from './JellyWebDemoAI.js';
 import { JellyWebPreviewScene } from './JellyWebPreviewScene.js';
@@ -26,6 +26,7 @@ export const jellyWebDefinition: SimulationDefinition = {
     proceduralTextures: true,
     renderTargetPool: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

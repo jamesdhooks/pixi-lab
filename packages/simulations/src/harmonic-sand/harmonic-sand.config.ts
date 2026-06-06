@@ -20,7 +20,7 @@ export const HARMONIC_SAND_SETTINGS_FIELDS: SettingsField[] = [
     max: 2.5,
     step: 0.05,
     default: 1.25,
-    visibleQualities: ['raw'],
+    visibleEngineConfigurations: ['webgl2/high'],
   },
   {
     key: 'rawLineSharpness',
@@ -31,7 +31,7 @@ export const HARMONIC_SAND_SETTINGS_FIELDS: SettingsField[] = [
     max: 3.5,
     step: 0.05,
     default: 1.8,
-    visibleQualities: ['raw'],
+    visibleEngineConfigurations: ['webgl2/high'],
   },
   {
     key: 'rawGlow',
@@ -42,7 +42,7 @@ export const HARMONIC_SAND_SETTINGS_FIELDS: SettingsField[] = [
     max: 3,
     step: 0.05,
     default: 1.35,
-    visibleQualities: ['raw'],
+    visibleEngineConfigurations: ['webgl2/high'],
   },
   {
     key: 'rawWaveMix',
@@ -53,7 +53,7 @@ export const HARMONIC_SAND_SETTINGS_FIELDS: SettingsField[] = [
     max: 1,
     step: 0.01,
     default: 0.42,
-    visibleQualities: ['raw'],
+    visibleEngineConfigurations: ['webgl2/high'],
   },
 ];
 

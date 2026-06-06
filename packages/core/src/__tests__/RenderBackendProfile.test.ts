@@ -10,6 +10,7 @@ import {
   groupBackendProfileCandidates,
   groupQualityModesByBackend,
   isDefaultRenderBackendProfileSelection,
+  isEngineConfigurationVisible,
   isRenderProfile,
   isRenderQuality,
   isRendererBackend,
@@ -117,6 +118,17 @@ describe('RenderBackendProfile', () => {
 
     expect(getSupportedEngineConfigurations({ engineConfigurations: configurations, qualityModes: ['enhanced'] })).toBe(configurations);
     expect(getSupportedRenderQualityModes({ engineConfigurations: configurations, qualityModes: ['enhanced'] })).toEqual(['raw', 'basic']);
+  });
+
+  it('evaluates settings visibility against explicit engine configurations before legacy quality aliases', () => {
+    const webglRawSelection = { backend: 'webgl2' as const, profile: 'high' as const, legacyQuality: 'raw' as const };
+    const pixiRawSelection = { backend: 'pixi' as const, profile: 'high' as const, legacyQuality: 'raw' as const };
+
+    expect(isEngineConfigurationVisible({ visibleEngineConfigurations: ['webgl2/high'] }, webglRawSelection)).toBe(true);
+    expect(isEngineConfigurationVisible({ visibleEngineConfigurations: ['webgl2/high'] }, pixiRawSelection)).toBe(false);
+    expect(isEngineConfigurationVisible({ visibleEngineConfigurations: ['raw'] }, pixiRawSelection)).toBe(true);
+    expect(isEngineConfigurationVisible({ visibleQualities: ['raw'] }, webglRawSelection)).toBe(true);
+    expect(isEngineConfigurationVisible({ visibleQualities: ['enhanced'] }, webglRawSelection)).toBe(false);
   });
 
   it('centralizes host storage keys at the runtime boundary', () => {
