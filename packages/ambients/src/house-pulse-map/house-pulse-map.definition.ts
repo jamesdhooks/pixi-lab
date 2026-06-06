@@ -1,4 +1,4 @@
-import type { AmbientDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type  AmbientDefinition } from '@hooksjam/pixi-lab-core';
 import { DEFAULT_AMBIENT_BEHAVIOR } from '@hooksjam/pixi-lab-core';
 import { HOUSE_PULSE_MAP_DEFAULTS } from './house-pulse-map.config.js';
 import { HousePulseMapScene, housePulseMapStyles } from './HousePulseMapScene.js';
@@ -23,6 +23,7 @@ export const housePulseMapDefinition: AmbientDefinition = {
     lowMotion: true,
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     settings: true,
   },
   dataBindings: [

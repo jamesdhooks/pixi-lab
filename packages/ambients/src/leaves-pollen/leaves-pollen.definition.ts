@@ -1,4 +1,4 @@
-import { DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
 import { LEAVES_POLLEN_DEFAULTS } from './leaves-pollen.config.js';
 import { LeavesPollenScene, leavesPollenStyleManifest } from './LeavesPollenScene.js';
 
@@ -19,6 +19,7 @@ export const leavesPollenDefinition: EffectDefinition = {
     lowMotion: true,
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     settings: true,
   },
   dataBindings: [

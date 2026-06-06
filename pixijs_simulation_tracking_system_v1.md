@@ -6,6 +6,16 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Catalog Engine Configuration Declaration Slice
+
+Scope:
+- declared explicit Basic/Enhanced engine configurations for the remaining ambient/effect and Ballpit definitions that still only advertised legacy `qualityModes`.
+- preserved `qualityModes` on every definition as an incremental compatibility alias while making `engineConfigurations` complete across all definition files.
+- verified there are zero `*.definition.ts` files with `qualityModes` but no explicit `engineConfigurations`.
+
+Validation:
+- `pnpm -s typecheck`, `pnpm -s lint`, `pnpm -s build`, and `git diff --check` passed.
+
 ## 2026-06-06 — Engine Configuration Settings Visibility Slice
 
 Scope:

@@ -1,4 +1,4 @@
-import type { AmbientDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type  AmbientDefinition } from '@hooksjam/pixi-lab-core';
 import { DEFAULT_AMBIENT_BEHAVIOR } from '@hooksjam/pixi-lab-core';
 import { SLEEP_AQUARIUM_DEFAULTS } from './sleep-aquarium.config.js';
 import { SleepAquariumScene, sleepAquariumStyles } from './SleepAquariumScene.js';
@@ -23,6 +23,7 @@ export const sleepAquariumDefinition: AmbientDefinition = {
     lowMotion: true,
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     settings: true,
   },
   dataBindings: [

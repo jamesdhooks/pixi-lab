@@ -1,4 +1,4 @@
-import type { AmbientDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type  AmbientDefinition } from '@hooksjam/pixi-lab-core';
 import { DEFAULT_AMBIENT_BEHAVIOR } from '@hooksjam/pixi-lab-core';
 import { HOME_WEATHER_GLASS_DEFAULTS } from './home-weather-glass.config.js';
 import { HomeWeatherGlassScene, homeWeatherGlassStyles } from './HomeWeatherGlassScene.js';
@@ -23,6 +23,7 @@ export const homeWeatherGlassDefinition: AmbientDefinition = {
     lowMotion: true,
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     settings: true,
   },
   dataBindings: [

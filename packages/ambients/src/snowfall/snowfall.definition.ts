@@ -1,4 +1,4 @@
-import { DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
 import { SNOWFALL_DEFAULTS } from './snowfall.config.js';
 import { SnowfallScene, snowfallStyleManifest } from './SnowfallScene.js';
 
@@ -19,6 +19,7 @@ export const snowfallDefinition: EffectDefinition = {
     lowMotion: true,
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     settings: true,
   },
   dataBindings: [

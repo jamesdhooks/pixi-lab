@@ -1,4 +1,4 @@
-import { DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
 import { CONFETTI_DEFAULTS } from './confetti.config.js';
 import { ConfettiScene, confettiStyleManifest } from './ConfettiScene.js';
 
@@ -19,6 +19,7 @@ export const confettiDefinition: EffectDefinition = {
     lowMotion: true,
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     settings: true,
   },
   dataBindings: [

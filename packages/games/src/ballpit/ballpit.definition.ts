@@ -3,7 +3,7 @@
  *
  * Ball Pit GameDefinition — register this in components/games/registry.ts.
  */
-import type { GameDefinition, SimStyleManifest } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type  GameDefinition, SimStyleManifest } from '@hooksjam/pixi-lab-core';
 import { BallPitScene } from './BallPitScene.js';
 import { BallPitAutoScene } from './BallPitPreviewScene.js';
 import { BallPitAI } from './BallPitAI.js';
@@ -61,6 +61,7 @@ export const ballPitDefinition: GameDefinition = {
     tutorial: true,
     demo: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     reset: true,
     settings: false,
   },

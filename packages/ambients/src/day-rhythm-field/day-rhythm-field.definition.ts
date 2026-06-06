@@ -1,4 +1,4 @@
-import type { AmbientDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type  AmbientDefinition } from '@hooksjam/pixi-lab-core';
 import { DEFAULT_AMBIENT_BEHAVIOR } from '@hooksjam/pixi-lab-core';
 import { DAY_RHYTHM_FIELD_DEFAULTS } from './day-rhythm-field.config.js';
 import { DayRhythmFieldScene, dayRhythmFieldStyles } from './DayRhythmFieldScene.js';
@@ -23,6 +23,7 @@ export const dayRhythmFieldDefinition: AmbientDefinition = {
     lowMotion: true,
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     settings: true,
   },
   dataBindings: [

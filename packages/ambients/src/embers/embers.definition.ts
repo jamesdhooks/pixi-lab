@@ -1,4 +1,4 @@
-import { DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, DEFAULT_FOREGROUND_BEHAVIOR, type EffectDefinition } from '@hooksjam/pixi-lab-core';
 import { EMBERS_DEFAULTS } from './embers.config.js';
 import { EmbersScene, embersStyleManifest } from './EmbersScene.js';
 
@@ -19,6 +19,7 @@ export const embersDefinition: EffectDefinition = {
     lowMotion: true,
     sleepMode: true,
     qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     settings: true,
   },
   dataBindings: [
