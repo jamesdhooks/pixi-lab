@@ -294,6 +294,24 @@ export function resolveEngineConfigurationQuerySelection(
 ): RenderBackendProfileSelection {
   const requestedBackend = isRendererBackend(request.backend) ? request.backend : undefined;
   const requestedProfile = isRenderProfile(request.profile) ? request.profile : undefined;
+  const requestedQuality = isRenderQuality(request.quality) ? request.quality : undefined;
+
+  if (requestedBackend && requestedProfile && requestedQuality) {
+    const exactEngineConfigurationMatch = engineConfigurations.find(
+      (configuration) =>
+        configuration.backend === requestedBackend &&
+        configuration.profile === requestedProfile &&
+        configuration.legacyQuality === requestedQuality,
+    );
+
+    if (exactEngineConfigurationMatch) {
+      return {
+        backend: exactEngineConfigurationMatch.backend,
+        profile: exactEngineConfigurationMatch.profile,
+        legacyQuality: exactEngineConfigurationMatch.legacyQuality,
+      };
+    }
+  }
 
   if (requestedBackend && requestedProfile) {
     const engineConfigurationMatch = engineConfigurations.find(
@@ -309,7 +327,6 @@ export function resolveEngineConfigurationQuerySelection(
     }
   }
 
-  const requestedQuality = isRenderQuality(request.quality) ? request.quality : undefined;
   const qualityMatch = requestedQuality
     ? engineConfigurations.find((configuration) => configuration.legacyQuality === requestedQuality)
     : undefined;
@@ -325,6 +342,22 @@ export function resolveEngineConfigurationQuerySelection(
   return resolveRenderBackendProfileSelection(
     requestedQuality,
     engineConfigurations.map((configuration) => configuration.legacyQuality),
+    fallbackQuality,
+  );
+}
+
+export function resolveEngineConfigurationStorageSelection(
+  storedSelection: RenderBackendProfileStorageSnapshot | undefined,
+  engineConfigurations: readonly EngineConfiguration[],
+  fallbackQuality: RenderQuality = 'basic',
+): RenderBackendProfileSelection {
+  return resolveEngineConfigurationQuerySelection(
+    {
+      backend: storedSelection?.backend,
+      profile: storedSelection?.profile,
+      quality: storedSelection?.quality,
+    },
+    engineConfigurations,
     fallbackQuality,
   );
 }

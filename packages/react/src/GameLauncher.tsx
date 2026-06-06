@@ -99,6 +99,8 @@ export interface GameLauncherProps {
   onDemoExit?: () => void;
   /** Called after the Pixi runtime is ready and the launcher's initial mode is applied. */
   onRuntimeReady?: () => void;
+  /** Optional host-selected startup engine configuration, sanitized before launch. */
+  initialRenderSelection?: RenderBackendProfileSelection;
   /** Optional host-selected startup legacy token, sanitized against the active experience. */
   initialQuality?: RenderQuality;
   /**
@@ -130,6 +132,7 @@ function GameLauncherInner({
   onDemoAdvance,
   onDemoExit,
   onRuntimeReady,
+  initialRenderSelection,
   initialQuality,
   onRenderSelectionChange,
   transparent = false,
@@ -148,13 +151,21 @@ function GameLauncherInner({
   const [isDemo, setIsDemo] = useState(autoDemo);
   const [screensaverActive, setScreensaverActive] = useState(false);
   const [styleId, setStyleId] = useState(definition.styleManifest?.defaultStyleId ?? '');
-  const [renderSelection, setRenderSelection] = useState<RenderBackendProfileSelection>(() => {
+  const resolveStartupRenderSelection = useCallback(() => {
+    if (initialRenderSelection !== undefined) {
+      return resolveStoredRenderSelection(
+        serializeRenderBackendProfileStorage(initialRenderSelection),
+        initialRenderSelection.legacyQuality,
+        definition.capabilities,
+      );
+    }
+    if (initialQuality !== undefined) return resolveRenderSelection(initialQuality, definition.capabilities);
     const storedQuality = readStoredLegacyRenderQuality();
     const storedSelection = readStoredRenderSelection();
-    return initialQuality !== undefined
-      ? resolveRenderSelection(initialQuality, definition.capabilities)
-      : resolveStoredRenderSelection(storedSelection, storedQuality, definition.capabilities);
-  });
+    return resolveStoredRenderSelection(storedSelection, storedQuality, definition.capabilities);
+  }, [definition.capabilities, initialQuality, initialRenderSelection]);
+
+  const [renderSelection, setRenderSelection] = useState<RenderBackendProfileSelection>(() => resolveStartupRenderSelection());
 
   useEffect(() => {
     onRenderSelectionChange?.(renderSelection);
@@ -195,19 +206,15 @@ function GameLauncherInner({
   }, []);
 
   useEffect(() => {
-    const storedQuality = readStoredLegacyRenderQuality();
-    const storedSelection = readStoredRenderSelection();
-    const nextSelection = initialQuality !== undefined
-      ? resolveRenderSelection(initialQuality, definition.capabilities)
-      : resolveStoredRenderSelection(storedSelection, storedQuality, definition.capabilities);
+    const nextSelection = resolveStartupRenderSelection();
     const nextQuality = nextSelection.legacyQuality;
     setRenderSelection(nextSelection);
     setRenderedLegacyQuality(undefined);
     appRef.current?.setQuality(nextQuality);
-    if (initialQuality === undefined) {
+    if (initialRenderSelection === undefined && initialQuality === undefined) {
       writeStoredRenderSelection(nextSelection);
     }
-  }, [definition.id, definition.capabilities, initialQuality]);
+  }, [definition.id, initialQuality, initialRenderSelection, resolveStartupRenderSelection]);
 
   const handleEvent = useCallback((event: GameEvent) => {
     switch (event.kind) {

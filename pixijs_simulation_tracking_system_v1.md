@@ -6,6 +6,23 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Engine Configuration Storage/Host Resolver Slice
+
+Scope:
+- added `resolveEngineConfigurationStorageSelection(...)` so stored backend/profile selections resolve through explicit engine configurations.
+- made React selection compatibility prefer explicit engine configurations instead of legacy mode arrays.
+- added `initialRenderSelection` to `GameLauncher` while preserving `initialQuality` as a compatibility prop.
+- moved the demo host from `queryQualityForExperience(...)` to `queryRenderSelectionForExperience(...)`, preserving explicit backend/profile startup selections.
+- fixed exact-match precedence for engine configs that share backend/profile but differ by legacy alias, e.g. Pixi enhanced vs Pixi-owned raw.
+
+Validation:
+- `pnpm --filter @hooksjam/pixi-lab-core -s build` — pass.
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts packages/demo/src/__tests__/queryRoute.test.ts` — pass, 42 tests.
+- `pnpm -s typecheck` — pass.
+- `pnpm -s lint` — pass.
+- `pnpm -s build` — pass.
+- `git diff --check` — pass.
+
 ## 2026-06-06 — Catalog Engine Configuration Declaration Slice
 
 Scope:

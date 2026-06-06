@@ -17,6 +17,7 @@ import {
   mapQualityModesToBackendProfiles,
   parseRenderBackendProfileStorage,
   resolveEngineConfigurationQuerySelection,
+  resolveEngineConfigurationStorageSelection,
   resolveRenderBackendProfileQuerySelection,
   resolveRenderBackendProfileSelection,
   resolveRenderBackendProfileStorageSelection,
@@ -280,6 +281,27 @@ describe('RenderBackendProfile', () => {
       profile: 'high',
       legacyQuality: 'enhanced',
     });
+  });
+
+  it('resolves stored backend/profile selections through explicit engine configurations', () => {
+    const configurations = [
+      ...createEngineConfigurations(['basic', 'enhanced']),
+      { id: 'raw', backend: 'pixi', profile: 'high', label: 'Pixi raw adapter', legacyQuality: 'raw' },
+    ] as const;
+
+    expect(
+      resolveEngineConfigurationStorageSelection(
+        { backend: 'pixi', profile: 'high', quality: 'raw' },
+        configurations,
+      ),
+    ).toEqual({ backend: 'pixi', profile: 'high', legacyQuality: 'raw' });
+
+    expect(
+      resolveEngineConfigurationStorageSelection(
+        { backend: 'webgl2', profile: 'high', quality: 'raw' },
+        configurations,
+      ),
+    ).toEqual({ backend: 'pixi', profile: 'high', legacyQuality: 'raw' });
   });
 
   it('serializes backend/profile route params without legacy quality by default', () => {

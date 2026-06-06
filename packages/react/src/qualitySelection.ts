@@ -1,9 +1,9 @@
 import {
-  getSupportedRenderQualityModes,
+  getSupportedEngineConfigurations,
   isRenderQuality,
   parseRenderBackendProfileStorage,
-  resolveRenderBackendProfileSelection,
-  resolveRenderBackendProfileStorageSelection,
+  resolveEngineConfigurationQuerySelection,
+  resolveEngineConfigurationStorageSelection,
   type ExperienceCapabilities,
   type RenderBackendProfileSelection,
   type RenderQuality,
@@ -17,9 +17,10 @@ function isRenderQualityArray(value: EngineConfigurationSupport): value is reado
   return Array.isArray(value);
 }
 
-function getSupportedModes(support: EngineConfigurationSupport): readonly RenderQuality[] {
-  if (isRenderQualityArray(support)) return support;
-  return getSupportedRenderQualityModes(support as ExperienceCapabilities | undefined);
+function getEngineConfigurationSupport(support: EngineConfigurationSupport) {
+  return isRenderQualityArray(support)
+    ? getSupportedEngineConfigurations({ qualityModes: support })
+    : getSupportedEngineConfigurations(support as ExperienceCapabilities | undefined);
 }
 
 export function sanitizeRenderQuality(
@@ -33,8 +34,10 @@ export function resolveRenderSelection(
   requested: unknown,
   support: EngineConfigurationSupport,
 ): RenderBackendProfileSelection {
-  const supported = getSupportedModes(support);
-  return resolveRenderBackendProfileSelection(isRenderQuality(requested) ? requested : undefined, supported);
+  return resolveEngineConfigurationQuerySelection(
+    { quality: isRenderQuality(requested) ? requested : undefined },
+    getEngineConfigurationSupport(support),
+  );
 }
 
 export function resolveStoredRenderSelection(
@@ -43,9 +46,13 @@ export function resolveStoredRenderSelection(
   support: EngineConfigurationSupport,
 ): RenderBackendProfileSelection {
   const parsedSelection = parseRenderBackendProfileStorage(storedSelection);
+  const fallbackQuality = isRenderQuality(storedQuality) ? storedQuality : undefined;
   if (parsedSelection) {
-    const supported = getSupportedModes(support);
-    return resolveRenderBackendProfileStorageSelection(parsedSelection, supported);
+    return resolveEngineConfigurationStorageSelection(
+      parsedSelection,
+      getEngineConfigurationSupport(support),
+      fallbackQuality,
+    );
   }
 
   return resolveRenderSelection(storedQuality, support);

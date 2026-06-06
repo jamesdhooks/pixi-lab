@@ -12,7 +12,7 @@ import {
   applyCompatibilityRouteRenderSelection,
   buildExperienceRuntimeViewModel,
   findQueryExperience,
-  queryQualityForExperience,
+  queryRenderSelectionForExperience,
 } from './demoRuntime';
 
 const ALL_EXPERIENCES: readonly LabExperience[] = [
@@ -476,7 +476,7 @@ export function App() {
               dockedInset={dockedInset}
               maxPixels={maxPixels}
               transparent={active.kind === 'ambient' || active.kind === 'effect'}
-              initialQuality={queryQualityForExperience(active, routeMode.queryParams)}
+              initialRenderSelection={queryRenderSelectionForExperience(active, routeMode.queryParams)}
               onRenderSelectionChange={setRenderSelection}
               autoDemo={routeMode.fluidEngine || routeMode.fluidReference}
               onQuit={() => {
@@ -884,6 +884,7 @@ interface ExperienceSurfaceProps {
   interactive?: boolean;
   zIndex?: number;
   transparent?: boolean;
+  initialRenderSelection?: RenderBackendProfileSelection;
   initialQuality?: RenderQuality;
   onRenderSelectionChange?: (selection: RenderBackendProfileSelection) => void;
   onDemoAdvance?: () => void;
@@ -902,6 +903,7 @@ function ExperienceSurface({
   interactive = true,
   zIndex = 1,
   transparent = false,
+  initialRenderSelection,
   initialQuality,
   onRenderSelectionChange,
   onDemoAdvance,
@@ -933,6 +935,7 @@ function ExperienceSurface({
           definition={experience}
           maxPixels={maxPixels}
           autoDemo={autoDemo}
+          initialRenderSelection={initialRenderSelection}
           initialQuality={initialQuality}
           onRenderSelectionChange={onRenderSelectionChange}
           transparent={transparent}

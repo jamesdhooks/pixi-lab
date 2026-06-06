@@ -126,6 +126,7 @@ export {
   mapQualityModesToBackendProfiles,
   parseRenderBackendProfileStorage,
   resolveEngineConfigurationQuerySelection,
+  resolveEngineConfigurationStorageSelection,
   resolveRenderBackendProfileQuerySelection,
   resolveRenderBackendProfileSelection,
   resolveRenderBackendProfileStorageSelection,
