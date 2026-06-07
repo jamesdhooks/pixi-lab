@@ -418,7 +418,11 @@ function GameLauncherInner({
   }, [screensaverActive]);
 
   const hasModes = (definition.modes?.length ?? 0) > 1;
-  const hasQualityModes = (definition.capabilities.qualityModes?.length ?? 0) > 0;
+  const hasEngineConfigurations = (
+    definition.capabilities.engineConfigurations?.length
+    ?? definition.capabilities.qualityModes?.length
+    ?? 0
+  ) > 0;
   const isSimulation = definition.kind === 'simulation';
   const isFieldVisible = (f: NonNullable<LabExperience['settingsFields']>[number]) =>
     (!f.visibleModes || f.visibleModes.includes(modeId)) && isEngineConfigurationVisible(f, renderSelection);
@@ -582,9 +586,9 @@ function GameLauncherInner({
                 ) : null,
               },
               {
-                key: 'quality',
+                key: 'engine-configuration',
                 label: 'Engine configuration',
-                hidden: !hasQualityModes,
+                hidden: !hasEngineConfigurations,
                 node: (
                   <EngineConfigurationSelector
                     value={sceneLegacyQuality}

@@ -6,6 +6,16 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Launcher Engine Configuration Predicate Slice
+
+Scope:
+- renamed the launcher UI predicate from `hasQualityModes` to `hasEngineConfigurations`;
+- changed the overflow item key from `quality` to `engine-configuration`;
+- kept scene-facing `quality` props and `qualityModes` fallback intact as compatibility boundaries.
+
+Validation:
+- `pnpm -s typecheck` — passed.
+
 ## 2026-06-06 — Demo Route Legacy Quality Alias Slice
 
 Scope:
