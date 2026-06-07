@@ -1,4 +1,4 @@
-import { SeededRng, type RenderQuality } from '@hooksjam/pixi-lab-core';
+import { SeededRng, linkRawWebGL2Program, type RenderQuality } from '@hooksjam/pixi-lab-core';
 
 export interface GpuFluidTankOptions {
   cellSize: number;
@@ -955,36 +955,10 @@ export class GpuFluidTankRenderer {
 
   private createProgram(fragmentSource: string): FluidProgram {
     if (!this.gl) throw new Error('Fluid renderer unavailable');
-    const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, BASE_VERTEX_SHADER);
-    const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fragmentSource);
-    const program = this.gl.createProgram();
-    if (!program) throw new Error('Failed to create fluid shader program');
-    this.gl.attachShader(program, vertexShader);
-    this.gl.attachShader(program, fragmentShader);
-    this.gl.linkProgram(program);
-    this.gl.deleteShader(vertexShader);
-    this.gl.deleteShader(fragmentShader);
-    if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
-      const message = this.gl.getProgramInfoLog(program) ?? 'Unknown fluid program link error';
-      this.gl.deleteProgram(program);
-      throw new Error(message);
-    }
+    const program = linkRawWebGL2Program(this.gl, { vertex: BASE_VERTEX_SHADER, fragment: fragmentSource });
     return { program, uniforms: this.getUniforms(program) };
   }
 
-  private compileShader(type: number, source: string): WebGLShader {
-    if (!this.gl) throw new Error('Fluid renderer unavailable');
-    const shader = this.gl.createShader(type);
-    if (!shader) throw new Error('Failed to create fluid shader');
-    this.gl.shaderSource(shader, source);
-    this.gl.compileShader(shader);
-    if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-      const message = this.gl.getShaderInfoLog(shader) ?? 'Unknown fluid shader compile error';
-      this.gl.deleteShader(shader);
-      throw new Error(message);
-    }
-    return shader;
-  }
 
   private getUniforms(program: WebGLProgram): Record<string, WebGLUniformLocation | null> {
     if (!this.gl) return {};

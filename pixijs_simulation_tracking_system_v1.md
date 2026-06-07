@@ -6,6 +6,18 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Engine Configuration Route/React Compatibility Slice
+
+Scope:
+- centralized canonical `experience=` / legacy `lab=` route lookup behind `findQueryExperienceFromParams(...)`, with canonical nonblank experience routes winning over legacy aliases and blank canonical values still allowing old lab links.
+- renamed the React selection implementation/test seam to `engineConfigurationSelection` while keeping `qualitySelection.ts` as a public compatibility shim.
+- added Fluid Tank raw compatibility-route regression coverage for `lab=fluid-tank&quality=raw` and blank canonical fallback behavior.
+- moved Fluid Tank GPU shader program creation onto the shared raw WebGL2 linker instead of maintaining private shader compile/link helpers.
+
+Validation:
+- focused query route, React selection, and raw WebGL2 tests passed.
+- browser QA covered Harmonic Sand Basic/Enhanced/Raw selector changes, reset/demo controls, Fluid legacy raw route resolution, settings visibility, and visual layout; one blank browser-tool exception appeared once after onboarding overlay dismissal but did not reproduce on fresh route load.
+
 ## 2026-06-06 — Engine Configuration Storage/Host Resolver Slice
 
 Scope:

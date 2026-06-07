@@ -19,7 +19,7 @@ import { DebugPanel } from './ui/DebugPanel.js';
 import { SimControlPanel } from './ui/SimControlPanel.js';
 import { OverflowMenu } from './ui/OverflowMenu.js';
 import { ViewportProvider, useViewportContext } from './ViewportProvider.js';
-import { resolveRenderSelection, resolveStoredRenderSelection } from './qualitySelection.js';
+import { resolveRenderSelection, resolveStoredRenderSelection } from './engineConfigurationSelection.js';
 import {
   LEGACY_RENDER_QUALITY_STORAGE_KEY,
   RENDER_SELECTION_STORAGE_KEY,

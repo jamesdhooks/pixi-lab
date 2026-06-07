@@ -24,6 +24,17 @@ export function findQueryExperience(value: string | null, experiences: readonly 
   return experiences.find((experience) => experience.id.toLowerCase() === normalized);
 }
 
+export function findQueryExperienceFromParams(
+  params: Pick<URLSearchParams, 'get'>,
+  experiences: readonly LabExperience[],
+): LabExperience | undefined {
+  const requestedExperience = params.get('experience');
+  const canonicalExperience = findQueryExperience(requestedExperience, experiences);
+  if (canonicalExperience) return canonicalExperience;
+  if (requestedExperience && requestedExperience.trim().length > 0) return undefined;
+  return findQueryExperience(params.get('lab'), experiences);
+}
+
 export function queryRenderSelectionForExperience(
   experience: LabExperience,
   params: Pick<URLSearchParams, 'get'>,

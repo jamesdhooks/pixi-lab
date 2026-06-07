@@ -11,7 +11,7 @@ import { hasPassedDemoQa } from './demoQaStatus';
 import {
   applyCompatibilityRouteRenderSelection,
   buildExperienceRuntimeViewModel,
-  findQueryExperience,
+  findQueryExperienceFromParams,
   queryRenderSelectionForExperience,
 } from './demoRuntime';
 
@@ -86,7 +86,7 @@ export function App() {
       fluidGallery: params.has('fluidGallery'),
       fluidEngine: params.has('fluidEngine'),
       fluidReference: params.has('fluidReference'),
-      experience: findQueryExperience(params.get('experience'), ALL_EXPERIENCES),
+      experience: findQueryExperienceFromParams(params, ALL_EXPERIENCES),
       queryParams: params,
     };
   }, []);

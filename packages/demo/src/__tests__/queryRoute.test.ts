@@ -6,6 +6,7 @@ import {
   buildExperienceBackendProfileRoute,
   buildExperienceRuntimeViewModel,
   findQueryExperience,
+  findQueryExperienceFromParams,
   parseQueryQuality,
   queryQualityForExperience,
   queryRenderSelectionForExperience,
@@ -55,6 +56,14 @@ describe('demo query routing helpers', () => {
     expect(findQueryExperience('missing-experience', EXPERIENCES)).toBeUndefined();
     expect(findQueryExperience('', EXPERIENCES)).toBeUndefined();
     expect(findQueryExperience(null, EXPERIENCES)).toBeUndefined();
+  });
+
+  it('resolves canonical experience routes before legacy lab aliases', () => {
+    expect(findQueryExperienceFromParams(params('experience=harmonic-sand'), EXPERIENCES)?.id).toBe('harmonic-sand');
+    expect(findQueryExperienceFromParams(params('lab=fluid-tank'), EXPERIENCES)?.id).toBe('fluid-tank');
+    expect(findQueryExperienceFromParams(params('experience=harmonic-sand&lab=fluid-tank'), EXPERIENCES)?.id).toBe('harmonic-sand');
+    expect(findQueryExperienceFromParams(params('experience=&lab=fluid-tank'), EXPERIENCES)?.id).toBe('fluid-tank');
+    expect(findQueryExperienceFromParams(params('experience=missing-experience&lab=fluid-tank'), EXPERIENCES)).toBeUndefined();
   });
 
   it('sanitizes query quality against the selected experience before launch', () => {
@@ -192,6 +201,26 @@ describe('demo query routing helpers', () => {
     const selection = applyCompatibilityRouteRenderSelection(
       EXPERIENCES[1],
       params('backend=webgl2&profile=high'),
+      { setItem: (key, value) => { stored.set(key, value); } },
+    );
+
+    expect(selection).toEqual({ backend: 'webgl2', profile: 'high', legacyQuality: 'raw' });
+    expect(stored.get(LEGACY_RENDER_QUALITY_STORAGE_KEY)).toBe('raw');
+    expect(stored.get(RENDER_SELECTION_STORAGE_KEY)).toBe(
+      JSON.stringify({ backend: 'webgl2', profile: 'high', quality: 'raw' }),
+    );
+  });
+
+  it('bridges legacy Fluid lab quality routes to the explicit WebGL2 raw engine configuration', () => {
+    const routeParams = params('experience=&lab=fluid-tank&quality=raw');
+    const fluidExperience = findQueryExperienceFromParams(routeParams, EXPERIENCES);
+    const stored = new Map<string, string>();
+
+    expect(fluidExperience?.id).toBe('fluid-tank');
+
+    const selection = applyCompatibilityRouteRenderSelection(
+      fluidExperience!,
+      routeParams,
       { setItem: (key, value) => { stored.set(key, value); } },
     );
 

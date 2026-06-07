@@ -1,6 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import type { RenderQuality } from '@hooksjam/pixi-lab-core';
-import { resolveRenderSelection, resolveStoredRenderSelection, sanitizeRenderQuality } from '../qualitySelection.js';
+import {
+  resolveRenderSelection,
+  resolveStoredRenderSelection,
+  sanitizeRenderQuality,
+} from '../engineConfigurationSelection.js';
+import {
+  resolveRenderSelection as resolveLegacyRenderSelection,
+  sanitizeRenderQuality as sanitizeLegacyRenderQuality,
+} from '../qualitySelection.js';
+
+describe('qualitySelection compatibility shim', () => {
+  it('forwards legacy quality helpers to the engine configuration implementation', () => {
+    expect(sanitizeLegacyRenderQuality('raw', ['basic', 'enhanced'])).toBe(sanitizeRenderQuality('raw', ['basic', 'enhanced']));
+    expect(resolveLegacyRenderSelection('enhanced', ['basic', 'enhanced'])).toEqual(
+      resolveRenderSelection('enhanced', ['basic', 'enhanced']),
+    );
+  });
+});
 
 describe('sanitizeRenderQuality', () => {
   it('keeps raw only when the active experience advertises raw', () => {
@@ -65,7 +82,7 @@ describe('resolveRenderSelection', () => {
 });
 
 describe('resolveStoredRenderSelection', () => {
-  it('sanitizes persisted backend/profile state against the active experience capabilities', () => {
+  it('sanitizes persisted backend/profile state against the active experience capabilities with stored quality fallback', () => {
     expect(
       resolveStoredRenderSelection(
         { backend: 'webgl2', profile: 'high', quality: 'raw' },
@@ -74,8 +91,8 @@ describe('resolveStoredRenderSelection', () => {
       ),
     ).toEqual({
       backend: 'pixi',
-      profile: 'standard',
-      legacyQuality: 'basic',
+      profile: 'high',
+      legacyQuality: 'enhanced',
     });
   });
 
