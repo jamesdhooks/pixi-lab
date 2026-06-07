@@ -5,14 +5,20 @@
  * Mounts a canvas into a container div, inits GameApp, starts/stops on mount/unmount.
  */
 import { useEffect, useRef, useCallback } from 'react';
-import { GameApp, type GameAppOptions } from '@hooksjam/pixi-lab-core';
-import type { LabExperience } from '@hooksjam/pixi-lab-core';
+import { GameApp } from '@hooksjam/pixi-lab-core';
 import type {
   AmbientDataAdapter,
+  GameAppOptions,
   GameEvent,
+  LabExperience,
   RenderBackendProfileSelection,
   RenderQuality,
 } from '@hooksjam/pixi-lab-core';
+
+function clearRuntimeHost(host: HTMLElement | null): void {
+  if (!host) return;
+  host.replaceChildren();
+}
 
 export interface GameRuntimeProps {
   definition: LabExperience;
@@ -76,6 +82,8 @@ export function GameRuntime({
     let cancelled = false;
     let rafId = 0;
 
+    clearRuntimeHost(container);
+
     // Defer to the next animation frame for two reasons:
     // 1. Ensures the browser has performed a layout pass so getBoundingClientRect()
     //    returns correct dimensions (clientWidth can be 0 before the first paint
@@ -131,6 +139,7 @@ export function GameRuntime({
         app.destroy();
         appRef.current = null;
       }
+      clearRuntimeHost(container);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [definition.id, runtimeEngineKey]); // Re-create when the experience or engine configuration changes

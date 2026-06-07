@@ -4,7 +4,7 @@
  * Full-screen game shell. Intro → gameplay → game over.
  * Settings button pauses the engine and opens the settings drawer.
  */
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, HelpCircle, Play, Settings as SettingsIcon, X } from 'lucide-react';
 import { GameRuntime } from './GameRuntime.js';
@@ -207,10 +207,10 @@ function GameLauncherInner({
 
   useEffect(() => {
     const nextSelection = resolveStartupRenderSelection();
-    const nextQuality = nextSelection.legacyQuality;
     setRenderSelection(nextSelection);
     setRenderedLegacyQuality(undefined);
-    appRef.current?.setQuality(nextQuality);
+    appRef.current = null;
+    setAppInstance(null);
     if (initialRenderSelection === undefined && initialQuality === undefined) {
       writeStoredRenderSelection(nextSelection);
     }
@@ -301,7 +301,8 @@ function GameLauncherInner({
       const nextSelection = resolveRenderSelection(nextLegacyQuality, definition.capabilities);
       setRenderSelection(nextSelection);
       setRenderedLegacyQuality(undefined); // user picked explicitly; clear any fallback indicator
-      appRef.current?.setQuality(nextSelection.legacyQuality);
+      appRef.current = null;
+      setAppInstance(null);
       writeStoredRenderSelection(nextSelection);
     },
     [definition.capabilities],
@@ -420,10 +421,19 @@ function GameLauncherInner({
   const hasModes = (definition.modes?.length ?? 0) > 1;
   const hasEngineConfigurations = (definition.capabilities.engineConfigurations?.length ?? 0) > 0;
   const isSimulation = definition.kind === 'simulation';
-  const isFieldVisible = (f: NonNullable<LabExperience['settingsFields']>[number]) =>
-    (!f.visibleModes || f.visibleModes.includes(modeId)) && isEngineConfigurationVisible(f, renderSelection);
-  const visibleSettingsFields = (definition.settingsFields ?? []).filter(isFieldVisible);
-  const topControlFields = visibleSettingsFields.filter((f) => f.type === 'number' || f.type === 'select');
+  const isFieldVisible = useCallback(
+    (f: NonNullable<LabExperience['settingsFields']>[number]) =>
+      (!f.visibleModes || f.visibleModes.includes(modeId)) && isEngineConfigurationVisible(f, renderSelection),
+    [modeId, renderSelection],
+  );
+  const visibleSettingsFields = useMemo(
+    () => (definition.settingsFields ?? []).filter(isFieldVisible),
+    [definition.settingsFields, isFieldVisible],
+  );
+  const topControlFields = useMemo(
+    () => visibleSettingsFields.filter((f) => f.type === 'number' || f.type === 'select'),
+    [visibleSettingsFields],
+  );
 
   // On mobile portrait, style + mode are shown at the top of SimControlPanel instead of HUD/OverflowMenu.
   const controlsHeaderSlot =
