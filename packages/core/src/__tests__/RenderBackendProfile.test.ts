@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_LEGACY_RENDER_QUALITIES,
   DEFAULT_RENDER_QUALITY_MODES,
   LEGACY_RENDER_QUALITY_STORAGE_KEY,
   RENDER_SELECTION_STORAGE_KEY,
@@ -55,9 +54,8 @@ describe('RenderBackendProfile', () => {
     );
   });
 
-  it('centralizes default supported legacy qualities as Pixi-safe runtime capabilities', () => {
-    expect(DEFAULT_LEGACY_RENDER_QUALITIES).toEqual(['basic', 'enhanced']);
-    expect(DEFAULT_RENDER_QUALITY_MODES).toBe(DEFAULT_LEGACY_RENDER_QUALITIES);
+  it('centralizes default supported quality modes as Pixi-safe runtime capabilities', () => {
+    expect(DEFAULT_RENDER_QUALITY_MODES).toEqual(['basic', 'enhanced']);
     const readonlyRawModes = ['raw'] as const;
 
     expect(getSupportedLegacyRenderQualities(undefined)).toEqual(['basic', 'enhanced']);

@@ -126,9 +126,7 @@ describe('SIMULATION_REGISTRY', () => {
     const definition = getSimulation('fluid-tank');
 
     expect(definition?.capabilities.engineConfigurations?.map((configuration) => configuration.legacyQuality)).toEqual(['basic', 'enhanced', 'raw']);
-    expect(definition?.capabilities.engineConfigurations?.map((configuration) => configuration.legacyQuality)).toEqual(['basic', 'enhanced', 'raw']);
-    expect(definition?.capabilities.engineConfigurations?.map((configuration) => configuration.legacyQuality)).toEqual(['basic', 'enhanced', 'raw']);
-    expect(definition?.capabilities.qualityModes).toEqual(['basic', 'enhanced', 'raw']);
+    expect(definition?.capabilities.qualityModes).toBeUndefined();
     expect(definition?.styleManifest.capabilities.qualities).toEqual(['basic', 'enhanced', 'raw']);
 
     const basicScene = definition?.factory({ quality: 'basic' } as unknown as GameContext);
@@ -149,7 +147,8 @@ describe('SIMULATION_REGISTRY', () => {
   it('advertises Amoeba Lamp raw only after its Pixi-owned adapter is selectable', () => {
     const definition = getSimulation('amoeba-lamp');
 
-    expect(definition?.capabilities.qualityModes).toEqual(['basic', 'enhanced', 'raw']);
+    expect(definition?.capabilities.engineConfigurations?.map((configuration) => configuration.legacyQuality)).toEqual(['basic', 'enhanced', 'raw']);
+    expect(definition?.capabilities.qualityModes).toBeUndefined();
     expect(definition?.styleManifest.capabilities.qualities).toEqual(['basic', 'enhanced', 'raw']);
 
     const factoryContext = {} as unknown as GameContext;
@@ -165,7 +164,8 @@ describe('SIMULATION_REGISTRY', () => {
   it('advertises Orbital Shrapnel raw only after its Pixi-owned trail texture adapter is selectable', () => {
     const definition = getSimulation('orbital-shrapnel');
 
-    expect(definition?.capabilities.qualityModes).toEqual(['basic', 'enhanced', 'raw']);
+    expect(definition?.capabilities.engineConfigurations?.map((configuration) => configuration.legacyQuality)).toEqual(['basic', 'enhanced', 'raw']);
+    expect(definition?.capabilities.qualityModes).toBeUndefined();
     expect(definition?.styleManifest.capabilities.qualities).toEqual(['basic', 'enhanced', 'raw']);
 
     const factoryContext = {} as unknown as GameContext;
@@ -187,14 +187,14 @@ describe('SIMULATION_REGISTRY', () => {
     expect(rawCapableIds).toEqual(['amoeba-lamp', 'fluid-tank', 'harmonic-sand', 'orbital-shrapnel']);
   });
 
-  it('keeps raw-capable simulation engine configuration declarations aligned with legacy compatibility modes', () => {
+  it('keeps raw-capable simulation engine configuration declarations explicit', () => {
     for (const id of ['amoeba-lamp', 'fluid-tank', 'harmonic-sand', 'orbital-shrapnel'] as const) {
       const definition = getSimulation(id);
       const engineConfigurations = definition?.capabilities.engineConfigurations ?? [];
       const engineModes = engineConfigurations.map((configuration) => configuration.legacyQuality);
 
       expect(engineModes, `${id}.engineConfigurations.legacyQuality`).toEqual(['basic', 'enhanced', 'raw']);
-      expect(definition?.capabilities.qualityModes, `${id}.qualityModes compatibility`).toEqual(engineModes);
+      expect(definition?.capabilities.qualityModes, `${id}.qualityModes converted`).toBeUndefined();
       expect(engineConfigurations.map((configuration) => configuration.label), `${id}.engineConfigurations.label`).toEqual([
         'PixiJS / Standard · Basic',
         'PixiJS / High · Enhanced',

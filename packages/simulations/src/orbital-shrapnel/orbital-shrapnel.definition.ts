@@ -25,7 +25,6 @@ export const orbitalShrapnelDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced', 'raw'],
     engineConfigurations: createEngineConfigurations(['basic', 'enhanced', 'raw'], { rawBackend: 'pixi' }),
     demo: true,
     settings: true,

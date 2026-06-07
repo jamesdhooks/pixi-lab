@@ -27,7 +27,6 @@ export const fluidTankDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced', 'raw'],
     engineConfigurations: createEngineConfigurations(['basic', 'enhanced', 'raw']),
     demo: true,
     settings: true,

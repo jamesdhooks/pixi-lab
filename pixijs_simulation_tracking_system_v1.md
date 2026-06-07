@@ -6,6 +6,17 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-07 — Raw Definition Engine Configuration Conversion Slice
+
+Scope:
+- removed duplicated raw-capable `qualityModes` declarations from simulation definitions that already declare `engineConfigurations`;
+- converted registry tests to assert `engineConfigurations` as the source of truth and `qualityModes` as undefined for those converted definitions;
+- removed the recently-added `DEFAULT_LEGACY_RENDER_QUALITIES` alias crutch and restored the existing default constant until it can be truly replaced.
+
+Verification:
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts packages/simulations/src/__tests__/SimulationRegistry.test.ts`
+- `pnpm -s typecheck`
+
 ## 2026-06-07 — React Selector Barrel Canonical Export Slice
 
 Scope:
