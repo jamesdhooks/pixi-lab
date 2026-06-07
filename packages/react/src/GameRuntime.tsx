@@ -7,7 +7,12 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { GameApp, type GameAppOptions } from '@hooksjam/pixi-lab-core';
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
-import type { AmbientDataAdapter, GameEvent, RenderQuality } from '@hooksjam/pixi-lab-core';
+import type {
+  AmbientDataAdapter,
+  GameEvent,
+  RenderBackendProfileSelection,
+  RenderQuality,
+} from '@hooksjam/pixi-lab-core';
 
 export interface GameRuntimeProps {
   definition: LabExperience;
@@ -15,6 +20,8 @@ export interface GameRuntimeProps {
   palette?: string;
   seed?: number;
   mode?: 'play' | 'screensaver' | 'demo';
+  renderSelection?: RenderBackendProfileSelection;
+  /** Legacy scene compatibility tier derived from renderSelection. */
   quality?: RenderQuality;
   transparent?: boolean;
   sleepMode?: boolean;
@@ -37,6 +44,7 @@ export function GameRuntime({
   palette,
   seed,
   mode = 'play',
+  renderSelection,
   quality,
   transparent,
   sleepMode,
@@ -50,6 +58,9 @@ export function GameRuntime({
 }: GameRuntimeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<GameApp | null>(null);
+  const runtimeEngineKey = renderSelection
+    ? `${renderSelection.backend}/${renderSelection.profile}/${renderSelection.legacyQuality}`
+    : `legacy/${quality ?? 'basic'}`;
 
   const handleEvent = useCallback(
     (event: GameEvent) => {
@@ -81,6 +92,7 @@ export function GameRuntime({
         mode,
         palette,
         seed,
+        renderSelection,
         quality,
         transparent,
         sleepMode,
@@ -121,7 +133,7 @@ export function GameRuntime({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [definition.id, quality]); // Re-create when the experience or engine configuration changes
+  }, [definition.id, runtimeEngineKey]); // Re-create when the experience or engine configuration changes
 
   useEffect(() => {
     appRef.current?.setSleepMode((sleepMode ?? false) || (lowMotion ?? false));

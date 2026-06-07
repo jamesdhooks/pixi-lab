@@ -50,7 +50,6 @@ export const myceliumLatticeDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
     engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
   },
   factory:        () => new MyceliumLatticeScene(),

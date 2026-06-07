@@ -60,7 +60,6 @@ export const ballPitDefinition: GameDefinition = {
     screensaver: true,
     tutorial: true,
     demo: true,
-    qualityModes: ['basic', 'enhanced'],
     engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     reset: true,
     settings: false,

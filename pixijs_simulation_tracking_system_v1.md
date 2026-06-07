@@ -6,6 +6,22 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-07 — Runtime Engine Configuration Architecture Reset Completion Slice
+
+Scope:
+- converted runtime/launcher render-selection seams to carry canonical `backend/profile` render selection instead of treating legacy `qualityModes` as the primary path;
+- removed duplicated `qualityModes` declarations from all simulation, ambient/effect, and game definitions after explicit `engineConfigurations` coverage was complete;
+- added registry guardrails so ambients/effects and simulations preserve engine-configuration coverage without reintroducing legacy definition metadata.
+
+Verification:
+- `pnpm -s lint && pnpm -s typecheck && pnpm -s test && pnpm -s build && git diff --check` passed.
+- Source probe confirmed 37 definition files, zero `qualityModes` occurrences, and zero missing `engineConfigurations`.
+- Built registry probe confirmed 37 definitions total: 22 simulations, 8 ambients, 6 effects, and 1 game, with no missing engine configurations and no legacy `qualityModes` metadata.
+- Browser smoke covered Harmonic Sand and Fluid Tank normal engine selector switching across Pixi Basic/Enhanced and WebGL2 Raw paths, raw canvas markers, Pixi switch-back cleanup, and no console messages.
+
+Compatibility note:
+- visible selector option values and scene-facing props still bridge through legacy quality tokens (`basic`/`enhanced`/`raw`) at external/runtime compatibility boundaries; labels and selection state now use canonical engine configuration metadata.
+
 ## 2026-06-07 — Raw Definition Engine Configuration Conversion Slice
 
 Scope:

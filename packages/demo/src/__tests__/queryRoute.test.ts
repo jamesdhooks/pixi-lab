@@ -23,17 +23,17 @@ const EXPERIENCES = [
   {
     id: 'amoeba-lamp',
     name: 'Amoeba Lamp',
-    capabilities: { qualityModes: ['basic', 'enhanced', 'raw'], engineConfigurations: PIXI_RAW_ENGINE_CONFIGURATIONS },
+    capabilities: { engineConfigurations: PIXI_RAW_ENGINE_CONFIGURATIONS },
   },
   {
     id: 'fluid-tank',
     name: 'Fluid Tank',
-    capabilities: { qualityModes: ['basic', 'enhanced', 'raw'], engineConfigurations: RESET_ENGINE_CONFIGURATIONS },
+    capabilities: { engineConfigurations: RESET_ENGINE_CONFIGURATIONS },
   },
   {
     id: 'harmonic-sand',
     name: 'Harmonic Sand Plate',
-    capabilities: { qualityModes: ['basic', 'enhanced', 'raw'], engineConfigurations: RESET_ENGINE_CONFIGURATIONS, settings: true },
+    capabilities: { engineConfigurations: RESET_ENGINE_CONFIGURATIONS, settings: true },
   },
 ] as LabExperience[];
 

@@ -18,7 +18,6 @@ export const rainStreaksDefinition: EffectDefinition = {
     styleExport: true,
     lowMotion: true,
     sleepMode: true,
-    qualityModes: ['basic', 'enhanced'],
     engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     settings: true,
   },

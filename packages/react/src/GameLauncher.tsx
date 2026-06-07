@@ -418,11 +418,7 @@ function GameLauncherInner({
   }, [screensaverActive]);
 
   const hasModes = (definition.modes?.length ?? 0) > 1;
-  const hasEngineConfigurations = (
-    definition.capabilities.engineConfigurations?.length
-    ?? definition.capabilities.qualityModes?.length
-    ?? 0
-  ) > 0;
+  const hasEngineConfigurations = (definition.capabilities.engineConfigurations?.length ?? 0) > 0;
   const isSimulation = definition.kind === 'simulation';
   const isFieldVisible = (f: NonNullable<LabExperience['settingsFields']>[number]) =>
     (!f.visibleModes || f.visibleModes.includes(modeId)) && isEngineConfigurationVisible(f, renderSelection);
@@ -482,6 +478,7 @@ function GameLauncherInner({
         definition={definition}
         userId={userId}
         mode={autoDemo && definition.capabilities.demo ? 'demo' : 'play'}
+        renderSelection={renderSelection}
         quality={sceneLegacyQuality}
         transparent={transparent}
         maxPixels={localMaxPixels}
@@ -594,7 +591,6 @@ function GameLauncherInner({
                     value={sceneLegacyQuality}
                     renderedValue={renderedLegacyQuality}
                     configurations={definition.capabilities.engineConfigurations}
-                    options={definition.capabilities.qualityModes}
                     onChange={handleEngineConfigurationChange}
                   />
                 ),

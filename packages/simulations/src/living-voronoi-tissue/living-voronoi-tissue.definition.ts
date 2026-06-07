@@ -25,7 +25,6 @@ export const livingVoronoiTissueDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
     engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,

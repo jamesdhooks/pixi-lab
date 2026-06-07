@@ -46,8 +46,8 @@ describe('EngineConfigurationSelector', () => {
     ]);
   });
 
-  it('includes raw mode as a selectable WebGL2 engine configuration when supported', () => {
-    const element = EngineConfigurationSelector({
+  it('bridges legacy quality-token options through the compatibility selector', () => {
+    const element = QualitySelector({
       value: 'raw',
       options: ['basic', 'enhanced', 'raw'],
       onChange: () => undefined,
@@ -62,7 +62,13 @@ describe('EngineConfigurationSelector', () => {
     ]);
   });
 
-  it('keeps the legacy QualitySelector export as a compatibility alias', () => {
-    expect(QualitySelector).toBe(EngineConfigurationSelector);
+  it('keeps the legacy QualitySelector export as a compatibility wrapper', () => {
+    const element = QualitySelector({
+      value: 'basic',
+      onChange: () => undefined,
+    });
+
+    const selects = collectByType(element, 'select');
+    expect(selects[0].props['aria-label']).toBe('Engine configuration');
   });
 });

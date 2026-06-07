@@ -10,7 +10,16 @@
  * - Emit GameEvents upward to the React shell via the provided callback
  * - Clean shutdown on destroy()
  */
-import type { AmbientDataAdapter, BurstEffect, GameContext, GameEvent, GameMode, InputSnapshot, RenderQuality } from './types.js';
+import type {
+  AmbientDataAdapter,
+  BurstEffect,
+  GameContext,
+  GameEvent,
+  GameMode,
+  InputSnapshot,
+  RenderQuality,
+} from './types.js';
+import type { RenderBackendProfileSelection } from './runtime/RenderBackendProfile.js';
 import type { Scene } from './Scene.js';
 import { Ticker } from './Ticker.js';
 import { Input } from './Input.js';
@@ -52,6 +61,9 @@ export interface GameAppOptions {
   /** Palette name from Styles registry */
   palette?: string;
   seed?: number;
+  /** Canonical engine/backend/profile selection chosen by the host runtime. */
+  renderSelection?: RenderBackendProfileSelection;
+  /** Legacy scene compatibility tier derived from renderSelection. */
   quality?: RenderQuality;
   transparent?: boolean;
   sleepMode?: boolean;

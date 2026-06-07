@@ -1,9 +1,11 @@
 import {
   getSupportedEngineConfigurations,
+  createEngineConfigurations,
   isRenderQuality,
   parseRenderBackendProfileStorage,
   resolveEngineConfigurationQuerySelection,
   resolveEngineConfigurationStorageSelection,
+  type EngineConfiguration,
   type ExperienceCapabilities,
   type RenderBackendProfileSelection,
   type RenderQuality,
@@ -11,16 +13,32 @@ import {
 
 export { isRenderQuality } from '@hooksjam/pixi-lab-core';
 
-export type EngineConfigurationSupport = ExperienceCapabilities | readonly RenderQuality[] | undefined;
+export type EngineConfigurationSupport =
+  | ExperienceCapabilities
+  | readonly EngineConfiguration[]
+  | readonly RenderQuality[]
+  | undefined;
 
-function isRenderQualityArray(value: EngineConfigurationSupport): value is readonly RenderQuality[] {
-  return Array.isArray(value);
+function isEngineConfigurationArray(value: EngineConfigurationSupport): value is readonly EngineConfiguration[] {
+  return Array.isArray(value) && !value.every(isRenderQuality);
+}
+
+function isLegacyQualityArray(value: EngineConfigurationSupport): value is readonly RenderQuality[] {
+  return Array.isArray(value) && value.every(isRenderQuality);
 }
 
 function getEngineConfigurationSupport(support: EngineConfigurationSupport) {
-  return isRenderQualityArray(support)
-    ? getSupportedEngineConfigurations({ qualityModes: support })
-    : getSupportedEngineConfigurations(support as ExperienceCapabilities | undefined);
+  if (isLegacyQualityArray(support)) {
+    return getSupportedEngineConfigurations({
+      engineConfigurations: createEngineConfigurations(support as readonly RenderQuality[]),
+    });
+  }
+
+  if (isEngineConfigurationArray(support)) {
+    return getSupportedEngineConfigurations({ engineConfigurations: support });
+  }
+
+  return getSupportedEngineConfigurations(support as ExperienceCapabilities | undefined);
 }
 
 export function sanitizeRenderQuality(

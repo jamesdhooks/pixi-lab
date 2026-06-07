@@ -15,8 +15,6 @@ export interface EngineConfigurationSelectorProps {
    * note.
    */
   renderedValue?: RenderQuality;
-  /** Legacy quality-token options retained for compatibility. */
-  options?: readonly RenderQuality[];
   /** Preferred backend/profile engine configurations. */
   configurations?: readonly EngineConfiguration[];
   onChange: (quality: RenderQuality) => void;
@@ -26,11 +24,9 @@ function optionLabel(quality: RenderQuality): string {
   return toEngineConfiguration(quality).label;
 }
 
-export function EngineConfigurationSelector({ value, renderedValue, options, configurations, onChange }: EngineConfigurationSelectorProps) {
+export function EngineConfigurationSelector({ value, renderedValue, configurations, onChange }: EngineConfigurationSelectorProps) {
   const hasFallback = renderedValue !== undefined && renderedValue !== value;
-  const engineConfigurations = getSupportedEngineConfigurations(
-    configurations === undefined ? (options === undefined ? undefined : { qualityModes: options }) : { engineConfigurations: configurations },
-  );
+  const engineConfigurations = getSupportedEngineConfigurations({ engineConfigurations: configurations });
   const renderedLabel = hasFallback && renderedValue ? optionLabel(renderedValue) : null;
 
   return (
