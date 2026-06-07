@@ -6,6 +6,16 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Registry Engine Configuration Test Slice
+
+Scope:
+- shifted raw-capable registry assertions to derive selectable support from `engineConfigurations` first;
+- retained explicit `qualityModes` compatibility checks against the engine configuration legacy aliases;
+- kept raw scene path coverage unchanged for Fluid/Amoeba/Orbital.
+
+Validation:
+- `pnpm exec vitest run packages/simulations/src/__tests__/SimulationRegistry.test.ts && pnpm -s typecheck` — passed.
+
 ## 2026-06-06 — Launcher Engine Configuration Predicate Slice
 
 Scope:

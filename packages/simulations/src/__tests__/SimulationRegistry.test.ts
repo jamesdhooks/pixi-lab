@@ -125,6 +125,9 @@ describe('SIMULATION_REGISTRY', () => {
   it('keeps Fluid Tank basic/enhanced on the Pixi scene path and raw on the dedicated raw scene path', () => {
     const definition = getSimulation('fluid-tank');
 
+    expect(definition?.capabilities.engineConfigurations?.map((configuration) => configuration.legacyQuality)).toEqual(['basic', 'enhanced', 'raw']);
+    expect(definition?.capabilities.engineConfigurations?.map((configuration) => configuration.legacyQuality)).toEqual(['basic', 'enhanced', 'raw']);
+    expect(definition?.capabilities.engineConfigurations?.map((configuration) => configuration.legacyQuality)).toEqual(['basic', 'enhanced', 'raw']);
     expect(definition?.capabilities.qualityModes).toEqual(['basic', 'enhanced', 'raw']);
     expect(definition?.styleManifest.capabilities.qualities).toEqual(['basic', 'enhanced', 'raw']);
 
@@ -177,7 +180,7 @@ describe('SIMULATION_REGISTRY', () => {
 
   it('keeps raw opt-in scoped to simulations that explicitly support it', () => {
     const rawCapableIds = SIMULATION_REGISTRY
-      .filter((definition) => (definition.capabilities.qualityModes ?? []).includes('raw'))
+      .filter((definition) => (definition.capabilities.engineConfigurations ?? []).some((configuration) => configuration.legacyQuality === 'raw'))
       .map((definition) => definition.id)
       .sort();
 
@@ -187,11 +190,11 @@ describe('SIMULATION_REGISTRY', () => {
   it('keeps raw-capable simulation engine configuration declarations aligned with legacy compatibility modes', () => {
     for (const id of ['amoeba-lamp', 'fluid-tank', 'harmonic-sand', 'orbital-shrapnel'] as const) {
       const definition = getSimulation(id);
-      const qualityModes = definition?.capabilities.qualityModes ?? [];
       const engineConfigurations = definition?.capabilities.engineConfigurations ?? [];
       const engineModes = engineConfigurations.map((configuration) => configuration.legacyQuality);
 
-      expect(engineModes, `${id}.engineConfigurations.legacyQuality`).toEqual(qualityModes);
+      expect(engineModes, `${id}.engineConfigurations.legacyQuality`).toEqual(['basic', 'enhanced', 'raw']);
+      expect(definition?.capabilities.qualityModes, `${id}.qualityModes compatibility`).toEqual(engineModes);
       expect(engineConfigurations.map((configuration) => configuration.label), `${id}.engineConfigurations.label`).toEqual([
         'PixiJS / Standard · Basic',
         'PixiJS / High · Enhanced',
@@ -200,4 +203,3 @@ describe('SIMULATION_REGISTRY', () => {
     }
   });
 });
-
