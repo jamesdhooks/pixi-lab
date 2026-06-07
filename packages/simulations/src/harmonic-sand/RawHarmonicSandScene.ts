@@ -233,7 +233,11 @@ function attachInteractions(state: RawWebGL2RenderState): void {
     interaction.lastTapAt = now;
     interaction.draggingIndex = upsertEmitter(interaction, state.settings, point);
     interaction.activePointerId = event.pointerId;
-    canvas.setPointerCapture?.(event.pointerId);
+    try {
+      canvas.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Synthetic pointer events and some browser edge cases can reject capture.
+    }
   };
 
   const onPointerMove = (event: PointerEvent) => {
@@ -250,7 +254,11 @@ function attachInteractions(state: RawWebGL2RenderState): void {
     if (interaction.activePointerId === event.pointerId) {
       interaction.activePointerId = null;
       interaction.draggingIndex = null;
-      canvas.releasePointerCapture?.(event.pointerId);
+      try {
+        canvas.releasePointerCapture?.(event.pointerId);
+      } catch {
+        // Pointer capture may not exist for synthetic or already-finished events.
+      }
     }
   };
 
