@@ -7,7 +7,9 @@ import {
   buildExperienceRuntimeViewModel,
   findQueryExperience,
   findQueryExperienceFromParams,
+  parseLegacyQualityRouteValue,
   parseQueryQuality,
+  queryLegacyQualityForExperience,
   queryQualityForExperience,
   queryRenderSelectionForExperience,
   shouldExposeExperienceBackendProfileRoute,
@@ -40,13 +42,21 @@ function params(query: string): URLSearchParams {
 }
 
 describe('demo query routing helpers', () => {
-  it('accepts only supported render quality query values', () => {
-    expect(parseQueryQuality('basic')).toBe('basic');
-    expect(parseQueryQuality('enhanced')).toBe('enhanced');
-    expect(parseQueryQuality('raw')).toBe('raw');
-    expect(parseQueryQuality('RAW')).toBeUndefined();
-    expect(parseQueryQuality('ultra')).toBeUndefined();
-    expect(parseQueryQuality(null)).toBeUndefined();
+  it('accepts only supported legacy quality route values', () => {
+    expect(parseLegacyQualityRouteValue('basic')).toBe('basic');
+    expect(parseLegacyQualityRouteValue('enhanced')).toBe('enhanced');
+    expect(parseLegacyQualityRouteValue('raw')).toBe('raw');
+    expect(parseLegacyQualityRouteValue('RAW')).toBeUndefined();
+    expect(parseLegacyQualityRouteValue('ultra')).toBeUndefined();
+    expect(parseLegacyQualityRouteValue(null)).toBeUndefined();
+  });
+
+
+  it('keeps query quality helpers as compatibility aliases', () => {
+    expect(parseQueryQuality('raw')).toBe(parseLegacyQualityRouteValue('raw'));
+    expect(queryQualityForExperience(EXPERIENCES[1], params('quality=raw'))).toBe(
+      queryLegacyQualityForExperience(EXPERIENCES[1], params('quality=raw')),
+    );
   });
 
   it('finds an experience by id without enabling unknown raw routes globally', () => {
@@ -67,18 +77,18 @@ describe('demo query routing helpers', () => {
   });
 
   it('sanitizes query quality against the selected experience before launch', () => {
-    expect(queryQualityForExperience(EXPERIENCES[0], params('quality=raw'))).toBe('raw');
-    expect(queryQualityForExperience(EXPERIENCES[1], params('quality=raw'))).toBe('raw');
-    expect(queryQualityForExperience(EXPERIENCES[1], params('quality=enhanced'))).toBe('enhanced');
-    expect(queryQualityForExperience(EXPERIENCES[2], params('quality=raw'))).toBe('raw');
-    expect(queryQualityForExperience(EXPERIENCES[2], params('quality=enhanced'))).toBe('enhanced');
-    expect(queryQualityForExperience(EXPERIENCES[0], params(''))).toBeUndefined();
+    expect(queryLegacyQualityForExperience(EXPERIENCES[0], params('quality=raw'))).toBe('raw');
+    expect(queryLegacyQualityForExperience(EXPERIENCES[1], params('quality=raw'))).toBe('raw');
+    expect(queryLegacyQualityForExperience(EXPERIENCES[1], params('quality=enhanced'))).toBe('enhanced');
+    expect(queryLegacyQualityForExperience(EXPERIENCES[2], params('quality=raw'))).toBe('raw');
+    expect(queryLegacyQualityForExperience(EXPERIENCES[2], params('quality=enhanced'))).toBe('enhanced');
+    expect(queryLegacyQualityForExperience(EXPERIENCES[0], params(''))).toBeUndefined();
   });
 
   it('uses shared Pixi-safe default capabilities when an experience has no quality modes', () => {
     const legacyExperience = { id: 'legacy-toy', name: 'Legacy Toy', capabilities: {} } as LabExperience;
 
-    expect(queryQualityForExperience(legacyExperience, params('quality=raw'))).toBe('basic');
+    expect(queryLegacyQualityForExperience(legacyExperience, params('quality=raw'))).toBe('basic');
     expect(queryRenderSelectionForExperience(legacyExperience, params('backend=pixi&profile=high'))).toEqual({
       backend: 'pixi',
       profile: 'high',
@@ -261,4 +271,3 @@ describe('demo query routing helpers', () => {
     );
   });
 });
-

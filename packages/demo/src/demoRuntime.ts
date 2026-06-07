@@ -13,8 +13,12 @@ import {
   type RenderQuality,
 } from '@hooksjam/pixi-lab-core';
 
-export function parseQueryQuality(value: string | null): RenderQuality | undefined {
+export function parseLegacyQualityRouteValue(value: string | null): RenderQuality | undefined {
   return isRenderQuality(value) ? value : undefined;
+}
+
+export function parseQueryQuality(value: string | null): RenderQuality | undefined {
+  return parseLegacyQualityRouteValue(value);
 }
 
 export function findQueryExperience(value: string | null, experiences: readonly LabExperience[]): LabExperience | undefined {
@@ -41,22 +45,29 @@ export function queryRenderSelectionForExperience(
 ): RenderBackendProfileSelection | undefined {
   const backend = params.get('backend');
   const profile = params.get('profile');
-  const requestedQuality = parseQueryQuality(params.get('quality'));
+  const requestedLegacyQuality = parseLegacyQualityRouteValue(params.get('quality'));
 
-  if (!backend && !profile && !requestedQuality) return undefined;
+  if (!backend && !profile && !requestedLegacyQuality) return undefined;
 
   const supported = getSupportedEngineConfigurations(experience.capabilities);
   return resolveEngineConfigurationQuerySelection(
-    { backend, profile, quality: requestedQuality },
+    { backend, profile, quality: requestedLegacyQuality },
     supported,
   );
+}
+
+export function queryLegacyQualityForExperience(
+  experience: LabExperience,
+  params: Pick<URLSearchParams, 'get'>,
+): RenderQuality | undefined {
+  return queryRenderSelectionForExperience(experience, params)?.legacyQuality;
 }
 
 export function queryQualityForExperience(
   experience: LabExperience,
   params: Pick<URLSearchParams, 'get'>,
 ): RenderQuality | undefined {
-  return queryRenderSelectionForExperience(experience, params)?.legacyQuality;
+  return queryLegacyQualityForExperience(experience, params);
 }
 
 export function writeCompatibilityRenderSelection(

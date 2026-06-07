@@ -6,6 +6,19 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Demo Route Legacy Quality Alias Slice
+
+Scope:
+- renamed demo route parsing internals toward `parseLegacyQualityRouteValue(...)` and `queryLegacyQualityForExperience(...)`;
+- preserved `parseQueryQuality(...)` / `queryQualityForExperience(...)` as compatibility aliases;
+- updated route tests to target the legacy-quality route boundary explicitly while keeping alias coverage.
+
+Validation:
+- `pnpm exec vitest run packages/demo/src/__tests__/queryRoute.test.ts && pnpm -s typecheck` — passed.
+
+Notes:
+- Route param `quality=` remains intentionally supported as a legacy deep-link bridge.
+
 ## 2026-06-06 — Core Engine Configuration Helper Boundary Slice
 
 Scope:
