@@ -6,6 +6,17 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-07 — Default Legacy Render Qualities Alias Slice
+
+Scope:
+- added `DEFAULT_LEGACY_RENDER_QUALITIES` as the canonical default capability export;
+- kept `DEFAULT_RENDER_QUALITY_MODES` as a forwarding compatibility shim;
+- updated core export/test coverage to assert the shim relationship explicitly.
+
+Validation:
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts` passed (30 tests).
+- `pnpm -s typecheck` passed.
+
 ## 2026-06-06 — Registry Engine Configuration Test Slice
 
 Scope:

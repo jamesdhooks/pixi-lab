@@ -9,7 +9,8 @@ import type {
 const RENDERER_BACKENDS: readonly RendererBackend[] = ['pixi', 'webgl2', 'three', 'webgpu'];
 const RENDER_PROFILES: readonly RenderProfile[] = ['preview', 'standard', 'high'];
 
-export const DEFAULT_RENDER_QUALITY_MODES: readonly RenderQuality[] = ['basic', 'enhanced'];
+export const DEFAULT_LEGACY_RENDER_QUALITIES: readonly RenderQuality[] = ['basic', 'enhanced'];
+export const DEFAULT_RENDER_QUALITY_MODES = DEFAULT_LEGACY_RENDER_QUALITIES;
 export const LEGACY_RENDER_QUALITY_STORAGE_KEY = 'pixi-lab:quality';
 export const RENDER_SELECTION_STORAGE_KEY = 'pixi-lab:renderSelection';
 

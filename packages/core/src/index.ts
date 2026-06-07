@@ -110,6 +110,7 @@ export { PingPong } from './render/PingPong.js';
 export { RenderStyleManager } from './render/RenderStyleManager.js';
 export {
   createEngineConfigurations,
+  DEFAULT_LEGACY_RENDER_QUALITIES,
   DEFAULT_RENDER_QUALITY_MODES,
   LEGACY_RENDER_QUALITY_STORAGE_KEY,
   RENDER_SELECTION_STORAGE_KEY,
