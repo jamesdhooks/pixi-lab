@@ -32,10 +32,13 @@ Valid RAW MODE candidates should fit at least one of these patterns:
 
 - `raw` is advertised only when a verified raw route exists in `capabilities.qualityModes` and style-manifest capabilities.
 - `basic` and `enhanced` remain Pixi-native and run through the shared `GameApp` Pixi app.
-- RAW WebGL adapters are scene/package-owned until two or more implementations prove a shared abstraction.
+- RAW adapters are scene/package-owned until two or more implementations prove a shared abstraction.
+- Prefer shared-Pixi raw adapters for non-fluid scenes when the route can be expressed as bounded texture uploads, render textures, or shader passes inside the existing `GameApp` Pixi app. Only introduce an extra raw WebGL canvas for scenes that truly need a separate low-level solver.
+- DOM/raw WebGL adapters that do need the legacy DOM bridge must use the typed `DomMountContext` mount API; do not add new string-injected `DomScriptScene` paths.
 - Preview factories stay cheap/basic unless an explicit QA slice proves a raw preview is safe.
 - Do not build a giant `FieldRenderer` before implementation evidence exists. Extract small modules from repeated code.
-- Browser QA must verify raw routes separately from basic routes; raw may intentionally create an additional scene-owned WebGL canvas.
+- Browser QA must verify raw routes separately from basic routes. Raw may intentionally create an additional scene-owned WebGL canvas only for DOM/WebGL-solver routes such as Fluid; Pixi-owned raw texture adapters should still keep a single shared Pixi canvas.
+- After core engine changes that add or export runtime bridge types, rebuild `@hooksjam/pixi-lab-core` before registry or package-consumer smoke tests so stale `dist` output does not masquerade as a source wiring failure.
 
 ## Recommended staged engine modules
 
@@ -115,6 +118,23 @@ Added `AmoebaLampRawFieldState` as a pure stand-in for the future raw density/he
 ## 2026-05-30 Amoeba texture upload follow-up
 
 Added `AmoebaLampRawTextureUpload` as the next raw-adapter helper. It packs persistent density/heat field state into a reusable clamped RGBA upload buffer for the future scene-owned texture adapter, keeping particles as hidden field sources and avoiding a generic GPU Field Engine extraction. Amoeba Lamp still does not advertise `raw` until a selectable adapter and browser QA land.
+
+## 2026-05-30 Amoeba composite mapper follow-up
+
+Added `AmoebaLampRawCompositeMapper` as the next raw-adapter helper. It converts packed persistent density/heat upload buffers into styled RGBA membrane pixels with thresholded background preservation, gradient edge glow, heat-driven warm tinting, and reusable output storage. This proves the first composite-pass semantics without wiring a Pixi/raw adapter or advertising `raw` before browser QA.
+
+## 2026-05-30 Amoeba raw Pixi texture adapter follow-up
+
+Added `AmoebaLampRawRenderer` as the first scene-owned adapter boundary for the Amoeba raw route. It keeps the existing deterministic CPU particles as density/heat sources, steps the persistent raw frame pipeline, composites styled membrane pixels, and uploads them through a Pixi `BufferImageSource` layer sized by a bounded aspect-preserving helper. This is intentionally wired only behind the scene's internal `quality === 'raw'` branch; `amoeba-lamp` still does not advertise `raw`, and previews remain basic/enhanced until browser QA validates the selectable raw route.
+
+## 2026-06-01 engine-change adaptation
+
+Rebased the raw plan over the new typed DOM runtime bridge. The forward path is now:
+
+- Keep Fluid's raw WebGL solver on the typed `DomMountContext`/`DomScriptQualityAdapter` bridge because it intentionally owns a DOM/WebGL canvas below the Pixi shell.
+- Keep Amoeba Lamp's first raw route Pixi-owned through `AmoebaLampRawRenderer` because its state can be packed into a bounded texture upload and rendered through the shared Pixi app.
+- Treat a core rebuild as mandatory before registry probes whenever core bridge exports change; the observed blocker was stale `packages/core/dist` missing `DomScriptQualityAdapter`, not a source-level adapter mismatch.
+- Next implementation slice should expose Amoeba `raw` only after adding an explicit QA route/selector coverage and smoke-testing basic, enhanced, raw, plus raw-leakage into a non-raw simulation.
 
 ## Acceptance for future raw scenes
 
