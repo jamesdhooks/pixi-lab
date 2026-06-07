@@ -33,12 +33,8 @@ export { PressHint } from './ui/PressHint.js';
 export { StartCard } from './ui/StartCard.js';
 export { SettingsDrawer } from './ui/SettingsDrawer.js';
 export { StylePicker, type StylePickerProps } from './ui/StylePicker.js';
-export {
-  EngineConfigurationSelector,
-  QualitySelector,
-  type EngineConfigurationSelectorProps,
-  type QualitySelectorProps,
-} from './ui/QualitySelector.js';
+export { EngineConfigurationSelector, type EngineConfigurationSelectorProps } from './ui/EngineConfigurationSelector.js';
+export { QualitySelector, type QualitySelectorProps } from './ui/QualitySelector.js';
 export { DebugToggle, type DebugToggleProps } from './ui/DebugToggle.js';
 export { DebugPanel, type DebugPanelProps } from './ui/DebugPanel.js';
 export { ModeToggle, type ModeToggleProps } from './ui/ModeToggle.js';

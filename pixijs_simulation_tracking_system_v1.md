@@ -6,6 +6,17 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-07 — React Selector Barrel Canonical Export Slice
+
+Scope:
+- routed React package canonical `EngineConfigurationSelector` exports through `ui/EngineConfigurationSelector.js` directly;
+- kept `QualitySelector` and `QualitySelectorProps` exported through the legacy compatibility module;
+- left selector runtime behavior unchanged.
+
+Validation:
+- `pnpm exec vitest run packages/react/src/ui/QualitySelector.test.tsx` passed (3 tests).
+- `pnpm -s typecheck` passed.
+
 ## 2026-06-07 — Default Legacy Render Qualities Alias Slice
 
 Scope:
