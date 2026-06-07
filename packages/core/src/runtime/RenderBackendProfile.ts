@@ -114,10 +114,16 @@ export function isRenderQuality(value: unknown): value is RenderQuality {
   return typeof value === 'string' && value in LEGACY_QUALITY_CANDIDATES;
 }
 
+export function mapLegacyQualitiesToBackendProfileCandidates(
+  legacyQualities: readonly RenderQuality[],
+): RenderBackendProfileCandidate[] {
+  return legacyQualities.map(toRenderBackendProfileCandidate);
+}
+
 export function mapQualityModesToBackendProfiles(
   qualityModes: readonly RenderQuality[],
 ): RenderBackendProfileCandidate[] {
-  return qualityModes.map(toRenderBackendProfileCandidate);
+  return mapLegacyQualitiesToBackendProfileCandidates(qualityModes);
 }
 
 export interface CreateEngineConfigurationsOptions {
@@ -177,10 +183,10 @@ export function getSupportedEngineConfigurations(
     return capabilities.engineConfigurations;
   }
 
-  return getSupportedRenderQualityModes(capabilities).map((quality) => toEngineConfiguration(quality));
+  return getSupportedLegacyRenderQualities(capabilities).map((quality) => toEngineConfiguration(quality));
 }
 
-export function getSupportedRenderQualityModes(
+export function getSupportedLegacyRenderQualities(
   capabilities: {
     readonly engineConfigurations?: readonly EngineConfiguration[];
     readonly qualityModes?: readonly RenderQuality[];
@@ -193,6 +199,15 @@ export function getSupportedRenderQualityModes(
   return capabilities?.qualityModes && capabilities.qualityModes.length > 0
     ? capabilities.qualityModes
     : DEFAULT_RENDER_QUALITY_MODES;
+}
+
+export function getSupportedRenderQualityModes(
+  capabilities: {
+    readonly engineConfigurations?: readonly EngineConfiguration[];
+    readonly qualityModes?: readonly RenderQuality[];
+  } | undefined,
+): readonly RenderQuality[] {
+  return getSupportedLegacyRenderQualities(capabilities);
 }
 
 export function groupBackendProfileCandidates(
@@ -215,10 +230,32 @@ export function groupBackendProfileCandidates(
   return groups;
 }
 
+export function groupLegacyQualitiesByBackend(
+  legacyQualities: readonly RenderQuality[],
+): RenderBackendProfileGroup[] {
+  return groupBackendProfileCandidates(mapLegacyQualitiesToBackendProfileCandidates(legacyQualities));
+}
+
 export function groupQualityModesByBackend(
   qualityModes: readonly RenderQuality[],
 ): RenderBackendProfileGroup[] {
-  return groupBackendProfileCandidates(mapQualityModesToBackendProfiles(qualityModes));
+  return groupLegacyQualitiesByBackend(qualityModes);
+}
+
+export function sanitizeLegacyQualityForEngineConfigurations(
+  requestedQuality: RenderQuality | undefined,
+  supportedLegacyQualities: readonly RenderQuality[],
+  fallbackQuality: RenderQuality = 'basic',
+): RenderQuality {
+  if (requestedQuality && supportedLegacyQualities.includes(requestedQuality)) {
+    return requestedQuality;
+  }
+
+  if (supportedLegacyQualities.includes(fallbackQuality)) {
+    return fallbackQuality;
+  }
+
+  return supportedLegacyQualities[0] ?? fallbackQuality;
 }
 
 export function sanitizeLegacyRenderQuality(
@@ -226,25 +263,17 @@ export function sanitizeLegacyRenderQuality(
   supportedQualityModes: readonly RenderQuality[],
   fallbackQuality: RenderQuality = 'basic',
 ): RenderQuality {
-  if (requestedQuality && supportedQualityModes.includes(requestedQuality)) {
-    return requestedQuality;
-  }
-
-  if (supportedQualityModes.includes(fallbackQuality)) {
-    return fallbackQuality;
-  }
-
-  return supportedQualityModes[0] ?? fallbackQuality;
+  return sanitizeLegacyQualityForEngineConfigurations(requestedQuality, supportedQualityModes, fallbackQuality);
 }
 
-export function resolveRenderBackendProfileSelection(
+export function resolveEngineConfigurationSelection(
   requestedQuality: RenderQuality | undefined,
-  supportedQualityModes: readonly RenderQuality[],
+  supportedLegacyQualities: readonly RenderQuality[],
   fallbackQuality: RenderQuality = 'basic',
 ): RenderBackendProfileSelection {
-  const legacyQuality = sanitizeLegacyRenderQuality(
+  const legacyQuality = sanitizeLegacyQualityForEngineConfigurations(
     requestedQuality,
-    supportedQualityModes,
+    supportedLegacyQualities,
     fallbackQuality,
   );
   const candidate = toRenderBackendProfileCandidate(legacyQuality);
@@ -256,6 +285,14 @@ export function resolveRenderBackendProfileSelection(
   };
 }
 
+export function resolveRenderBackendProfileSelection(
+  requestedQuality: RenderQuality | undefined,
+  supportedQualityModes: readonly RenderQuality[],
+  fallbackQuality: RenderQuality = 'basic',
+): RenderBackendProfileSelection {
+  return resolveEngineConfigurationSelection(requestedQuality, supportedQualityModes, fallbackQuality);
+}
+
 export function resolveRenderBackendProfileQuerySelection(
   request: RenderBackendProfileQueryRequest,
   supportedQualityModes: readonly RenderQuality[],
@@ -265,7 +302,7 @@ export function resolveRenderBackendProfileQuerySelection(
   const requestedProfile = isRenderProfile(request.profile) ? request.profile : undefined;
 
   if (requestedBackend && requestedProfile) {
-    const backendProfileMatch = mapQualityModesToBackendProfiles(supportedQualityModes).find(
+    const backendProfileMatch = mapLegacyQualitiesToBackendProfileCandidates(supportedQualityModes).find(
       (candidate) => candidate.backend === requestedBackend && candidate.profile === requestedProfile,
     );
 
@@ -432,4 +469,3 @@ export function resolveRenderBackendProfileStorageSelection(
     fallbackQuality,
   );
 }
-

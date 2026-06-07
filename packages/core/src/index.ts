@@ -115,21 +115,26 @@ export {
   RENDER_SELECTION_STORAGE_KEY,
   formatRenderBackendProfileSelection,
   getSupportedEngineConfigurations,
+  getSupportedLegacyRenderQualities,
   getSupportedRenderQualityModes,
   groupBackendProfileCandidates,
+  groupLegacyQualitiesByBackend,
   groupQualityModesByBackend,
   isDefaultRenderBackendProfileSelection,
   isEngineConfigurationVisible,
   isRenderProfile,
   isRenderQuality,
   isRendererBackend,
+  mapLegacyQualitiesToBackendProfileCandidates,
   mapQualityModesToBackendProfiles,
   parseRenderBackendProfileStorage,
   resolveEngineConfigurationQuerySelection,
   resolveEngineConfigurationStorageSelection,
+  resolveEngineConfigurationSelection,
   resolveRenderBackendProfileQuerySelection,
   resolveRenderBackendProfileSelection,
   resolveRenderBackendProfileStorageSelection,
+  sanitizeLegacyQualityForEngineConfigurations,
   sanitizeLegacyRenderQuality,
   serializeRenderBackendProfileRoute,
   serializeRenderBackendProfileStorage,
@@ -221,4 +226,3 @@ export { ScreensaverManager } from './screensaver/ScreensaverManager.js';
 export type { HighScoreProvider, SubmitScoreInput } from './scoring/HighScoreProvider.js';
 export { ApiHighScoreProvider, NoopHighScoreProvider } from './scoring/HighScoreProvider.js';
 export { NameSuggestions, nameSuggestions } from './scoring/NameSuggestions.js';
-

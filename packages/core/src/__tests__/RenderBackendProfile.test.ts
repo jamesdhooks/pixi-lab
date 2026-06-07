@@ -6,21 +6,26 @@ import {
   createEngineConfigurations,
   formatRenderBackendProfileSelection,
   getSupportedEngineConfigurations,
+  getSupportedLegacyRenderQualities,
   getSupportedRenderQualityModes,
   groupBackendProfileCandidates,
+  groupLegacyQualitiesByBackend,
   groupQualityModesByBackend,
   isDefaultRenderBackendProfileSelection,
   isEngineConfigurationVisible,
   isRenderProfile,
   isRenderQuality,
   isRendererBackend,
+  mapLegacyQualitiesToBackendProfileCandidates,
   mapQualityModesToBackendProfiles,
   parseRenderBackendProfileStorage,
   resolveEngineConfigurationQuerySelection,
+  resolveEngineConfigurationSelection,
   resolveEngineConfigurationStorageSelection,
   resolveRenderBackendProfileQuerySelection,
   resolveRenderBackendProfileSelection,
   resolveRenderBackendProfileStorageSelection,
+  sanitizeLegacyQualityForEngineConfigurations,
   sanitizeLegacyRenderQuality,
   serializeRenderBackendProfileRoute,
   serializeRenderBackendProfileStorage,
@@ -31,20 +36,31 @@ import {
 import type { RenderQuality } from '../types.js';
 
 describe('RenderBackendProfile', () => {
-  it('maps legacy Pixi qualities to backend/profile candidates', () => {
-    expect(mapQualityModesToBackendProfiles(['basic', 'enhanced'])).toEqual([
+  it('maps legacy Pixi qualities to backend/profile candidates through the engine-first helper', () => {
+    expect(mapLegacyQualitiesToBackendProfileCandidates(['basic', 'enhanced'])).toEqual([
       { quality: 'basic', backend: 'pixi', profile: 'standard', legacyLabel: 'Basic' },
       { quality: 'enhanced', backend: 'pixi', profile: 'high', legacyLabel: 'Enhanced' },
     ]);
+  });
+
+
+  it('keeps legacy quality-mode helper names as compatibility shims', () => {
+    expect(mapQualityModesToBackendProfiles(['basic'])).toEqual(mapLegacyQualitiesToBackendProfileCandidates(['basic']));
+    expect(getSupportedRenderQualityModes({ qualityModes: ['raw'] })).toEqual(getSupportedLegacyRenderQualities({ qualityModes: ['raw'] }));
+    expect(groupQualityModesByBackend(['enhanced'])).toEqual(groupLegacyQualitiesByBackend(['enhanced']));
+    expect(sanitizeLegacyRenderQuality('raw', ['basic'])).toBe(sanitizeLegacyQualityForEngineConfigurations('raw', ['basic']));
+    expect(resolveRenderBackendProfileSelection('enhanced', ['basic', 'enhanced'])).toEqual(
+      resolveEngineConfigurationSelection('enhanced', ['basic', 'enhanced']),
+    );
   });
 
   it('centralizes default supported modes as Pixi-safe runtime capabilities', () => {
     expect(DEFAULT_RENDER_QUALITY_MODES).toEqual(['basic', 'enhanced']);
     const readonlyRawModes = ['raw'] as const;
 
-    expect(getSupportedRenderQualityModes(undefined)).toEqual(['basic', 'enhanced']);
-    expect(getSupportedRenderQualityModes({ qualityModes: [] })).toEqual(['basic', 'enhanced']);
-    expect(getSupportedRenderQualityModes({ qualityModes: readonlyRawModes })).toEqual(['raw']);
+    expect(getSupportedLegacyRenderQualities(undefined)).toEqual(['basic', 'enhanced']);
+    expect(getSupportedLegacyRenderQualities({ qualityModes: [] })).toEqual(['basic', 'enhanced']);
+    expect(getSupportedLegacyRenderQualities({ qualityModes: readonlyRawModes })).toEqual(['raw']);
   });
 
 
@@ -118,7 +134,7 @@ describe('RenderBackendProfile', () => {
     ];
 
     expect(getSupportedEngineConfigurations({ engineConfigurations: configurations, qualityModes: ['enhanced'] })).toBe(configurations);
-    expect(getSupportedRenderQualityModes({ engineConfigurations: configurations, qualityModes: ['enhanced'] })).toEqual(['raw', 'basic']);
+    expect(getSupportedLegacyRenderQualities({ engineConfigurations: configurations, qualityModes: ['enhanced'] })).toEqual(['raw', 'basic']);
   });
 
   it('evaluates settings visibility against explicit engine configurations before legacy quality aliases', () => {
@@ -147,7 +163,7 @@ describe('RenderBackendProfile', () => {
   });
 
   it('groups advertised qualities by backend without changing legacy route order', () => {
-    expect(groupQualityModesByBackend(['basic', 'enhanced', 'raw'])).toEqual([
+    expect(groupLegacyQualitiesByBackend(['basic', 'enhanced', 'raw'])).toEqual([
       {
         backend: 'pixi',
         candidates: [
@@ -173,21 +189,21 @@ describe('RenderBackendProfile', () => {
   });
 
   it('sanitizes unsupported raw requests back to a supported Pixi-safe quality', () => {
-    expect(sanitizeLegacyRenderQuality('raw', ['basic', 'enhanced'])).toBe('basic');
+    expect(sanitizeLegacyQualityForEngineConfigurations('raw', ['basic', 'enhanced'])).toBe('basic');
   });
 
   it('honors experience-scoped raw support when advertised', () => {
-    expect(sanitizeLegacyRenderQuality('raw', ['basic', 'raw'])).toBe('raw');
+    expect(sanitizeLegacyQualityForEngineConfigurations('raw', ['basic', 'raw'])).toBe('raw');
   });
 
   it('uses the first supported quality when the configured fallback is unavailable', () => {
     const supported: RenderQuality[] = ['enhanced'];
 
-    expect(sanitizeLegacyRenderQuality(undefined, supported, 'basic')).toBe('enhanced');
+    expect(sanitizeLegacyQualityForEngineConfigurations(undefined, supported, 'basic')).toBe('enhanced');
   });
 
   it('resolves a backend/profile selection descriptor from legacy startup quality', () => {
-    expect(resolveRenderBackendProfileSelection('enhanced', ['basic', 'enhanced'])).toEqual({
+    expect(resolveEngineConfigurationSelection('enhanced', ['basic', 'enhanced'])).toEqual({
       backend: 'pixi',
       profile: 'high',
       legacyQuality: 'enhanced',
@@ -195,7 +211,7 @@ describe('RenderBackendProfile', () => {
   });
 
   it('keeps unsupported raw startup quality out of the selection descriptor', () => {
-    expect(resolveRenderBackendProfileSelection('raw', ['basic', 'enhanced'])).toEqual({
+    expect(resolveEngineConfigurationSelection('raw', ['basic', 'enhanced'])).toEqual({
       backend: 'pixi',
       profile: 'standard',
       legacyQuality: 'basic',
@@ -402,4 +418,3 @@ describe('RenderBackendProfile', () => {
     ).toEqual({ backend: 'webgl2', profile: 'high', legacyQuality: 'raw' });
   });
 });
-

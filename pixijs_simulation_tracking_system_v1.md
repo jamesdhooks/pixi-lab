@@ -6,6 +6,19 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-06 — Core Engine Configuration Helper Boundary Slice
+
+Scope:
+- added engine-configuration-first helper names for legacy-quality fallback seams in `RenderBackendProfile.ts`;
+- preserved quality-mode helper names as explicit compatibility shims;
+- updated core tests to exercise the engine-first helper names while proving old exports still forward correctly.
+
+Validation:
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts && pnpm -s typecheck` — passed.
+
+Notes:
+- This does not remove `RenderQuality` yet; it narrows where quality terminology is treated as compatibility glue.
+
 ## 2026-06-06 — Engine Configuration Route/React Compatibility Slice
 
 Scope:
