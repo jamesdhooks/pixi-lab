@@ -12,6 +12,7 @@ export interface OrbitalShrapnelModelOptions {
   gravity: number;
   drag: number;
   trailFade?: number;
+  maxSpeed?: number;
 }
 
 export interface OrbitalShrapnelStats {
@@ -113,6 +114,7 @@ export class OrbitalShrapnelModel {
       p.y += p.vy * dt;
       p.vx *= 1 - this.options.drag;
       p.vy *= 1 - this.options.drag;
+      this.clampVelocity(p);
       p.heat = Math.max(0.08, p.heat * (1 - 0.018 * dt));
       p.spin += 0.4 * dt;
       this.wrapParticle(p);
@@ -139,6 +141,7 @@ export class OrbitalShrapnelModel {
       heat: this.rng.range(0.45, 1.25),
       spin: this.rng.range(-1, 1),
     };
+    this.clampVelocity(particle);
     this.particles.push(particle);
     this.trimParticles();
     this.depositTrails(0.9);
@@ -185,6 +188,7 @@ export class OrbitalShrapnelModel {
       p.y += (dy / len) * radialKick * 0.62;
       p.vx += (-dy / len) * this.rng.range(18, 48) + this.rng.range(-12, 12);
       p.vy += (dx / len) * this.rng.range(10, 32) + this.rng.range(-9, 9);
+      this.clampVelocity(p);
       p.heat = Math.min(1.6, p.heat + this.rng.range(0.2, 0.8));
     }
     this.stagnantMs = 0;
@@ -259,6 +263,16 @@ export class OrbitalShrapnelModel {
 
   private orbitalSpeed(radius: number): number {
     return Math.sqrt(this.options.gravity / Math.max(1, radius));
+  }
+
+  private clampVelocity(p: DebrisParticle): void {
+    const maxSpeed = this.options.maxSpeed;
+    if (!maxSpeed || maxSpeed <= 0) return;
+    const speed = Math.hypot(p.vx, p.vy);
+    if (speed <= maxSpeed) return;
+    const scale = maxSpeed / Math.max(0.0001, speed);
+    p.vx *= scale;
+    p.vy *= scale;
   }
 
   private trimParticles(): void {

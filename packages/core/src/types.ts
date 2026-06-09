@@ -403,6 +403,8 @@ export interface SettingsField {
   visibleEngineConfigurations?: EngineConfigurationVisibility[];
   /** If set, the field is only shown for these engine configurations / legacy render qualities. */
   visibleQualities?: RenderQuality[];
+  /** Advanced fields stay out of compact top controls and render under an Advanced section in the settings drawer. */
+  advanced?: boolean;
 }
 
 // ── Game Definition ───────────────────────────────────────────────────────────
@@ -527,4 +529,3 @@ export interface GameEvent {
 declare namespace React {
   type ReactNode = unknown;
 }
-

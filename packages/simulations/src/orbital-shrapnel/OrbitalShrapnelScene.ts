@@ -50,6 +50,9 @@ export class OrbitalShrapnelScene extends SimulationScene {
   private lastPlanetRadius = 0;
   private lastGravity = 0;
   private lastTrailFade = 0;
+  private lastRawParticleTextureSize: number | string = ORBITAL_SHRAPNEL_DEFAULTS.rawParticleTextureSize as string;
+  private lastRawTrailTextureWidth: number | string = ORBITAL_SHRAPNEL_DEFAULTS.rawTrailTextureWidth as string;
+  private lastRawMaxSpeed = ORBITAL_SHRAPNEL_DEFAULTS.rawMaxSpeed as number;
   private interactionMode: OrbitalShrapnelMode = 'add';
   private readonly pointerTracks = new Map<number, PointerTrack>();
 
@@ -84,6 +87,7 @@ export class OrbitalShrapnelScene extends SimulationScene {
       gravity: (settings.get('gravity') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.gravity as number),
       drag: ORBITAL_SHRAPNEL_DEFAULTS.drag as number,
       trailFade: (settings.get('trailFade') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailFade as number),
+      maxSpeed: (settings.get('rawMaxSpeed') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawMaxSpeed as number),
     };
     this.model = new OrbitalShrapnelModel(this.modelOptions);
     this.cacheLiveSettings();
@@ -134,6 +138,8 @@ export class OrbitalShrapnelScene extends SimulationScene {
         height: this.ctx_.height,
         particleCount: this.modelOptions.particleCount,
         trailColumns: this.modelOptions.trailColumns,
+        rawParticleTextureSize: this.lastRawParticleTextureSize,
+        rawTrailTextureWidth: this.lastRawTrailTextureWidth,
       });
     } else if (this.trailRenderer && this.particleRenderer) {
       this.trailRenderer.clear();
@@ -219,13 +225,19 @@ export class OrbitalShrapnelScene extends SimulationScene {
     const planetRadius = (settings.get('planetRadius') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.planetRadius as number);
     const gravity = (settings.get('gravity') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.gravity as number);
     const trailFade = (settings.get('trailFade') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailFade as number);
+    const rawParticleTextureSize = (settings.get('rawParticleTextureSize') as number | string | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawParticleTextureSize as string);
+    const rawTrailTextureWidth = (settings.get('rawTrailTextureWidth') as number | string | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawTrailTextureWidth as string);
+    const rawMaxSpeed = (settings.get('rawMaxSpeed') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawMaxSpeed as number);
 
     if (
       particleCount === this.lastParticleCount &&
       trailColumns === this.lastTrailColumns &&
       planetRadius === this.lastPlanetRadius &&
       gravity === this.lastGravity &&
-      trailFade === this.lastTrailFade
+      trailFade === this.lastTrailFade &&
+      rawParticleTextureSize === this.lastRawParticleTextureSize &&
+      rawTrailTextureWidth === this.lastRawTrailTextureWidth &&
+      rawMaxSpeed === this.lastRawMaxSpeed
     ) {
       return;
     }
@@ -238,6 +250,7 @@ export class OrbitalShrapnelScene extends SimulationScene {
       planetRadius,
       gravity,
       trailFade,
+      maxSpeed: rawMaxSpeed,
       seed: this.modelOptions.seed + 1,
     };
     this.model = new OrbitalShrapnelModel(this.modelOptions);
@@ -251,6 +264,10 @@ export class OrbitalShrapnelScene extends SimulationScene {
     this.lastPlanetRadius = this.modelOptions.planetRadius;
     this.lastGravity = this.modelOptions.gravity;
     this.lastTrailFade = this.modelOptions.trailFade ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailFade as number);
+    const settings = this.ctx_.systems.settings;
+    this.lastRawParticleTextureSize = (settings.get('rawParticleTextureSize') as number | string | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawParticleTextureSize as string);
+    this.lastRawTrailTextureWidth = (settings.get('rawTrailTextureWidth') as number | string | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawTrailTextureWidth as string);
+    this.lastRawMaxSpeed = (settings.get('rawMaxSpeed') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawMaxSpeed as number);
   }
 
   private applyPointerInfluence(dt: number): void {

@@ -16,6 +16,8 @@ export interface OrbitalShrapnelRawRenderOptions {
   readonly height: number;
   readonly particleCount: number;
   readonly trailColumns: number;
+  readonly rawParticleTextureSize?: number | string;
+  readonly rawTrailTextureWidth?: number | string;
 }
 
 interface OrbitalRawTextureLayer {
@@ -55,6 +57,8 @@ export class OrbitalShrapnelRawRenderer {
       quality: this.quality,
       particleCount: options.particleCount,
       trailColumns: options.trailColumns,
+      rawParticleTextureSize: options.rawParticleTextureSize,
+      rawTrailTextureWidth: options.rawTrailTextureWidth,
     });
     const layer = this.ensureTextureLayer(plan.trailField.width, plan.trailField.height);
     compositeOrbitalShrapnelRawTrailToRgba(options.trailField, options.style, layer.pixels, {

@@ -6,6 +6,8 @@ export interface OrbitalShrapnelRawTexturePlanOptions {
   readonly quality: RenderQuality;
   readonly particleCount: number;
   readonly trailColumns: number;
+  readonly rawParticleTextureSize?: number | string;
+  readonly rawTrailTextureWidth?: number | string;
 }
 
 export interface OrbitalShrapnelRawTexturePlan {
@@ -27,6 +29,10 @@ const BASIC_PARTICLE_WIDTH = 128;
 const RAW_TRAIL_WIDTH = 320;
 const ENHANCED_TRAIL_WIDTH = 240;
 const BASIC_TRAIL_WIDTH = 160;
+const RAW_PARTICLE_TEXTURE_MIN = 256;
+const RAW_PARTICLE_TEXTURE_MAX = 1024;
+const RAW_TRAIL_TEXTURE_MIN = 320;
+const RAW_TRAIL_TEXTURE_MAX = 1024;
 
 export function resolveOrbitalShrapnelRawTexturePlan(
   options: OrbitalShrapnelRawTexturePlanOptions,
@@ -39,11 +45,11 @@ export function resolveOrbitalShrapnelRawTexturePlan(
   }
 
   const aspect = resolveAspect(options.width, options.height);
-  const particleWidth = particleTextureWidthForQuality(options.quality);
-  const maxParticleHeight = maxParticleTextureHeightForQuality(options.quality);
+  const particleWidth = particleTextureWidthForQuality(options.quality, options.rawParticleTextureSize);
+  const maxParticleHeight = maxParticleTextureHeightForQuality(options.quality, particleWidth);
   const requestedParticles = Math.max(MIN_EDGE, Math.ceil(finitePositive(options.particleCount) ? options.particleCount : MIN_EDGE));
   const particleHeight = Math.max(1, Math.min(maxParticleHeight, Math.ceil(requestedParticles / particleWidth)));
-  const trailWidth = trailTextureWidthForQuality(options.quality);
+  const trailWidth = trailTextureWidthForQuality(options.quality, options.rawTrailTextureWidth);
 
   return {
     particleState: {
@@ -58,22 +64,28 @@ export function resolveOrbitalShrapnelRawTexturePlan(
   };
 }
 
-function particleTextureWidthForQuality(quality: RenderQuality): number {
-  if (quality === 'raw') return RAW_PARTICLE_WIDTH;
+function particleTextureWidthForQuality(quality: RenderQuality, rawParticleTextureSize?: number | string): number {
+  if (quality === 'raw') return clampTextureSize(rawParticleTextureSize, RAW_PARTICLE_WIDTH, RAW_PARTICLE_TEXTURE_MIN, RAW_PARTICLE_TEXTURE_MAX);
   if (quality === 'enhanced') return ENHANCED_PARTICLE_WIDTH;
   return BASIC_PARTICLE_WIDTH;
 }
 
-function maxParticleTextureHeightForQuality(quality: RenderQuality): number {
-  if (quality === 'raw') return 128;
+function maxParticleTextureHeightForQuality(quality: RenderQuality, particleWidth: number): number {
+  if (quality === 'raw') return particleWidth;
   if (quality === 'enhanced') return 84;
   return 64;
 }
 
-function trailTextureWidthForQuality(quality: RenderQuality): number {
-  if (quality === 'raw') return RAW_TRAIL_WIDTH;
+function trailTextureWidthForQuality(quality: RenderQuality, rawTrailTextureWidth?: number | string): number {
+  if (quality === 'raw') return clampTextureSize(rawTrailTextureWidth, RAW_TRAIL_WIDTH, RAW_TRAIL_TEXTURE_MIN, RAW_TRAIL_TEXTURE_MAX);
   if (quality === 'enhanced') return ENHANCED_TRAIL_WIDTH;
   return BASIC_TRAIL_WIDTH;
+}
+
+function clampTextureSize(value: number | string | undefined, fallback: number, min: number, max: number): number {
+  const numeric = typeof value === 'string' ? Number.parseInt(value, 10) : value;
+  if (!finitePositive(numeric ?? Number.NaN)) return fallback;
+  return Math.max(min, Math.min(max, Math.round(numeric as number)));
 }
 
 function resolveAspect(width: number, height: number): number {

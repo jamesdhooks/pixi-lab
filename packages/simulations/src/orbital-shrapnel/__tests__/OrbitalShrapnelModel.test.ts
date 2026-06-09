@@ -72,6 +72,31 @@ describe('OrbitalShrapnelModel', () => {
     expect(model.detectStagnation(1 / 60).stagnant).toBe(false);
   });
 
+
+
+  it('clamps high-energy debris when raw max speed is configured', () => {
+    const model = new OrbitalShrapnelModel({
+      seed: 88,
+      width: 640,
+      height: 360,
+      particleCount: 12,
+      trailColumns: 24,
+      trailRows: 14,
+      planetRadius: 42,
+      gravity: 1550,
+      drag: 0.002,
+      maxSpeed: 1.4,
+    });
+
+    for (let i = 0; i < 8; i += 1) model.addShrapnel(320, 180, 400, -260);
+    model.stabilize();
+    model.update(1 / 30);
+
+    for (const particle of model.snapshot()) {
+      expect(Math.hypot(particle.vx, particle.vy)).toBeLessThanOrEqual(1.405);
+    }
+  });
+
   it('reset reproduces the same state for the same seed', () => {
     const a = createModel(101);
     const b = createModel(101);

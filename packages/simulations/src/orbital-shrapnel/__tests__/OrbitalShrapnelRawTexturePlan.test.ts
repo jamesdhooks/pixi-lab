@@ -40,6 +40,36 @@ describe('OrbitalShrapnelRawTexturePlan', () => {
     expect(enhanced.trailField).toEqual({ width: 240, height: 135 });
   });
 
+
+
+  it('honors advanced raw texture tiers and clamps unsafe extremes', () => {
+    const high = resolveOrbitalShrapnelRawTexturePlan({
+      width: 1920,
+      height: 1080,
+      quality: 'raw',
+      particleCount: 900_000,
+      trailColumns: 192,
+      rawParticleTextureSize: '1024',
+      rawTrailTextureWidth: '768',
+    });
+
+    expect(high.particleState).toEqual({ width: 1024, height: 879, capacity: 900_096 });
+    expect(high.trailField).toEqual({ width: 768, height: 432 });
+
+    const clamped = resolveOrbitalShrapnelRawTexturePlan({
+      width: 1920,
+      height: 1080,
+      quality: 'raw',
+      particleCount: 2_000_000,
+      trailColumns: 192,
+      rawParticleTextureSize: '4096',
+      rawTrailTextureWidth: '4096',
+    });
+
+    expect(clamped.particleState).toEqual({ width: 1024, height: 1024, capacity: 1_048_576 });
+    expect(clamped.trailField).toEqual({ width: 1024, height: 576 });
+  });
+
   it('falls back to minimum safe dimensions for invalid input', () => {
     expect(resolveOrbitalShrapnelRawTexturePlan({
       width: Number.NaN,

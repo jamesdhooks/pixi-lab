@@ -432,7 +432,7 @@ function GameLauncherInner({
     [definition.settingsFields, isFieldVisible],
   );
   const topControlFields = useMemo(
-    () => visibleSettingsFields.filter((f) => f.type === 'number' || f.type === 'select'),
+    () => visibleSettingsFields.filter((f) => !f.advanced && (f.type === 'number' || f.type === 'select')),
     [visibleSettingsFields],
   );
 
@@ -781,4 +781,3 @@ function GameLauncherInner({
     </div>
   );
 }
-

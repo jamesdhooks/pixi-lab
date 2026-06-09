@@ -47,6 +47,24 @@ export function SettingsDrawer({ open, onClose, settings, fields, maxPixels, onM
     { label: '1080p', sub: '1920×1080', value: 2_073_600 },
   ];
 
+  const normalFields = fields.filter((field) => !field.advanced);
+  const advancedFields = fields.filter((field) => field.advanced);
+  const renderFieldSection = (label: string, sectionFields: SettingsField[]) =>
+    sectionFields.length > 0 ? (
+      <>
+        <div className="mx-0 my-2 h-px bg-white/8" />
+        <p className="px-2 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">{label}</p>
+        {sectionFields.map((field) => (
+          <FieldRow
+            key={field.key}
+            field={field}
+            value={vals[field.key]}
+            onChange={(v) => apply(field.key, v)}
+          />
+        ))}
+      </>
+    ) : null;
+
   const content = (
     <div className="p-3 space-y-0.5">
       {/* ── Common: resolution (pixel budget) ── */}
@@ -69,20 +87,8 @@ export function SettingsDrawer({ open, onClose, settings, fields, maxPixels, onM
       </div>
 
       {/* ── Experience-specific settings ── */}
-      {fields.length > 0 && (
-        <>
-          <div className="mx-0 my-2 h-px bg-white/8" />
-          <p className="px-2 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">Experience</p>
-          {fields.map((field) => (
-            <FieldRow
-              key={field.key}
-              field={field}
-              value={vals[field.key]}
-              onChange={(v) => apply(field.key, v)}
-            />
-          ))}
-        </>
-      )}
+      {renderFieldSection('Experience', normalFields)}
+      {renderFieldSection('Advanced', advancedFields)}
     </div>
   );
 
