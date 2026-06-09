@@ -50,6 +50,7 @@ interface FluidRendererAdapter {
   smallSwirl(x: number, y: number): void;
   settleVelocity(): void;
   splat(splat: FluidSplat): void;
+  stir(splat: FluidSplat): void;
   update(dt: number): void;
   render(): void;
   stats(): GpuFluidTankStats;
@@ -203,7 +204,7 @@ export class FluidTankScene extends SimulationScene {
             0.95,
           );
         } else {
-          this.renderer.splat({
+          this.renderer.stir({
             x: gesture.x / Math.max(1, this.ctx_.width),
             y: gesture.y / Math.max(1, this.ctx_.height),
             dx: velocity.dx,
@@ -330,7 +331,7 @@ export class FluidTankScene extends SimulationScene {
         if (this.interactionMode === 'inject') {
           this.renderer.inject(px, py, vx, vy, 0.9);
         } else {
-          this.renderer.splat({
+          this.renderer.stir({
             x: px,
             y: py,
             dx: vx,

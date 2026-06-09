@@ -150,7 +150,7 @@ class RawFluidTankController {
         if (this.interactionMode === 'inject') {
           this.renderer.inject(point.x, point.y, velocity.dx, velocity.dy, 1.25);
         } else {
-          this.renderer.splat({ x: point.x, y: point.y, dx: velocity.dx, dy: velocity.dy, radiusScale: 1 });
+          this.renderer.stir({ x: point.x, y: point.y, dx: velocity.dx, dy: velocity.dy, radiusScale: 1 });
         }
         this.splatCount += 1;
       }

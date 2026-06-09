@@ -767,11 +767,31 @@ export class GpuFluidTankRenderer {
     this.splatCount += 1;
   }
 
+  stir(splat: FluidSplat): void {
+    if (!this.supported || !this.velocity) return;
+    const x = clamp01(splat.x);
+    const y = clamp01(1 - splat.y);
+    const radius = this.options.fingerRadius * (splat.radiusScale ?? 1);
+    const vx = splat.dx * this.options.fingerForce;
+    const vy = -splat.dy * this.options.fingerForce;
+    this.applySplat(x, y, vx, vy, radius);
+    if (this.options.eddyAssist > 0) {
+      this.applySplat(
+        x,
+        y,
+        splat.dy * this.options.fingerForce * this.options.eddyAssist,
+        splat.dx * this.options.fingerForce * this.options.eddyAssist,
+        radius * 1.35,
+      );
+    }
+    this.splatCount += 1;
+  }
+
   smallSwirl(x: number, y: number): void {
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
       const radius = randomBetween(this.rng, this.options.fingerRadius * 0.35, this.options.fingerRadius * 0.9);
-      this.splat({
+      this.stir({
         x: x + Math.cos(angle) * radius,
         y: y + Math.sin(angle) * radius,
         dx: -Math.sin(angle) * 0.55,

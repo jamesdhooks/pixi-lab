@@ -301,8 +301,26 @@ export class PixiFeedbackFluidRenderer {
       const sx = x * this.simWidth + Math.cos(angle) * radius * this.rand(0, 0.25);
       const sy = y * this.simHeight + Math.sin(angle) * radius * this.rand(0, 0.25);
       this.addFlowStamp(sx, sy, dx, dy, radius * this.rand(0.65, 1.25), 0.58);
-      this.addDyeStamp(sx, sy, dx, dy, radius * this.rand(0.55, 1.1), 0.075, this.nextColor());
     }
+  }
+
+  stir(splat: FluidSplat): void {
+    const x = splat.x * this.simWidth;
+    const y = splat.y * this.simHeight;
+    const dx = splat.dx;
+    const dy = splat.dy;
+    const distance = Math.hypot(dx, dy);
+    if (distance < 0.1) return;
+    const baseRadius = this.resolveFingerRadius() * (splat.radiusScale ?? 1);
+    const steps = Math.max(2, Math.ceil(distance / Math.max(baseRadius * 0.38, 4)));
+    for (let i = 0; i < steps; i++) {
+      const k = i / Math.max(steps - 1, 1);
+      const sx = x + dx * k;
+      const sy = y + dy * k;
+      const wobble = Math.sin(this.elapsed * 8 + i * 1.7) * baseRadius * 0.08;
+      this.addFlowStamp(sx + wobble, sy - wobble, dx, dy, baseRadius * this.rand(0.82, 1.18), 0.82);
+    }
+    this.splatCount += 1;
   }
 
   splat(splat: FluidSplat): void {
