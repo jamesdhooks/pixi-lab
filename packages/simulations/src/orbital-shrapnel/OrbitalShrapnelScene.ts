@@ -133,6 +133,7 @@ export class OrbitalShrapnelScene extends SimulationScene {
       this.rawRenderer.clear();
       this.rawRenderer.render({
         trailField: this.model.trailField,
+        particles: this.model.renderParticles(),
         style,
         width: this.ctx_.width,
         height: this.ctx_.height,
@@ -140,12 +141,15 @@ export class OrbitalShrapnelScene extends SimulationScene {
         trailColumns: this.modelOptions.trailColumns,
         rawParticleTextureSize: this.lastRawParticleTextureSize,
         rawTrailTextureWidth: this.lastRawTrailTextureWidth,
+        debrisSize: (this.ctx_.systems.settings.get('debrisSize') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.debrisSize as number),
+        bloomStrength: (this.ctx_.systems.settings.get('bloomStrength') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.bloomStrength as number),
+        streakStrength: (this.ctx_.systems.settings.get('streakStrength') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.streakStrength as number),
       });
     } else if (this.trailRenderer && this.particleRenderer) {
       this.trailRenderer.clear();
       this.particleRenderer.clear();
-      this.trailRenderer.renderTrail('orbit', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.88, gamma: 0.36, zIndex: 0 });
-      this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.58, zIndex: 1 });
+      this.trailRenderer.renderTrail('orbit', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.94, gamma: ((this.ctx_.systems.settings.get('trailGamma') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailGamma as number)), zIndex: 0 });
+      this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: ((this.ctx_.systems.settings.get('debrisSize') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.debrisSize as number)), zIndex: 1 });
     } else if (this.fieldRenderer) {
       this.fieldRenderer.clear();
       this.fieldRenderer.renderField('orbit', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.88, gamma: 0.36, zIndex: 0 });

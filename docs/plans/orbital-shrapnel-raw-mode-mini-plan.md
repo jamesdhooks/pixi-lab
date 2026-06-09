@@ -52,6 +52,17 @@ If future raw setup fails, destroy any owned raw resources and fall back to the 
 
 Added `OrbitalShrapnelRawTexturePlan` as the first pure raw-adapter helper. It plans bounded particle-state texture capacity and aspect-preserving trail texture dimensions across `basic`, `enhanced`, and future `raw`, with tests proving raw-sized uploads do not leak into non-raw qualities. This is helper-only: `orbital-shrapnel` still advertises only `basic`/`enhanced`, and browser QA is deferred until a selectable renderer exists.
 
+## 2026-06-09 selectable raw fidelity slice note
+
+Orbital Shrapnel now exposes the Pixi-owned `raw` quality route after adding the bounded raw trail texture/composite renderer. The first fidelity follow-up keeps the raw route scene-owned while adding high-density visual controls from the WebGL reference pass:
+
+- Normal/main settings: `particleCount`, `resolution`, `gravity`, `planetRadius`, `trailFade`, `debrisSize`, and `trailGamma`.
+- Advanced cog / WebGL-high settings: `rawParticleTextureSize`, `rawTrailTextureWidth`, `rawMaxSpeed`, `bloomStrength`, and `streakStrength`.
+- Raw rendering now composites the trail texture plus sampled additive debris/streak layers so extreme particle tiers keep visible high-fidelity motion cues without drawing every particle as individual Pixi geometry.
+- Focused registry/helper tests and the simulations typecheck verify the settings/default alignment and raw adapter helper behavior.
+
+Keep the next Orbital slice focused on GPU-style state fidelity, not broad engine extraction: add a pure particle-state packer or trail feedback persistence helper before extracting shared particle/field abstractions.
+
 ## Validation commands
 
 ```bash
