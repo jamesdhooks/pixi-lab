@@ -1,7 +1,7 @@
 import type { SettingsField } from '@hooksjam/pixi-lab-core';
 
 export const HARMONIC_SAND_SETTINGS_FIELDS: SettingsField[] = [
-  { key: 'resolution', label: 'Resolution', type: 'number', min: 32, max: 512, step: 32, default: 128 },
+  { key: 'resolution', label: 'Resolution', type: 'number', min: 32, max: 1024, step: 32, default: 128 },
   {
     key: 'baseFrequency',
     label: 'Base Frequency',
@@ -12,14 +12,24 @@ export const HARMONIC_SAND_SETTINGS_FIELDS: SettingsField[] = [
     default: 2.4,
   },
   {
+    key: 'wavePeriod',
+    label: 'Wave Period',
+    description: 'Controls wave phase speed: shorter is faster, longer is slower.',
+    type: 'number',
+    min: 0.2,
+    max: 6,
+    step: 0.1,
+    default: 1,
+  },
+  {
     key: 'rawParticleCount',
     label: 'Raw Particle Count',
     description: 'Controls the apparent GPU sand budget in the WebGL2 plate.',
     type: 'number',
     min: 25000,
-    max: 250000,
-    step: 5000,
-    default: 90000,
+    max: 2000000,
+    step: 25000,
+    default: 180000,
     visibleEngineConfigurations: ['webgl2/high'],
   },
   {
@@ -28,7 +38,7 @@ export const HARMONIC_SAND_SETTINGS_FIELDS: SettingsField[] = [
     description: 'Fine-tunes how tightly GPU sand grains pack around resonance lines.',
     type: 'number',
     min: 0.35,
-    max: 2.5,
+    max: 8,
     step: 0.05,
     default: 1.25,
     visibleEngineConfigurations: ['webgl2/high'],
@@ -66,28 +76,17 @@ export const HARMONIC_SAND_SETTINGS_FIELDS: SettingsField[] = [
     default: 1.35,
     visibleEngineConfigurations: ['webgl2/high'],
   },
-  {
-    key: 'rawWaveMix',
-    label: 'Raw Wave Mix',
-    description: 'Blends between orthogonal and radial harmonic wave families.',
-    type: 'number',
-    min: 0,
-    max: 1,
-    step: 0.01,
-    default: 0.42,
-    visibleEngineConfigurations: ['webgl2/high'],
-  },
 ];
 
 export const HARMONIC_SAND_DEFAULTS: Record<string, unknown> = {
   resolution: 128,
   baseFrequency: 2.4,
-  rawParticleCount: 90000,
+  wavePeriod: 1,
+  rawParticleCount: 180000,
   rawParticleDensity: 1.25,
   rawEmitterLimit: 10,
   rawLineSharpness: 1.8,
   rawGlow: 1.35,
-  rawWaveMix: 0.42,
   emitterCount: 0,
   style: 'chladni-gold',
   debug: false,

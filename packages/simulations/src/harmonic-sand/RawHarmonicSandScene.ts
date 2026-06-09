@@ -1,4 +1,4 @@
-import { RawWebGL2Scene, colorNumberToRgb, finiteNumberSetting, type RawWebGL2RenderState } from '@hooksjam/pixi-lab-core';
+import { RawWebGL2Scene, colorNumberToRgb, finiteNumberSetting, type GestureEvent, type RawWebGL2RenderState } from '@hooksjam/pixi-lab-core';
 
 const MAX_RAW_EMITTERS = 16;
 const DOUBLE_TAP_MS = 320;
@@ -14,12 +14,13 @@ type RawEmitter = {
 
 type RawInteractionState = {
   emitters: RawEmitter[];
+  queuedGestures: GestureEvent[];
   activePointerId: number | null;
   draggingIndex: number | null;
   lastTapAt: number;
 };
 
-const markup = '<canvas data-harmonic-sand-raw class="absolute inset-0 h-full w-full touch-none cursor-crosshair"></canvas><div class="pointer-events-none absolute left-4 top-4 rounded-full border border-amber-200/25 bg-black/35 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-amber-100/80 backdrop-blur">WebGL2 raw plate · tap sources · drag to tune</div>';
+const markup = '<canvas data-harmonic-sand-raw class="absolute inset-0 h-full w-full touch-none cursor-crosshair"></canvas>';
 
 const vertexSource = `#version 300 es
 precision highp float;
@@ -37,18 +38,21 @@ precision highp float;
 in vec2 vUv;
 out vec4 fragColor;
 uniform vec2 uResolution;
+uniform float uFieldResolution;
 uniform float uTime;
 uniform float uBaseFrequency;
 uniform float uParticleDensity;
 uniform float uParticleCount;
 uniform float uLineSharpness;
 uniform float uGlow;
-uniform float uWaveMix;
+uniform float uMarkerVisibility;
 uniform int uEmitterCount;
 uniform vec4 uEmitters[MAX_EMITTERS];
+uniform float uEmitterAmplitudes[MAX_EMITTERS];
 uniform vec3 uPaletteA;
 uniform vec3 uPaletteB;
 uniform vec3 uPaletteC;
+uniform vec3 uPaletteD;
 uniform vec3 uBackground;
 
 float hash(vec2 p) {
@@ -63,27 +67,22 @@ float sourceField(vec2 p, float t) {
     if (i >= uEmitterCount) break;
     vec4 e = uEmitters[i];
     vec2 delta = p - e.xy;
-    float distance = max(0.018, length(delta));
-    float falloff = 1.0 / (1.0 + distance * distance * 0.42);
-    field += sin(distance * e.z * 18.84956 - t * (0.72 + e.z * 0.11) + e.w) * falloff;
+    float radius = max(1.0, length(delta) * uFieldResolution * 0.5);
+    float frequency = e.z * max(0.05, uBaseFrequency / 2.4);
+    field += sin(radius * 0.035 * frequency - t * frequency + e.w) * uEmitterAmplitudes[i];
   }
   return field / max(1.0, float(uEmitterCount));
 }
 
 float basePlateField(vec2 p, float t) {
   float f = max(0.1, uBaseFrequency);
-  float orthogonal = sin((p.x * f + 0.19 * sin(t * 0.31)) * 3.14159) * sin((p.y * (f * 1.37) - 0.17 * cos(t * 0.27)) * 3.14159);
-  vec2 c1 = p - vec2(0.34 * sin(t * 0.17), 0.26 * cos(t * 0.21));
-  vec2 c2 = p + vec2(0.29 * cos(t * 0.13), 0.31 * sin(t * 0.19));
-  float radial = sin(length(c1) * f * 7.4 - t * 0.95) * cos(length(c2) * f * 5.9 + t * 0.63);
-  return mix(orthogonal, radial, clamp(uWaveMix, 0.0, 1.0));
+  float radius = max(1.0, length(p) * uFieldResolution * 0.5);
+  return sin(radius * 0.035 * f - t * f);
 }
 
 float waveField(vec2 p, float t) {
-  float placed = sourceField(p, t);
-  float plate = basePlateField(p, t);
-  float sourceWeight = uEmitterCount > 0 ? 0.82 : 0.0;
-  return mix(plate, placed + 0.22 * plate, sourceWeight);
+  if (uEmitterCount > 0) return sourceField(p, t);
+  return basePlateField(p, t);
 }
 
 float sourceMarker(vec2 p) {
@@ -92,7 +91,7 @@ float sourceMarker(vec2 p) {
     if (i >= uEmitterCount) break;
     vec2 delta = p - uEmitters[i].xy;
     float d = length(delta);
-    marker += smoothstep(0.085, 0.018, d) + 0.45 * smoothstep(0.13, 0.105, abs(d - 0.115));
+    marker += smoothstep(0.034, 0.009, d) + 0.35 * smoothstep(0.055, 0.038, abs(d - 0.046));
   }
   return clamp(marker, 0.0, 1.0);
 }
@@ -100,58 +99,74 @@ float sourceMarker(vec2 p) {
 void main() {
   vec2 uv = vUv;
   vec2 aspect = vec2(uResolution.x / max(uResolution.y, 1.0), 1.0);
-  vec2 p = (uv - 0.5) * 2.0 * aspect;
+  vec2 p = vec2((uv.x - 0.5) * 2.0 * aspect.x, (0.5 - uv.y) * 2.0);
   float t = uTime;
   float field = waveField(p, t);
   float sharpness = max(0.05, uLineSharpness);
-  float particleBudget = clamp((uParticleCount - 25000.0) / 225000.0, 0.0, 1.0);
-  float density = clamp(uParticleDensity, 0.05, 4.0);
+  float particleBudget = clamp((uParticleCount - 25000.0) / 1975000.0, 0.0, 1.0);
+  float density = clamp(uParticleDensity, 0.05, 8.0);
   float nodal = exp(-abs(field) * mix(10.0, 58.0, clamp(sharpness / 3.5, 0.0, 1.0)));
-  float harmonic = waveField(p * 1.73 + 0.21 * sin(t * 0.2), t * 0.72);
-  nodal += 0.36 * exp(-abs(harmonic) * 28.0 * sharpness);
   nodal = clamp(nodal, 0.0, 1.0);
 
-  float grainScale = mix(170.0, 1380.0, particleBudget) * mix(0.65, 1.45, clamp(density / 2.5, 0.0, 1.0));
+  float resolutionScale = clamp(uFieldResolution / 128.0, 0.25, 8.0);
+  float grainScale = mix(130.0, 2300.0, particleBudget) * mix(0.55, 2.25, clamp(density / 8.0, 0.0, 1.0)) * sqrt(resolutionScale);
   vec2 grid = floor(uv * grainScale);
   float grain = hash(grid + floor(t * mix(6.0, 28.0, particleBudget)));
-  float occupancy = mix(0.28, 1.0, particleBudget) * density;
-  float sparkle = smoothstep(mix(0.9, 0.56, clamp(occupancy, 0.0, 1.0)), 1.0, grain) * nodal;
+  float occupancy = mix(0.18, 1.0, particleBudget) * density;
+  float sparkle = smoothstep(mix(0.96, 0.36, clamp(occupancy / 3.0, 0.0, 1.0)), 1.0, grain) * nodal;
   float micro = hash(grid * 1.618 + 7.0);
-  float markers = sourceMarker(p);
+  float markers = sourceMarker(p) * uMarkerVisibility;
 
   float vignette = smoothstep(1.24, 0.18, length((uv - 0.5) * vec2(aspect.x, 1.0)));
-  vec3 sand = mix(uPaletteA, uPaletteB, smoothstep(0.1, 1.0, nodal));
-  sand = mix(sand, uPaletteC, sparkle * 0.85);
-  vec3 markerColor = mix(vec3(1.0, 0.56, 0.18), vec3(0.4, 0.94, 1.0), 0.5 + 0.5 * sin(t * 2.0));
-  vec3 glow = sand * nodal * uGlow * mix(1.25, 2.3, particleBudget);
-  vec3 base = uBackground * (0.34 + 0.22 * vignette);
-  vec3 color = base + glow + sand * nodal * (0.45 + micro * 0.45 + particleBudget * 0.35) + vec3(sparkle) * mix(0.7, 1.75, particleBudget);
-  color += markerColor * markers * (0.55 + 0.45 * nodal);
-  color += 0.08 * vec3(0.9, 0.72, 0.38) * sin((field + harmonic) * 8.0 + t);
-  color *= 0.55 + 0.65 * vignette;
-  fragColor = vec4(pow(max(color, vec3(0.0)), vec3(0.88)), 1.0);
+
+  // Map the harmonic scalar field itself across the full style palette.  Nodal
+  // intensity and particles shape contrast only; they must not collapse the
+  // plate back into colored lines over a black background.
+  float harmonicValue = clamp(0.5 + 0.5 * field, 0.0, 1.0);
+  harmonicValue = pow(harmonicValue, 0.82);
+  vec3 lowBand = mix(uPaletteA, uPaletteB, smoothstep(0.0, 0.34, harmonicValue));
+  vec3 highBand = mix(uPaletteC, uPaletteD, smoothstep(0.66, 1.0, harmonicValue));
+  vec3 sand = mix(lowBand, highBand, smoothstep(0.28, 0.78, harmonicValue));
+
+  float bandContrast = 0.58 + 0.34 * nodal + 0.18 * sparkle + 0.10 * micro;
+  float glowContrast = 1.0 + nodal * uGlow * mix(0.18, 0.42, particleBudget);
+  vec3 color = sand * bandContrast * glowContrast;
+  color = mix(color, uPaletteD, sparkle * mix(0.12, 0.32, particleBudget));
+  color = mix(color, mix(uPaletteC, uPaletteD, 0.5 + 0.5 * sin(t * 2.0)), markers * (0.62 + 0.28 * nodal));
+  color *= 0.72 + 0.38 * vignette;
+  fragColor = vec4(pow(clamp(color, 0.0, 1.0), vec3(0.88)), 1.0);
 }`;
 
 interface HarmonicSandUniforms {
   resolution: WebGLUniformLocation | null;
+  fieldResolution: WebGLUniformLocation | null;
   time: WebGLUniformLocation | null;
   baseFrequency: WebGLUniformLocation | null;
   particleDensity: WebGLUniformLocation | null;
   particleCount: WebGLUniformLocation | null;
   lineSharpness: WebGLUniformLocation | null;
   glow: WebGLUniformLocation | null;
-  waveMix: WebGLUniformLocation | null;
+  markerVisibility: WebGLUniformLocation | null;
   emitterCount: WebGLUniformLocation | null;
   emitters: WebGLUniformLocation | null;
+  emitterAmplitudes: WebGLUniformLocation | null;
   paletteA: WebGLUniformLocation | null;
   paletteB: WebGLUniformLocation | null;
   paletteC: WebGLUniformLocation | null;
+  paletteD: WebGLUniformLocation | null;
   background: WebGLUniformLocation | null;
 }
+
+type RawVisibilityState = {
+  uiHidden: boolean;
+  demoModeActive: boolean;
+};
 
 const uniformCache = new WeakMap<WebGLProgram, HarmonicSandUniforms>();
 const interactionCache = new WeakMap<HTMLCanvasElement, RawInteractionState>();
 const cleanupCache = new WeakMap<HTMLCanvasElement, () => void>();
+const visibilityCache = new WeakMap<HTMLCanvasElement, RawVisibilityState>();
+let activeRawState: RawWebGL2RenderState | null = null;
 
 function requireProgram(state: RawWebGL2RenderState): WebGLProgram | null {
   return state.program;
@@ -181,7 +196,20 @@ function canvasToPlate(canvas: HTMLCanvasElement, event: PointerEvent): { x: num
   const aspect = rect.height > 0 ? rect.width / rect.height : 1;
   return {
     x: clamp((nx - 0.5) * 2 * aspect, -aspect, aspect),
-    y: clamp((0.5 - ny) * 2, -1, 1),
+    y: clamp((ny - 0.5) * 2, -1, 1),
+  };
+}
+
+function gestureToPlate(canvas: HTMLCanvasElement, x: number, y: number): { x: number; y: number } {
+  const rect = canvas.getBoundingClientRect();
+  const cssWidth = rect.width > 0 ? rect.width : canvas.width;
+  const cssHeight = rect.height > 0 ? rect.height : canvas.height;
+  const aspect = cssHeight > 0 ? cssWidth / cssHeight : 1;
+  const nx = x > 1 || y > 1 ? x / Math.max(1, cssWidth) : x;
+  const ny = x > 1 || y > 1 ? y / Math.max(1, cssHeight) : y;
+  return {
+    x: clamp((nx - 0.5) * 2 * aspect, -aspect, aspect),
+    y: clamp((ny - 0.5) * 2, -1, 1),
   };
 }
 
@@ -209,15 +237,39 @@ function upsertEmitter(interaction: RawInteractionState, settings: Record<string
   return interaction.emitters.length - 1;
 }
 
+function applyGesture(interaction: RawInteractionState, settings: Record<string, unknown>, canvas: HTMLCanvasElement, gesture: GestureEvent): void {
+  const point = gestureToPlate(canvas, gesture.x, gesture.y);
+  if (gesture.kind === 'double_tap') {
+    const nearest = nearestEmitter(interaction.emitters, point);
+    if (nearest !== null) interaction.emitters.splice(nearest, 1);
+    return;
+  }
+  if (gesture.kind !== 'tap' && gesture.kind !== 'hold' && gesture.kind !== 'drag') return;
+  const index = upsertEmitter(interaction, settings, point);
+  const emitter = interaction.emitters[index];
+  if (emitter && gesture.kind === 'drag') {
+    emitter.x = point.x;
+    emitter.y = point.y;
+  }
+}
+
+function flushQueuedGestures(interaction: RawInteractionState | undefined, settings: Record<string, unknown>, canvas: HTMLCanvasElement): void {
+  if (!interaction || interaction.queuedGestures.length === 0) return;
+  const gestures = interaction.queuedGestures.splice(0);
+  gestures.forEach((gesture) => applyGesture(interaction, settings, canvas, gesture));
+}
+
 function attachInteractions(state: RawWebGL2RenderState): void {
   const { canvas } = state;
   const interaction: RawInteractionState = {
     emitters: createInitialEmitters(state.settings),
+    queuedGestures: [],
     activePointerId: null,
     draggingIndex: null,
     lastTapAt: 0,
   };
   interactionCache.set(canvas, interaction);
+  visibilityCache.set(canvas, { uiHidden: false, demoModeActive: false });
 
   const onPointerDown = (event: PointerEvent) => {
     event.preventDefault();
@@ -276,23 +328,27 @@ function attachInteractions(state: RawWebGL2RenderState): void {
 }
 
 function initUniforms(state: RawWebGL2RenderState): void {
+  activeRawState = state;
   const { gl } = state;
   const program = requireProgram(state);
   if (!program) return;
   uniformCache.set(program, {
     resolution: gl.getUniformLocation(program, 'uResolution'),
+    fieldResolution: gl.getUniformLocation(program, 'uFieldResolution'),
     time: gl.getUniformLocation(program, 'uTime'),
     baseFrequency: gl.getUniformLocation(program, 'uBaseFrequency'),
     particleDensity: gl.getUniformLocation(program, 'uParticleDensity'),
     particleCount: gl.getUniformLocation(program, 'uParticleCount'),
     lineSharpness: gl.getUniformLocation(program, 'uLineSharpness'),
     glow: gl.getUniformLocation(program, 'uGlow'),
-    waveMix: gl.getUniformLocation(program, 'uWaveMix'),
+    markerVisibility: gl.getUniformLocation(program, 'uMarkerVisibility'),
     emitterCount: gl.getUniformLocation(program, 'uEmitterCount'),
     emitters: gl.getUniformLocation(program, 'uEmitters'),
+    emitterAmplitudes: gl.getUniformLocation(program, 'uEmitterAmplitudes'),
     paletteA: gl.getUniformLocation(program, 'uPaletteA'),
     paletteB: gl.getUniformLocation(program, 'uPaletteB'),
     paletteC: gl.getUniformLocation(program, 'uPaletteC'),
+    paletteD: gl.getUniformLocation(program, 'uPaletteD'),
     background: gl.getUniformLocation(program, 'uBackground'),
   });
   attachInteractions(state);
@@ -302,6 +358,7 @@ function resetRawPlate(state: RawWebGL2RenderState): void {
   const interaction = interactionCache.get(state.canvas);
   if (!interaction) return;
   interaction.emitters = createInitialEmitters(state.settings);
+  interaction.queuedGestures = [];
   interaction.activePointerId = null;
   interaction.draggingIndex = null;
   interaction.lastTapAt = 0;
@@ -321,6 +378,7 @@ function renderHarmonicSand(state: RawWebGL2RenderState): void {
   const uniforms = uniformCache.get(program);
   if (!uniforms) return;
   const interaction = interactionCache.get(canvas);
+  flushQueuedGestures(interaction, settings, canvas);
   gl.useProgram(program);
   gl.bindVertexArray(vao);
 
@@ -328,30 +386,37 @@ function renderHarmonicSand(state: RawWebGL2RenderState): void {
   const a = colorNumberToRgb(palette[0], [1.0, 0.78, 0.35]);
   const b = colorNumberToRgb(palette[1], [0.18, 0.82, 1.0]);
   const c = colorNumberToRgb(palette[2], [1.0, 0.28, 0.62]);
+  const d = colorNumberToRgb(palette[3], [1.0, 1.0, 1.0]);
   const bg = colorNumberToRgb(style?.background, [0.015, 0.012, 0.025]);
   const emitterData = new Float32Array(MAX_RAW_EMITTERS * 4);
+  const emitterAmplitudes = new Float32Array(MAX_RAW_EMITTERS);
   const emitters = interaction?.emitters ?? [];
+  const visibility = visibilityCache.get(canvas) ?? { uiHidden: false, demoModeActive: false };
   emitters.slice(0, MAX_RAW_EMITTERS).forEach((emitter, index) => {
     const offset = index * 4;
     emitterData[offset] = emitter.x;
     emitterData[offset + 1] = emitter.y;
-    emitterData[offset + 2] = emitter.frequency * emitter.amplitude;
+    emitterData[offset + 2] = emitter.frequency;
     emitterData[offset + 3] = emitter.phase;
+    emitterAmplitudes[index] = emitter.amplitude;
   });
 
   gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
-  gl.uniform1f(uniforms.time, state.timeSeconds);
+  gl.uniform1f(uniforms.fieldResolution, finiteNumberSetting(settings, 'resolution', 128));
+  gl.uniform1f(uniforms.time, state.timeSeconds / Math.max(0.1, finiteNumberSetting(settings, 'wavePeriod', 1)));
   gl.uniform1f(uniforms.baseFrequency, finiteNumberSetting(settings, 'baseFrequency', 2.4));
   gl.uniform1f(uniforms.particleDensity, finiteNumberSetting(settings, 'rawParticleDensity', 1.25));
-  gl.uniform1f(uniforms.particleCount, finiteNumberSetting(settings, 'rawParticleCount', 90000));
+  gl.uniform1f(uniforms.particleCount, finiteNumberSetting(settings, 'rawParticleCount', 180000));
   gl.uniform1f(uniforms.lineSharpness, finiteNumberSetting(settings, 'rawLineSharpness', 1.8));
   gl.uniform1f(uniforms.glow, finiteNumberSetting(settings, 'rawGlow', 1.35));
-  gl.uniform1f(uniforms.waveMix, finiteNumberSetting(settings, 'rawWaveMix', 0.42));
+  gl.uniform1f(uniforms.markerVisibility, visibility.uiHidden || visibility.demoModeActive ? 0 : 1);
   gl.uniform1i(uniforms.emitterCount, Math.min(emitters.length, MAX_RAW_EMITTERS));
   gl.uniform4fv(uniforms.emitters, emitterData);
+  gl.uniform1fv(uniforms.emitterAmplitudes, emitterAmplitudes);
   gl.uniform3fv(uniforms.paletteA, a);
   gl.uniform3fv(uniforms.paletteB, b);
   gl.uniform3fv(uniforms.paletteC, c);
+  gl.uniform3fv(uniforms.paletteD, d);
   gl.uniform3fv(uniforms.background, bg);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
@@ -359,6 +424,8 @@ function renderHarmonicSand(state: RawWebGL2RenderState): void {
 function destroyRawPlate(state: RawWebGL2RenderState): void {
   cleanupCache.get(state.canvas)?.();
   cleanupCache.delete(state.canvas);
+  visibilityCache.delete(state.canvas);
+  if (activeRawState?.canvas === state.canvas) activeRawState = null;
 }
 
 export class RawHarmonicSandScene extends RawWebGL2Scene {
@@ -375,5 +442,37 @@ export class RawHarmonicSandScene extends RawWebGL2Scene {
       render: renderHarmonicSand,
       onDestroy: destroyRawPlate,
     });
+  }
+
+  onUIHidden(hidden: boolean): void {
+    if (!activeRawState) return;
+    const visibility = visibilityCache.get(activeRawState.canvas) ?? { uiHidden: false, demoModeActive: false };
+    visibility.uiHidden = hidden;
+    visibilityCache.set(activeRawState.canvas, visibility);
+  }
+
+  setMode(mode: string): void {
+    if (!activeRawState) return;
+    const visibility = visibilityCache.get(activeRawState.canvas) ?? { uiHidden: false, demoModeActive: false };
+    visibility.demoModeActive = mode === 'demo';
+    visibilityCache.set(activeRawState.canvas, visibility);
+  }
+
+  pushGestures(gestures: GestureEvent[]): void {
+    if (gestures.length === 0 || !activeRawState) return;
+    const interaction = interactionCache.get(activeRawState.canvas);
+    if (!interaction) return;
+    interaction.queuedGestures.push(...gestures);
+  }
+
+  clearEmitters(): void {
+    if (!activeRawState) return;
+    const interaction = interactionCache.get(activeRawState.canvas);
+    if (!interaction) return;
+    interaction.emitters = [];
+    interaction.queuedGestures = [];
+    interaction.activePointerId = null;
+    interaction.draggingIndex = null;
+    interaction.lastTapAt = 0;
   }
 }

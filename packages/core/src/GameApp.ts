@@ -16,6 +16,7 @@ import type {
   GameContext,
   GameEvent,
   GameMode,
+  GestureEvent,
   InputSnapshot,
   RenderQuality,
 } from './types.js';
@@ -354,12 +355,10 @@ export class GameApp {
     this.renderInvalidated = true;
   }
 
-  /** Notify the active simulation scene that the host UI visibility has changed. */
+  /** Notify the active scene that the host UI visibility has changed. */
   setUIHidden(hidden: boolean) {
     if (!this.ready) return;
-    if (this.currentScene instanceof SimulationScene) {
-      this.currentScene.onUIHidden(hidden);
-    }
+    this.currentScene?.onUIHidden(hidden);
   }
 
   private buildSimAIContext(dt: number): SimAIContext {
@@ -383,6 +382,17 @@ export class GameApp {
       resetScene: () => this.resetScene(),
       clearEmittersOnly: () => this.currentScene?.clearEmitters(),
     };
+  }
+
+  private canPushSceneGestures(scene: Scene | null | undefined): scene is Scene & { pushGestures: (gestures: GestureEvent[]) => void } {
+    return typeof (scene as { pushGestures?: unknown } | null | undefined)?.pushGestures === 'function';
+  }
+
+  private pushSceneGestures(gestures: GestureEvent[]): void {
+    const scene = this.currentScene;
+    if (!this.canPushSceneGestures(scene)) return;
+    scene.pushGestures(gestures);
+    this.renderInvalidated = true;
   }
 
   /** Trigger a scene reset (drain/clear/restart cycle). Scene must override reset(). */
@@ -569,21 +579,19 @@ export class GameApp {
     const gestureEvents = this.gestures.update(snap);
     if (gestureEvents.length > 0) {
       this.hasHumanInputThisFrame = true;
-      if (this.currentScene instanceof SimulationScene) {
-        this.currentScene.pushGestures(gestureEvents);
-      }
+      this.pushSceneGestures(gestureEvents);
     }
 
     // Simulation demo AI — inject synthetic gestures when in demo mode
     if (
       this._mode === 'demo' &&
       this.simulationAi &&
-      this.currentScene instanceof SimulationScene
+      this.canPushSceneGestures(this.currentScene)
     ) {
       const aiCtx = this.buildSimAIContext(dt);
       const aiGestures = this.simulationAi.think(aiCtx);
       if (aiGestures.length > 0) {
-        this.currentScene.pushGestures(aiGestures);
+        this.pushSceneGestures(aiGestures);
       }
     }
 

@@ -100,6 +100,14 @@ export abstract class Scene {
   }
 
   /**
+   * Called when host controls/chrome visibility changes.
+   * Default: no-op. Override to hide scene-level controls/markers with the UI.
+   */
+  onUIHidden(_hidden: boolean): void {
+    // Optional override
+  }
+
+  /**
    * Called when the active style changes (e.g. rainbow → neon).
    * Default: no-op. Override to recolour content.
    */

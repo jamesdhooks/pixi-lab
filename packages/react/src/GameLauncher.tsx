@@ -4,7 +4,7 @@
  * Full-screen game shell. Intro → gameplay → game over.
  * Settings button pauses the engine and opens the settings drawer.
  */
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, type MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, HelpCircle, Play, Settings as SettingsIcon, X } from 'lucide-react';
 import { GameRuntime } from './GameRuntime.js';
@@ -275,7 +275,8 @@ function GameLauncherInner({
     appRef.current?.setInteractionMode(id);
   }, []);
 
-  const handleOpenSettings = useCallback(() => {
+  const handleOpenSettings = useCallback((event?: MouseEvent) => {
+    event?.stopPropagation();
     setSettingsOpen(true);
   }, []);
 

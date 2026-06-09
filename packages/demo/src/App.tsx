@@ -10,7 +10,6 @@ import { type LabExperience, type RenderBackendProfileSelection, type RenderQual
 import { hasPassedDemoQa } from './demoQaStatus';
 import {
   applyCompatibilityRouteRenderSelection,
-  buildExperienceRuntimeViewModel,
   findQueryExperienceFromParams,
   queryRenderSelectionForExperience,
 } from './demoRuntime';
@@ -65,7 +64,6 @@ export function App() {
   const [carouselFilter, setCarouselFilter] = useState<FilterKind>('all');
   const [carouselSide, setCarouselSide] = useState<'bottom' | 'left' | 'right'>('bottom');
   const [carouselDocked, setCarouselDocked] = useState(false);
-  const [renderSelection, setRenderSelection] = useState<RenderBackendProfileSelection | null>(null);
   const [appDemoActive, setAppDemoActive] = useState(false);
   const [appDemoIndex, setAppDemoIndex] = useState(0);
   const [appDemoFrontSlot, setAppDemoFrontSlot] = useState<DemoStageSlot>('a');
@@ -102,10 +100,6 @@ export function App() {
       // Storage can be unavailable in private/sandboxed contexts.
     }
   }, [maxPixels]);
-
-  useEffect(() => {
-    setRenderSelection(null);
-  }, [active?.id]);
 
   useEffect(() => {
     if (routeMode.fluidGallery) return;
@@ -184,11 +178,6 @@ export function App() {
   const appDemoVisibleReady = appDemoCrossfading && appDemoPendingSlot
     ? appDemoStageReady[appDemoPendingSlot]
     : appDemoStageReady[appDemoFrontSlot];
-  const runtimeViewModel = useMemo(
-    () => (active && renderSelection ? buildExperienceRuntimeViewModel(active, renderSelection) : null),
-    [active, renderSelection],
-  );
-
   const activeCarouselIndex = useMemo(
     () => (active ? carouselItems.findIndex((e) => e.id === active.id) : -1),
     [active, carouselItems],
@@ -477,7 +466,6 @@ export function App() {
               maxPixels={maxPixels}
               transparent={active.kind === 'ambient' || active.kind === 'effect'}
               initialRenderSelection={queryRenderSelectionForExperience(active, routeMode.queryParams)}
-              onRenderSelectionChange={setRenderSelection}
               autoDemo={routeMode.fluidEngine || routeMode.fluidReference}
               onQuit={() => {
                 setActive(null);
@@ -500,23 +488,6 @@ export function App() {
               Demo mode
             </div>
           </div>
-        </div>
-      )}
-
-      {active && !appDemoActive && runtimeViewModel && (
-        <div className="pointer-events-none fixed left-3 top-3 z-[70] rounded-lg bg-black/55 px-2.5 py-2 text-[10px] font-semibold uppercase leading-tight tracking-wide text-slate-100">
-          <div className="text-[9px] text-cyan-200">Lab Runtime</div>
-          <div>
-            {runtimeViewModel.label}
-          </div>
-          {runtimeViewModel.backendProfileRoute && (
-            <a
-              className="pointer-events-auto mt-1 inline-block text-[9px] normal-case tracking-normal text-cyan-200 underline decoration-cyan-200/50 underline-offset-2 hover:text-cyan-100"
-              href={runtimeViewModel.backendProfileRoute}
-            >
-              Backend/profile link
-            </a>
-          )}
         </div>
       )}
 

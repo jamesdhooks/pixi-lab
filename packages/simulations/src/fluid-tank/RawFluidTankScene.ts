@@ -60,18 +60,22 @@ class RawFluidTankController {
   constructor(state: RawWebGL2RenderState) {
     this.seed = Math.random() * 1000;
     this.options = this.readOptions(state.settings, state.style, this.seed);
-    this.renderer = new GpuFluidTankRenderer(state.canvas.parentElement ?? document.body, this.options, 'raw', { canvas: state.canvas });
-    this.renderer.resize(state.width, state.height, true);
+    const mount = state.canvas.parentElement ?? document.body;
+    this.renderer = new GpuFluidTankRenderer(mount, this.options, 'raw');
+    state.canvas.style.display = 'none';
+    this.renderer.canvas.style.pointerEvents = 'auto';
+    this.renderer.resize(this.canvasCssWidth(state.canvas), this.canvasCssHeight(state.canvas), true);
     this.renderer.randomizeDye(this.seed, true);
-    this.bindPointerInput(state.canvas);
+    this.bindPointerInput(this.renderer.canvas);
   }
 
   applySettings(state: RawWebGL2RenderState): void {
     const next = this.readOptions(state.settings, state.style, this.seed);
     const rebuild = next.cellSize !== this.options.cellSize;
+    const initChanged = next.initMode !== this.options.initMode || next.initImageUrl !== this.options.initImageUrl;
     this.options = next;
     this.renderer.setOptions(next);
-    if (rebuild) this.renderer.randomizeDye(this.seed, true);
+    if (rebuild || initChanged) this.renderer.randomizeDye(this.seed, true);
   }
 
   applyStyle(state: RawWebGL2RenderState): void {
@@ -93,6 +97,7 @@ class RawFluidTankController {
   reset(state: RawWebGL2RenderState): void {
     this.seed = Math.random() * 1000;
     this.options = this.readOptions(state.settings, state.style, this.seed);
+    this.renderer.resize(this.renderer.canvas.clientWidth || this.canvasCssWidth(state.canvas), this.renderer.canvas.clientHeight || this.canvasCssHeight(state.canvas), true);
     this.renderer.setOptions(this.options);
     this.renderer.randomizeDye(this.seed, true);
     this.pointerTrails.clear();
@@ -101,7 +106,7 @@ class RawFluidTankController {
 
   render(state: RawWebGL2RenderState): void {
     if (this.disposed) return;
-    this.renderer.resize(state.width, state.height);
+    this.renderer.resize(this.canvasCssWidth(state.canvas), this.canvasCssHeight(state.canvas));
     this.renderer.update(Math.min(1 / 30, Math.max(1 / 120, state.deltaSeconds || 1 / 60)));
     this.renderer.render();
   }
@@ -142,7 +147,11 @@ class RawFluidTankController {
           stats.simWidth || 1,
           stats.simHeight || 1,
         );
-        this.renderer.splat({ x: point.x, y: point.y, dx: velocity.dx, dy: velocity.dy, radiusScale: this.interactionMode === 'inject' ? 1.2 : 1 });
+        if (this.interactionMode === 'inject') {
+          this.renderer.inject(point.x, point.y, velocity.dx, velocity.dy, 1.25);
+        } else {
+          this.renderer.splat({ x: point.x, y: point.y, dx: velocity.dx, dy: velocity.dy, radiusScale: 1 });
+        }
         this.splatCount += 1;
       }
       this.pointerTrails.set(event.pointerId, point);
@@ -166,6 +175,18 @@ class RawFluidTankController {
     };
   }
 
+  private canvasCssWidth(canvas: HTMLCanvasElement): number {
+    const rect = canvas.getBoundingClientRect();
+    const parentRect = canvas.parentElement?.getBoundingClientRect();
+    return Math.max(1, rect.width || parentRect?.width || canvas.clientWidth || canvas.width);
+  }
+
+  private canvasCssHeight(canvas: HTMLCanvasElement): number {
+    const rect = canvas.getBoundingClientRect();
+    const parentRect = canvas.parentElement?.getBoundingClientRect();
+    return Math.max(1, rect.height || parentRect?.height || canvas.clientHeight || canvas.height);
+  }
+
   private readOptions(settings: Record<string, unknown>, style: DomStylePayload | null, seed: number): GpuFluidTankOptions {
     const palette = style?.palette?.length ? style.palette : boundedCyanStyle.palette;
     const uniforms = style?.uniforms ?? {};
@@ -180,18 +201,35 @@ class RawFluidTankController {
       pressureIterations: Math.round(finiteNumberSetting(settings, 'pressureIterations', Number(FLUID_TANK_DEFAULTS.pressureIterations))),
       injectColorMode: injectColorModeSetting(settings.injectPalette, FLUID_TANK_DEFAULTS.injectPalette),
       ambient: Boolean(settings.ambient ?? FLUID_TANK_DEFAULTS.ambient),
-      exposure: typeof uniforms.exposure === 'number' ? uniforms.exposure : 1.06,
+      exposure: typeof uniforms.exposure === 'number' ? uniforms.exposure : Number(boundedCyanStyle.uniforms?.exposure ?? 1),
       palette,
-      paletteStrength: typeof uniforms.paletteStrength === 'number' ? uniforms.paletteStrength : 0.82,
-      edgeDarkening: typeof uniforms.edgeDarkening === 'number' ? uniforms.edgeDarkening : 0.35,
+      paletteStrength: typeof uniforms.paletteStrength === 'number' ? uniforms.paletteStrength : Number(boundedCyanStyle.uniforms?.paletteStrength ?? 0.76),
+      edgeDarkening: typeof uniforms.edgeDarkening === 'number' ? uniforms.edgeDarkening : Number(boundedCyanStyle.uniforms?.edgeDarkening ?? 0.18),
       seed,
+      displayMode: 'dye',
+      initMode: initModeSetting(settings.initMode, FLUID_TANK_DEFAULTS.initMode),
+      initImageUrl: String(settings.initImageUrl ?? FLUID_TANK_DEFAULTS.initImageUrl ?? ''),
     };
   }
 }
 
+function initModeSetting(value: unknown, fallback: unknown): GpuFluidTankOptions['initMode'] {
+  const candidate = typeof value === 'string' ? value : String(fallback ?? 'cloud');
+  if (candidate === 'cloud' || candidate === 'voronoi' || candidate === 'random' || candidate === 'image') return candidate;
+  return 'cloud';
+}
+
 function injectColorModeSetting(value: unknown, fallback: unknown): GpuFluidTankOptions['injectColorMode'] {
-  const candidate = typeof value === 'string' ? value : String(fallback ?? 'style');
-  if (candidate === 'style' || candidate === 'cyan' || candidate === 'magenta' || candidate === 'amber' || candidate === 'rainbow') return candidate;
+  const candidate = typeof value === 'string' ? value.trim().toLowerCase() : String(fallback ?? 'style').trim().toLowerCase();
+  if (candidate === 'style' || candidate === 'palette') return 'style';
+  if (candidate === 'cyan' || candidate === 'teal') return 'cyan';
+  if (candidate === 'magenta' || candidate === 'pink') return 'magenta';
+  if (candidate === 'amber' || candidate === 'orange') return 'amber';
+  if (candidate === 'green' || candidate === 'lime') return 'green';
+  if (candidate === 'blue' || candidate === 'azure') return 'blue';
+  if (candidate === 'red' || candidate === 'crimson') return 'red';
+  if (candidate === 'white' || candidate === 'bright') return 'white';
+  if (candidate === 'rainbow') return 'rainbow';
   return 'style';
 }
 

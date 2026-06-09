@@ -14,9 +14,11 @@ export interface GpuFluidTankOptions {
   paletteStrength: number;
   edgeDarkening: number;
   ambient: boolean;
-  injectColorMode: 'style' | 'cyan' | 'magenta' | 'amber' | 'rainbow';
+  injectColorMode: 'style' | 'cyan' | 'magenta' | 'amber' | 'green' | 'blue' | 'red' | 'white' | 'rainbow';
   seed: number;
   displayMode?: 'dye' | 'velocity' | 'curl' | 'divergence' | 'pressure';
+  initMode?: 'cloud' | 'voronoi' | 'random' | 'image';
+  initImageUrl?: string;
 }
 
 export interface FluidSplat {
@@ -89,6 +91,12 @@ out vec4 outColor;
 uniform vec2 resolution;
 uniform float seed;
 uniform float cellSize;
+uniform int initMode;
+uniform bool hasInitImage;
+uniform sampler2D uInitImage;
+uniform vec3 palette[6];
+uniform int paletteCount;
+uniform float paletteStrength;
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -122,6 +130,55 @@ float fbm(vec2 p) {
   return value;
 }
 
+vec2 voronoiPoint(vec2 cell) {
+  float ox = hash(cell + seed * vec2(1.71, 2.43));
+  float oy = hash(cell + seed * vec2(4.31, 0.79) + 12.7);
+  return 0.18 + 0.64 * vec2(ox, oy);
+}
+
+vec3 voronoiCell(vec2 p) {
+  vec2 cell = floor(p);
+  vec2 f = fract(p);
+  float d1 = 100.0;
+  float d2 = 100.0;
+  vec2 winner = cell;
+
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      vec2 neighbor = vec2(float(x), float(y));
+      vec2 feature = neighbor + voronoiPoint(cell + neighbor) - f;
+      float d = dot(feature, feature);
+      if (d < d1) {
+        d2 = d1;
+        d1 = d;
+        winner = cell + neighbor;
+      } else if (d < d2) {
+        d2 = d;
+      }
+    }
+  }
+
+  float edgeDistance = sqrt(d2) - sqrt(d1);
+  float cellId = hash(winner + seed * vec2(1.71, 2.43));
+  float accent = hash(winner + seed * vec2(4.31, 0.79) + 12.7);
+  float centerShade = 0.86 + 0.20 * smoothstep(0.0, 0.58, sqrt(d1)) + accent * 0.10;
+  return vec3(cellId, edgeDistance, centerShade);
+}
+
+vec3 paletteColor(float t) {
+  if (paletteCount <= 1) return palette[0];
+  float scaled = clamp(t, 0.0, 0.999) * float(paletteCount - 1);
+  int index = int(floor(scaled));
+  float local = fract(scaled);
+  vec3 a = palette[0];
+  vec3 b = palette[0];
+  for (int i = 0; i < 6; i++) {
+    if (i == index) a = palette[i];
+    if (i == min(index + 1, paletteCount - 1)) b = palette[i];
+  }
+  return mix(a, b, smoothstep(0.0, 1.0, local));
+}
+
 vec3 hsv2rgb(vec3 c) {
   vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
   vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
@@ -129,6 +186,13 @@ vec3 hsv2rgb(vec3 c) {
 }
 
 void main() {
+  if (initMode == 3 && hasInitImage) {
+    vec3 imageColor = texture(uInitImage, vUv).rgb;
+    float luma = dot(imageColor, vec3(0.2126, 0.7152, 0.0722));
+    outColor = vec4(mix(imageColor, imageColor * (1.0 + luma * 0.6), 0.55), 1.0);
+    return;
+  }
+
   float aspect = resolution.x / resolution.y;
   float scale = 1.0 / max(cellSize, 0.35);
   vec2 p = vUv * vec2(aspect, 1.0);
@@ -140,12 +204,36 @@ void main() {
   float fine = fbm(p * 12.0 * scale - s1 * 0.42);
   float ribbons = 0.5 + 0.5 * sin((p.x * 1.4 * scale - p.y * 0.8 * scale + large * 2.8 + seed * 0.07) * 6.2831853);
 
+  float paletteT = fract(large * 0.76 + medium * 0.31 + ribbons * 0.22 + seed * 0.113);
+  if (initMode == 1) {
+    vec3 cell = voronoiCell(p * 8.0 * scale + s1);
+    float border = 1.0 - smoothstep(0.012, 0.052, cell.y);
+    paletteT = cell.x;
+    large = cell.x;
+    medium = 0.72 + 0.22 * hash(vec2(cell.x, seed));
+    fine = clamp(cell.z - border * 0.44, 0.18, 1.18);
+    // Voronoi should read like a crisp stained-glass mosaic, not floating blobs.
+    // Darken only a thin grid edge while keeping each cell interior mostly flat.
+    ribbons = 0.54 + border * 0.18;
+  } else if (initMode == 2) {
+    large = hash(floor(vUv * resolution / max(1.0, cellSize * 10.0)) + seed);
+    medium = hash(floor(vUv * resolution / max(1.0, cellSize * 4.0)) + seed * 2.0);
+    fine = hash(vUv * resolution + seed * 3.0);
+    ribbons = step(0.48, hash(floor(vUv * resolution / max(1.0, cellSize * 18.0)) - seed));
+    paletteT = large;
+  }
+
   float hue = fract(large * 0.76 + medium * 0.31 + ribbons * 0.22 + seed * 0.113);
   float saturation = 0.72 + 0.26 * medium;
   float value = 0.96 + 0.40 * fine + 0.16 * ribbons;
 
-  vec3 color = hsv2rgb(vec3(hue, saturation, value));
+  vec3 procedural = hsv2rgb(vec3(hue, saturation, value));
+  vec3 styled = paletteColor(paletteT) * value;
+  vec3 color = mix(procedural, styled, clamp(paletteStrength, 0.0, 1.0));
   color *= 1.04 + 0.20 * ribbons;
+  if (initMode == 1) {
+    color *= mix(0.46, 1.08, fine);
+  }
 
   outColor = vec4(color, 1.0);
 }
@@ -324,9 +412,66 @@ uniform vec2 texelSize;
 uniform vec2 resolution;
 uniform float exposure;
 uniform float time;
+uniform vec3 palette[6];
+uniform int paletteCount;
+uniform float paletteStrength;
+uniform float edgeDarkening;
+uniform int initMode;
+uniform float seed;
 
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+vec3 paletteColor(float t) {
+  if (paletteCount <= 1) return palette[0];
+  float scaled = clamp(t, 0.0, 0.999) * float(paletteCount - 1);
+  int index = int(floor(scaled));
+  float local = fract(scaled);
+  vec3 a = palette[0];
+  vec3 b = palette[0];
+  for (int i = 0; i < 6; i++) {
+    if (i == index) a = palette[i];
+    if (i == min(index + 1, paletteCount - 1)) b = palette[i];
+  }
+  return mix(a, b, smoothstep(0.0, 1.0, local));
+}
+
+vec2 displayVoronoiPoint(vec2 cell) {
+  float ox = hash(cell + seed * vec2(1.71, 2.43));
+  float oy = hash(cell + seed * vec2(4.31, 0.79) + 12.7);
+  return 0.18 + 0.64 * vec2(ox, oy);
+}
+
+vec3 voronoiDisplay(vec2 uv) {
+  float aspect = resolution.x / max(1.0, resolution.y);
+  vec2 p = uv * vec2(aspect, 1.0) * 8.0;
+  vec2 cell = floor(p);
+  vec2 f = fract(p);
+  float d1 = 100.0;
+  float d2 = 100.0;
+  vec2 winner = cell;
+
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      vec2 neighbor = vec2(float(x), float(y));
+      vec2 feature = neighbor + displayVoronoiPoint(cell + neighbor) - f;
+      float d = dot(feature, feature);
+      if (d < d1) {
+        d2 = d1;
+        d1 = d;
+        winner = cell + neighbor;
+      } else if (d < d2) {
+        d2 = d;
+      }
+    }
+  }
+
+  float edgeDistance = sqrt(d2) - sqrt(d1);
+  float edge = 1.0 - smoothstep(0.012, 0.060, edgeDistance);
+  float id = hash(winner + seed * vec2(1.71, 2.43));
+  vec3 fill = paletteColor(id) * (0.58 + hash(winner + 8.2) * 0.34);
+  return mix(fill, fill * 0.20, edge * 0.86);
 }
 
 void main() {
@@ -343,9 +488,27 @@ void main() {
   c = 1.0 - exp(-c * exposure);
   c = pow(c, vec3(0.9));
 
+  float luminance = dot(c, vec3(0.299, 0.587, 0.114));
+  float energy = max(max(c.r, c.g), c.b);
+  float chroma = energy - min(min(c.r, c.g), c.b);
+  vec3 styled = paletteColor(fract(luminance * 0.72 + c.r * 0.17 + c.b * 0.11));
+  // Palette remapping should change hue, not crush the display into the source
+  // luminance. Keep a bright value floor and preserve energetic highlights so
+  // high palette strength remains vivid instead of turning muddy/dark.
+  float styledValue = clamp(0.28 + energy * 0.74 + luminance * 0.18, 0.20, 1.12);
+  vec3 vibrant = styled * styledValue;
+  float sourceHuePreserve = 1.0 - smoothstep(0.16, 0.44, chroma);
+  c = mix(c, vibrant, clamp(paletteStrength, 0.0, 1.0) * sourceHuePreserve);
+
+  if (initMode == 1) {
+    vec3 cells = voronoiDisplay(vUv);
+    float dyeEnergy = clamp(length(c) * 0.42, 0.0, 1.0);
+    c = mix(cells, c, dyeEnergy);
+  }
+
   float edge = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
   float wallShadow = smoothstep(0.0, 0.035, edge);
-  c *= 0.78 + 0.22 * wallShadow;
+  c *= mix(1.0, 0.78 + 0.22 * wallShadow, clamp(edgeDarkening, 0.0, 1.0));
 
   float vignette = smoothstep(0.92, 0.20, distance(vUv, vec2(0.5)));
   c *= 0.82 + 0.18 * vignette;
@@ -391,6 +554,9 @@ export class GpuFluidTankRenderer {
   private lastAmbient = 0;
   private splatCount = 0;
   private shaderSeed = 0;
+  private initImageTexture: WebGLTexture | null = null;
+  private initImageUrl = '';
+  private initImageLoadId = 0;
 
   constructor(parent: HTMLElement, options: GpuFluidTankOptions, quality: RenderQuality = 'basic', mount: GpuFluidTankRendererMount = {}) {
     this.options = { ...options };
@@ -427,21 +593,32 @@ export class GpuFluidTankRenderer {
     const linearFloat =
       this.gl.getExtension('OES_texture_float_linear') ||
       this.gl.getExtension('OES_texture_half_float_linear');
-    if (!colorBufferFloat) {
-      this.textureFilter = this.gl.NEAREST;
-      return;
+
+    if (colorBufferFloat) {
+      this.textureFilter = linearFloat ? this.gl.LINEAR : this.gl.NEAREST;
+      this.format = {
+        internalFormat: this.gl.RGBA16F,
+        format: this.gl.RGBA,
+        type: this.gl.HALF_FLOAT,
+      };
+    } else {
+      // New raw-scene architecture can run inside browsers/headless contexts that
+      // do not expose renderable float color buffers. Do not leave the canvas
+      // black or accidentally expose an intermediate debug buffer; fall back to a
+      // normalized color target so the dye/display path still renders.
+      this.textureFilter = this.gl.LINEAR;
+      this.format = {
+        internalFormat: this.gl.RGBA8,
+        format: this.gl.RGBA,
+        type: this.gl.UNSIGNED_BYTE,
+      };
     }
-    this.textureFilter = linearFloat ? this.gl.LINEAR : this.gl.NEAREST;
-    this.format = {
-      internalFormat: this.gl.RGBA16F,
-      format: this.gl.RGBA,
-      type: this.gl.HALF_FLOAT,
-    };
 
     try {
       this.initializeGl();
       this.supported = true;
-    } catch {
+    } catch (error) {
+      console.warn('[FluidTank] WebGL renderer initialization failed', error);
       this.supported = false;
     }
   }
@@ -455,6 +632,10 @@ export class GpuFluidTankRenderer {
   setOptions(options: Partial<GpuFluidTankOptions>): void {
     const previousCellSize = this.options.cellSize;
     const previousSeed = this.options.seed;
+    const previousInitMode = this.options.initMode;
+    const previousInitImageUrl = this.options.initImageUrl;
+    const previousPalette = this.options.palette;
+    const previousPaletteStrength = this.options.paletteStrength;
     this.options = { ...this.options, ...options };
     if (options.seed !== undefined && options.seed !== previousSeed) {
       this.rng = new SeededRng(options.seed);
@@ -462,6 +643,16 @@ export class GpuFluidTankRenderer {
     if (options.cellSize !== undefined && options.cellSize !== previousCellSize) {
       this.resize(this.width, this.height, true);
       this.randomizeDye(this.options.seed);
+      return;
+    }
+    const initChanged =
+      options.initMode !== undefined && options.initMode !== previousInitMode ||
+      options.initImageUrl !== undefined && options.initImageUrl !== previousInitImageUrl;
+    const paletteChanged =
+      options.palette !== undefined && options.palette !== previousPalette ||
+      options.paletteStrength !== undefined && options.paletteStrength !== previousPaletteStrength;
+    if (initChanged || paletteChanged || (options.seed !== undefined && options.seed !== previousSeed)) {
+      this.randomizeDye(this.options.seed, false);
     }
   }
 
@@ -530,6 +721,7 @@ export class GpuFluidTankRenderer {
       );
     }
     const dyeColor = this.nextInjectColor(clampedX, clampedY, intensity);
+    const colorRadiusBoost = this.options.injectColorMode === 'style' ? 1 : 1.75;
     for (let i = 0; i < segments; i++) {
       const t = segments <= 1 ? 0 : i / (segments - 1);
       const px = clamp01(clampedX + ux * (t - 0.5) * spacing);
@@ -541,31 +733,37 @@ export class GpuFluidTankRenderer {
         dyeColor[0],
         dyeColor[1],
         dyeColor[2],
-        radius * (0.7 + t * 0.18),
+        radius * colorRadiusBoost * (0.78 + t * 0.22),
       );
     }
     this.splatCount += 1;
   }
 
   splat(splat: FluidSplat): void {
-    if (!this.supported || !this.velocity) return;
+    if (!this.supported || !this.velocity || !this.dye) return;
+    const x = clamp01(splat.x);
+    const y = clamp01(1 - splat.y);
     const radius = this.options.fingerRadius * (splat.radiusScale ?? 1);
-    this.applySplat(
-      clamp01(splat.x),
-      clamp01(1 - splat.y),
-      splat.dx * this.options.fingerForce,
-      -splat.dy * this.options.fingerForce,
-      radius,
-    );
+    const vx = splat.dx * this.options.fingerForce;
+    const vy = -splat.dy * this.options.fingerForce;
+    this.applySplat(x, y, vx, vy, radius);
     if (this.options.eddyAssist > 0) {
       this.applySplat(
-        clamp01(splat.x),
-        clamp01(1 - splat.y),
+        x,
+        y,
         splat.dy * this.options.fingerForce * this.options.eddyAssist,
         splat.dx * this.options.fingerForce * this.options.eddyAssist,
         radius * 1.35,
       );
     }
+
+    // Demo/ambient startup splats used to be velocity-only, which meant a blank
+    // dye target could remain visually black even though the solver was moving.
+    // Keep the raw scene self-recovering by depositing style-colored dye for
+    // every motion splat, matching pointer inject visibility semantics.
+    const intensity = clamp((splat.radiusScale ?? 1) * 0.38 + Math.hypot(splat.dx, splat.dy) * 0.18, 0.45, 1.45);
+    const dyeColor = this.nextInjectColor(x, y, intensity);
+    this.applySplatTarget(this.dye, x, y, dyeColor[0], dyeColor[1], dyeColor[2], radius * 0.86);
     this.splatCount += 1;
   }
 
@@ -602,6 +800,10 @@ export class GpuFluidTankRenderer {
     this.gl.uniform2f(program.uniforms.resolution, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
     this.gl.uniform1f(program.uniforms.exposure, this.options.exposure);
     this.gl.uniform1f(program.uniforms.time, this.elapsed);
+    this.gl.uniform1f(program.uniforms.edgeDarkening, this.options.edgeDarkening);
+    this.gl.uniform1i(program.uniforms.initMode, initModeIndex(this.options.initMode));
+    this.gl.uniform1f(program.uniforms.seed, this.shaderSeed);
+    this.applyPaletteUniforms(program);
     this.blit(null);
   }
 
@@ -694,6 +896,16 @@ export class GpuFluidTankRenderer {
     this.gl.uniform2f(program.uniforms.resolution, this.dye.width, this.dye.height);
     this.gl.uniform1f(program.uniforms.seed, this.shaderSeed);
     this.gl.uniform1f(program.uniforms.cellSize, this.options.cellSize);
+    this.gl.uniform1i(program.uniforms.initMode, initModeIndex(this.options.initMode));
+    this.applyPaletteUniforms(program);
+    const hasImage = this.options.initMode === 'image' && Boolean(this.initImageTexture);
+    this.gl.uniform1i(program.uniforms.hasInitImage, hasImage ? 1 : 0);
+    if (hasImage && this.initImageTexture) {
+      this.gl.activeTexture(this.gl.TEXTURE0 + 3);
+      this.gl.bindTexture(this.gl.TEXTURE_2D, this.initImageTexture);
+      this.gl.uniform1i(program.uniforms.uInitImage, 3);
+    }
+    if (this.options.initMode === 'image') this.ensureInitImageTexture();
     this.blit(this.dye.read);
     this.blit(this.dye.write);
   }
@@ -758,6 +970,7 @@ export class GpuFluidTankRenderer {
     this.velocity.swap();
     this.enforceVelocityBoundary();
 
+    this.bind(program);
     this.gl.uniform2f(program.uniforms.texelSize, 1 / this.velocity.width, 1 / this.velocity.height);
     this.gl.uniform1i(program.uniforms.uVelocity, this.velocity.read.attach(0));
     this.gl.uniform1i(program.uniforms.uSource, this.dye.read.attach(1));
@@ -793,18 +1006,45 @@ export class GpuFluidTankRenderer {
     target.swap();
   }
 
+  private applyPaletteUniforms(program: FluidProgram): void {
+    if (!this.gl) return;
+    const palette = this.options.palette.length > 0 ? this.options.palette : [0x66fff1];
+    const count = Math.max(1, Math.min(6, palette.length));
+    const colors = new Float32Array(18);
+    for (let i = 0; i < 6; i++) {
+      const color = unpackHexColor(palette[Math.min(i, count - 1)] ?? palette[0] ?? 0x66fff1);
+      colors[i * 3] = color[0];
+      colors[i * 3 + 1] = color[1];
+      colors[i * 3 + 2] = color[2];
+    }
+    // WebGL reports `palette[0]` as active uniform `palette`; upload the whole
+    // array from that base location so init/display shaders do not fall back to
+    // zeroed black palette values.
+    this.gl.uniform3fv(program.uniforms.palette, colors);
+    this.gl.uniform1i(program.uniforms.paletteCount, count);
+    this.gl.uniform1f(program.uniforms.paletteStrength, clamp(this.options.paletteStrength, 0, 1));
+  }
+
   private nextInjectColor(x: number, y: number, intensity: number): [number, number, number] {
     const mode = this.options.injectColorMode;
     let base: [number, number, number];
     if (mode === 'cyan') {
-      base = [0.25, 1.0, 0.92];
+      base = [0.1, 1.18, 1.08];
     } else if (mode === 'magenta') {
-      base = [1.0, 0.26, 0.92];
+      base = [1.2, 0.12, 1.05];
     } else if (mode === 'amber') {
-      base = [1.0, 0.72, 0.2];
+      base = [1.22, 0.74, 0.1];
+    } else if (mode === 'green') {
+      base = [0.12, 1.2, 0.28];
+    } else if (mode === 'blue') {
+      base = [0.16, 0.36, 1.24];
+    } else if (mode === 'red') {
+      base = [1.24, 0.16, 0.08];
+    } else if (mode === 'white') {
+      base = [1.2, 1.2, 1.08];
     } else if (mode === 'rainbow') {
       const hue = (this.elapsed * 0.12 + x * 0.5 + y * 0.35) % 1;
-      const rainbow = unpackHexColor(hsvToRgb(hue, 0.82, 1));
+      const rainbow = unpackHexColor(hsvToRgb(hue, 0.94, 1));
       base = [rainbow[0], rainbow[1], rainbow[2]];
     } else {
       const palette = this.options.palette;
@@ -813,7 +1053,8 @@ export class GpuFluidTankRenderer {
       base = unpackHexColor(colorHex);
     }
 
-    const amount = 0.24 + this.options.paletteStrength * 0.24 + intensity * 0.13;
+    const fixedColorBoost = mode === 'style' ? 0 : 1.65;
+    const amount = 0.48 + fixedColorBoost + this.options.paletteStrength * 0.28 + intensity * 0.52;
     return [base[0] * amount, base[1] * amount, base[2] * amount];
   }
 
@@ -856,6 +1097,38 @@ export class GpuFluidTankRenderer {
         radiusScale: 2,
       });
     }
+  }
+
+  private ensureInitImageTexture(): void {
+    if (!this.gl) return;
+    const url = (this.options.initImageUrl ?? '').trim();
+    if (!url || url === this.initImageUrl) return;
+    this.initImageUrl = url;
+    const loadId = ++this.initImageLoadId;
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.decoding = 'async';
+    image.onload = () => {
+      if (!this.gl || loadId !== this.initImageLoadId) return;
+      const gl = this.gl;
+      const texture = this.initImageTexture ?? gl.createTexture();
+      if (!texture) return;
+      this.initImageTexture = texture;
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      this.initDyeField();
+    };
+    image.onerror = () => {
+      if (loadId === this.initImageLoadId) console.warn('[FluidTank] Failed to load init image URL', url);
+    };
+    image.src = url;
   }
 
   private clearDoubleTarget(target: FluidDoubleTarget): void {
@@ -941,6 +1214,8 @@ export class GpuFluidTankRenderer {
   }
 
   private disposeFramebuffers(): void {
+    if (this.gl && this.initImageTexture) this.gl.deleteTexture(this.initImageTexture);
+    this.initImageTexture = null;
     this.velocity?.dispose();
     this.dye?.dispose();
     this.pressure?.dispose();
@@ -1087,4 +1362,11 @@ function hsvToRgb(h: number, s: number, v: number): number {
       break;
   }
   return ((r * 255) << 16) | ((g * 255) << 8) | (b * 255);
+}
+
+function initModeIndex(mode: GpuFluidTankOptions['initMode']): number {
+  if (mode === 'voronoi') return 1;
+  if (mode === 'random') return 2;
+  if (mode === 'image') return 3;
+  return 0;
 }
