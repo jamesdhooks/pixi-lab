@@ -62,6 +62,27 @@ describe('EngineConfigurationSelector', () => {
     ]);
   });
 
+  it('uses capability-provided engine labels for fallback messaging', () => {
+    const element = EngineConfigurationSelector({
+      value: 'raw',
+      renderedValue: 'enhanced',
+      configurations: [
+        { id: 'raw-path', backend: 'webgl2', profile: 'high', label: 'Orbital raw field renderer', legacyQuality: 'raw' },
+        { id: 'safe-path', backend: 'pixi', profile: 'high', label: 'Orbital safe fallback', legacyQuality: 'enhanced' },
+      ],
+      onChange: () => undefined,
+    });
+
+    const selects = collectByType(element, 'select');
+    const options = collectByType(element, 'option');
+
+    expect(options.map((option) => option.props.children)).toEqual([
+      'Orbital raw field renderer',
+      'Orbital safe fallback',
+    ]);
+    expect(selects[0].props.title).toBe('Performance fallback to Orbital safe fallback');
+  });
+
   it('keeps the legacy QualitySelector export as a compatibility wrapper', () => {
     const element = QualitySelector({
       value: 'basic',

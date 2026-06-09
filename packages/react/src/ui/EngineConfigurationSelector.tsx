@@ -20,14 +20,14 @@ export interface EngineConfigurationSelectorProps {
   onChange: (quality: RenderQuality) => void;
 }
 
-function optionLabel(quality: RenderQuality): string {
-  return toEngineConfiguration(quality).label;
+function optionLabel(quality: RenderQuality, configurations: readonly EngineConfiguration[]): string {
+  return configurations.find((configuration) => configuration.legacyQuality === quality)?.label ?? toEngineConfiguration(quality).label;
 }
 
 export function EngineConfigurationSelector({ value, renderedValue, configurations, onChange }: EngineConfigurationSelectorProps) {
   const hasFallback = renderedValue !== undefined && renderedValue !== value;
   const engineConfigurations = getSupportedEngineConfigurations({ engineConfigurations: configurations });
-  const renderedLabel = hasFallback && renderedValue ? optionLabel(renderedValue) : null;
+  const renderedLabel = hasFallback && renderedValue ? optionLabel(renderedValue, engineConfigurations) : null;
 
   return (
     <motion.label

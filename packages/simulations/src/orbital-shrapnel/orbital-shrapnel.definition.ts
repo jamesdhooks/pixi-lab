@@ -3,7 +3,6 @@ import { ORBITAL_SHRAPNEL_DEFAULTS, ORBITAL_SHRAPNEL_SETTINGS_FIELDS } from './o
 import { OrbitalShrapnelDemoAI } from './OrbitalShrapnelDemoAI.js';
 import { OrbitalShrapnelPreviewScene } from './OrbitalShrapnelPreviewScene.js';
 import { OrbitalShrapnelScene, orbitalShrapnelStyleManifest } from './OrbitalShrapnelScene.js';
-import { RawOrbitalShrapnelReferenceScene } from './RawOrbitalShrapnelReferenceScene.js';
 
 export const orbitalShrapnelDefinition: SimulationDefinition = {
   id: 'orbital-shrapnel',
@@ -52,7 +51,7 @@ export const orbitalShrapnelDefinition: SimulationDefinition = {
     severity: 0,
   },
   defaultSeed: 771203,
-  factory: (ctx) => (ctx.quality === 'raw' ? new RawOrbitalShrapnelReferenceScene() : new OrbitalShrapnelScene()),
+  factory: () => new OrbitalShrapnelScene(),
   previewFactory: () => new OrbitalShrapnelPreviewScene(),
   demoAiFactory: () => new OrbitalShrapnelDemoAI(),
   tutorialPages: [

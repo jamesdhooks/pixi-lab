@@ -154,6 +154,26 @@ export type { EmitterMarker } from './render/SimulationCanvasLayer.js';
 export { FieldPaletteRenderer, type FieldPaletteRenderOptions } from './render/FieldPaletteRenderer.js';
 export { ParticlePointRenderer, type ParticlePointRenderOptions } from './render/ParticlePointRenderer.js';
 export { TrailFeedbackRenderer, type TrailFeedbackRenderOptions } from './render/TrailFeedbackRenderer.js';
+export {
+  createFieldPaletteLayer,
+  createParticlePointLayer,
+  createRenderFrame,
+  createTrailFeedbackLayer,
+  type FieldPaletteLayer,
+  type ParticlePointLayer,
+  type RenderFrame,
+  type RenderFrameOptions,
+  type SemanticRenderLayer,
+  type SemanticRenderLayerKind,
+  type TrailFeedbackLayer,
+} from './render/semantic/SemanticRenderFrame.js';
+export {
+  PixiSemanticRenderPipeline,
+  WebGL2SemanticRenderPipeline,
+  type PixiSemanticRenderPipelineOptions,
+  type SemanticRenderPipeline,
+  type WebGL2SemanticRenderPipelineOptions,
+} from './render/semantic/SemanticRenderPipelines.js';
 export { DensityMetaballRenderer, type DensityMetaballRenderOptions } from './render/DensityMetaballRenderer.js';
 export { MeshLatticeRenderer, type MeshLatticeRenderOptions } from './render/MeshLatticeRenderer.js';
 export { ArcLineRenderer, type ArcLineRenderOptions } from './render/ArcLineRenderer.js';

@@ -1,18 +1,21 @@
 import {
-  FieldPaletteRenderer,
-  ParticlePointRenderer,
+  PixiSemanticRenderPipeline,
   SimulationScene,
-  TrailFeedbackRenderer,
+  WebGL2SemanticRenderPipeline,
+  createFieldPaletteLayer,
+  createParticlePointLayer,
+  createRenderFrame,
+  createTrailFeedbackLayer,
   type GameContext,
   type Input,
   type RenderQuality,
+  type SemanticRenderPipeline,
   type SimRenderLayers,
   type SimStyleManifest,
   type StagnationReport,
 } from '@hooksjam/pixi-lab-core';
 import { ORBITAL_SHRAPNEL_DEFAULTS } from './orbital-shrapnel.config.js';
 import { OrbitalShrapnelModel, type OrbitalShrapnelModelOptions } from './OrbitalShrapnelModel.js';
-import { OrbitalShrapnelRawRenderer } from './OrbitalShrapnelRawRenderer.js';
 import { blackHoleLensStyle } from './styles/black-hole-lens.js';
 import { iceRingStyle } from './styles/ice-ring.js';
 import { solarDebrisStyle } from './styles/solar-debris.js';
@@ -36,11 +39,9 @@ export const orbitalShrapnelStyleManifest: SimStyleManifest = {
 
 export class OrbitalShrapnelScene extends SimulationScene {
   readonly name: string = 'OrbitalShrapnel';
-  private trailRenderer: TrailFeedbackRenderer | null = null;
-  private particleRenderer: ParticlePointRenderer | null = null;
-  private rawRenderer: OrbitalShrapnelRawRenderer | null = null;
-  /** Basic-quality fallback — renders the trail density field without RTT overhead. */
-  private fieldRenderer: FieldPaletteRenderer | null = null;
+  private semanticPipeline: SemanticRenderPipeline | null = null;
+  private pixiPipeline: PixiSemanticRenderPipeline | null = null;
+  private webgl2Pipeline: WebGL2SemanticRenderPipeline | null = null;
   private model: OrbitalShrapnelModel | null = null;
   private modelOptions: OrbitalShrapnelModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
@@ -62,17 +63,9 @@ export class OrbitalShrapnelScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    if (ctx.quality === 'raw') {
-      this.rawRenderer = new OrbitalShrapnelRawRenderer(ctx.systems.pixi.app, ctx.quality);
-    } else if (ctx.quality === 'enhanced') {
-      this.trailRenderer = new TrailFeedbackRenderer(ctx.systems.pixi.app);
-      this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
-      this.trailRenderer.setQuality(ctx.quality);
-      this.particleRenderer.setQuality(ctx.quality);
-    } else {
-      this.fieldRenderer = new FieldPaletteRenderer(ctx.systems.pixi.app);
-      this.fieldRenderer.setQuality(ctx.quality);
-    }
+    this.pixiPipeline = new PixiSemanticRenderPipeline({ app: ctx.systems.pixi.app, quality: ctx.quality });
+    this.webgl2Pipeline = new WebGL2SemanticRenderPipeline();
+    this.semanticPipeline = ctx.quality === 'raw' ? this.webgl2Pipeline : this.pixiPipeline;
     const settings = ctx.systems.settings;
     const trailColumns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.resolution as number));
     const particleCount = this.previewBudget ?? ((settings.get('particleCount') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.particleCount as number));
@@ -97,14 +90,11 @@ export class OrbitalShrapnelScene extends SimulationScene {
   }
 
   override onExit(): void {
-    this.trailRenderer?.destroy();
-    this.particleRenderer?.destroy();
-    this.rawRenderer?.destroy();
-    this.fieldRenderer?.destroy();
-    this.trailRenderer = null;
-    this.particleRenderer = null;
-    this.rawRenderer = null;
-    this.fieldRenderer = null;
+    this.semanticPipeline = null;
+    this.pixiPipeline?.destroy();
+    this.webgl2Pipeline?.destroy();
+    this.pixiPipeline = null;
+    this.webgl2Pipeline = null;
     this.model = null;
     this.modelOptions = null;
   }
@@ -127,33 +117,42 @@ export class OrbitalShrapnelScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (!this.model) return;
+    if (!this.model || !this.modelOptions || !this.semanticPipeline) return;
+    const settings = this.ctx_.systems.settings;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? iceRingStyle;
-    if (this.rawRenderer && this.modelOptions) {
-      this.rawRenderer.clear();
-      this.rawRenderer.render({
-        trailField: this.model.trailField,
-        particles: this.model.renderParticles(),
-        style,
-        width: this.ctx_.width,
-        height: this.ctx_.height,
-        particleCount: this.modelOptions.particleCount,
-        trailColumns: this.modelOptions.trailColumns,
-        rawParticleTextureSize: this.lastRawParticleTextureSize,
-        rawTrailTextureWidth: this.lastRawTrailTextureWidth,
-        debrisSize: (this.ctx_.systems.settings.get('debrisSize') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.debrisSize as number),
-        bloomStrength: (this.ctx_.systems.settings.get('bloomStrength') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.bloomStrength as number),
-        streakStrength: (this.ctx_.systems.settings.get('streakStrength') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.streakStrength as number),
-      });
-    } else if (this.trailRenderer && this.particleRenderer) {
-      this.trailRenderer.clear();
-      this.particleRenderer.clear();
-      this.trailRenderer.renderTrail('orbit', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.94, gamma: ((this.ctx_.systems.settings.get('trailGamma') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailGamma as number)), zIndex: 0 });
-      this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: ((this.ctx_.systems.settings.get('debrisSize') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.debrisSize as number)), zIndex: 1 });
-    } else if (this.fieldRenderer) {
-      this.fieldRenderer.clear();
-      this.fieldRenderer.renderField('orbit', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.88, gamma: 0.36, zIndex: 0 });
-    }
+    const trailGamma = (settings.get('trailGamma') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailGamma as number);
+    const debrisSize = (settings.get('debrisSize') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.debrisSize as number);
+    const frame = createRenderFrame({
+      width: this.ctx_.width,
+      height: this.ctx_.height,
+      style,
+      layers: this.quality === 'basic'
+        ? [
+          createFieldPaletteLayer({
+            id: 'orbit',
+            field: this.model.trailField,
+            alpha: 0.88,
+            gamma: 0.36,
+            zIndex: 0,
+          }),
+        ]
+        : [
+          createTrailFeedbackLayer({
+            id: 'orbit',
+            field: this.model.trailField,
+            alpha: this.quality === 'raw' ? 0.98 : 0.94,
+            gamma: this.quality === 'raw' ? Math.max(0.18, trailGamma * 0.72) : trailGamma,
+            zIndex: 0,
+          }),
+          createParticlePointLayer({
+            id: 'debris',
+            particles: this.model.renderParticles(),
+            sizeScale: this.quality === 'raw' ? debrisSize * 1.12 : debrisSize,
+            zIndex: 1,
+          }),
+        ],
+    });
+    this.semanticPipeline.render(frame);
     const debug = this.ctx_.systems.debug;
     if (debug?.isEnabled()) {
       const stats = this.model.stats();
@@ -178,40 +177,10 @@ export class OrbitalShrapnelScene extends SimulationScene {
   override setQuality(quality: RenderQuality): void {
     const prev = this.quality;
     super.setQuality(quality);
-    this.trailRenderer?.setQuality(quality);
-    this.particleRenderer?.setQuality(quality);
-    this.rawRenderer?.setQuality(quality);
-    this.fieldRenderer?.setQuality(quality);
-    // Dynamic renderer swap — only when scene is running and quality actually changed.
+    this.pixiPipeline?.setQuality(quality);
+    this.semanticPipeline = quality === 'raw' ? this.webgl2Pipeline : this.pixiPipeline;
     if (!this.model || prev === quality) return;
-    const pixi = this.ctx_.systems.pixi.app;
-    if (quality === 'raw') {
-      this.trailRenderer?.destroy();
-      this.trailRenderer = null;
-      this.particleRenderer?.destroy();
-      this.particleRenderer = null;
-      this.fieldRenderer?.destroy();
-      this.fieldRenderer = null;
-      this.rawRenderer = new OrbitalShrapnelRawRenderer(pixi, quality);
-    } else if (quality === 'enhanced') {
-      this.rawRenderer?.destroy();
-      this.rawRenderer = null;
-      this.fieldRenderer?.destroy();
-      this.fieldRenderer = null;
-      this.trailRenderer = new TrailFeedbackRenderer(pixi);
-      this.trailRenderer.setQuality(quality);
-      this.particleRenderer = new ParticlePointRenderer(pixi);
-      this.particleRenderer.setQuality(quality);
-    } else {
-      this.rawRenderer?.destroy();
-      this.rawRenderer = null;
-      this.trailRenderer?.destroy();
-      this.trailRenderer = null;
-      this.particleRenderer?.destroy();
-      this.particleRenderer = null;
-      this.fieldRenderer = new FieldPaletteRenderer(pixi);
-      this.fieldRenderer.setQuality(quality);
-    }
+    this.semanticPipeline?.clear();
   }
 
   override setMode(id: string): void {
@@ -289,11 +258,7 @@ export class OrbitalShrapnelScene extends SimulationScene {
   }
 
   getRenderLayers(): SimRenderLayers {
-    return {
-      trails: this.rawRenderer?.layer ?? this.trailRenderer?.getLayer('orbit') ?? this.fieldRenderer?.getLayer('orbit'),
-      particles: this.particleRenderer?.particles,
-      glow: this.rawRenderer?.layer ?? this.trailRenderer?.getLayer('orbit') ?? this.fieldRenderer?.getLayer('orbit'),
-    };
+    return {};
   }
 
   getStyleManifest(): SimStyleManifest {

@@ -1,3 +1,5 @@
+import { readFileSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { GameContext, SettingsField, SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { DomScriptScene } from '@hooksjam/pixi-lab-core';
@@ -161,21 +163,35 @@ describe('SIMULATION_REGISTRY', () => {
     expect(preview).not.toBeInstanceOf(DomScriptScene);
   });
 
-  it('advertises Orbital Shrapnel raw only after its Pixi-owned trail texture adapter is selectable', () => {
+  it('keeps Orbital Shrapnel raw on the unified scene path with no reference DOM runtime exception', () => {
     const definition = getSimulation('orbital-shrapnel');
 
     expect(definition?.capabilities.engineConfigurations?.map((configuration) => configuration.legacyQuality)).toEqual(['basic', 'enhanced', 'raw']);
     expect(definition?.capabilities.qualityModes).toBeUndefined();
     expect(definition?.styleManifest.capabilities.qualities).toEqual(['basic', 'enhanced', 'raw']);
 
-    const factoryContext = {} as unknown as GameContext;
-    const scene = definition?.factory(factoryContext);
-    const preview = definition?.previewFactory?.(factoryContext);
+    const pixiScene = definition?.factory({ quality: 'enhanced' } as unknown as GameContext);
+    const rawScene = definition?.factory({ backend: 'webgl2', profile: 'high', quality: 'raw' } as unknown as GameContext);
+    const preview = definition?.previewFactory?.({ quality: 'raw' } as unknown as GameContext);
 
-    expect(scene).toBeInstanceOf(OrbitalShrapnelScene);
-    expect(scene).not.toBeInstanceOf(DomScriptScene);
+    expect(pixiScene).toBeInstanceOf(OrbitalShrapnelScene);
+    expect(pixiScene).not.toBeInstanceOf(DomScriptScene);
+    expect(rawScene).toBeInstanceOf(OrbitalShrapnelScene);
+    expect(rawScene).not.toBeInstanceOf(DomScriptScene);
     expect(preview).toBeInstanceOf(OrbitalShrapnelPreviewScene);
     expect(preview).not.toBeInstanceOf(DomScriptScene);
+  });
+
+  it('keeps Orbital Shrapnel rendering on the shared semantic pipeline seam', () => {
+    const orbitalDir = join(process.cwd(), 'packages/simulations/src/orbital-shrapnel');
+    const sceneSource = readFileSync(join(orbitalDir, 'OrbitalShrapnelScene.ts'), 'utf8');
+
+    expect(existsSync(join(orbitalDir, 'RawOrbitalShrapnelReferenceScene.ts')), 'dead iframe/reference scene should be removed').toBe(false);
+    expect(sceneSource).not.toMatch(/new\s+(ParticlePointRenderer|TrailFeedbackRenderer|FieldPaletteRenderer|OrbitalShrapnelRawRenderer)\b/);
+    expect(sceneSource).toContain('new PixiSemanticRenderPipeline');
+    expect(sceneSource).toContain('new WebGL2SemanticRenderPipeline');
+    expect(sceneSource).toContain('createRenderFrame');
+    expect(sceneSource).not.toMatch(/quality\s*===\s*['"]raw['"][\s\S]*pixiPipeline\?\.render/);
   });
 
   it('keeps raw opt-in scoped to simulations that explicitly support it', () => {
@@ -195,10 +211,18 @@ describe('SIMULATION_REGISTRY', () => {
 
       expect(engineModes, `${id}.engineConfigurations.legacyQuality`).toEqual(['basic', 'enhanced', 'raw']);
       expect(definition?.capabilities.qualityModes, `${id}.qualityModes converted`).toBeUndefined();
+      const rawBackend = id === 'amoeba-lamp' ? 'pixi' : 'webgl2';
+      const rawLabel = rawBackend === 'pixi' ? 'PixiJS / High · Raw' : 'WebGL2 / High · Raw';
+
       expect(engineConfigurations.map((configuration) => configuration.label), `${id}.engineConfigurations.label`).toEqual([
         'PixiJS / Standard · Basic',
         'PixiJS / High · Enhanced',
-        id === 'fluid-tank' || id === 'harmonic-sand' ? 'WebGL2 / High · Raw' : 'PixiJS / High · Raw',
+        rawLabel,
+      ]);
+      expect(engineConfigurations.map((configuration) => configuration.backend), `${id}.engineConfigurations.backend`).toEqual([
+        'pixi',
+        'pixi',
+        rawBackend,
       ]);
     }
   });
