@@ -43,8 +43,12 @@ export function queryRenderSelectionForExperience(
   experience: LabExperience,
   params: Pick<URLSearchParams, 'get'>,
 ): RenderBackendProfileSelection | undefined {
-  const backend = params.get('backend');
-  const profile = params.get('profile');
+  const requestedBackend = params.get('backend');
+  const rawBackendAlias = requestedBackend?.trim().toLowerCase() === 'raw';
+  const backend = rawBackendAlias ? 'webgl2' : requestedBackend;
+  const requestedProfile = params.get('profile');
+  const rawProfileAlias = requestedProfile?.trim().toLowerCase() === 'raw';
+  const profile = rawBackendAlias && (!requestedProfile || rawProfileAlias) ? 'high' : requestedProfile;
   const requestedLegacyQuality = parseLegacyQualityRouteValue(params.get('quality'));
 
   if (!backend && !profile && !requestedLegacyQuality) return undefined;
@@ -68,6 +72,12 @@ export function queryQualityForExperience(
   params: Pick<URLSearchParams, 'get'>,
 ): RenderQuality | undefined {
   return queryLegacyQualityForExperience(experience, params);
+}
+
+export function queryExperimentalRawEngine(params: Pick<URLSearchParams, 'get'>): boolean {
+  const value = params.get('experimentalRawEngine') ?? params.get('experimental-raw-engine');
+  if (!value) return false;
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
 }
 
 export function writeCompatibilityRenderSelection(

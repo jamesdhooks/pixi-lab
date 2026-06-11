@@ -106,6 +106,7 @@ export { OilWaterUniversePreviewScene } from './oil-water-universe/OilWaterUnive
 export { OilWaterUniverseModel, type OilWaterUniverseModelOptions, type OilWaterUniverseStats } from './oil-water-universe/OilWaterUniverseModel.js';
 
 export { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
+export { OrbitalShrapnelExperimentalRawEngineScene } from './orbital-shrapnel/OrbitalShrapnelExperimentalRawEngineScene.js';
 export { OrbitalShrapnelScene, orbitalShrapnelStyleManifest } from './orbital-shrapnel/OrbitalShrapnelScene.js';
 export { OrbitalShrapnelPreviewScene } from './orbital-shrapnel/OrbitalShrapnelPreviewScene.js';
 export { OrbitalShrapnelModel, type OrbitalShrapnelModelOptions, type OrbitalShrapnelStats } from './orbital-shrapnel/OrbitalShrapnelModel.js';

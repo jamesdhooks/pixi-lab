@@ -103,6 +103,8 @@ export interface GameLauncherProps {
   initialRenderSelection?: RenderBackendProfileSelection;
   /** Optional host-selected startup legacy token, sanitized against the active experience. */
   initialQuality?: RenderQuality;
+  /** Dev/test-only raw-engine experiment switch; public hosts should leave false. */
+  experimentalRawEngine?: boolean;
   /**
    * Called whenever the launcher resolves renderer backend/profile state.
    * Hosts can observe this backend-neutral descriptor while scenes continue to
@@ -134,6 +136,7 @@ function GameLauncherInner({
   onRuntimeReady,
   initialRenderSelection,
   initialQuality,
+  experimentalRawEngine = false,
   onRenderSelectionChange,
   transparent = false,
 }: GameLauncherProps) {
@@ -491,6 +494,7 @@ function GameLauncherInner({
         mode={autoDemo && definition.capabilities.demo ? 'demo' : 'play'}
         renderSelection={renderSelection}
         quality={sceneLegacyQuality}
+        experimentalRawEngine={experimentalRawEngine}
         transparent={transparent}
         maxPixels={localMaxPixels}
         onEvent={handleEvent}

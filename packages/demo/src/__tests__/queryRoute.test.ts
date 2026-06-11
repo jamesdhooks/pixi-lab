@@ -107,6 +107,16 @@ describe('demo query routing helpers', () => {
       profile: 'high',
       legacyQuality: 'raw',
     });
+    expect(queryRenderSelectionForExperience(EXPERIENCES[1], params('backend=raw&profile=raw'))).toEqual({
+      backend: 'webgl2',
+      profile: 'high',
+      legacyQuality: 'raw',
+    });
+    expect(queryRenderSelectionForExperience(EXPERIENCES[1], params('backend=raw'))).toEqual({
+      backend: 'webgl2',
+      profile: 'high',
+      legacyQuality: 'raw',
+    });
     expect(queryRenderSelectionForExperience(EXPERIENCES[1], params('backend=pixi&profile=high&quality=basic'))).toEqual({
       backend: 'pixi',
       profile: 'high',

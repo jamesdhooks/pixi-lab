@@ -66,6 +66,8 @@ export interface GameAppOptions {
   renderSelection?: RenderBackendProfileSelection;
   /** Legacy scene compatibility tier derived from renderSelection. */
   quality?: RenderQuality;
+  /** Dev/test-only raw-engine experiment switch; public hosts should leave false. */
+  experimentalRawEngine?: boolean;
   transparent?: boolean;
   sleepMode?: boolean;
   lowMotion?: boolean;
@@ -232,6 +234,7 @@ export class GameApp {
       mode: this._mode,
       seed: this.opts.seed ?? definition.defaultSeed ?? 1,
       quality: this.quality,
+      experimentalRawEngine: this.opts.experimentalRawEngine,
       width: this.pixi.width,
       height: this.pixi.height,
       systems: {
@@ -435,6 +438,7 @@ export class GameApp {
     resolution: number;
     resizeCount: number;
     heapMB: number | null;
+    scene?: Record<string, string | number | boolean | null> | null;
   } {
     const fps = Math.round(this.ticker.fps);
     const renderFps = Math.round(this.ticker.renderFps);
@@ -455,6 +459,7 @@ export class GameApp {
       resolution: this.pixi?.resolution ?? 0,
       resizeCount: this.resizeCount,
       heapMB: mem ? Math.round(mem.usedJSHeapSize / 1024 / 1024) : null,
+      scene: this.currentScene?.getDebugStats() ?? null,
     };
   }
 

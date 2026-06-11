@@ -29,6 +29,7 @@ export interface GameRuntimeProps {
   renderSelection?: RenderBackendProfileSelection;
   /** Legacy scene compatibility tier derived from renderSelection. */
   quality?: RenderQuality;
+  experimentalRawEngine?: boolean;
   transparent?: boolean;
   sleepMode?: boolean;
   lowMotion?: boolean;
@@ -52,6 +53,7 @@ export function GameRuntime({
   mode = 'play',
   renderSelection,
   quality,
+  experimentalRawEngine,
   transparent,
   sleepMode,
   lowMotion,
@@ -102,6 +104,7 @@ export function GameRuntime({
         seed,
         renderSelection,
         quality,
+        experimentalRawEngine,
         transparent,
         sleepMode,
         lowMotion,
@@ -142,7 +145,7 @@ export function GameRuntime({
       clearRuntimeHost(container);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [definition.id, runtimeEngineKey]); // Re-create when the experience or engine configuration changes
+  }, [definition.id, runtimeEngineKey, experimentalRawEngine]); // Re-create when the experience or engine configuration changes
 
   useEffect(() => {
     appRef.current?.setSleepMode((sleepMode ?? false) || (lowMotion ?? false));

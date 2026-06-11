@@ -1,6 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DomScriptScene } from '../sim/DomScriptScene.js';
 import { RawWebGL2Scene, colorNumberToRgb, finiteNumberSetting } from '../render/raw/RawWebGL2Scene.js';
+
+const rawSceneSource = readFileSync(join(process.cwd(), 'packages/core/src/render/raw/RawWebGL2Scene.ts'), 'utf8');
 
 const passthroughVertex = `#version 300 es
 precision highp float;
@@ -27,6 +31,11 @@ describe('RawWebGL2Scene', () => {
 
     expect(scene).toBeInstanceOf(DomScriptScene);
     expect(scene.name).toBe('ReusableRawScene');
+  });
+
+  it('cleans allocated raw WebGL2 resources if scene initialization throws', () => {
+    expect(rawSceneSource).toContain('try {\n    options.onInit?.(state);');
+    expect(rawSceneSource).toContain('resources.destroy();\n    if (vao) gl.deleteVertexArray(vao);\n    if (program) gl.deleteProgram(program);\n    throw error;');
   });
 
   it('converts numeric style colors into normalized RGB uniforms', () => {

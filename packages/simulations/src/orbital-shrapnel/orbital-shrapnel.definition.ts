@@ -1,8 +1,21 @@
-import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type GameContext, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { ORBITAL_SHRAPNEL_DEFAULTS, ORBITAL_SHRAPNEL_SETTINGS_FIELDS } from './orbital-shrapnel.config.js';
 import { OrbitalShrapnelDemoAI } from './OrbitalShrapnelDemoAI.js';
 import { OrbitalShrapnelPreviewScene } from './OrbitalShrapnelPreviewScene.js';
 import { OrbitalShrapnelScene, orbitalShrapnelStyleManifest } from './OrbitalShrapnelScene.js';
+import { RawOrbitalShrapnelReferenceScene } from './RawOrbitalShrapnelReferenceScene.js';
+import { OrbitalShrapnelExperimentalRawEngineScene } from './OrbitalShrapnelExperimentalRawEngineScene.js';
+
+type OrbitalRawFactoryContext = GameContext & {
+  experimentalRawEngine?: boolean;
+};
+
+function canUseExperimentalRawEngine(ctx: OrbitalRawFactoryContext): boolean {
+  if (ctx.experimentalRawEngine !== true) return false;
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') return true;
+  if (typeof window === 'undefined') return false;
+  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+}
 
 export const orbitalShrapnelDefinition: SimulationDefinition = {
   id: 'orbital-shrapnel',
@@ -38,7 +51,7 @@ export const orbitalShrapnelDefinition: SimulationDefinition = {
   ],
   gestureMap: {
     tap: 'use the selected orbital tool at the pointer',
-    drag: 'repeat the selected orbital tool continuously',
+    drag: 'repeat the selected orbital tool continuously; raw mode also supports hold for gravity, R reset, C clear trails, M meteor, Space pulse',
   },
   directorEvents: [
     { id: 'meteor-shower', label: 'Meteor Shower', minIntervalMs: 7000, maxIntervalMs: 15000, intensity: 0.42 },
@@ -51,11 +64,21 @@ export const orbitalShrapnelDefinition: SimulationDefinition = {
     severity: 0,
   },
   defaultSeed: 771203,
-  factory: () => new OrbitalShrapnelScene(),
+  factory: (ctx) => {
+    const orbitalCtx = ctx as OrbitalRawFactoryContext;
+    if (orbitalCtx.quality === 'raw') {
+      return canUseExperimentalRawEngine(orbitalCtx)
+        ? new OrbitalShrapnelExperimentalRawEngineScene()
+        : new RawOrbitalShrapnelReferenceScene();
+    }
+
+    return new OrbitalShrapnelScene();
+  },
   previewFactory: () => new OrbitalShrapnelPreviewScene(),
   demoAiFactory: () => new OrbitalShrapnelDemoAI(),
   tutorialPages: [
     { icon: '+', title: 'Add Shrapnel', body: 'Tap or drag to add shards that inherit your pointer motion.' },
     { icon: '●', title: 'Influence Field', body: 'Drag through the ring as a moving body that pushes particles aside.' },
+    { icon: '⌨', title: 'Raw WebGL controls', body: 'In raw mode, drag to swish debris, hold to create a gravity well, R resets, C clears trails, M triggers a meteor event, and Space sends a pulse.' },
   ],
 };

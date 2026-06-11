@@ -492,6 +492,8 @@ export interface GameContext {
   mode: GameMode;
   seed: number;
   quality: RenderQuality;
+  /** Dev/test-only feature gates requested by the host runtime. */
+  experimentalRawEngine?: boolean;
   /** Canvas dimensions in logical pixels */
   width: number;
   height: number;

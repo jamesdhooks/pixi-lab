@@ -42,7 +42,7 @@ describe('OrbitalShrapnelRawTexturePlan', () => {
 
 
 
-  it('honors advanced raw texture tiers and clamps unsafe extremes', () => {
+  it('honors advanced raw trail tiers while keeping particle uploads capped', () => {
     const high = resolveOrbitalShrapnelRawTexturePlan({
       width: 1920,
       height: 1080,
@@ -53,7 +53,7 @@ describe('OrbitalShrapnelRawTexturePlan', () => {
       rawTrailTextureWidth: '768',
     });
 
-    expect(high.particleState).toEqual({ width: 1024, height: 879, capacity: 900_096 });
+    expect(high.particleState).toEqual({ width: 1024, height: 128, capacity: 131_072 });
     expect(high.trailField).toEqual({ width: 768, height: 432 });
 
     const clamped = resolveOrbitalShrapnelRawTexturePlan({
@@ -66,7 +66,7 @@ describe('OrbitalShrapnelRawTexturePlan', () => {
       rawTrailTextureWidth: '4096',
     });
 
-    expect(clamped.particleState).toEqual({ width: 1024, height: 1024, capacity: 1_048_576 });
+    expect(clamped.particleState).toEqual({ width: 1024, height: 128, capacity: 131_072 });
     expect(clamped.trailField).toEqual({ width: 1024, height: 576 });
   });
 

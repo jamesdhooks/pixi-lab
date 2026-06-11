@@ -184,13 +184,22 @@ export { NoopRenderPass, type RenderPass, type RenderPassContext } from './rende
 export {
   RawWebGL2Scene,
   colorNumberToRgb,
-  compileRawWebGL2Shader,
   finiteNumberSetting,
-  linkRawWebGL2Program,
-  type RawWebGL2ProgramSources,
   type RawWebGL2RenderState,
   type RawWebGL2SceneOptions,
 } from './render/raw/RawWebGL2Scene.js';
+export {
+  RawWebGL2ResourceContext,
+  compileRawWebGL2Shader,
+  linkRawWebGL2Program,
+  type RawFramebuffer,
+  type RawRenderTexture,
+  type RawRenderTextureOptions,
+  type RawResourceSize,
+  type RawTexturePrecision,
+  type RawWebGL2Capabilities,
+  type RawWebGL2ProgramSources,
+} from './render/raw/RawWebGL2ResourceContext.js';
 
 // Simulation primitives
 export { SimulationScene } from './sim/SimulationScene.js';

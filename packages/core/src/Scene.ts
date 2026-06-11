@@ -92,6 +92,14 @@ export abstract class Scene {
   }
 
   /**
+   * Optional scene-owned debug metrics for host panels. Raw/WebGL scenes can use
+   * this to surface renderer stats without drawing their own in-canvas overlays.
+   */
+  getDebugStats(): Record<string, string | number | boolean | null> | null {
+    return null;
+  }
+
+  /**
    * Called when the active interaction mode changes (e.g. single → rapid → explode).
    * Default: no-op. Override to switch scene behaviour.
    */

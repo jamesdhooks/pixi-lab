@@ -1,26 +1,5 @@
 import { DomScriptScene, type DomMountContext, type DomSceneOptions, type DomStylePayload } from '../../sim/DomScriptScene.js';
-
-export interface RawWebGL2RenderState {
-  gl: WebGL2RenderingContext;
-  canvas: HTMLCanvasElement;
-  /** Present for the built-in single-program shader path; null for custom multi-pass renderers. */
-  program: WebGLProgram | null;
-  vao: WebGLVertexArrayObject | null;
-  settings: Record<string, unknown>;
-  style: DomStylePayload | null;
-  mode: string | null;
-  timeSeconds: number;
-  elapsedMs: number;
-  deltaSeconds: number;
-  width: number;
-  height: number;
-  frame: number;
-}
-
-export interface RawWebGL2ProgramSources {
-  vertex: string;
-  fragment: string;
-}
+import { RawWebGL2ResourceContext, linkRawWebGL2Program, type RawWebGL2ProgramSources } from './RawWebGL2ResourceContext.js';
 
 export interface RawWebGL2SceneOptions {
   name: string;
@@ -40,6 +19,24 @@ export interface RawWebGL2SceneOptions {
   onDestroy?: (state: RawWebGL2RenderState) => void;
 }
 
+export interface RawWebGL2RenderState {
+  gl: WebGL2RenderingContext;
+  canvas: HTMLCanvasElement;
+  /** Present for the built-in single-program shader path; null for custom multi-pass renderers. */
+  program: WebGLProgram | null;
+  vao: WebGLVertexArrayObject | null;
+  resources: RawWebGL2ResourceContext;
+  settings: Record<string, unknown>;
+  style: DomStylePayload | null;
+  mode: string | null;
+  timeSeconds: number;
+  elapsedMs: number;
+  deltaSeconds: number;
+  width: number;
+  height: number;
+  frame: number;
+}
+
 export function colorNumberToRgb(value: number | undefined, fallback: [number, number, number]): [number, number, number] {
   if (typeof value !== 'number') return fallback;
   return [((value >> 16) & 255) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255];
@@ -48,44 +45,6 @@ export function colorNumberToRgb(value: number | undefined, fallback: [number, n
 export function finiteNumberSetting(settings: Record<string, unknown>, key: string, fallback: number): number {
   const value = settings[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
-export function compileRawWebGL2Shader(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader {
-  const shader = gl.createShader(type);
-  if (!shader) throw new Error('Unable to allocate WebGL2 shader');
-
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    const log = gl.getShaderInfoLog(shader) || 'unknown WebGL2 shader compile error';
-    gl.deleteShader(shader);
-    throw new Error(log);
-  }
-
-  return shader;
-}
-
-export function linkRawWebGL2Program(gl: WebGL2RenderingContext, sources: RawWebGL2ProgramSources): WebGLProgram {
-  const program = gl.createProgram();
-  if (!program) throw new Error('Unable to allocate WebGL2 shader program');
-
-  const vertex = compileRawWebGL2Shader(gl, gl.VERTEX_SHADER, sources.vertex);
-  const fragment = compileRawWebGL2Shader(gl, gl.FRAGMENT_SHADER, sources.fragment);
-
-  gl.attachShader(program, vertex);
-  gl.attachShader(program, fragment);
-  gl.linkProgram(program);
-  gl.deleteShader(vertex);
-  gl.deleteShader(fragment);
-
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    const log = gl.getProgramInfoLog(program) || 'unknown WebGL2 shader link error';
-    gl.deleteProgram(program);
-    throw new Error(log);
-  }
-
-  return program;
 }
 
 function resizeCanvasToDisplaySize(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext, maxDevicePixelRatio: number): { width: number; height: number } {
@@ -106,7 +65,7 @@ function mountRawWebGL2(root: HTMLDivElement, mountCtx: DomMountContext, options
   const canvas = root.querySelector<HTMLCanvasElement>(options.canvasSelector);
   if (!canvas) return () => undefined;
 
-  const gl = canvas.getContext('webgl2', options.webglOptions ?? { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'high-performance' });
+  const gl = canvas.getContext('webgl2', options.webglOptions ?? { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'high-performance' }) as WebGL2RenderingContext | null;
   if (!gl) {
     root.innerHTML = options.unsupportedMarkup ?? '<div class="grid h-full place-items-center bg-black text-sm text-white/80">WebGL2 is required for this raw engine scene.</div>';
     return () => undefined;
@@ -116,12 +75,15 @@ function mountRawWebGL2(root: HTMLDivElement, mountCtx: DomMountContext, options
   const vao = program ? gl.createVertexArray() : null;
   const now = performance.now();
   const dimensions = resizeCanvasToDisplaySize(canvas, gl, options.maxDevicePixelRatio ?? 2);
+  const resources = new RawWebGL2ResourceContext(gl);
+  resources.resize(dimensions.width, dimensions.height);
 
   const state: RawWebGL2RenderState = {
     gl,
     canvas,
     program,
     vao,
+    resources,
     settings: mountCtx.getSettings(),
     style: mountCtx.getStyle(),
     mode: null,
@@ -137,7 +99,14 @@ function mountRawWebGL2(root: HTMLDivElement, mountCtx: DomMountContext, options
   let previousTimestamp = now;
   let raf = 0;
 
-  options.onInit?.(state);
+  try {
+    options.onInit?.(state);
+  } catch (error) {
+    resources.destroy();
+    if (vao) gl.deleteVertexArray(vao);
+    if (program) gl.deleteProgram(program);
+    throw error;
+  }
 
   const unsubSettings = mountCtx.onSettingsChange((all, change) => {
     state.settings = all;
@@ -163,6 +132,7 @@ function mountRawWebGL2(root: HTMLDivElement, mountCtx: DomMountContext, options
 
   const renderFrame = (timestamp: number) => {
     const size = resizeCanvasToDisplaySize(canvas, gl, options.maxDevicePixelRatio ?? 2);
+    resources.resize(size.width, size.height);
     state.width = size.width;
     state.height = size.height;
     state.elapsedMs = timestamp - startedAt;
@@ -185,6 +155,7 @@ function mountRawWebGL2(root: HTMLDivElement, mountCtx: DomMountContext, options
     unsubReset();
     unsubMode();
     options.onDestroy?.(state);
+    resources.destroy();
     if (vao) gl.deleteVertexArray(vao);
     if (program) gl.deleteProgram(program);
   };

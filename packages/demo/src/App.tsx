@@ -11,6 +11,7 @@ import { hasPassedDemoQa } from './demoQaStatus';
 import {
   applyCompatibilityRouteRenderSelection,
   findQueryExperienceFromParams,
+  queryExperimentalRawEngine,
   queryRenderSelectionForExperience,
 } from './demoRuntime';
 
@@ -466,6 +467,7 @@ export function App() {
               maxPixels={maxPixels}
               transparent={active.kind === 'ambient' || active.kind === 'effect'}
               initialRenderSelection={queryRenderSelectionForExperience(active, routeMode.queryParams)}
+              experimentalRawEngine={queryExperimentalRawEngine(routeMode.queryParams)}
               autoDemo={routeMode.fluidEngine || routeMode.fluidReference}
               onQuit={() => {
                 setActive(null);
@@ -857,6 +859,7 @@ interface ExperienceSurfaceProps {
   transparent?: boolean;
   initialRenderSelection?: RenderBackendProfileSelection;
   initialQuality?: RenderQuality;
+  experimentalRawEngine?: boolean;
   onRenderSelectionChange?: (selection: RenderBackendProfileSelection) => void;
   onDemoAdvance?: () => void;
   onDemoExit?: () => void;
@@ -876,6 +879,7 @@ function ExperienceSurface({
   transparent = false,
   initialRenderSelection,
   initialQuality,
+  experimentalRawEngine = false,
   onRenderSelectionChange,
   onDemoAdvance,
   onDemoExit,
@@ -884,6 +888,14 @@ function ExperienceSurface({
   className = 'absolute inset-0 overflow-hidden',
 }: ExperienceSurfaceProps) {
   if (!experience) return null;
+
+  const launcherKey = [
+    experience.id,
+    initialRenderSelection?.backend ?? '',
+    initialRenderSelection?.profile ?? '',
+    initialQuality ?? '',
+    experimentalRawEngine ? 'raw' : 'managed',
+  ].join(':');
 
   return (
     <div
@@ -902,12 +914,13 @@ function ExperienceSurface({
         style={{ ...dockedInset, transform: 'translateZ(0)' }}
       >
         <GameLauncher
-          key={experience.id}
+          key={launcherKey}
           definition={experience}
           maxPixels={maxPixels}
           autoDemo={autoDemo}
           initialRenderSelection={initialRenderSelection}
           initialQuality={initialQuality}
+          experimentalRawEngine={experimentalRawEngine}
           onRenderSelectionChange={onRenderSelectionChange}
           transparent={transparent}
           onDemoAdvance={onDemoAdvance}

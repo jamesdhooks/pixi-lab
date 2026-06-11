@@ -71,7 +71,7 @@ function particleTextureWidthForQuality(quality: RenderQuality, rawParticleTextu
 }
 
 function maxParticleTextureHeightForQuality(quality: RenderQuality, particleWidth: number): number {
-  if (quality === 'raw') return particleWidth;
+  if (quality === 'raw') return Math.min(128, particleWidth);
   if (quality === 'enhanced') return 84;
   return 64;
 }
