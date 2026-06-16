@@ -23,6 +23,7 @@ It must be **app-agnostic** — no routing, no fetch calls, no app-specific stat
 3. **No `any`** — type all props, state, and event handlers explicitly.
 4. **Components use named exports** — no default exports.
 5. **All new public components/types must be exported** from `src/index.ts`.
+6. **Runtime chrome must be compositor-cheap over WebGL.** Avoid `backdrop-filter`/`backdrop-blur` over active canvases; use translucent fills instead. Keep the Pixi canvas absolutely positioned inside a relative container so it does not participate in layout or trigger resize feedback.
 
 ## `GameLauncherProps` contract
 

@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { MYCELIUM_LATTICE_DEFAULTS, MYCELIUM_LATTICE_SETTINGS_FIELDS } from './mycelium-lattice.config.js';
 import { MyceliumLatticeDemoAI } from './MyceliumLatticeDemoAI.js';
 import { MyceliumLatticePreviewScene } from './MyceliumLatticePreviewScene.js';
@@ -31,6 +31,11 @@ export const myceliumLatticeDefinition: SimulationDefinition = {
     { id: 'tip-surge',     label: 'Tip Surge',     minIntervalMs: 6000,  maxIntervalMs: 12000, intensity: 0.50 },
     { id: 'hue-drift',     label: 'Hue Drift',     minIntervalMs: 12000, maxIntervalMs: 22000, intensity: 0.40 },
   ],
+  stagnationPolicy: {
+    stagnant: false,
+    reason: 'Recover when fungal active tips, occupancy variance, or growth energy collapse.',
+    severity: 0,
+  },
   capabilities: {
     demo: true,
     settings: true,
@@ -39,8 +44,13 @@ export const myceliumLatticeDefinition: SimulationDefinition = {
     interactive: true,
     ambient: true,
     reset: true,
+    directorMode: true,
     stagnationRecovery: true,
-    qualityModes: ['basic', 'enhanced'],
+    debugOverlay: true,
+    styleExport: true,
+    proceduralTextures: true,
+    renderTargetPool: true,
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
   },
   factory:        () => new MyceliumLatticeScene(),
   previewFactory: () => new MyceliumLatticePreviewScene(),

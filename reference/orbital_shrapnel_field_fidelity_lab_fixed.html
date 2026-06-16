@@ -1,0 +1,2460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orbital Shrapnel Field Fidelity Lab — Fixed Raw WebGL2 GPU Sim</title>
+
+  <style>
+    :root {
+      --panel-bg: rgba(6, 10, 20, 0.76);
+      --panel-border: rgba(255, 255, 255, 0.12);
+      --text: rgba(255, 255, 255, 0.92);
+      --muted: rgba(255, 255, 255, 0.66);
+      --accent: #86edff;
+      --hot: #ffb86b;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #03040a;
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      user-select: none;
+      touch-action: none;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    #panel {
+      position: fixed;
+      left: 14px;
+      top: 14px;
+      z-index: 5;
+      width: min(440px, calc(100vw - 28px));
+      max-height: calc(100vh - 28px);
+      box-sizing: border-box;
+      padding: 14px;
+      border-radius: 16px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+      backdrop-filter: blur(15px);
+      overflow: auto;
+      scrollbar-color: rgba(255,255,255,0.28) transparent;
+    }
+
+    #panel h1 {
+      margin: 0 0 5px;
+      font-size: 15px;
+      line-height: 1.2;
+      font-weight: 780;
+      letter-spacing: -0.01em;
+    }
+
+    #panel p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.42;
+    }
+
+    .top-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    details {
+      border: 1px solid rgba(255, 255, 255, 0.105);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.035);
+      margin: 8px 0;
+      overflow: hidden;
+    }
+
+    summary {
+      cursor: pointer;
+      padding: 10px 11px;
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 12px;
+      font-weight: 720;
+      letter-spacing: 0.01em;
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    summary::after {
+      content: "▾";
+      float: right;
+      color: rgba(255, 255, 255, 0.45);
+      transition: 120ms ease;
+    }
+
+    details:not([open]) summary::after {
+      transform: rotate(-90deg);
+    }
+
+    .section-body {
+      padding: 0 11px 11px;
+      display: grid;
+      gap: 9px;
+    }
+
+    .control {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px 12px;
+      align-items: center;
+    }
+
+    .control label,
+    .select-row label {
+      color: rgba(255, 255, 255, 0.76);
+      font-size: 12px;
+    }
+
+    .control label,
+    .select-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .info {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      border: 1px solid rgba(134, 237, 255, 0.36);
+      background: rgba(134, 237, 255, 0.10);
+      color: rgba(210, 248, 255, 0.98);
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: help;
+      user-select: none;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.035) inset;
+    }
+
+    .info:hover,
+    .info:focus {
+      border-color: rgba(134, 237, 255, 0.82);
+      background: rgba(134, 237, 255, 0.20);
+      outline: none;
+    }
+
+    #tooltip {
+      position: fixed;
+      z-index: 100;
+      max-width: min(330px, calc(100vw - 28px));
+      padding: 9px 10px;
+      border-radius: 10px;
+      color: rgba(240, 252, 255, 0.96);
+      background: rgba(3, 8, 17, 0.94);
+      border: 1px solid rgba(134, 237, 255, 0.30);
+      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.50);
+      font: 12px/1.42 Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 90ms ease, transform 90ms ease;
+      backdrop-filter: blur(12px);
+    }
+
+    #tooltip.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .control output,
+    .select-row span {
+      color: rgba(190, 240, 255, 0.98);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      grid-column: 1 / -1;
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .select-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      color: rgba(255,255,255,0.76);
+      font-size: 12px;
+    }
+
+    select {
+      color: rgba(235, 251, 255, 0.96);
+      background-color: rgba(8, 16, 31, 0.96);
+      background-image:
+        linear-gradient(45deg, transparent 50%, rgba(134, 237, 255, 0.95) 50%),
+        linear-gradient(135deg, rgba(134, 237, 255, 0.95) 50%, transparent 50%),
+        linear-gradient(to right, rgba(255,255,255,0.10), rgba(255,255,255,0.10));
+      background-position:
+        calc(100% - 17px) 50%,
+        calc(100% - 12px) 50%,
+        calc(100% - 34px) 50%;
+      background-size:
+        5px 5px,
+        5px 5px,
+        1px 60%;
+      background-repeat: no-repeat;
+      border: 1px solid rgba(134, 237, 255, 0.22);
+      border-radius: 999px;
+      padding: 7px 42px 7px 11px;
+      outline: none;
+      max-width: 230px;
+      appearance: none;
+      -webkit-appearance: none;
+      color-scheme: dark;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.035) inset;
+    }
+
+    select:hover {
+      background-color: rgba(10, 22, 42, 0.98);
+      border-color: rgba(134, 237, 255, 0.42);
+    }
+
+    select:focus {
+      border-color: rgba(134, 237, 255, 0.72);
+      box-shadow:
+        0 0 0 1px rgba(134, 237, 255, 0.20) inset,
+        0 0 0 3px rgba(134, 237, 255, 0.10);
+    }
+
+    select option {
+      color: rgba(238, 251, 255, 0.98);
+      background-color: #08101f;
+    }
+
+    select option:checked {
+      color: #ffffff;
+      background-color: #11304b;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.055);
+      color: rgba(255, 255, 255, 0.9);
+      padding: 7px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: 120ms ease;
+    }
+
+    button:hover {
+      background: rgba(255, 255, 255, 0.095);
+      border-color: rgba(255, 255, 255, 0.24);
+    }
+
+    button.active {
+      background: rgba(126, 232, 255, 0.14);
+      border-color: rgba(126, 232, 255, 0.54);
+      color: #e0fbff;
+    }
+
+    button.warn {
+      border-color: rgba(255, 184, 107, 0.34);
+      color: #ffe0b9;
+    }
+
+    .note {
+      color: rgba(255, 255, 255, 0.56);
+      font-size: 11px;
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+
+    #hud {
+      position: fixed;
+      right: 14px;
+      top: 14px;
+      z-index: 5;
+      min-width: 215px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(6, 10, 20, 0.58);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.84);
+      font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      backdrop-filter: blur(12px);
+    }
+
+    #hud .status-ok {
+      color: #9fffd6;
+    }
+
+    #hud .status-warn {
+      color: #ffcd8d;
+    }
+
+    #hint {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      z-index: 5;
+      max-width: calc(100vw - 24px);
+      box-sizing: border-box;
+      padding: 9px 13px;
+      border-radius: 999px;
+      background: rgba(6, 10, 20, 0.54);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 12px;
+      text-align: center;
+      white-space: nowrap;
+      backdrop-filter: blur(12px);
+    }
+
+    #showUi {
+      position: fixed;
+      left: 14px;
+      top: 14px;
+      z-index: 6;
+      display: none;
+      background: rgba(6, 10, 20, 0.68);
+      backdrop-filter: blur(12px);
+    }
+
+    body.ui-hidden #panel,
+    body.ui-hidden #hud,
+    body.ui-hidden #hint {
+      display: none;
+    }
+
+    body.ui-hidden #showUi {
+      display: block;
+    }
+
+    #fallback {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      padding: 28px;
+      background: #04060d;
+      color: white;
+      text-align: center;
+      font: 16px/1.45 system-ui, sans-serif;
+    }
+
+    #fallback div {
+      max-width: 640px;
+      padding: 24px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.06);
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas"></canvas>
+
+  <button id="showUi">Show UI · H</button>
+  <div id="tooltip" aria-hidden="true"></div>
+
+  <div id="panel">
+    <h1>Orbital Shrapnel Field Fidelity Lab · Fixed</h1>
+    <p>
+      Raw WebGL2 GPU particle fidelity lab. Push the GPU with real simulation/rendering quality:
+      more gravity bodies, motion-blur samples, richer trails, bloom quality, and higher particle counts.
+    </p>
+
+    <div class="top-actions">
+      <button id="hideUiBtn">Hide UI · H</button>
+      <button id="pauseBtn">Pause</button>
+      <button id="autoBtn">Auto events</button>
+      <button id="resetGentleBtn">Reset defaults</button>
+    </div>
+
+    <details open>
+      <summary>GPU / Fidelity Load</summary>
+      <div class="section-body">
+        <div class="select-row">
+          <label for="particleSize"><span>Particle state texture</span><span class="info" tabindex="0" role="button" aria-label="Particle state texture: Controls the GPU state texture size. Particle count equals texture width × height. Higher tiers can allocate gigabytes of GPU memory and may fail." data-tip="Controls the GPU state texture size. Particle count equals texture width × height. Higher tiers can allocate gigabytes of GPU memory and may fail.">i</span></label>
+          <select id="particleSize">
+            <option value="64">64² = 4,096</option>
+            <option value="128">128² = 16,384</option>
+            <option value="192" selected>192² = 36,864</option>
+            <option value="256">256² = 65,536</option>
+            <option value="384">384² = 147,456</option>
+            <option value="512">512² = 262,144</option>
+            <option value="768">768² = 589,824</option>
+            <option value="1024">1024² = 1,048,576</option>
+            <option value="1536">1536² = 2,359,296 · extreme</option>
+            <option value="2048">2048² = 4,194,304 · brutal</option>
+            <option value="3072">3072² = 9,437,184 · serious</option>
+            <option value="4096">4096² = 16,777,216 · severe</option>
+            <option value="6144">6144² = 37,748,736 · absurd</option>
+            <option value="8192">8192² = 67,108,864 · danger</option>
+          </select>
+        </div>
+
+        <div class="select-row">
+          <label for="precision"><span>State precision</span><span class="info" tabindex="0" role="button" aria-label="State precision: Chooses how particle position and velocity are stored on the GPU. RGBA32F is more stable; RGBA16F uses less memory and bandwidth." data-tip="Chooses how particle position and velocity are stored on the GPU. RGBA32F is more stable; RGBA16F uses less memory and bandwidth.">i</span></label>
+          <select id="precision">
+            <option value="32f" selected>RGBA32F · stable</option>
+            <option value="16f">RGBA16F · lower bandwidth</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <label for="renderFraction"><span>Rendered particle fraction</span><span class="info" tabindex="0" role="button" aria-label="Rendered particle fraction: Draws only this fraction of simulated particles. Useful for stress-testing simulation cost separately from rendering/fill-rate cost." data-tip="Draws only this fraction of simulated particles. Useful for stress-testing simulation cost separately from rendering/fill-rate cost.">i</span></label>
+          <output id="renderFractionOut">1.00</output>
+          <input id="renderFraction" type="range" min="0" max="1" step="0.01" value="1" />
+        </div>
+
+        <div class="control">
+          <label for="simSubsteps"><span>Simulation substeps / frame</span><span class="info" tabindex="0" role="button" aria-label="Simulation substeps / frame: Runs the physics update multiple times per frame. Higher values improve stability at high speeds but multiply simulation cost." data-tip="Runs the physics update multiple times per frame. Higher values improve stability at high speeds but multiply simulation cost.">i</span></label>
+          <output id="simSubstepsOut">1</output>
+          <input id="simSubsteps" type="range" min="1" max="8" step="1" value="1" />
+        </div>
+
+        <div class="control">
+          <label for="bodyCount"><span>Extra gravity bodies</span><span class="info" tabindex="0" role="button" aria-label="Extra gravity bodies: Adds orbiting gravity wells/moonlets. This increases real orbital complexity and makes capture streams, braided rings, and disturbances more interesting." data-tip="Adds orbiting gravity wells/moonlets. This increases real orbital complexity and makes capture streams, braided rings, and disturbances more interesting.">i</span></label>
+          <output id="bodyCountOut">3</output>
+          <input id="bodyCount" type="range" min="0" max="8" step="1" value="3" />
+        </div>
+
+        <div class="control">
+          <label for="bodyStrength"><span>Extra body strength</span><span class="info" tabindex="0" role="button" aria-label="Extra body strength: Controls the strength of the additional orbiting gravity bodies. Higher values make the debris field more chaotic and dynamically rich." data-tip="Controls the strength of the additional orbiting gravity bodies. Higher values make the debris field more chaotic and dynamically rich.">i</span></label>
+          <output id="bodyStrengthOut">0.35</output>
+          <input id="bodyStrength" type="range" min="0" max="2.5" step="0.01" value="0.35" />
+        </div>
+
+        <div class="control">
+          <label for="bodyRadius"><span>Body orbit radius</span><span class="info" tabindex="0" role="button" aria-label="Body orbit radius: Distance of the extra gravity bodies from the center. Larger values perturb the outer ring; smaller values disturb the core." data-tip="Distance of the extra gravity bodies from the center. Larger values perturb the outer ring; smaller values disturb the core.">i</span></label>
+          <output id="bodyRadiusOut">0.72</output>
+          <input id="bodyRadius" type="range" min="0.10" max="1.35" step="0.01" value="0.72" />
+        </div>
+
+        <div class="control">
+          <label for="bodySpeed"><span>Body orbit speed</span><span class="info" tabindex="0" role="button" aria-label="Body orbit speed: How fast the extra gravity bodies rotate around the center. Negative values reverse their direction." data-tip="How fast the extra gravity bodies rotate around the center. Negative values reverse their direction.">i</span></label>
+          <output id="bodySpeedOut">0.25</output>
+          <input id="bodySpeed" type="range" min="-2" max="2" step="0.01" value="0.25" />
+        </div>
+
+        <div class="control">
+          <label for="motionBlurSamples"><span>Motion blur samples</span><span class="info" tabindex="0" role="button" aria-label="Motion blur samples: Draws each particle multiple times along its velocity path. This increases actual visual fidelity by creating velocity-aligned streaks." data-tip="Draws each particle multiple times along its velocity path. This increases actual visual fidelity by creating velocity-aligned streaks.">i</span></label>
+          <output id="motionBlurSamplesOut">1</output>
+          <input id="motionBlurSamples" type="range" min="1" max="32" step="1" value="1" />
+        </div>
+
+        <div class="control">
+          <label for="streakLength"><span>Velocity streak length</span><span class="info" tabindex="0" role="button" aria-label="Velocity streak length: How far motion-blur samples are spread backward along particle velocity. Higher values create longer debris streaks." data-tip="How far motion-blur samples are spread backward along particle velocity. Higher values create longer debris streaks.">i</span></label>
+          <output id="streakLengthOut">0.90</output>
+          <input id="streakLength" type="range" min="0" max="5" step="0.01" value="0.90" />
+        </div>
+
+        <div class="control">
+          <label for="trailFadePasses"><span>Trail diffusion passes</span><span class="info" tabindex="0" role="button" aria-label="Trail diffusion passes: Repeats the actual trail fade/diffusion pass. Higher values make smoother, wider, more physically dusty trails." data-tip="Repeats the actual trail fade/diffusion pass. Higher values make smoother, wider, more physically dusty trails.">i</span></label>
+          <output id="trailFadePassesOut">1</output>
+          <input id="trailFadePasses" type="range" min="0" max="32" step="1" value="1" />
+        </div>
+
+        <div class="control">
+          <label for="bloomSamples"><span>Bloom samples</span><span class="info" tabindex="0" role="button" aria-label="Bloom samples: Number of real texture samples used for bloom in the final composite. Higher values make glow smoother but cost more bandwidth." data-tip="Number of real texture samples used for bloom in the final composite. Higher values make glow smoother but cost more bandwidth.">i</span></label>
+          <output id="bloomSamplesOut">8</output>
+          <input id="bloomSamples" type="range" min="0" max="48" step="1" value="8" />
+        </div>
+
+        <div class="control">
+          <label for="bloomRadius"><span>Bloom radius</span><span class="info" tabindex="0" role="button" aria-label="Bloom radius: How far the final composite samples around bright trails. Larger radius creates wider halos and softer debris clouds." data-tip="How far the final composite samples around bright trails. Larger radius creates wider halos and softer debris clouds.">i</span></label>
+          <output id="bloomRadiusOut">5.0</output>
+          <input id="bloomRadius" type="range" min="1" max="24" step="0.1" value="5.0" />
+        </div>
+
+        <div class="control">
+          <label for="dprCap"><span>Canvas DPR cap</span><span class="info" tabindex="0" role="button" aria-label="Canvas DPR cap: Limits canvas device-pixel-ratio. Lower values reduce screen rendering cost; higher values look sharper but use more fill-rate." data-tip="Limits canvas device-pixel-ratio. Lower values reduce screen rendering cost; higher values look sharper but use more fill-rate.">i</span></label>
+          <output id="dprCapOut">2.00</output>
+          <input id="dprCap" type="range" min="0.75" max="3" step="0.05" value="2" />
+        </div>
+
+        <div class="control">
+          <label for="trailScale"><span>Trail buffer scale</span><span class="info" tabindex="0" role="button" aria-label="Trail buffer scale: Scales the offscreen trail buffer. Higher values make trails sharper but cost more memory and post-processing bandwidth." data-tip="Scales the offscreen trail buffer. Higher values make trails sharper but cost more memory and post-processing bandwidth.">i</span></label>
+          <output id="trailScaleOut">0.82</output>
+          <input id="trailScale" type="range" min="0.20" max="1.50" step="0.01" value="0.82" />
+        </div>
+
+        <div class="note">
+          These controls increase actual simulation or rendering quality. If FPS stays locked, raise particle count, motion blur samples, bloom samples, trail scale, and trail diffusion passes.
+        </div>
+      </div>
+    </details>
+
+    <details open>
+      <summary>Physics</summary>
+      <div class="section-body">
+        <div class="control">
+          <label for="gravity"><span>Central gravity</span><span class="info" tabindex="0" role="button" aria-label="Central gravity: Strength of the central gravity pull. Higher values create tighter, faster orbits around the core." data-tip="Strength of the central gravity pull. Higher values create tighter, faster orbits around the core.">i</span></label>
+          <output id="gravityOut">0.82</output>
+          <input id="gravity" type="range" min="0" max="2.5" step="0.01" value="0.82" />
+        </div>
+
+        <div class="control">
+          <label for="tangent"><span>Orbital tangent bias</span><span class="info" tabindex="0" role="button" aria-label="Orbital tangent bias: Adds sideways orbital bias around the core. Positive values encourage ring-like motion; negative values fight the orbit." data-tip="Adds sideways orbital bias around the core. Positive values encourage ring-like motion; negative values fight the orbit.">i</span></label>
+          <output id="tangentOut">1.00</output>
+          <input id="tangent" type="range" min="-1" max="2.5" step="0.01" value="1" />
+        </div>
+
+        <div class="control">
+          <label for="damping"><span>Velocity damping</span><span class="info" tabindex="0" role="button" aria-label="Velocity damping: Multiplies velocity over time. Values below 1 slowly calm particles; values above 1 can create runaway energy." data-tip="Multiplies velocity over time. Values below 1 slowly calm particles; values above 1 can create runaway energy.">i</span></label>
+          <output id="dampingOut">0.999</output>
+          <input id="damping" type="range" min="0.94" max="1.01" step="0.001" value="0.999" />
+        </div>
+
+        <div class="control">
+          <label for="maxSpeed"><span>Max speed clamp</span><span class="info" tabindex="0" role="button" aria-label="Max speed clamp: Caps particle velocity after acceleration. Higher values allow violent shockwaves and fast slingshots." data-tip="Caps particle velocity after acceleration. Higher values allow violent shockwaves and fast slingshots.">i</span></label>
+          <output id="maxSpeedOut">2.30</output>
+          <input id="maxSpeed" type="range" min="0.25" max="8" step="0.05" value="2.30" />
+        </div>
+
+        <div class="control">
+          <label for="timeScale"><span>Time modifier</span><span class="info" tabindex="0" role="button" aria-label="Time modifier: Scales simulation time. Use low values for slow motion, 0 to freeze physics, or high values to accelerate the system." data-tip="Scales simulation time. Use low values for slow motion, 0 to freeze physics, or high values to accelerate the system.">i</span></label>
+          <output id="timeScaleOut">1.00×</output>
+          <input id="timeScale" type="range" min="0" max="2.5" step="0.01" value="1.00" />
+        </div>
+
+        <div class="control">
+          <label for="boundaryPull"><span>Outer boundary pull</span><span class="info" tabindex="0" role="button" aria-label="Outer boundary pull: Soft force that nudges particles back when they drift too far from the visible orbital field." data-tip="Soft force that nudges particles back when they drift too far from the visible orbital field.">i</span></label>
+          <output id="boundaryPullOut">0.11</output>
+          <input id="boundaryPull" type="range" min="0" max="0.8" step="0.01" value="0.11" />
+        </div>
+
+        <div class="control">
+          <label for="planetRadius"><span>Planet collision radius</span><span class="info" tabindex="0" role="button" aria-label="Planet collision radius: Radius of the central body used for both rendering and collision response." data-tip="Radius of the central body used for both rendering and collision response.">i</span></label>
+          <output id="planetRadiusOut">0.145</output>
+          <input id="planetRadius" type="range" min="0" max="0.38" step="0.001" value="0.145" />
+        </div>
+
+        <div class="control">
+          <label for="planetBounce"><span>Planet bounce</span><span class="info" tabindex="0" role="button" aria-label="Planet bounce: How strongly particles bounce when they hit the central body. Higher values produce more energetic ricochets." data-tip="How strongly particles bounce when they hit the central body. Higher values produce more energetic ricochets.">i</span></label>
+          <output id="planetBounceOut">0.62</output>
+          <input id="planetBounce" type="range" min="0" max="1.6" step="0.01" value="0.62" />
+        </div>
+      </div>
+    </details>
+
+    <details open>
+      <summary>Interaction / Events</summary>
+      <div class="section-body">
+        <div class="control">
+          <label for="swish"><span>Pointer swish force</span><span class="info" tabindex="0" role="button" aria-label="Pointer swish force: Strength of the velocity impulse from dragging. Higher values let your pointer fling debris harder." data-tip="Strength of the velocity impulse from dragging. Higher values let your pointer fling debris harder.">i</span></label>
+          <output id="swishOut">0.72</output>
+          <input id="swish" type="range" min="0" max="2.5" step="0.01" value="0.72" />
+        </div>
+
+        <div class="control">
+          <label for="well"><span>Hold gravity well</span><span class="info" tabindex="0" role="button" aria-label="Hold gravity well: Strength of the gravity well while holding the pointer. Positive attracts debris; negative repels debris." data-tip="Strength of the gravity well while holding the pointer. Positive attracts debris; negative repels debris.">i</span></label>
+          <output id="wellOut">0.95</output>
+          <input id="well" type="range" min="-2.4" max="3.6" step="0.01" value="0.95" />
+        </div>
+
+        <div class="control">
+          <label for="wellRadius"><span>Well radius</span><span class="info" tabindex="0" role="button" aria-label="Well radius: Size of the pointer gravity well. Larger values influence a broader area around your cursor or finger." data-tip="Size of the pointer gravity well. Larger values influence a broader area around your cursor or finger.">i</span></label>
+          <output id="wellRadiusOut">0.224</output>
+          <input id="wellRadius" type="range" min="0.03" max="0.75" step="0.001" value="0.224" />
+        </div>
+
+        <div class="control">
+          <label for="pointerVortex"><span>Pointer vortex</span><span class="info" tabindex="0" role="button" aria-label="Pointer vortex: Adds rotational swirl around the held pointer. Positive and negative values spin in opposite directions." data-tip="Adds rotational swirl around the held pointer. Positive and negative values spin in opposite directions.">i</span></label>
+          <output id="pointerVortexOut">0.14</output>
+          <input id="pointerVortex" type="range" min="-1.5" max="1.5" step="0.01" value="0.14" />
+        </div>
+
+        <div class="control">
+          <label for="shockStrength"><span>Shockwave strength</span><span class="info" tabindex="0" role="button" aria-label="Shockwave strength: Impulse strength of shockwave events from clicks, pulses, and meteor showers." data-tip="Impulse strength of shockwave events from clicks, pulses, and meteor showers.">i</span></label>
+          <output id="shockStrengthOut">1.00</output>
+          <input id="shockStrength" type="range" min="0" max="3" step="0.01" value="1" />
+        </div>
+
+        <div class="control">
+          <label for="shockSpeed"><span>Shockwave speed</span><span class="info" tabindex="0" role="button" aria-label="Shockwave speed: How quickly shockwave rings expand through the debris field." data-tip="How quickly shockwave rings expand through the debris field.">i</span></label>
+          <output id="shockSpeedOut">0.75</output>
+          <input id="shockSpeed" type="range" min="0.1" max="2" step="0.01" value="0.75" />
+        </div>
+
+        <div class="control">
+          <label for="meteorCount"><span>Meteor shower bursts</span><span class="info" tabindex="0" role="button" aria-label="Meteor shower bursts: Number of shockwave bursts spawned by the Meteor Shower button or M key." data-tip="Number of shockwave bursts spawned by the Meteor Shower button or M key.">i</span></label>
+          <output id="meteorCountOut">6</output>
+          <input id="meteorCount" type="range" min="1" max="32" step="1" value="6" />
+        </div>
+
+        <div class="buttons">
+          <button id="meteorBtn">Meteor shower · M</button>
+          <button id="pulseBtn">Gravity pulse · Space</button>
+          <button id="clearTrailsBtn">Clear trails · C</button>
+          <button id="resetBtn" class="warn">Reset particles · R</button>
+        </div>
+      </div>
+    </details>
+
+    <details open>
+      <summary>Particles / Trails</summary>
+      <div class="section-body">
+        <div class="select-row">
+          <label for="shape"><span>Particle shape</span><span class="info" tabindex="0" role="button" aria-label="Particle shape: Chooses the particle silhouette. Soft shapes glow; hard triangle/circle/square use crisp binary edges." data-tip="Chooses the particle silhouette. Soft shapes glow; hard triangle/circle/square use crisp binary edges.">i</span></label>
+          <select id="shape">
+            <option value="0" selected>Soft triangular shards</option>
+            <option value="1">Soft round dust</option>
+            <option value="2">Soft spark crosses</option>
+            <option value="3">Hard triangle</option>
+            <option value="4">Hard circle</option>
+            <option value="5">Hard square</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <label for="trail"><span>Trail persistence</span><span class="info" tabindex="0" role="button" aria-label="Trail persistence: How long the trail buffer persists. Higher values preserve dust and light trails longer." data-tip="How long the trail buffer persists. Higher values preserve dust and light trails longer.">i</span></label>
+          <output id="trailOut">0.970</output>
+          <input id="trail" type="range" min="0.55" max="0.997" step="0.001" value="0.970" />
+        </div>
+
+        <div class="control">
+          <label for="blur"><span>Trail diffusion</span><span class="info" tabindex="0" role="button" aria-label="Trail diffusion: How much the trail buffer diffuses each frame. Higher values make wider smoky trails; lower values keep trails sharp." data-tip="How much the trail buffer diffuses each frame. Higher values make wider smoky trails; lower values keep trails sharp.">i</span></label>
+          <output id="blurOut">0.18</output>
+          <input id="blur" type="range" min="0" max="0.95" step="0.01" value="0.18" />
+        </div>
+
+        <div class="control">
+          <label for="particleSizePx"><span>Debris size</span><span class="info" tabindex="0" role="button" aria-label="Debris size: Base rendered particle size in pixels. Large values increase fill-rate cost quickly at high particle counts." data-tip="Base rendered particle size in pixels. Large values increase fill-rate cost quickly at high particle counts.">i</span></label>
+          <output id="particleSizePxOut">3.0 px</output>
+          <input id="particleSizePx" type="range" min="0.35" max="12" step="0.05" value="3.0" />
+        </div>
+
+        <div class="control">
+          <label for="speedSize"><span>Velocity size boost</span><span class="info" tabindex="0" role="button" aria-label="Velocity size boost: Increases particle size based on velocity. Higher values make fast debris appear larger or streakier." data-tip="Increases particle size based on velocity. Higher values make fast debris appear larger or streakier.">i</span></label>
+          <output id="speedSizeOut">1.25</output>
+          <input id="speedSize" type="range" min="0" max="5" step="0.05" value="1.25" />
+        </div>
+
+        <div class="control">
+          <label for="trailAlpha"><span>Trail deposit alpha</span><span class="info" tabindex="0" role="button" aria-label="Trail deposit alpha: Opacity/energy deposited into the trail buffer by particles. Set to 0 for no new trails." data-tip="Opacity/energy deposited into the trail buffer by particles. Set to 0 for no new trails.">i</span></label>
+          <output id="trailAlphaOut">1.00</output>
+          <input id="trailAlpha" type="range" min="0" max="4" step="0.01" value="1" />
+        </div>
+
+        <div class="control">
+          <label for="liveAlpha"><span>Live particle opacity</span><span class="info" tabindex="0" role="button" aria-label="Live particle opacity: Opacity of the live particle layer drawn directly to the screen. Raise this for solid-looking hard silhouettes." data-tip="Opacity of the live particle layer drawn directly to the screen. Raise this for solid-looking hard silhouettes.">i</span></label>
+          <output id="liveAlphaOut">8.00</output>
+          <input id="liveAlpha" type="range" min="0" max="30" step="0.1" value="8" />
+        </div>
+
+        <div class="control">
+          <label for="particleBrightness"><span>Particle brightness</span><span class="info" tabindex="0" role="button" aria-label="Particle brightness: Brightness multiplier for both live particles and trail deposits." data-tip="Brightness multiplier for both live particles and trail deposits.">i</span></label>
+          <output id="particleBrightnessOut">1.00</output>
+          <input id="particleBrightness" type="range" min="0" max="4" step="0.01" value="1" />
+        </div>
+
+        <div class="note">
+          Soft shapes create glow-like edges. Hard triangle / circle / square give crisp silhouettes.
+          For hard triangles with no trail, use Hard triangle, Live particles ON, Deposit trails OFF,
+          and click Clear trails once.
+        </div>
+
+        <div class="buttons">
+          <button id="liveParticlesToggle" class="active">Live particles</button>
+          <button id="depositToggle" class="active">Deposit trails</button>
+          <button id="trailsToggle" class="active">Trail buffer</button>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Composite / Scene</summary>
+      <div class="section-body">
+        <div class="select-row">
+          <label for="style"><span>Style preset</span><span class="info" tabindex="0" role="button" aria-label="Style preset: Changes the color palette and scene styling: icy, solar, or black-hole-like." data-tip="Changes the color palette and scene styling: icy, solar, or black-hole-like.">i</span></label>
+          <select id="style">
+            <option value="0" selected>Ice Ring</option>
+            <option value="1">Solar Debris</option>
+            <option value="2">Black Hole Lens</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <label for="glow"><span>Bloom / glow</span><span class="info" tabindex="0" role="button" aria-label="Bloom / glow: Strength of the bloom-like trail glow in the final composite." data-tip="Strength of the bloom-like trail glow in the final composite.">i</span></label>
+          <output id="glowOut">0.72</output>
+          <input id="glow" type="range" min="0" max="2.5" step="0.01" value="0.72" />
+        </div>
+
+        <div class="control">
+          <label for="exposure"><span>Exposure</span><span class="info" tabindex="0" role="button" aria-label="Exposure: Tone-mapping exposure. Higher values make the whole scene brighter and more saturated." data-tip="Tone-mapping exposure. Higher values make the whole scene brighter and more saturated.">i</span></label>
+          <output id="exposureOut">1.15</output>
+          <input id="exposure" type="range" min="0.15" max="4" step="0.01" value="1.15" />
+        </div>
+
+        <div class="control">
+          <label for="chroma"><span>Chromatic split</span><span class="info" tabindex="0" role="button" aria-label="Chromatic split: Offsets red and blue trail samples for chromatic edge splitting." data-tip="Offsets red and blue trail samples for chromatic edge splitting.">i</span></label>
+          <output id="chromaOut">0.003</output>
+          <input id="chroma" type="range" min="0" max="0.025" step="0.001" value="0.003" />
+        </div>
+
+        <div class="control">
+          <label for="stars"><span>Star density</span><span class="info" tabindex="0" role="button" aria-label="Star density: Density of procedural background stars in the final composite." data-tip="Density of procedural background stars in the final composite.">i</span></label>
+          <output id="starsOut">0.55</output>
+          <input id="stars" type="range" min="0" max="1.5" step="0.01" value="0.55" />
+        </div>
+
+        <div class="buttons">
+          <button id="planetToggle" class="active">Planet / core</button>
+          <button id="ringToggle" class="active">Core ring</button>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div id="hud">
+    <div>FPS: <span id="fps">0</span></div>
+    <div>GPU: <span id="gpuMs">n/a</span></div>
+    <div>Particles: <span id="particleCount">36,864</span></div>
+    <div>Drawn: <span id="drawCount">36,864</span></div>
+    <div>State: <span id="stateSize">192² RGBA32F</span></div>
+    <div>Trail RT: <span id="trailSize">0×0</span></div>
+    <div>VRAM est: <span id="memoryEstimate">0 MB</span></div>
+    <div>Caps: <span id="caps">...</span></div>
+    <div>Status: <span id="status" class="status-ok">ready</span></div>
+  </div>
+
+  <div id="hint">Drag to swish debris · hold to create gravity well · H hides UI · R reset · C clear trails · M meteor · Space pulse</div>
+
+  <div id="fallback">
+    <div>
+      <h2>WebGL2 GPU simulation unavailable</h2>
+      <p>
+        This demo needs WebGL2 with floating-point render targets.
+        Try a recent browser with hardware acceleration enabled.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById('canvas');
+      const fallback = document.getElementById('fallback');
+
+      const ui = {};
+      [
+        'particleSize', 'precision', 'renderFraction', 'simSubsteps', 'bodyCount', 'bodyStrength', 'bodyRadius', 'bodySpeed', 'motionBlurSamples', 'streakLength', 'trailFadePasses', 'bloomSamples', 'bloomRadius', 'dprCap', 'trailScale',
+        'gravity', 'tangent', 'damping', 'maxSpeed', 'timeScale', 'boundaryPull', 'planetRadius', 'planetBounce',
+        'swish', 'well', 'wellRadius', 'pointerVortex', 'shockStrength', 'shockSpeed', 'meteorCount',
+        'shape', 'trail', 'blur', 'particleSizePx', 'speedSize', 'trailAlpha', 'liveAlpha', 'particleBrightness',
+        'style', 'glow', 'exposure', 'chroma', 'stars',
+        'renderFractionOut', 'simSubstepsOut', 'bodyCountOut', 'bodyStrengthOut', 'bodyRadiusOut', 'bodySpeedOut', 'motionBlurSamplesOut', 'streakLengthOut', 'trailFadePassesOut', 'bloomSamplesOut', 'bloomRadiusOut', 'dprCapOut', 'trailScaleOut',
+        'gravityOut', 'tangentOut', 'dampingOut', 'maxSpeedOut', 'timeScaleOut', 'boundaryPullOut', 'planetRadiusOut', 'planetBounceOut',
+        'swishOut', 'wellOut', 'wellRadiusOut', 'pointerVortexOut', 'shockStrengthOut', 'shockSpeedOut', 'meteorCountOut',
+        'trailOut', 'blurOut', 'particleSizePxOut', 'speedSizeOut', 'trailAlphaOut', 'liveAlphaOut', 'particleBrightnessOut',
+        'glowOut', 'exposureOut', 'chromaOut', 'starsOut',
+        'fps', 'gpuMs', 'particleCount', 'drawCount', 'stateSize', 'trailSize', 'memoryEstimate', 'caps', 'status',
+        'meteorBtn', 'pulseBtn', 'clearTrailsBtn', 'resetBtn', 'resetGentleBtn',
+        'liveParticlesToggle', 'depositToggle', 'trailsToggle', 'planetToggle', 'ringToggle',
+        'hideUiBtn', 'showUi', 'pauseBtn', 'autoBtn'
+      ].forEach((id) => {
+        ui[id] = document.getElementById(id);
+      });
+
+      const gl = canvas.getContext('webgl2', {
+        alpha: false,
+        depth: false,
+        stencil: false,
+        antialias: false,
+        preserveDrawingBuffer: false,
+        powerPreference: 'high-performance'
+      });
+
+      if (!gl) {
+        fallback.style.display = 'flex';
+        return;
+      }
+
+      const colorBufferFloat = gl.getExtension('EXT_color_buffer_float');
+
+      if (!colorBufferFloat) {
+        fallback.style.display = 'flex';
+        return;
+      }
+
+      gl.disable(gl.DEPTH_TEST);
+      gl.disable(gl.CULL_FACE);
+
+      const CAPS = {
+        maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
+        maxRenderbufferSize: gl.getParameter(gl.MAX_RENDERBUFFER_SIZE),
+        pointSizeRange: gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE),
+        maxVertexTextures: gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)
+      };
+
+      const timerExt = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+      const gpuQueries = [];
+      let activeGpuQuery = null;
+
+      ui.caps.textContent = `tex ${CAPS.maxTextureSize}, point ${Math.round(CAPS.pointSizeRange[1])}`;
+
+      function beginGpuTimer() {
+        if (!timerExt || activeGpuQuery) {
+          return;
+        }
+
+        const query = gl.createQuery();
+        gl.beginQuery(timerExt.TIME_ELAPSED_EXT, query);
+        activeGpuQuery = query;
+      }
+
+      function endGpuTimer() {
+        if (!timerExt || !activeGpuQuery) {
+          return;
+        }
+
+        gl.endQuery(timerExt.TIME_ELAPSED_EXT);
+        gpuQueries.push(activeGpuQuery);
+        activeGpuQuery = null;
+
+        while (gpuQueries.length > 8) {
+          gl.deleteQuery(gpuQueries.shift());
+        }
+      }
+
+      function pollGpuTimer() {
+        if (!timerExt) {
+          ui.gpuMs.textContent = 'n/a';
+          return;
+        }
+
+        if (!gpuQueries.length) {
+          return;
+        }
+
+        const query = gpuQueries[0];
+        const available = gl.getQueryParameter(query, gl.QUERY_RESULT_AVAILABLE);
+        const disjoint = gl.getParameter(timerExt.GPU_DISJOINT_EXT);
+
+        if (available && !disjoint) {
+          const ns = gl.getQueryParameter(query, gl.QUERY_RESULT);
+          ui.gpuMs.textContent = (ns / 1000000).toFixed(2) + ' ms';
+          gl.deleteQuery(query);
+          gpuQueries.shift();
+        } else if (available && disjoint) {
+          ui.gpuMs.textContent = 'disjoint';
+          gl.deleteQuery(query);
+          gpuQueries.shift();
+        }
+      }
+
+      const tooltip = document.getElementById('tooltip');
+      let tooltipTarget = null;
+
+      function positionTooltip(target) {
+        if (!target || !tooltip.classList.contains('visible')) {
+          return;
+        }
+
+        const rect = target.getBoundingClientRect();
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const margin = 12;
+
+        let left = rect.right + 10;
+        let top = rect.top + rect.height / 2 - tooltipRect.height / 2;
+
+        if (left + tooltipRect.width + margin > window.innerWidth) {
+          left = rect.left - tooltipRect.width - 10;
+        }
+
+        if (left < margin) {
+          left = margin;
+        }
+
+        top = Math.max(margin, Math.min(top, window.innerHeight - tooltipRect.height - margin));
+
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
+      }
+
+      function showTooltip(target) {
+        const text = target.dataset.tip;
+
+        if (!text) {
+          return;
+        }
+
+        tooltipTarget = target;
+        tooltip.textContent = text;
+        tooltip.classList.add('visible');
+        tooltip.setAttribute('aria-hidden', 'false');
+        positionTooltip(target);
+      }
+
+      function hideTooltip() {
+        tooltipTarget = null;
+        tooltip.classList.remove('visible');
+        tooltip.setAttribute('aria-hidden', 'true');
+      }
+
+      document.addEventListener('mouseover', (event) => {
+        const target = event.target.closest?.('.info');
+        if (target) {
+          showTooltip(target);
+        }
+      });
+
+      document.addEventListener('mouseout', (event) => {
+        if (event.target.closest?.('.info')) {
+          hideTooltip();
+        }
+      });
+
+      document.addEventListener('focusin', (event) => {
+        if (event.target.classList?.contains('info')) {
+          showTooltip(event.target);
+        }
+      });
+
+      document.addEventListener('focusout', (event) => {
+        if (event.target.classList?.contains('info')) {
+          hideTooltip();
+        }
+      });
+
+      window.addEventListener('resize', () => positionTooltip(tooltipTarget));
+      document.getElementById('panel').addEventListener('scroll', () => positionTooltip(tooltipTarget));
+
+      const MAX_SHOCKS = 8;
+
+      const flags = {
+        liveParticles: true,
+        depositTrails: true,
+        trails: true,
+        planet: true,
+        ring: true,
+        paused: false,
+        auto: false
+      };
+
+      const quadVS = `#version 300 es
+        layout(location = 0) in vec2 aPosition;
+        out vec2 vUv;
+
+        void main() {
+          vUv = aPosition * 0.5 + 0.5;
+          gl_Position = vec4(aPosition, 0.0, 1.0);
+        }
+      `;
+
+      const initFS = `#version 300 es
+        precision highp float;
+
+        in vec2 vUv;
+        layout(location = 0) out vec4 outPosition;
+        layout(location = 1) out vec4 outVelocity;
+
+        uniform float uSeed;
+        uniform int uStyle;
+
+        float hash12(vec2 p) {
+          vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+          p3 += dot(p3, p3.yzx + 33.33);
+          return fract((p3.x + p3.y) * p3.z);
+        }
+
+        mat2 rot(float a) {
+          float s = sin(a);
+          float c = cos(a);
+          return mat2(c, -s, s, c);
+        }
+
+        void main() {
+          vec2 coord = gl_FragCoord.xy;
+          float s0 = hash12(coord + uSeed);
+          float s1 = hash12(coord * 1.37 + uSeed * 2.11);
+          float s2 = hash12(coord * 2.17 - uSeed * 0.73);
+          float s3 = hash12(coord * 0.71 + uSeed * 4.91);
+          float s4 = hash12(coord * 3.13 + uSeed * 1.37);
+          float s5 = hash12(coord * 5.77 - uSeed * 2.29);
+
+          float family = s0;
+          float radius;
+
+          if (family < 0.72) {
+            radius = mix(0.26, 1.08, s1);
+          } else if (family < 0.92) {
+            radius = mix(0.10, 0.42, s1);
+          } else {
+            radius = mix(0.95, 1.36, s1);
+          }
+
+          float a = s2 * 6.28318530718;
+          float eccentric = mix(0.82, 1.18, s3);
+          float wobble = mix(-0.045, 0.045, s4);
+
+          vec2 pos = vec2(cos(a) * radius * eccentric, sin(a) * radius / eccentric);
+          pos += vec2(cos(a * 3.0), sin(a * 2.0)) * wobble;
+
+          vec2 tangent = vec2(-sin(a), cos(a));
+          float orbital = sqrt(0.34 / max(radius, 0.13)) * mix(0.70, 1.18, s5);
+          float radialKick = mix(-0.055, 0.055, hash12(coord * 9.4 + uSeed));
+
+          vec2 vel = tangent * orbital + normalize(pos + vec2(0.001)) * radialKick;
+
+          float type = pow(hash12(coord * 4.21 + uSeed), 2.2);
+          float hue = hash12(coord * 6.97 + uSeed);
+          float mass = mix(0.55, 1.55, hash12(coord * 8.01 + uSeed));
+
+          if (uStyle == 1) {
+            hue = mix(0.03, 0.14, hue);
+            vel *= 1.06;
+          } else if (uStyle == 2) {
+            hue = fract(hue * 0.44 + 0.58);
+            vel *= 0.96;
+          }
+
+          outPosition = vec4(pos, s0, type);
+          outVelocity = vec4(vel, hue, mass);
+        }
+      `;
+
+      const simFS = `#version 300 es
+        precision highp float;
+        precision highp sampler2D;
+
+        layout(location = 0) out vec4 outPosition;
+        layout(location = 1) out vec4 outVelocity;
+
+        uniform sampler2D uPosition;
+        uniform sampler2D uVelocity;
+
+        uniform int uBodyCount;
+        uniform float uBodyStrength;
+        uniform float uBodyRadius;
+        uniform float uBodySpeed;
+        uniform float uDt;
+        uniform float uAspect;
+        uniform float uTime;
+        uniform float uGravity;
+        uniform float uTangent;
+        uniform float uDamping;
+        uniform float uMaxSpeed;
+        uniform float uBoundaryPull;
+        uniform float uPlanetRadius;
+        uniform float uPlanetBounce;
+        uniform float uSwishForce;
+        uniform float uWellForce;
+        uniform float uWellRadius;
+        uniform float uPointerVortex;
+        uniform float uPointerActive;
+        uniform vec2 uPointer;
+        uniform vec2 uPointerVelocity;
+        uniform float uShockCount;
+        uniform vec4 uShockwaves[8];
+
+        float hash(float n) {
+          return fract(sin(n * 127.17) * 43758.5453123);
+        }
+
+        void main() {
+          ivec2 coord = ivec2(gl_FragCoord.xy);
+          vec4 pData = texelFetch(uPosition, coord, 0);
+          vec4 vData = texelFetch(uVelocity, coord, 0);
+
+          vec2 pos = pData.xy;
+          float seed = pData.z;
+          float type = pData.w;
+
+          vec2 vel = vData.xy;
+          float hue = vData.z;
+          float mass = max(vData.w, 0.35);
+
+          float r2 = dot(pos, pos);
+          float r = sqrt(r2 + 0.00001);
+
+          vec2 acc = vec2(0.0);
+
+          float soft = 0.026 + type * 0.012;
+          float pull = uGravity / (r2 + soft);
+          acc += -normalize(pos + vec2(0.0001, -0.0002)) * pull * 0.018 / mass;
+
+          vec2 tangent = normalize(vec2(-pos.y, pos.x) + vec2(0.0001));
+          acc += tangent * uTangent * 0.015 * uGravity / (0.18 + r);
+
+          if (uPointerActive > 0.5) {
+            vec2 d = pos - uPointer;
+            float d2 = dot(d, d);
+            float radius = max(uWellRadius, 0.001);
+            float influence = exp(-d2 / (radius * radius));
+            acc += uPointerVelocity * influence * uSwishForce * 1.9;
+            acc += -d * influence * uWellForce * 1.35;
+            acc += vec2(-d.y, d.x) * influence * uPointerVortex;
+          }
+
+          for (int i = 0; i < 8; i++) {
+            if (float(i) >= uShockCount) {
+              break;
+            }
+
+            vec4 s = uShockwaves[i];
+            vec2 d = pos - s.xy;
+            float dist = length(d) + 0.0001;
+            float band = exp(-pow((dist - s.z) / 0.055, 2.0));
+            acc += normalize(d) * band * s.w * 0.82;
+            acc += vec2(-d.y, d.x) / dist * band * s.w * 0.05;
+          }
+
+          for (int i = 0; i < 8; i++) {
+            if (i >= uBodyCount) {
+              break;
+            }
+
+            float fi = float(i);
+            float phase = fi * 6.28318530718 / max(float(uBodyCount), 1.0);
+            float wobble = sin(uTime * 0.19 + fi * 1.71) * 0.10;
+            float angle = phase + uTime * uBodySpeed * (0.22 + fi * 0.037);
+            float bodyRadius = uBodyRadius * (0.82 + wobble);
+            vec2 body = vec2(cos(angle), sin(angle)) * bodyRadius;
+
+            vec2 dBody = body - pos;
+            float bd2 = dot(dBody, dBody) + 0.012 + type * 0.010;
+            float bodyPull = uBodyStrength * (0.010 + type * 0.004) / bd2;
+
+            acc += dBody * bodyPull / mass;
+            acc += vec2(-dBody.y, dBody.x) * uBodyStrength * 0.0016 / (sqrt(bd2) + 0.02);
+          }
+
+vel += acc * uDt * 60.0;
+          vel *= pow(max(uDamping, 0.0), uDt * 60.0);
+
+          float speed = length(vel);
+
+          if (speed > uMaxSpeed) {
+            vel = vel / speed * uMaxSpeed;
+          }
+
+          pos += vel * uDt;
+
+          float planet = max(uPlanetRadius, 0.0);
+          float pr = length(pos);
+
+          if (planet > 0.0001 && pr < planet) {
+            vec2 n = normalize(pos + vec2(hash(seed) * 0.01, hash(seed + 7.0) * 0.01));
+            pos = n * (planet + 0.018 + hash(seed + 11.0) * 0.02);
+            vel = reflect(vel, n) * uPlanetBounce + vec2(-n.y, n.x) * (0.35 + hash(seed + 3.0) * 0.22);
+          }
+
+          float worldLimit = max(1.32, uAspect * 1.08);
+
+          if (length(pos) > worldLimit) {
+            vec2 n = normalize(pos);
+            vel += -n * uBoundaryPull * uDt * 60.0;
+            vel *= 0.992;
+          }
+
+          if (abs(pos.x) > uAspect * 1.22 || abs(pos.y) > 1.22) {
+            float a = 6.2831853 * hash(seed + floor(uTime * 0.07));
+            float rr = 0.35 + hash(seed + 19.0) * 0.8;
+            pos = vec2(cos(a), sin(a)) * rr;
+            vel = vec2(-sin(a), cos(a)) * (0.22 + hash(seed + 31.0) * 0.42);
+            hue = fract(hue + 0.07);
+          }
+
+          outPosition = vec4(pos, seed, type);
+          outVelocity = vec4(vel, hue, mass);
+        }
+      `;
+
+      const fadeFS = `#version 300 es
+        precision highp float;
+        precision highp sampler2D;
+
+        in vec2 vUv;
+        out vec4 outColor;
+
+        uniform sampler2D uTrail;
+        uniform vec2 uTexel;
+        uniform float uPersistence;
+        uniform float uBlur;
+        uniform float uTrailsEnabled;
+        uniform float uTime;
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+        }
+
+        void main() {
+          vec3 c = texture(uTrail, vUv).rgb;
+
+          vec3 blur = vec3(0.0);
+          blur += texture(uTrail, vUv + vec2( 1.0,  0.0) * uTexel).rgb;
+          blur += texture(uTrail, vUv + vec2(-1.0,  0.0) * uTexel).rgb;
+          blur += texture(uTrail, vUv + vec2( 0.0,  1.0) * uTexel).rgb;
+          blur += texture(uTrail, vUv + vec2( 0.0, -1.0) * uTexel).rgb;
+          blur += texture(uTrail, vUv + vec2( 2.0,  1.0) * uTexel).rgb;
+          blur += texture(uTrail, vUv + vec2(-2.0, -1.0) * uTexel).rgb;
+          blur /= 6.0;
+
+          c = mix(c, blur, uBlur);
+          c *= mix(0.02, uPersistence, uTrailsEnabled);
+
+          float grain = hash(vUv * vec2(900.0, 500.0) + uTime) - 0.5;
+          c += grain * 0.0025 * uTrailsEnabled;
+
+          outColor = vec4(max(c, vec3(0.0)), 1.0);
+        }
+      `;
+
+      const particleVS = `#version 300 es
+        precision highp float;
+        precision highp sampler2D;
+
+        uniform sampler2D uPosition;
+        uniform sampler2D uVelocity;
+        uniform int uTextureSize;
+        uniform float uAspect;
+        uniform float uPointSize;
+        uniform float uSpeedSize;
+        uniform int uMotionBlurPass;
+        uniform int uMotionBlurCount;
+        uniform float uStreakLength;
+        uniform float uParticleAlpha;
+        uniform float uParticleBrightness;
+        uniform float uTime;
+        uniform int uStyle;
+
+        out vec3 vColor;
+        out float vAlpha;
+        out float vSeed;
+        out float vSpeed;
+        out float vType;
+
+        vec3 palette(float h, int style) {
+          h = fract(h);
+
+          vec3 a;
+          vec3 b;
+          vec3 c;
+          vec3 d;
+
+          if (style == 1) {
+            a = vec3(1.00, 0.33, 0.05);
+            b = vec3(1.00, 0.76, 0.16);
+            c = vec3(1.00, 0.12, 0.02);
+            d = vec3(0.35, 0.06, 0.01);
+          } else if (style == 2) {
+            a = vec3(0.46, 0.36, 1.00);
+            b = vec3(0.08, 0.92, 1.00);
+            c = vec3(1.00, 0.18, 0.82);
+            d = vec3(0.05, 0.08, 0.16);
+          } else {
+            a = vec3(0.60, 0.92, 1.00);
+            b = vec3(0.34, 0.58, 1.00);
+            c = vec3(0.95, 0.98, 1.00);
+            d = vec3(0.18, 0.32, 0.65);
+          }
+
+          return a * (0.45 + 0.55 * cos(6.28318 * (h + 0.00)))
+               + b * (0.45 + 0.55 * cos(6.28318 * (h + 0.22)))
+               + c * (0.38 + 0.62 * cos(6.28318 * (h + 0.47)))
+               + d * 0.25;
+        }
+
+        void main() {
+          int id = gl_VertexID;
+          ivec2 coord = ivec2(id % uTextureSize, id / uTextureSize);
+
+          vec4 pData = texelFetch(uPosition, coord, 0);
+          vec4 vData = texelFetch(uVelocity, coord, 0);
+
+          vec2 pos = pData.xy;
+          vec2 vel = vData.xy;
+
+          if (uMotionBlurCount > 1) {
+            float shutter = float(uMotionBlurPass) / max(float(uMotionBlurCount - 1), 1.0);
+            pos -= vel * shutter * uStreakLength * 0.055;
+          }
+
+          float seed = pData.z;
+          float type = pData.w;
+          float hue = vData.z;
+          float speed = length(vel);
+
+          vec2 clip = vec2(pos.x / uAspect, pos.y);
+
+          gl_Position = vec4(clip, 0.0, 1.0);
+
+          float typeScale = mix(0.72, 1.75, type);
+          float speedScale = 1.0 + smoothstep(0.08, 1.2, speed) * uSpeedSize;
+
+          gl_PointSize = uPointSize * typeScale * speedScale;
+
+          vColor = clamp(palette(hue + speed * 0.08 + seed * 0.03, uStyle), vec3(0.0), vec3(2.2)) * uParticleBrightness;
+          float sampleNorm = 1.0 / sqrt(max(float(uMotionBlurCount), 1.0));
+          vAlpha = (0.045 + type * 0.045 + smoothstep(0.05, 1.2, speed) * 0.06) * uParticleAlpha * sampleNorm;
+          vSeed = seed;
+          vSpeed = speed;
+          vType = type;
+        }
+      `;
+
+      const particleFS = `#version 300 es
+        precision highp float;
+
+        in vec3 vColor;
+        in float vAlpha;
+        in float vSeed;
+        in float vSpeed;
+        in float vType;
+
+        out vec4 outColor;
+
+        uniform float uTime;
+        uniform int uShape;
+
+        mat2 rot(float a) {
+          float s = sin(a);
+          float c = cos(a);
+          return mat2(c, -s, s, c);
+        }
+
+        float hardTriangleMask(vec2 p) {
+          const float k = 1.7320508;
+          p.y -= 0.12;
+          float m = max(abs(p.x) * k + p.y, -2.0 * p.y);
+          return step(m, 0.58);
+        }
+
+        void main() {
+          vec2 p = gl_PointCoord * 2.0 - 1.0;
+          float angle = vSeed * 6.2831853 + uTime * (0.25 + vType * 0.32);
+          p = rot(angle) * p;
+
+          float radius = length(p);
+          float alpha = 0.0;
+
+          if (uShape == 1) {
+            alpha = smoothstep(1.0, 0.08, radius);
+            alpha *= exp(-radius * radius * 1.2);
+          } else if (uShape == 2) {
+            float cross = exp(-abs(p.x) * 9.0) + exp(-abs(p.y) * 9.0);
+            float core = smoothstep(1.0, 0.0, radius);
+            alpha = cross * core * 0.58;
+          } else if (uShape == 3) {
+            alpha = hardTriangleMask(p);
+          } else if (uShape == 4) {
+            alpha = step(radius, 0.82);
+          } else if (uShape == 5) {
+            alpha = step(max(abs(p.x), abs(p.y)), 0.78);
+          } else {
+            float a = atan(p.y, p.x);
+            float triBoundary = 0.54 + 0.22 * cos(a * 3.0);
+            float shard = smoothstep(triBoundary, triBoundary - 0.095, radius);
+            float core = smoothstep(0.86, 0.1, radius);
+            alpha = shard * core;
+          }
+
+          alpha *= vAlpha;
+
+          vec3 color = vColor * alpha * (1.0 + smoothstep(0.1, 1.4, vSpeed) * 1.7);
+          outColor = vec4(color, alpha);
+        }
+      `;
+
+      const displayFS = `#version 300 es
+        precision highp float;
+        precision highp sampler2D;
+
+        in vec2 vUv;
+        out vec4 outColor;
+
+        uniform sampler2D uTrail;
+        uniform vec2 uResolution;
+        uniform vec2 uTexel;
+        uniform float uAspect;
+        uniform float uTime;
+        uniform float uGlow;
+        uniform float uExposure;
+        uniform float uChroma;
+        uniform float uStars;
+        uniform int uBloomSamples;
+        uniform float uBloomRadius;
+        uniform int uBodyCount;
+        uniform float uBodyStrength;
+        uniform float uBodyRadius;
+        uniform float uBodySpeed;
+        uniform int uStyle;
+        uniform float uPlanetEnabled;
+        uniform float uRingEnabled;
+        uniform float uPlanetRadius;
+        uniform float uShockCount;
+        uniform vec4 uShockwaves[8];
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+        }
+
+        vec3 styleColor(float t) {
+          if (uStyle == 1) {
+            return mix(vec3(1.0, 0.26, 0.04), vec3(1.0, 0.78, 0.18), t);
+          } else if (uStyle == 2) {
+            return mix(vec3(0.16, 0.10, 0.50), vec3(0.05, 0.92, 1.0), t);
+          }
+
+          return mix(vec3(0.35, 0.68, 1.0), vec3(0.94, 0.99, 1.0), t);
+        }
+
+        void main() {
+          vec2 uv = vUv;
+          vec2 world = vec2((uv.x * 2.0 - 1.0) * uAspect, uv.y * 2.0 - 1.0);
+          float r = length(world);
+
+          vec2 chromaDir = normalize(uv - 0.5 + vec2(0.0001));
+          float chroma = uChroma;
+
+          vec3 trail;
+          trail.r = texture(uTrail, uv + chromaDir * chroma).r;
+          trail.g = texture(uTrail, uv).g;
+          trail.b = texture(uTrail, uv - chromaDir * chroma).b;
+
+          vec3 bloom = vec3(0.0);
+
+          for (int i = 0; i < 48; i++) {
+            if (i >= uBloomSamples) {
+              break;
+            }
+
+            float fi = float(i);
+            float a = fi * 2.39996323;
+            float radius = sqrt(fi + 1.0) * uBloomRadius;
+            vec2 off = vec2(cos(a), sin(a)) * uTexel * radius;
+            bloom += texture(uTrail, uv + off).rgb;
+          }
+
+          if (uBloomSamples > 0) {
+            bloom *= (0.80 * uGlow) / float(uBloomSamples);
+          }
+
+          vec3 bg = vec3(0.008, 0.012, 0.030);
+          bg += styleColor(0.1) * exp(-r * 2.8) * 0.05;
+
+          float starHash = hash(floor(uv * uResolution * 0.42));
+          float stars = 0.0;
+
+          if (uStars > 0.001) {
+            stars = smoothstep(1.0 - 0.0035 * uStars, 1.0, starHash);
+          }
+
+          bg += stars * vec3(0.35, 0.58, 0.9) * (0.25 + hash(uv * 77.0) * 0.75);
+
+          float disk = exp(-abs(world.y + sin(world.x * 2.0 + uTime * 0.08) * 0.018) * 17.0)
+                     * smoothstep(1.35, 0.18, abs(world.x));
+
+          bg += styleColor(0.65) * disk * 0.03;
+
+          vec3 color = bg + trail * (1.15 + uGlow * 0.55) + bloom;
+
+          for (int i = 0; i < 8; i++) {
+            if (i >= uBodyCount) {
+              break;
+            }
+
+            float fi = float(i);
+            float phase = fi * 6.28318530718 / max(float(uBodyCount), 1.0);
+            float wobble = sin(uTime * 0.19 + fi * 1.71) * 0.10;
+            float angle = phase + uTime * uBodySpeed * (0.22 + fi * 0.037);
+            vec2 body = vec2(cos(angle), sin(angle)) * uBodyRadius * (0.82 + wobble);
+            float d = length(world - body);
+            float halo = exp(-pow(d / 0.055, 2.0)) * uBodyStrength;
+            float core = smoothstep(0.018, 0.004, d);
+            color += styleColor(0.85) * halo * 0.12;
+            color = mix(color, styleColor(1.0), core * 0.45);
+          }
+
+          float planetR = uPlanetRadius;
+          if (uPlanetEnabled > 0.5 && planetR > 0.0001 && r < planetR) {
+            vec2 nxy = world / planetR;
+            float nz = sqrt(max(0.0, 1.0 - dot(nxy, nxy)));
+            vec3 n = normalize(vec3(nxy, nz));
+            vec3 light = normalize(vec3(-0.48, 0.38, 0.78));
+            float diff = max(dot(n, light), 0.0);
+            float rim = pow(1.0 - nz, 2.2);
+
+            vec3 planet;
+            if (uStyle == 1) {
+              planet = mix(vec3(0.16, 0.045, 0.012), vec3(1.0, 0.36, 0.06), diff);
+            } else if (uStyle == 2) {
+              planet = mix(vec3(0.004, 0.004, 0.010), vec3(0.14, 0.08, 0.28), diff);
+            } else {
+              planet = mix(vec3(0.035, 0.07, 0.13), vec3(0.58, 0.88, 1.0), diff);
+            }
+
+            planet += styleColor(1.0) * rim * 0.25;
+            color = mix(color, planet, smoothstep(planetR, planetR - 0.006, r));
+          }
+
+          if (uRingEnabled > 0.5) {
+            float ring = exp(-pow((r - (planetR + 0.06)) / 0.012, 2.0));
+            color += styleColor(0.75) * ring * 0.20;
+          }
+
+          for (int i = 0; i < 8; i++) {
+            if (float(i) >= uShockCount) {
+              break;
+            }
+
+            vec4 s = uShockwaves[i];
+            float d = length(world - s.xy);
+            float wave = exp(-pow((d - s.z) / 0.018, 2.0)) * s.w;
+            color += styleColor(0.9) * wave * 0.45;
+          }
+
+          color = 1.0 - exp(-color * uExposure);
+          color = pow(max(color, vec3(0.0)), vec3(0.88));
+
+          float vignette = smoothstep(1.18, 0.20, length(uv - 0.5));
+          color *= 0.58 + vignette * 0.42;
+
+          outColor = vec4(color, 1.0);
+        }
+      `;
+
+      function compileShader(type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          const message = gl.getShaderInfoLog(shader);
+          gl.deleteShader(shader);
+          throw new Error(message);
+        }
+
+        return shader;
+      }
+
+      function createProgram(vertexSource, fragmentSource) {
+        const vs = compileShader(gl.VERTEX_SHADER, vertexSource);
+        const fs = compileShader(gl.FRAGMENT_SHADER, fragmentSource);
+        const program = gl.createProgram();
+
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+        gl.linkProgram(program);
+
+        gl.deleteShader(vs);
+        gl.deleteShader(fs);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          const message = gl.getProgramInfoLog(program);
+          gl.deleteProgram(program);
+          throw new Error(message);
+        }
+
+        return {
+          program,
+          uniforms: getUniforms(program)
+        };
+      }
+
+      function getUniforms(program) {
+        const uniforms = {};
+        const count = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+
+        for (let i = 0; i < count; i++) {
+          const info = gl.getActiveUniform(program, i);
+          const name = info.name.replace(/\[0\]$/, '');
+          uniforms[name] = gl.getUniformLocation(program, name);
+        }
+
+        return uniforms;
+      }
+
+      const initProgram = createProgram(quadVS, initFS);
+      const simProgram = createProgram(quadVS, simFS);
+      const fadeProgram = createProgram(quadVS, fadeFS);
+      const displayProgram = createProgram(quadVS, displayFS);
+      const particleProgram = createProgram(particleVS, particleFS);
+
+      const quadVAO = gl.createVertexArray();
+      const quadBuffer = gl.createBuffer();
+
+      gl.bindVertexArray(quadVAO);
+      gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1, -1,
+         3, -1,
+        -1,  3
+      ]), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+      gl.bindVertexArray(null);
+
+      const particleVAO = gl.createVertexArray();
+
+      let simSize = 192;
+      let particleCount = simSize * simSize;
+      let stateA = null;
+      let stateB = null;
+      let trailA = null;
+      let trailB = null;
+      let trailW = 0;
+      let trailH = 0;
+      let precisionMode = '32f';
+
+      let lastTime = performance.now();
+      let fpsFrames = 0;
+      let fpsTime = 0;
+      let time = 0;
+      let pointerDown = false;
+      let pointerWorld = [0, 0];
+      let pointerVelocity = [0, 0];
+      let pointerLastWorld = [0, 0];
+      let shocks = [];
+      let nextAutoEvent = 5.0;
+      let statusTimer = 0;
+
+      function random(min, max) {
+        return min + Math.random() * (max - min);
+      }
+
+      function clamp(v, min, max) {
+        return Math.max(min, Math.min(max, v));
+      }
+
+      function setStatus(text, warn = false) {
+        ui.status.textContent = text;
+        ui.status.className = warn ? 'status-warn' : 'status-ok';
+        statusTimer = 2.5;
+      }
+
+      function createStateTexture(width, height) {
+        const texture = gl.createTexture();
+        const isHalf = precisionMode === '16f';
+
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          isHalf ? gl.RGBA16F : gl.RGBA32F,
+          width,
+          height,
+          0,
+          gl.RGBA,
+          isHalf ? gl.HALF_FLOAT : gl.FLOAT,
+          null
+        );
+
+        return texture;
+      }
+
+      function createTrailTexture(width, height) {
+        const texture = gl.createTexture();
+
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA8,
+          width,
+          height,
+          0,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          null
+        );
+
+        const fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+          throw new Error('Trail framebuffer incomplete');
+        }
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        return { texture, fbo, width, height };
+      }
+
+      function createState(size) {
+        const pos = createStateTexture(size, size);
+        const vel = createStateTexture(size, size);
+        const fbo = gl.createFramebuffer();
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, pos, 0);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, vel, 0);
+        gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+
+        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+          throw new Error('State framebuffer incomplete');
+        }
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        return { pos, vel, fbo, size };
+      }
+
+      function destroyState(state) {
+        if (!state) return;
+        gl.deleteTexture(state.pos);
+        gl.deleteTexture(state.vel);
+        gl.deleteFramebuffer(state.fbo);
+      }
+
+      function destroyTrail(trail) {
+        if (!trail) return;
+        gl.deleteTexture(trail.texture);
+        gl.deleteFramebuffer(trail.fbo);
+      }
+
+      function initState(state, seed) {
+        gl.useProgram(initProgram.program);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, state.fbo);
+        gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+        gl.viewport(0, 0, state.size, state.size);
+        gl.disable(gl.BLEND);
+
+        gl.uniform1f(initProgram.uniforms.uSeed, seed);
+        gl.uniform1i(initProgram.uniforms.uStyle, Number(ui.style.value));
+
+        gl.bindVertexArray(quadVAO);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.bindVertexArray(null);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      }
+
+      function resetParticles() {
+        try {
+          const requested = Number(ui.particleSize.value);
+
+          if (requested > CAPS.maxTextureSize) {
+            setStatus(`texture cap ${CAPS.maxTextureSize}; choose lower`, true);
+            return;
+          }
+
+          const oldA = stateA;
+          const oldB = stateB;
+
+          precisionMode = ui.precision.value;
+          simSize = requested;
+          particleCount = simSize * simSize;
+
+          const newA = createState(simSize);
+          const newB = createState(simSize);
+          const seed = Math.random() * 1000;
+
+          initState(newA, seed);
+          initState(newB, seed);
+
+          stateA = newA;
+          stateB = newB;
+
+          destroyState(oldA);
+          destroyState(oldB);
+
+          clearTrails();
+
+          ui.particleCount.textContent = particleCount.toLocaleString();
+          ui.stateSize.textContent = `${simSize}² ${precisionMode === '16f' ? 'RGBA16F' : 'RGBA32F'}`;
+          setStatus('particles reset');
+        } catch (error) {
+          console.error(error);
+          setStatus('reset failed: lower particle count', true);
+        }
+      }
+
+      function resize() {
+        const dprCap = Number(ui.dprCap.value);
+        const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
+        const width = Math.max(2, Math.floor(window.innerWidth * dpr));
+        const height = Math.max(2, Math.floor(window.innerHeight * dpr));
+
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+        }
+
+        const scale = Number(ui.trailScale.value);
+        const nextTrailW = Math.max(2, Math.floor(width * scale));
+        const nextTrailH = Math.max(2, Math.floor(height * scale));
+
+        if (nextTrailW !== trailW || nextTrailH !== trailH) {
+          trailW = nextTrailW;
+          trailH = nextTrailH;
+
+          destroyTrail(trailA);
+          destroyTrail(trailB);
+
+          trailA = createTrailTexture(trailW, trailH);
+          trailB = createTrailTexture(trailW, trailH);
+
+          clearTrails();
+        }
+
+        ui.trailSize.textContent = `${trailW}×${trailH}`;
+      }
+
+      function clearFBO(fbo, width, height, color = [0, 0, 0, 1]) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.viewport(0, 0, width, height);
+        gl.clearColor(color[0], color[1], color[2], color[3]);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      }
+
+      function clearTrails() {
+        if (!trailA || !trailB) return;
+        clearFBO(trailA.fbo, trailA.width, trailA.height);
+        clearFBO(trailB.fbo, trailB.width, trailB.height);
+        setStatus('trails cleared');
+      }
+
+      function bindTexture(unit, texture) {
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        return unit;
+      }
+
+      function updateOutputs() {
+        ui.renderFractionOut.textContent = Number(ui.renderFraction.value).toFixed(2);
+        ui.simSubstepsOut.textContent = Number(ui.simSubsteps.value).toFixed(0);
+        ui.bodyCountOut.textContent = Number(ui.bodyCount.value).toFixed(0);
+        ui.bodyStrengthOut.textContent = Number(ui.bodyStrength.value).toFixed(2);
+        ui.bodyRadiusOut.textContent = Number(ui.bodyRadius.value).toFixed(2);
+        ui.bodySpeedOut.textContent = Number(ui.bodySpeed.value).toFixed(2);
+        ui.motionBlurSamplesOut.textContent = Number(ui.motionBlurSamples.value).toFixed(0);
+        ui.streakLengthOut.textContent = Number(ui.streakLength.value).toFixed(2);
+        ui.trailFadePassesOut.textContent = Number(ui.trailFadePasses.value).toFixed(0);
+        ui.bloomSamplesOut.textContent = Number(ui.bloomSamples.value).toFixed(0);
+        ui.bloomRadiusOut.textContent = Number(ui.bloomRadius.value).toFixed(1);
+        ui.dprCapOut.textContent = Number(ui.dprCap.value).toFixed(2);
+        ui.trailScaleOut.textContent = Number(ui.trailScale.value).toFixed(2);
+
+        ui.gravityOut.textContent = Number(ui.gravity.value).toFixed(2);
+        ui.tangentOut.textContent = Number(ui.tangent.value).toFixed(2);
+        ui.dampingOut.textContent = Number(ui.damping.value).toFixed(3);
+        ui.maxSpeedOut.textContent = Number(ui.maxSpeed.value).toFixed(2);
+        ui.timeScaleOut.textContent = Number(ui.timeScale.value).toFixed(2) + '×';
+        ui.boundaryPullOut.textContent = Number(ui.boundaryPull.value).toFixed(2);
+        ui.planetRadiusOut.textContent = Number(ui.planetRadius.value).toFixed(3);
+        ui.planetBounceOut.textContent = Number(ui.planetBounce.value).toFixed(2);
+
+        ui.swishOut.textContent = Number(ui.swish.value).toFixed(2);
+        ui.wellOut.textContent = Number(ui.well.value).toFixed(2);
+        ui.wellRadiusOut.textContent = Number(ui.wellRadius.value).toFixed(3);
+        ui.pointerVortexOut.textContent = Number(ui.pointerVortex.value).toFixed(2);
+        ui.shockStrengthOut.textContent = Number(ui.shockStrength.value).toFixed(2);
+        ui.shockSpeedOut.textContent = Number(ui.shockSpeed.value).toFixed(2);
+        ui.meteorCountOut.textContent = Number(ui.meteorCount.value).toFixed(0);
+
+        ui.trailOut.textContent = Number(ui.trail.value).toFixed(3);
+        ui.blurOut.textContent = Number(ui.blur.value).toFixed(2);
+        ui.particleSizePxOut.textContent = Number(ui.particleSizePx.value).toFixed(1) + ' px';
+        ui.speedSizeOut.textContent = Number(ui.speedSize.value).toFixed(2);
+        ui.trailAlphaOut.textContent = Number(ui.trailAlpha.value).toFixed(2);
+        ui.liveAlphaOut.textContent = Number(ui.liveAlpha.value).toFixed(2);
+        ui.particleBrightnessOut.textContent = Number(ui.particleBrightness.value).toFixed(2);
+
+        ui.glowOut.textContent = Number(ui.glow.value).toFixed(2);
+        ui.exposureOut.textContent = Number(ui.exposure.value).toFixed(2);
+        ui.chromaOut.textContent = Number(ui.chroma.value).toFixed(3);
+        ui.starsOut.textContent = Number(ui.stars.value).toFixed(2);
+
+        const drawCount = Math.floor(particleCount * Number(ui.renderFraction.value));
+        ui.drawCount.textContent = drawCount.toLocaleString();
+
+        const stateBytesPerTexel = precisionMode === '16f' ? 8 : 16;
+        const stateBytes = particleCount * stateBytesPerTexel * 4;
+        const trailBytes = trailW * trailH * 4 * 2;
+        const mb = (stateBytes + trailBytes) / (1024 * 1024);
+        ui.memoryEstimate.textContent = `${mb.toFixed(mb > 999 ? 0 : 1)} MB`;
+      }
+
+      function worldFromEvent(event) {
+        const rect = canvas.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        const y = 1 - ((event.clientY - rect.top) / rect.height) * 2;
+        const aspect = canvas.width / canvas.height;
+
+        return [x * aspect, y];
+      }
+
+      function addShock(x, y, strength = 1.0, speed = 0.62) {
+        shocks.push({
+          x,
+          y,
+          radius: 0.025,
+          strength,
+          speed,
+          life: 1.0
+        });
+
+        if (shocks.length > MAX_SHOCKS) {
+          shocks.shift();
+        }
+      }
+
+      function gravityPulse() {
+        addShock(0, 0, Number(ui.shockStrength.value) * 1.45, Number(ui.shockSpeed.value) * 1.2);
+      }
+
+      function meteorShower() {
+        const aspect = canvas.width / canvas.height;
+        const count = Number(ui.meteorCount.value);
+
+        for (let i = 0; i < count; i++) {
+          const side = Math.random() < 0.5 ? -1 : 1;
+          const x = side * aspect * random(0.75, 1.08);
+          const y = random(-0.85, 0.85);
+          addShock(
+            x,
+            y,
+            Number(ui.shockStrength.value) * random(0.85, 1.45),
+            Number(ui.shockSpeed.value) * random(0.72, 1.25)
+          );
+        }
+
+        setStatus('meteor shower');
+      }
+
+      function updateShocks(dt) {
+        for (let i = shocks.length - 1; i >= 0; i--) {
+          const s = shocks[i];
+
+          s.radius += s.speed * dt;
+          s.life -= dt * 0.72;
+          s.strength *= Math.exp(-dt * 0.42);
+
+          if (s.life <= 0 || s.radius > 2.5) {
+            shocks.splice(i, 1);
+          }
+        }
+      }
+
+      function shockUniformArray() {
+        const arr = new Float32Array(MAX_SHOCKS * 4);
+
+        for (let i = 0; i < Math.min(shocks.length, MAX_SHOCKS); i++) {
+          const s = shocks[i];
+          arr[i * 4] = s.x;
+          arr[i * 4 + 1] = s.y;
+          arr[i * 4 + 2] = s.radius;
+          arr[i * 4 + 3] = s.strength * s.life;
+        }
+
+        return arr;
+      }
+
+      function simulate(dt) {
+        const aspect = canvas.width / canvas.height;
+        const shockArr = shockUniformArray();
+
+        gl.useProgram(simProgram.program);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, stateB.fbo);
+        gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+        gl.viewport(0, 0, simSize, simSize);
+        gl.disable(gl.BLEND);
+
+        gl.uniform1i(simProgram.uniforms.uPosition, bindTexture(0, stateA.pos));
+        gl.uniform1i(simProgram.uniforms.uVelocity, bindTexture(1, stateA.vel));
+        gl.uniform1i(simProgram.uniforms.uBodyCount, Number(ui.bodyCount.value));
+        gl.uniform1f(simProgram.uniforms.uBodyStrength, Number(ui.bodyStrength.value));
+        gl.uniform1f(simProgram.uniforms.uBodyRadius, Number(ui.bodyRadius.value));
+        gl.uniform1f(simProgram.uniforms.uBodySpeed, Number(ui.bodySpeed.value));
+        gl.uniform1f(simProgram.uniforms.uDt, dt);
+        gl.uniform1f(simProgram.uniforms.uAspect, aspect);
+        gl.uniform1f(simProgram.uniforms.uTime, time);
+        gl.uniform1f(simProgram.uniforms.uGravity, Number(ui.gravity.value));
+        gl.uniform1f(simProgram.uniforms.uTangent, Number(ui.tangent.value));
+        gl.uniform1f(simProgram.uniforms.uDamping, Number(ui.damping.value));
+        gl.uniform1f(simProgram.uniforms.uMaxSpeed, Number(ui.maxSpeed.value));
+        gl.uniform1f(simProgram.uniforms.uBoundaryPull, Number(ui.boundaryPull.value));
+        gl.uniform1f(simProgram.uniforms.uPlanetRadius, Number(ui.planetRadius.value));
+        gl.uniform1f(simProgram.uniforms.uPlanetBounce, Number(ui.planetBounce.value));
+        gl.uniform1f(simProgram.uniforms.uSwishForce, Number(ui.swish.value));
+        gl.uniform1f(simProgram.uniforms.uWellForce, Number(ui.well.value));
+        gl.uniform1f(simProgram.uniforms.uWellRadius, Number(ui.wellRadius.value));
+        gl.uniform1f(simProgram.uniforms.uPointerVortex, Number(ui.pointerVortex.value));
+        gl.uniform1f(simProgram.uniforms.uPointerActive, pointerDown ? 1 : 0);
+        gl.uniform2f(simProgram.uniforms.uPointer, pointerWorld[0], pointerWorld[1]);
+        gl.uniform2f(simProgram.uniforms.uPointerVelocity, pointerVelocity[0], pointerVelocity[1]);
+        gl.uniform1f(simProgram.uniforms.uShockCount, Math.min(shocks.length, MAX_SHOCKS));
+        gl.uniform4fv(simProgram.uniforms.uShockwaves, shockArr);
+
+        gl.bindVertexArray(quadVAO);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.bindVertexArray(null);
+
+        const temp = stateA;
+        stateA = stateB;
+        stateB = temp;
+
+        pointerVelocity[0] *= Math.exp(-dt * 8.0);
+        pointerVelocity[1] *= Math.exp(-dt * 8.0);
+      }
+
+      function swapTrailBuffers() {
+        const temp = trailA;
+        trailA = trailB;
+        trailB = temp;
+      }
+
+      function fadeTrailOnce() {
+        gl.useProgram(fadeProgram.program);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, trailB.fbo);
+        gl.viewport(0, 0, trailB.width, trailB.height);
+        gl.disable(gl.BLEND);
+
+        gl.uniform1i(fadeProgram.uniforms.uTrail, bindTexture(0, trailA.texture));
+        gl.uniform2f(fadeProgram.uniforms.uTexel, 1 / trailA.width, 1 / trailA.height);
+        gl.uniform1f(fadeProgram.uniforms.uPersistence, Number(ui.trail.value));
+        gl.uniform1f(fadeProgram.uniforms.uBlur, Number(ui.blur.value));
+        gl.uniform1f(fadeProgram.uniforms.uTrailsEnabled, flags.trails ? 1 : 0);
+        gl.uniform1f(fadeProgram.uniforms.uTime, time);
+
+        gl.bindVertexArray(quadVAO);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.bindVertexArray(null);
+
+        swapTrailBuffers();
+      }
+
+      function applyTrailFades() {
+        const passes = Number(ui.trailFadePasses.value);
+
+        for (let i = 0; i < passes; i++) {
+          fadeTrailOnce();
+        }
+      }
+
+      function drawParticles(targetFbo, viewportWidth, viewportHeight, alpha, brightness, blendMode) {
+        const drawCount = Math.floor(particleCount * Number(ui.renderFraction.value));
+
+        if (drawCount <= 0 || alpha <= 0 || brightness <= 0) {
+          return;
+        }
+
+        const aspect = canvas.width / canvas.height;
+        const pointScale = viewportHeight / Math.max(window.innerHeight, 1);
+        const maxPointSize = CAPS.pointSizeRange[1];
+        const pointSize = clamp(Number(ui.particleSizePx.value) * pointScale, CAPS.pointSizeRange[0], maxPointSize);
+
+        gl.useProgram(particleProgram.program);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, targetFbo);
+        gl.viewport(0, 0, viewportWidth, viewportHeight);
+
+        gl.enable(gl.BLEND);
+
+        if (blendMode === 'over') {
+          // Particle shader emits premultiplied color, so this gives true opaque-ish live silhouettes.
+          gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        } else {
+          // Additive is better for persistent dust/trail energy.
+          gl.blendFunc(gl.ONE, gl.ONE);
+        }
+
+        gl.blendEquation(gl.FUNC_ADD);
+
+        gl.uniform1i(particleProgram.uniforms.uPosition, bindTexture(0, stateA.pos));
+        gl.uniform1i(particleProgram.uniforms.uVelocity, bindTexture(1, stateA.vel));
+        gl.uniform1i(particleProgram.uniforms.uTextureSize, simSize);
+        gl.uniform1f(particleProgram.uniforms.uAspect, aspect);
+        gl.uniform1f(particleProgram.uniforms.uPointSize, pointSize);
+        gl.uniform1f(particleProgram.uniforms.uSpeedSize, Number(ui.speedSize.value));
+        gl.uniform1f(particleProgram.uniforms.uParticleAlpha, alpha);
+        gl.uniform1f(particleProgram.uniforms.uParticleBrightness, brightness);
+        gl.uniform1f(particleProgram.uniforms.uTime, time);
+        gl.uniform1i(particleProgram.uniforms.uStyle, Number(ui.style.value));
+        gl.uniform1i(particleProgram.uniforms.uShape, Number(ui.shape.value));
+
+        const passes = Math.max(1, Number(ui.motionBlurSamples.value));
+        gl.uniform1i(particleProgram.uniforms.uMotionBlurCount, passes);
+        gl.uniform1f(particleProgram.uniforms.uStreakLength, Number(ui.streakLength.value));
+
+        gl.bindVertexArray(particleVAO);
+
+        for (let i = 0; i < passes; i++) {
+          gl.uniform1i(particleProgram.uniforms.uMotionBlurPass, i);
+          gl.drawArrays(gl.POINTS, 0, drawCount);
+        }
+
+        gl.bindVertexArray(null);
+
+        gl.disable(gl.BLEND);
+      }
+
+      function renderParticlesIntoTrail() {
+        if (flags.depositTrails) {
+          drawParticles(
+            trailA.fbo,
+            trailA.width,
+            trailA.height,
+            Number(ui.trailAlpha.value),
+            Number(ui.particleBrightness.value),
+            'add'
+          );
+        }
+      }
+
+      function renderLiveParticlesToScreen() {
+        if (!flags.liveParticles) {
+          return;
+        }
+
+        drawParticles(
+          null,
+          canvas.width,
+          canvas.height,
+          Number(ui.liveAlpha.value),
+          Number(ui.particleBrightness.value),
+          'over'
+        );
+      }
+
+      function display() {
+        const aspect = canvas.width / canvas.height;
+        const shockArr = shockUniformArray();
+
+        gl.useProgram(displayProgram.program);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.disable(gl.BLEND);
+
+        gl.uniform1i(displayProgram.uniforms.uTrail, bindTexture(0, trailA.texture));
+        gl.uniform2f(displayProgram.uniforms.uResolution, canvas.width, canvas.height);
+        gl.uniform2f(displayProgram.uniforms.uTexel, 1 / trailA.width, 1 / trailA.height);
+        gl.uniform1f(displayProgram.uniforms.uAspect, aspect);
+        gl.uniform1f(displayProgram.uniforms.uTime, time);
+        gl.uniform1f(displayProgram.uniforms.uGlow, Number(ui.glow.value));
+        gl.uniform1f(displayProgram.uniforms.uExposure, Number(ui.exposure.value));
+        gl.uniform1f(displayProgram.uniforms.uChroma, Number(ui.chroma.value));
+        gl.uniform1f(displayProgram.uniforms.uStars, Number(ui.stars.value));
+        gl.uniform1i(displayProgram.uniforms.uBloomSamples, Number(ui.bloomSamples.value));
+        gl.uniform1f(displayProgram.uniforms.uBloomRadius, Number(ui.bloomRadius.value));
+        gl.uniform1i(displayProgram.uniforms.uBodyCount, Number(ui.bodyCount.value));
+        gl.uniform1f(displayProgram.uniforms.uBodyStrength, Number(ui.bodyStrength.value));
+        gl.uniform1f(displayProgram.uniforms.uBodyRadius, Number(ui.bodyRadius.value));
+        gl.uniform1f(displayProgram.uniforms.uBodySpeed, Number(ui.bodySpeed.value));
+        gl.uniform1i(displayProgram.uniforms.uStyle, Number(ui.style.value));
+        gl.uniform1f(displayProgram.uniforms.uPlanetEnabled, flags.planet ? 1 : 0);
+        gl.uniform1f(displayProgram.uniforms.uRingEnabled, flags.ring ? 1 : 0);
+        gl.uniform1f(displayProgram.uniforms.uPlanetRadius, Number(ui.planetRadius.value));
+        gl.uniform1f(displayProgram.uniforms.uShockCount, Math.min(shocks.length, MAX_SHOCKS));
+        gl.uniform4fv(displayProgram.uniforms.uShockwaves, shockArr);
+
+        gl.bindVertexArray(quadVAO);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.bindVertexArray(null);
+      }
+
+      function autoEvents(dt) {
+        if (!flags.auto) return;
+
+        nextAutoEvent -= dt;
+
+        if (nextAutoEvent <= 0) {
+          if (Math.random() < 0.55) {
+            gravityPulse();
+          } else {
+            meteorShower();
+          }
+
+          nextAutoEvent = random(2.6, 7.5);
+        }
+      }
+
+      function frame(now) {
+        const rawDt = Math.min((now - lastTime) / 1000, 0.04);
+        lastTime = now;
+
+        updateOutputs();
+        resize();
+
+        beginGpuTimer();
+
+        if (!flags.paused) {
+          const simTimeScale = Number(ui.timeScale.value);
+          const scaledDt = rawDt * simTimeScale;
+          time += scaledDt;
+          updateShocks(scaledDt);
+          autoEvents(scaledDt);
+
+          const substeps = Number(ui.simSubsteps.value);
+          const dt = scaledDt * 0.82 / substeps;
+
+          for (let i = 0; i < substeps; i++) {
+            simulate(dt);
+          }
+
+          applyTrailFades();
+          renderParticlesIntoTrail();
+        }
+
+        display();
+        renderLiveParticlesToScreen();
+        endGpuTimer();
+        pollGpuTimer();
+
+        fpsFrames += 1;
+        fpsTime += rawDt;
+
+        if (fpsTime > 0.3) {
+          ui.fps.textContent = Math.round(fpsFrames / fpsTime).toString();
+          fpsFrames = 0;
+          fpsTime = 0;
+        }
+
+        if (statusTimer > 0) {
+          statusTimer -= rawDt;
+          if (statusTimer <= 0) {
+            setStatus('ready');
+            statusTimer = 0;
+          }
+        }
+
+        requestAnimationFrame(frame);
+      }
+
+      function toggleUi() {
+        document.body.classList.toggle('ui-hidden');
+      }
+
+      function setDefaults() {
+        ui.particleSize.value = '192';
+        ui.precision.value = '32f';
+        ui.renderFraction.value = '1';
+        ui.simSubsteps.value = '1';
+        ui.bodyCount.value = '3';
+        ui.bodyStrength.value = '0.35';
+        ui.bodyRadius.value = '0.72';
+        ui.bodySpeed.value = '0.25';
+        ui.motionBlurSamples.value = '1';
+        ui.streakLength.value = '0.90';
+        ui.trailFadePasses.value = '1';
+        ui.bloomSamples.value = '8';
+        ui.bloomRadius.value = '5.0';
+        ui.dprCap.value = '2';
+        ui.trailScale.value = '0.82';
+
+        ui.gravity.value = '0.82';
+        ui.tangent.value = '1';
+        ui.damping.value = '0.999';
+        ui.maxSpeed.value = '2.30';
+        ui.timeScale.value = '1.00';
+        ui.boundaryPull.value = '0.11';
+        ui.planetRadius.value = '0.145';
+        ui.planetBounce.value = '0.62';
+
+        ui.swish.value = '0.72';
+        ui.well.value = '0.95';
+        ui.wellRadius.value = '0.224';
+        ui.pointerVortex.value = '0.14';
+        ui.shockStrength.value = '1';
+        ui.shockSpeed.value = '0.75';
+        ui.meteorCount.value = '6';
+
+        ui.shape.value = '0';
+        ui.trail.value = '0.970';
+        ui.blur.value = '0.18';
+        ui.particleSizePx.value = '3.0';
+        ui.speedSize.value = '1.25';
+        ui.trailAlpha.value = '1';
+        ui.liveAlpha.value = '8';
+        ui.particleBrightness.value = '1';
+
+        ui.style.value = '0';
+        ui.glow.value = '0.72';
+        ui.exposure.value = '1.15';
+        ui.chroma.value = '0.003';
+        ui.stars.value = '0.55';
+
+        flags.liveParticles = true;
+        flags.depositTrails = true;
+        flags.trails = true;
+        flags.planet = true;
+        flags.ring = true;
+        flags.auto = false;
+        flags.paused = false;
+
+        syncButtons();
+        resetParticles();
+        setStatus('defaults restored');
+      }
+
+      function syncButtons() {
+        ui.liveParticlesToggle.classList.toggle('active', flags.liveParticles);
+        ui.depositToggle.classList.toggle('active', flags.depositTrails);
+        ui.trailsToggle.classList.toggle('active', flags.trails);
+        ui.planetToggle.classList.toggle('active', flags.planet);
+        ui.ringToggle.classList.toggle('active', flags.ring);
+        ui.pauseBtn.classList.toggle('active', flags.paused);
+        ui.pauseBtn.textContent = flags.paused ? 'Resume' : 'Pause';
+        ui.autoBtn.classList.toggle('active', flags.auto);
+      }
+
+      canvas.addEventListener('pointerdown', (event) => {
+        canvas.setPointerCapture?.(event.pointerId);
+        pointerDown = true;
+        pointerWorld = worldFromEvent(event);
+        pointerLastWorld = pointerWorld.slice();
+        pointerVelocity = [0, 0];
+        addShock(pointerWorld[0], pointerWorld[1], Number(ui.shockStrength.value) * 0.95, Number(ui.shockSpeed.value));
+      });
+
+      canvas.addEventListener('pointermove', (event) => {
+        const next = worldFromEvent(event);
+
+        if (pointerDown) {
+          pointerVelocity[0] += (next[0] - pointerLastWorld[0]) * 26.0;
+          pointerVelocity[1] += (next[1] - pointerLastWorld[1]) * 26.0;
+        }
+
+        pointerWorld = next;
+        pointerLastWorld = next;
+      });
+
+      function endPointer() {
+        pointerDown = false;
+        pointerVelocity[0] *= 0.35;
+        pointerVelocity[1] *= 0.35;
+      }
+
+      canvas.addEventListener('pointerup', endPointer);
+      canvas.addEventListener('pointercancel', endPointer);
+      canvas.addEventListener('pointerleave', endPointer);
+
+      ui.particleSize.addEventListener('change', resetParticles);
+      ui.precision.addEventListener('change', resetParticles);
+      ui.style.addEventListener('change', () => {
+        resetParticles();
+      });
+
+      ui.trailScale.addEventListener('input', () => {
+        resize();
+      });
+
+      ui.dprCap.addEventListener('input', () => {
+        resize();
+      });
+
+      ui.resetBtn.addEventListener('click', resetParticles);
+      ui.clearTrailsBtn.addEventListener('click', clearTrails);
+      ui.pulseBtn.addEventListener('click', gravityPulse);
+      ui.meteorBtn.addEventListener('click', meteorShower);
+      ui.hideUiBtn.addEventListener('click', toggleUi);
+      ui.showUi.addEventListener('click', toggleUi);
+      ui.resetGentleBtn.addEventListener('click', setDefaults);
+
+      ui.liveParticlesToggle.addEventListener('click', () => {
+        flags.liveParticles = !flags.liveParticles;
+        syncButtons();
+      });
+
+      ui.depositToggle.addEventListener('click', () => {
+        flags.depositTrails = !flags.depositTrails;
+        syncButtons();
+      });
+
+      ui.trailsToggle.addEventListener('click', () => {
+        flags.trails = !flags.trails;
+        syncButtons();
+      });
+
+      ui.planetToggle.addEventListener('click', () => {
+        flags.planet = !flags.planet;
+        syncButtons();
+      });
+
+      ui.ringToggle.addEventListener('click', () => {
+        flags.ring = !flags.ring;
+        syncButtons();
+      });
+
+      ui.pauseBtn.addEventListener('click', () => {
+        flags.paused = !flags.paused;
+        syncButtons();
+      });
+
+      ui.autoBtn.addEventListener('click', () => {
+        flags.auto = !flags.auto;
+        syncButtons();
+      });
+
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'h' || event.key === 'H') toggleUi();
+
+        if (event.key === 'r' || event.key === 'R') resetParticles();
+
+        if (event.key === 'c' || event.key === 'C') clearTrails();
+
+        if (event.key === 'm' || event.key === 'M') meteorShower();
+
+        if (event.key === 'p' || event.key === 'P' || event.key === ' ') {
+          event.preventDefault();
+          gravityPulse();
+        }
+
+        if (event.key === 'Escape') {
+          document.body.classList.remove('ui-hidden');
+        }
+      });
+
+      try {
+        syncButtons();
+        resize();
+        resetParticles();
+        clearTrails();
+        updateOutputs();
+
+        requestAnimationFrame((now) => {
+          lastTime = now;
+          requestAnimationFrame(frame);
+        });
+      } catch (error) {
+        console.error(error);
+        fallback.style.display = 'flex';
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -33,6 +33,7 @@ packages/games/src/
    Mock engine modules via `vi.mock('@hooksjam/pixi-lab-core', ...)`.
 5. **`PreviewScene` must be lightweight** — ≤5 physics bodies, no audio, ≤30 FPS cap.
 6. **No React** — game files are pure TypeScript engine code.
+7. **Idle by default** — do not run gameplay timers, physics churn, particle aging, or Pixi presentation when a scene is visually unchanged. Let `GameApp` infer activity from pointers, particles, burst emitters, and awake physics bodies. Override `shouldRender()` only for custom visual animations the engine cannot see.
 
 ## Capabilities
 
@@ -44,7 +45,7 @@ capabilities: {
   qualityModes: ['basic', 'enhanced'],  // scene switches rendering path on setQuality()
   reset: true,              // scene overrides Scene.reset() with a drain/restart cycle
   tutorial: true,           // tutorialPages array is non-empty
-  aiAutoplay: true,         // AI player extends BasicAI
+  aiAutoplay: true,         // supports opt-in AI; not enabled automatically in play mode
   screensaver: true,        // safe to run unattended as screensaver
 }
 ```
@@ -61,6 +62,10 @@ capabilities: {
   Use `SpriteFactory.makeEnhancedBallSprite()` for `'enhanced'`,
   `SpriteFactory.makeUltraBallSprite()` for `'ultra'` (baked drop-shadow + AO), and
   `SpriteFactory.makeCircleSprite()` for `'basic'`.
+
+- **`aiAutoplay`** — means the game can be driven by `setAIEnabled(true)` or a screensaver fallback.
+  Do not assume AI is active in normal play. Keep AI cadence time-based (`dt`), not frame-count-based,
+  and make sure multi-frame intents reuse and release the same pointer id.
 
 ## Style Changes
 
@@ -151,5 +156,18 @@ Rules:
 `PreviewScene` should loop autonomously: fill with a few bodies, let them settle, drain (remove
 bottom wall), then fill again. Track phase with an enum or number and a `phaseTimer`.
 
-## To add a new game, use the `/add-experience` skill.
+## Rendering and Update Budget
 
+Plain game scenes inherit the engine's idle policy from `Scene`: settled/blank scenes should consume almost no CPU and should not present Pixi frames. Scene `update()` should be cheap when idle and should avoid rebuilding sprites, generating textures, uploading buffers, or scanning large collections unless input, physics, particles, or an explicit scene state flag says work is needed.
+
+Use `shouldRender()` sparingly:
+
+```ts
+shouldRender(): boolean {
+  return this.shockwaves.length > 0 || this.isResetting;
+}
+```
+
+Do not return `true` just because the scene exists. That disables the engine's idle path and will hurt low-power targets such as Raspberry Pi.
+
+## To add a new game, use the `/add-experience` skill.

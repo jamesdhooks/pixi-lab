@@ -12,6 +12,7 @@ import {
 } from '@hooksjam/pixi-lab-core';
 import { ORBITAL_SHRAPNEL_DEFAULTS } from './orbital-shrapnel.config.js';
 import { OrbitalShrapnelModel, type OrbitalShrapnelModelOptions } from './OrbitalShrapnelModel.js';
+import { OrbitalShrapnelRawRenderer } from './OrbitalShrapnelRawRenderer.js';
 import { blackHoleLensStyle } from './styles/black-hole-lens.js';
 import { iceRingStyle } from './styles/ice-ring.js';
 import { solarDebrisStyle } from './styles/solar-debris.js';
@@ -28,7 +29,7 @@ export const orbitalShrapnelStyleManifest: SimStyleManifest = {
   capabilities: {
     renderLayers: ['particles', 'trails', 'glow', 'debug'],
     passes: ['trailFeedback', 'paletteMap', 'edgeGlow', 'bloom', 'shockwave', 'chromaticAberration', 'distortion'],
-    qualities: ['basic', 'enhanced'],
+    qualities: ['basic', 'enhanced', 'raw'],
   },
   styles: [iceRingStyle, solarDebrisStyle, blackHoleLensStyle],
 };
@@ -37,6 +38,7 @@ export class OrbitalShrapnelScene extends SimulationScene {
   readonly name: string = 'OrbitalShrapnel';
   private trailRenderer: TrailFeedbackRenderer | null = null;
   private particleRenderer: ParticlePointRenderer | null = null;
+  private rawRenderer: OrbitalShrapnelRawRenderer | null = null;
   /** Basic-quality fallback — renders the trail density field without RTT overhead. */
   private fieldRenderer: FieldPaletteRenderer | null = null;
   private model: OrbitalShrapnelModel | null = null;
@@ -48,6 +50,9 @@ export class OrbitalShrapnelScene extends SimulationScene {
   private lastPlanetRadius = 0;
   private lastGravity = 0;
   private lastTrailFade = 0;
+  private lastRawParticleTextureSize: number | string = ORBITAL_SHRAPNEL_DEFAULTS.rawParticleTextureSize as string;
+  private lastRawTrailTextureWidth: number | string = ORBITAL_SHRAPNEL_DEFAULTS.rawTrailTextureWidth as string;
+  private lastRawMaxSpeed = ORBITAL_SHRAPNEL_DEFAULTS.rawMaxSpeed as number;
   private interactionMode: OrbitalShrapnelMode = 'add';
   private readonly pointerTracks = new Map<number, PointerTrack>();
 
@@ -57,7 +62,9 @@ export class OrbitalShrapnelScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    if (ctx.quality === 'enhanced') {
+    if (ctx.quality === 'raw') {
+      this.rawRenderer = new OrbitalShrapnelRawRenderer(ctx.systems.pixi.app, ctx.quality);
+    } else if (ctx.quality === 'enhanced') {
       this.trailRenderer = new TrailFeedbackRenderer(ctx.systems.pixi.app);
       this.particleRenderer = new ParticlePointRenderer(ctx.systems.pixi.app);
       this.trailRenderer.setQuality(ctx.quality);
@@ -80,6 +87,7 @@ export class OrbitalShrapnelScene extends SimulationScene {
       gravity: (settings.get('gravity') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.gravity as number),
       drag: ORBITAL_SHRAPNEL_DEFAULTS.drag as number,
       trailFade: (settings.get('trailFade') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailFade as number),
+      maxSpeed: (settings.get('rawMaxSpeed') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawMaxSpeed as number),
     };
     this.model = new OrbitalShrapnelModel(this.modelOptions);
     this.cacheLiveSettings();
@@ -91,9 +99,11 @@ export class OrbitalShrapnelScene extends SimulationScene {
   override onExit(): void {
     this.trailRenderer?.destroy();
     this.particleRenderer?.destroy();
+    this.rawRenderer?.destroy();
     this.fieldRenderer?.destroy();
     this.trailRenderer = null;
     this.particleRenderer = null;
+    this.rawRenderer = null;
     this.fieldRenderer = null;
     this.model = null;
     this.modelOptions = null;
@@ -119,17 +129,30 @@ export class OrbitalShrapnelScene extends SimulationScene {
   override render(_alpha: number): void {
     if (!this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? iceRingStyle;
-    if (this.trailRenderer && this.particleRenderer) {
+    if (this.rawRenderer && this.modelOptions) {
+      this.rawRenderer.clear();
+      this.rawRenderer.render({
+        trailField: this.model.trailField,
+        style,
+        width: this.ctx_.width,
+        height: this.ctx_.height,
+        particleCount: this.modelOptions.particleCount,
+        trailColumns: this.modelOptions.trailColumns,
+      });
+    } else if (this.trailRenderer && this.particleRenderer) {
       this.trailRenderer.clear();
       this.particleRenderer.clear();
-      this.trailRenderer.renderTrail('orbit', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.88, gamma: 0.36, zIndex: 0 });
-      this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: 0.58, zIndex: 1 });
+      this.trailRenderer.renderTrail('orbit', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.94, gamma: ((this.ctx_.systems.settings.get('trailGamma') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailGamma as number)), zIndex: 0 });
+      this.particleRenderer.renderParticles(this.model.renderParticles(), style, { sizeScale: ((this.ctx_.systems.settings.get('debrisSize') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.debrisSize as number)), zIndex: 1 });
     } else if (this.fieldRenderer) {
       this.fieldRenderer.clear();
       this.fieldRenderer.renderField('orbit', this.model.trailField, this.ctx_.width, this.ctx_.height, style, { alpha: 0.88, gamma: 0.36, zIndex: 0 });
     }
-    const stats = this.model.stats();
-    this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.particleCount, fieldVariance: stats.trailVariance });
+    const debug = this.ctx_.systems.debug;
+    if (debug?.isEnabled()) {
+      const stats = this.model.stats();
+      debug.update({ fps: 0, quality: this.quality, particleCount: stats.particleCount, fieldVariance: stats.trailVariance });
+    }
   }
 
   override resize(width: number, height: number): void {
@@ -151,11 +174,22 @@ export class OrbitalShrapnelScene extends SimulationScene {
     super.setQuality(quality);
     this.trailRenderer?.setQuality(quality);
     this.particleRenderer?.setQuality(quality);
+    this.rawRenderer?.setQuality(quality);
     this.fieldRenderer?.setQuality(quality);
     // Dynamic renderer swap — only when scene is running and quality actually changed.
     if (!this.model || prev === quality) return;
     const pixi = this.ctx_.systems.pixi.app;
-    if (quality === 'enhanced') {
+    if (quality === 'raw') {
+      this.trailRenderer?.destroy();
+      this.trailRenderer = null;
+      this.particleRenderer?.destroy();
+      this.particleRenderer = null;
+      this.fieldRenderer?.destroy();
+      this.fieldRenderer = null;
+      this.rawRenderer = new OrbitalShrapnelRawRenderer(pixi, quality);
+    } else if (quality === 'enhanced') {
+      this.rawRenderer?.destroy();
+      this.rawRenderer = null;
       this.fieldRenderer?.destroy();
       this.fieldRenderer = null;
       this.trailRenderer = new TrailFeedbackRenderer(pixi);
@@ -163,6 +197,8 @@ export class OrbitalShrapnelScene extends SimulationScene {
       this.particleRenderer = new ParticlePointRenderer(pixi);
       this.particleRenderer.setQuality(quality);
     } else {
+      this.rawRenderer?.destroy();
+      this.rawRenderer = null;
       this.trailRenderer?.destroy();
       this.trailRenderer = null;
       this.particleRenderer?.destroy();
@@ -187,13 +223,19 @@ export class OrbitalShrapnelScene extends SimulationScene {
     const planetRadius = (settings.get('planetRadius') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.planetRadius as number);
     const gravity = (settings.get('gravity') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.gravity as number);
     const trailFade = (settings.get('trailFade') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailFade as number);
+    const rawParticleTextureSize = (settings.get('rawParticleTextureSize') as number | string | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawParticleTextureSize as string);
+    const rawTrailTextureWidth = (settings.get('rawTrailTextureWidth') as number | string | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawTrailTextureWidth as string);
+    const rawMaxSpeed = (settings.get('rawMaxSpeed') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawMaxSpeed as number);
 
     if (
       particleCount === this.lastParticleCount &&
       trailColumns === this.lastTrailColumns &&
       planetRadius === this.lastPlanetRadius &&
       gravity === this.lastGravity &&
-      trailFade === this.lastTrailFade
+      trailFade === this.lastTrailFade &&
+      rawParticleTextureSize === this.lastRawParticleTextureSize &&
+      rawTrailTextureWidth === this.lastRawTrailTextureWidth &&
+      rawMaxSpeed === this.lastRawMaxSpeed
     ) {
       return;
     }
@@ -206,6 +248,7 @@ export class OrbitalShrapnelScene extends SimulationScene {
       planetRadius,
       gravity,
       trailFade,
+      maxSpeed: rawMaxSpeed,
       seed: this.modelOptions.seed + 1,
     };
     this.model = new OrbitalShrapnelModel(this.modelOptions);
@@ -219,6 +262,10 @@ export class OrbitalShrapnelScene extends SimulationScene {
     this.lastPlanetRadius = this.modelOptions.planetRadius;
     this.lastGravity = this.modelOptions.gravity;
     this.lastTrailFade = this.modelOptions.trailFade ?? (ORBITAL_SHRAPNEL_DEFAULTS.trailFade as number);
+    const settings = this.ctx_.systems.settings;
+    this.lastRawParticleTextureSize = (settings.get('rawParticleTextureSize') as number | string | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawParticleTextureSize as string);
+    this.lastRawTrailTextureWidth = (settings.get('rawTrailTextureWidth') as number | string | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawTrailTextureWidth as string);
+    this.lastRawMaxSpeed = (settings.get('rawMaxSpeed') as number | undefined) ?? (ORBITAL_SHRAPNEL_DEFAULTS.rawMaxSpeed as number);
   }
 
   private applyPointerInfluence(dt: number): void {
@@ -237,9 +284,9 @@ export class OrbitalShrapnelScene extends SimulationScene {
 
   getRenderLayers(): SimRenderLayers {
     return {
-      trails: this.trailRenderer?.getLayer('orbit') ?? this.fieldRenderer?.getLayer('orbit'),
+      trails: this.rawRenderer?.layer ?? this.trailRenderer?.getLayer('orbit') ?? this.fieldRenderer?.getLayer('orbit'),
       particles: this.particleRenderer?.particles,
-      glow: this.trailRenderer?.getLayer('orbit') ?? this.fieldRenderer?.getLayer('orbit'),
+      glow: this.rawRenderer?.layer ?? this.trailRenderer?.getLayer('orbit') ?? this.fieldRenderer?.getLayer('orbit'),
     };
   }
 

@@ -37,7 +37,42 @@ export interface RGBA {
 // ── Runtime mode ──────────────────────────────────────────────────────────────
 
 export type GameMode = 'play' | 'screensaver' | 'demo' | 'paused';
-export type RenderQuality = 'basic' | 'enhanced';
+
+/**
+ * Rendering backend selected by the host or an experience-specific adapter.
+ * Pixi remains the default backend for the shared Lab Runtime; higher-powered
+ * backends are opt-in per experience rather than global quality levels.
+ */
+export type RendererBackend = 'pixi' | 'webgl2' | 'three' | 'webgpu';
+
+/**
+ * Budget/profile hint within a backend. Profiles describe runtime cost/intent;
+ * they should not imply a different rendering engine by themselves.
+ */
+export type RenderProfile = 'preview' | 'standard' | 'high';
+
+/**
+ * Legacy quality selector used by existing scenes and demo routes. Keep `raw`
+ * scoped to experiences that explicitly advertise it while migration moves new
+ * runtime-facing code toward RendererBackend + RenderProfile terminology.
+ */
+export type RenderQuality = 'basic' | 'enhanced' | 'raw';
+
+/**
+ * Host-facing engine configuration. `legacyQuality` is retained as the
+ * compatibility token consumed by existing scene/runtime hooks while the UI and
+ * route layer migrate to backend/profile terminology.
+ */
+export interface EngineConfiguration {
+  readonly id: RenderQuality;
+  readonly backend: RendererBackend;
+  readonly profile: RenderProfile;
+  readonly label: string;
+  readonly legacyQuality: RenderQuality;
+}
+
+export type EngineConfigurationVisibility = RenderQuality | `${RendererBackend}/${RenderProfile}`;
+
 export type ExperienceKind = 'game' | 'simulation' | 'ambient' | 'effect' | 'toy';
 export type ExperienceRenderMode =
   | 'fullscreen'
@@ -123,6 +158,11 @@ export type IntentKind = 'tap' | 'drag_start' | 'drag_move' | 'drag_end' | 'hold
 
 export interface Intent {
   kind: IntentKind;
+  /**
+   * Stable pointer id for multi-frame AI gestures. Omit for one-shot intents
+   * like tap; drag_start/drag_move/drag_end should share the same id.
+   */
+  id?: number;
   x: number;
   y: number;
   /** Optional second point for drag operations */
@@ -148,6 +188,7 @@ export type RenderPassId =
   | 'primitive'
   | 'paletteMap'
   | 'densityMetaball'
+  | 'gpuFluid'
   | 'edgeGlow'
   | 'trailFeedback'
   | 'fieldVisualize'
@@ -202,6 +243,7 @@ export interface SimRenderLayers {
   primitive?: unknown;
   particles?: unknown;
   density?: unknown;
+  fluid?: unknown;
   trails?: unknown;
   field?: unknown;
   mask?: unknown;
@@ -349,7 +391,7 @@ export interface SettingsField {
   key: string;
   label: string;
   description?: string;
-  type: 'number' | 'boolean' | 'select';
+  type: 'number' | 'boolean' | 'select' | 'string';
   min?: number;
   max?: number;
   step?: number;
@@ -357,6 +399,12 @@ export interface SettingsField {
   default: SettingsValue;
   /** If set, the field is only shown when the active interaction mode is in this list. */
   visibleModes?: string[];
+  /** If set, the field is only shown for these backend/profile engine configurations. Legacy quality ids remain accepted during migration. */
+  visibleEngineConfigurations?: EngineConfigurationVisibility[];
+  /** If set, the field is only shown for these engine configurations / legacy render qualities. */
+  visibleQualities?: RenderQuality[];
+  /** Advanced fields stay out of compact top controls and render under an Advanced section in the settings drawer. */
+  advanced?: boolean;
 }
 
 // ── Game Definition ───────────────────────────────────────────────────────────
@@ -391,7 +439,13 @@ export interface GameCapabilities {
   burstEmitters?: boolean;
   lowMotion?: boolean;
   sleepMode?: boolean;
+  /**
+   * Legacy render quality tokens retained for route/storage compatibility. New
+   * launcher UI should prefer `engineConfigurations` when present.
+   */
   qualityModes?: RenderQuality[];
+  /** Backend/profile engine options surfaced by the launcher. */
+  engineConfigurations?: EngineConfiguration[];
   /** Scene supports a reset action (drain + restart cycle). */
   reset?: boolean;
   /** Simulation supports a demo mode with an AI controller. */
@@ -438,6 +492,8 @@ export interface GameContext {
   mode: GameMode;
   seed: number;
   quality: RenderQuality;
+  /** Dev/test-only feature gates requested by the host runtime. */
+  experimentalRawEngine?: boolean;
   /** Canvas dimensions in logical pixels */
   width: number;
   height: number;

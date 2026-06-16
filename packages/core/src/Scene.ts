@@ -56,6 +56,17 @@ export abstract class Scene {
   }
 
   /**
+   * Return true when the scene has custom visual work that still needs a frame
+   * even if the engine has no active physics bodies, particles, or pointers.
+   *
+   * Game scenes default to idle-until-active so future physics-driven scenes
+   * automatically stop presenting frames once the world settles.
+   */
+  shouldRender(): boolean {
+    return false;
+  }
+
+  /**
    * Called when the canvas is resized.
    */
   resize(_width: number, _height: number): void {
@@ -81,10 +92,26 @@ export abstract class Scene {
   }
 
   /**
+   * Optional scene-owned debug metrics for host panels. Raw/WebGL scenes can use
+   * this to surface renderer stats without drawing their own in-canvas overlays.
+   */
+  getDebugStats(): Record<string, string | number | boolean | null> | null {
+    return null;
+  }
+
+  /**
    * Called when the active interaction mode changes (e.g. single → rapid → explode).
    * Default: no-op. Override to switch scene behaviour.
    */
   setMode(_id: string): void {
+    // Optional override
+  }
+
+  /**
+   * Called when host controls/chrome visibility changes.
+   * Default: no-op. Override to hide scene-level controls/markers with the UI.
+   */
+  onUIHidden(_hidden: boolean): void {
     // Optional override
   }
 
@@ -94,5 +121,13 @@ export abstract class Scene {
    */
   setStyle(_id: string): void {
     // Optional override
+  }
+
+  /**
+   * Hint for how the host canvas should be filtered when the browser has to
+   * upscale it back to CSS size (for example when maxPixels lowers resolution).
+   */
+  getCanvasImageRendering(): 'auto' | 'pixelated' {
+    return 'auto';
   }
 }

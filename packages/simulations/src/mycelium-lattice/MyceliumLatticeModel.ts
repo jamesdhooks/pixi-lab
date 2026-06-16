@@ -57,6 +57,8 @@ export class MyceliumLatticeModel {
 
   private tips: number[] = [];
   private stagnantMs = 0;
+  private livingCells = 0;
+  private renderDirty = true;
 
   constructor(private readonly options: MyceliumLatticeModelOptions) {
     const n = options.columns * options.rows;
@@ -74,6 +76,7 @@ export class MyceliumLatticeModel {
   reset(seed = this.options.seed): void {
     this.rng = new SeededRng(seed);
     this.tips = [];
+    this.livingCells = 0;
     this.state.fill(EMPTY);
     this.gen.fill(0);
     this.strain.fill(0);
@@ -91,13 +94,16 @@ export class MyceliumLatticeModel {
   }
 
   update(dt: number): void {
+    if (this.tips.length === 0) return;
+
     // Run approximately 48 simulation ticks per real second, capped to avoid
     // runaway catchup on low-fps frames.
     const steps = Math.max(1, Math.min(4, Math.round(dt * 48)));
+    let changed = false;
     for (let s = 0; s < steps; s++) {
-      this.stepSimulation();
+      changed = this.stepSimulation() || changed;
     }
-    this.projectGrid();
+    if (changed) this.projectGrid();
   }
 
   handleGesture(event: GestureEvent, strainId?: number): void {
@@ -122,7 +128,7 @@ export class MyceliumLatticeModel {
   }
 
   detectStagnation(dt: number): StagnationReport {
-    const living = this.countLiving();
+    const living = this.livingCells;
     const total = this.options.columns * this.options.rows;
     const fullCoverage = living >= total * 0.92;
     // Tips that are stuck (all neighbours occupied) still remain in the array but
@@ -155,7 +161,15 @@ export class MyceliumLatticeModel {
   }
 
   stats(): MyceliumLatticeStats {
-    return { livingCells: this.countLiving(), tipCount: this.tips.length };
+    return { livingCells: this.livingCells, tipCount: this.tips.length };
+  }
+
+  hasRenderChanges(): boolean {
+    return this.renderDirty;
+  }
+
+  markRendered(): void {
+    this.renderDirty = false;
   }
 
   // Live setters — called from the scene each tick on slider change.
@@ -193,9 +207,11 @@ export class MyceliumLatticeModel {
     this.heading[i] = this.rng.int(0, 3);
     this.grid.cells[i].active = true;
     this.tips.push(i);
+    this.livingCells++;
+    this.renderDirty = true;
   }
 
-  private stepSimulation(): void {
+  private stepSimulation(): boolean {
     // Cap tip count to avoid unbounded growth on high-probability runs.
     if (this.tips.length > this.options.maxTips) {
       this.tips.splice(0, this.tips.length - this.options.maxTips);
@@ -208,15 +224,17 @@ export class MyceliumLatticeModel {
       this.tips[j] = tmp;
     }
     const newTips: number[] = [];
+    let changed = false;
     for (const ci of this.tips) {
       if (this.state[ci] === TIP) {
-        this.advanceTip(ci, newTips);
+        changed = this.advanceTip(ci, newTips) || changed;
       }
     }
     this.tips = newTips;
+    return changed;
   }
 
-  private advanceTip(ci: number, newTips: number[]): void {
+  private advanceTip(ci: number, newTips: number[]): boolean {
     const { columns, rows, growthProbability, branchChance, forwardBias, sideBias } = this.options;
     const col = ci % columns;
     const row = Math.floor(ci / columns);
@@ -251,6 +269,7 @@ export class MyceliumLatticeModel {
       this.gen[ni] = this.gen[ci] + 1;
       this.strain[ni] = this.strain[ci];
       this.grid.cells[ni].active = true;
+      this.livingCells++;
 
       // Child heading: mostly continues in `dir`, sometimes turns 90°.
       const rH = this.rng.next();
@@ -272,6 +291,7 @@ export class MyceliumLatticeModel {
             this.heading[bni] = this.rng.int(0, 3);
             this.grid.cells[bni].active = true;
             newTips.push(bni);
+            this.livingCells++;
           }
         }
       }
@@ -282,6 +302,7 @@ export class MyceliumLatticeModel {
 
     // Tip stays alive to retry next tick (low-probability slow growth).
     if (!grew) newTips.push(ci);
+    return grew;
   }
 
   /**
@@ -308,14 +329,7 @@ export class MyceliumLatticeModel {
       const tipBoost = this.state[i] === TIP ? 0.025 : 0;
       cell.value = Math.max(0.36, Math.min(1.0, 0.36 + t * 0.60 + tipBoost));
     }
-  }
-
-  private countLiving(): number {
-    let n = 0;
-    for (let i = 0; i < this.state.length; i++) {
-      if (this.state[i] !== EMPTY) n++;
-    }
-    return n;
+    this.renderDirty = true;
   }
 
   private toCol(x: number): number {

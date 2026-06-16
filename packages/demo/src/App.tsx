@@ -1,22 +1,38 @@
-import { useState, useMemo, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useLayoutEffect, useEffect, useCallback, type CSSProperties } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff, X } from 'lucide-react';
+import { AlertTriangle, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff, Play } from 'lucide-react';
 import { GameLauncher, PreviewTile } from '@hooksjam/pixi-lab-react';
 import { useViewport } from '@hooksjam/pixi-lab-react';
+import { AMBIENT_REGISTRY } from '@hooksjam/pixi-lab-ambients';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
-import { SIMULATION_REGISTRY } from '@hooksjam/pixi-lab-simulations';
-import type { LabExperience } from '@hooksjam/pixi-lab-core';
+import { SIMULATION_REGISTRY, fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
+import { type LabExperience, type RenderBackendProfileSelection, type RenderQuality } from '@hooksjam/pixi-lab-core';
+import { hasPassedDemoQa } from './demoQaStatus';
+import {
+  applyCompatibilityRouteRenderSelection,
+  findQueryExperienceFromParams,
+  queryExperimentalRawEngine,
+  queryRenderSelectionForExperience,
+} from './demoRuntime';
 
-const ALL_EXPERIENCES: readonly LabExperience[] = [...GAME_REGISTRY, ...SIMULATION_REGISTRY];
+const ALL_EXPERIENCES: readonly LabExperience[] = [
+  ...GAME_REGISTRY,
+  ...SIMULATION_REGISTRY,
+  ...AMBIENT_REGISTRY,
+];
+const APP_DEMO_INTERVAL_MS = 10_000;
+const APP_DEMO_CROSSFADE_MS = 220;
+const APP_DEMO_PRELOAD_MAX_PIXELS = 147_456;
 
-type FilterKind = 'all' | LabExperience['kind'];
+type DemoStageSlot = 'a' | 'b';
+
+type FilterKind = 'all' | 'overlays' | LabExperience['kind'];
 
 const KIND_LABELS: Record<string, string> = {
   all: 'All',
   game: 'Games',
   simulation: 'Simulations',
-  ambient: 'Ambients',
-  effect: 'Effects',
+  overlays: 'Overlays',
   toy: 'Toys',
 };
 
@@ -49,37 +65,120 @@ export function App() {
   const [carouselFilter, setCarouselFilter] = useState<FilterKind>('all');
   const [carouselSide, setCarouselSide] = useState<'bottom' | 'left' | 'right'>('bottom');
   const [carouselDocked, setCarouselDocked] = useState(false);
-  const [maxPixels, setMaxPixels] = useState(() => {
+  const [appDemoActive, setAppDemoActive] = useState(false);
+  const [appDemoIndex, setAppDemoIndex] = useState(0);
+  const [appDemoFrontSlot, setAppDemoFrontSlot] = useState<DemoStageSlot>('a');
+  const [appDemoPendingSlot, setAppDemoPendingSlot] = useState<DemoStageSlot | null>(null);
+  const [appDemoCrossfading, setAppDemoCrossfading] = useState(false);
+  const [appDemoStageA, setAppDemoStageA] = useState<LabExperience | null>(null);
+  const [appDemoStageB, setAppDemoStageB] = useState<LabExperience | null>(null);
+  const [appDemoStageReady, setAppDemoStageReady] = useState<Record<DemoStageSlot, boolean>>({
+    a: false,
+    b: false,
+  });
+  const [maxPixels] = useState(() => {
     try { return parseInt(localStorage.getItem('pixi-lab:maxPixels') ?? '0') || undefined; } catch { return undefined; }
   });
+  const routeMode = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      fluidGallery: params.has('fluidGallery'),
+      fluidEngine: params.has('fluidEngine'),
+      fluidReference: params.has('fluidReference'),
+      experience: findQueryExperienceFromParams(params, ALL_EXPERIENCES),
+      queryParams: params,
+    };
+  }, []);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
-  // On portrait mobile, force carousel to bottom dock and hide side-picker buttons.
   const effectiveCarouselSide = isMobile && !isLandscape ? 'bottom' : carouselSide;
 
   // Persist maxPixels to localStorage
   useEffect(() => {
-    try { localStorage.setItem('pixi-lab:maxPixels', String(maxPixels || '')); } catch {}
+    try {
+      localStorage.setItem('pixi-lab:maxPixels', String(maxPixels || ''));
+    } catch {
+      // Storage can be unavailable in private/sandboxed contexts.
+    }
   }, [maxPixels]);
 
+  useEffect(() => {
+    if (routeMode.fluidGallery) return;
+    if (routeMode.fluidEngine || routeMode.fluidReference) {
+      try { applyCompatibilityRouteRenderSelection(fluidTankDefinition, routeMode.queryParams); } catch { /* ignore */ }
+      setAppDemoActive(false);
+      setCarouselOpen(false);
+      setCarouselDocked(false);
+      setActive(fluidTankDefinition);
+      return;
+    }
+    if (routeMode.experience) {
+      setAppDemoActive(false);
+      setCarouselOpen(false);
+      setCarouselDocked(false);
+      setActive(routeMode.experience);
+    }
+  }, [routeMode]);
 
 
   const availableKinds = useMemo<FilterKind[]>(() => {
     const seen = new Set<LabExperience['kind']>();
     for (const e of ALL_EXPERIENCES) seen.add(e.kind);
-    return ['all', ...Array.from(seen)];
+    const kinds: FilterKind[] = ['all'];
+    let overlaysAdded = false;
+    for (const kind of Array.from(seen)) {
+      if (kind === 'ambient' || kind === 'effect') {
+        if (!overlaysAdded) { kinds.push('overlays'); overlaysAdded = true; }
+      } else {
+        kinds.push(kind);
+      }
+    }
+    return kinds;
   }, []);
 
   const filtered = useMemo(
-    () => (filter === 'all' ? ALL_EXPERIENCES : ALL_EXPERIENCES.filter((e) => e.kind === filter)),
-    [filter],
+    () => {
+      if (routeMode.fluidGallery) return [fluidTankDefinition];
+      return filter === 'all'
+        ? ALL_EXPERIENCES
+        : filter === 'overlays'
+          ? ALL_EXPERIENCES.filter((e) => e.kind === 'ambient' || e.kind === 'effect')
+          : ALL_EXPERIENCES.filter((e) => e.kind === filter);
+    },
+    [filter, routeMode.fluidGallery],
   );
 
   const carouselItems = useMemo(
-    () => (carouselFilter === 'all' ? ALL_EXPERIENCES : ALL_EXPERIENCES.filter((e) => e.kind === carouselFilter)),
+    () =>
+      carouselFilter === 'all'
+        ? ALL_EXPERIENCES
+        : carouselFilter === 'overlays'
+          ? ALL_EXPERIENCES.filter((e) => e.kind === 'ambient' || e.kind === 'effect')
+          : ALL_EXPERIENCES.filter((e) => e.kind === carouselFilter),
     [carouselFilter],
   );
 
+  const appDemoItems = useMemo(
+    () => ALL_EXPERIENCES.filter((e) => e.capabilities.demo),
+    [],
+  );
+
+  const appDemoPreloadMaxPixels = useMemo(
+    () => (maxPixels === undefined ? APP_DEMO_PRELOAD_MAX_PIXELS : Math.min(maxPixels, APP_DEMO_PRELOAD_MAX_PIXELS)),
+    [maxPixels],
+  );
+
+  const appDemoCurrentExperience = appDemoFrontSlot === 'a' ? appDemoStageA : appDemoStageB;
+  const appDemoPendingExperience = appDemoPendingSlot === 'a'
+    ? appDemoStageA
+    : appDemoPendingSlot === 'b'
+      ? appDemoStageB
+      : null;
+  const appDemoVisibleExperience =
+    appDemoCrossfading && appDemoPendingExperience ? appDemoPendingExperience : appDemoCurrentExperience;
+  const appDemoVisibleReady = appDemoCrossfading && appDemoPendingSlot
+    ? appDemoStageReady[appDemoPendingSlot]
+    : appDemoStageReady[appDemoFrontSlot];
   const activeCarouselIndex = useMemo(
     () => (active ? carouselItems.findIndex((e) => e.id === active.id) : -1),
     [active, carouselItems],
@@ -121,6 +220,143 @@ export function App() {
     selectExperience(carouselItems[next], next);
   }, [activeCarouselIndex, carouselItems, selectExperience]);
 
+  const setAppDemoStageExperience = useCallback((slot: DemoStageSlot, experience: LabExperience | null) => {
+    if (slot === 'a') {
+      setAppDemoStageA(experience);
+      return;
+    }
+    setAppDemoStageB(experience);
+  }, []);
+
+  const setAppDemoSlotReady = useCallback((slot: DemoStageSlot, ready: boolean) => {
+    setAppDemoStageReady((prev) => (prev[slot] === ready ? prev : { ...prev, [slot]: ready }));
+  }, []);
+
+  const startAppDemo = useCallback(() => {
+    if (appDemoItems.length === 0) return;
+    const nextIndex = appDemoItems[appDemoIndex] ? appDemoIndex : 0;
+    const nextExperience = appDemoItems[nextIndex];
+    setAppDemoActive(true);
+    setCarouselOpen(false);
+    setCarouselDocked(false);
+    setActive(null);
+    setAppDemoIndex(nextIndex);
+    setAppDemoFrontSlot('a');
+    setAppDemoPendingSlot(null);
+    setAppDemoCrossfading(false);
+    setAppDemoStageA(nextExperience);
+    setAppDemoStageB(null);
+    setAppDemoStageReady({ a: false, b: false });
+  }, [appDemoIndex, appDemoItems]);
+
+  const stopAppDemo = useCallback(() => {
+    setAppDemoActive(false);
+    setActive(null);
+    setCarouselOpen(false);
+    setAppDemoFrontSlot('a');
+    setAppDemoPendingSlot(null);
+    setAppDemoCrossfading(false);
+    setAppDemoStageA(null);
+    setAppDemoStageB(null);
+    setAppDemoStageReady({ a: false, b: false });
+  }, []);
+
+  const advanceAppDemo = useCallback(() => {
+    if (appDemoItems.length === 0) return;
+    setAppDemoIndex((idx) => (idx + 1) % appDemoItems.length);
+  }, [appDemoItems.length]);
+
+  const handleAppDemoStageReady = useCallback((slot: DemoStageSlot) => {
+    setAppDemoSlotReady(slot, true);
+  }, [setAppDemoSlotReady]);
+
+  useEffect(() => {
+    if (
+      !appDemoActive ||
+      appDemoItems.length === 0 ||
+      !appDemoCurrentExperience ||
+      appDemoPendingSlot !== null ||
+      appDemoCrossfading
+    ) {
+      return;
+    }
+    const id = window.setTimeout(advanceAppDemo, APP_DEMO_INTERVAL_MS);
+    return () => window.clearTimeout(id);
+  }, [
+    advanceAppDemo,
+    appDemoActive,
+    appDemoCrossfading,
+    appDemoCurrentExperience,
+    appDemoItems.length,
+    appDemoPendingSlot,
+  ]);
+
+  useEffect(() => {
+    if (!appDemoActive || appDemoItems.length === 0) return;
+    const nextExperience = appDemoItems[appDemoIndex % appDemoItems.length];
+    if (!appDemoCurrentExperience) {
+      setAppDemoFrontSlot('a');
+      setAppDemoPendingSlot(null);
+      setAppDemoCrossfading(false);
+      setAppDemoStageA(nextExperience);
+      setAppDemoStageB(null);
+      setAppDemoStageReady({ a: false, b: false });
+      return;
+    }
+    if (appDemoCurrentExperience.id === nextExperience.id && appDemoPendingExperience === null) return;
+    if (appDemoPendingExperience?.id === nextExperience.id) return;
+
+    const nextSlot: DemoStageSlot = appDemoFrontSlot === 'a' ? 'b' : 'a';
+    setAppDemoPendingSlot(nextSlot);
+    setAppDemoCrossfading(false);
+    setAppDemoStageExperience(nextSlot, nextExperience);
+    setAppDemoSlotReady(nextSlot, false);
+  }, [
+    appDemoActive,
+    appDemoCurrentExperience,
+    appDemoFrontSlot,
+    appDemoIndex,
+    appDemoItems,
+    appDemoPendingExperience,
+    setAppDemoSlotReady,
+    setAppDemoStageExperience,
+  ]);
+
+  useEffect(() => {
+    if (!appDemoPendingSlot || appDemoCrossfading || !appDemoStageReady[appDemoPendingSlot]) return;
+    let rafA = 0;
+    let rafB = 0;
+    rafA = window.requestAnimationFrame(() => {
+      rafB = window.requestAnimationFrame(() => {
+        setAppDemoCrossfading(true);
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(rafA);
+      window.cancelAnimationFrame(rafB);
+    };
+  }, [appDemoCrossfading, appDemoPendingSlot, appDemoStageReady]);
+
+  useEffect(() => {
+    if (!appDemoCrossfading || !appDemoPendingSlot) return;
+    const previousFrontSlot = appDemoFrontSlot;
+    const nextFrontSlot = appDemoPendingSlot;
+    const id = window.setTimeout(() => {
+      setAppDemoFrontSlot(nextFrontSlot);
+      setAppDemoPendingSlot(null);
+      setAppDemoCrossfading(false);
+      setAppDemoStageExperience(previousFrontSlot, null);
+      setAppDemoSlotReady(previousFrontSlot, false);
+    }, APP_DEMO_CROSSFADE_MS);
+    return () => window.clearTimeout(id);
+  }, [
+    appDemoCrossfading,
+    appDemoFrontSlot,
+    appDemoPendingSlot,
+    setAppDemoSlotReady,
+    setAppDemoStageExperience,
+  ]);
+
   // Scroll active tile into view when carousel opens
   useEffect(() => {
     if (!carouselOpen || activeCarouselIndex < 0) return;
@@ -153,9 +389,68 @@ export function App() {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-white dark:bg-[#080810]">
 
+      {appDemoActive && (
+        <div className="absolute inset-0 z-50 overflow-hidden bg-black">
+          <ExperienceSurface
+            experience={appDemoStageA}
+            dockedInset={dockedInset}
+            maxPixels={
+              appDemoPendingSlot === 'a' && !appDemoStageReady.a
+                ? appDemoPreloadMaxPixels
+                : maxPixels
+            }
+            autoDemo
+            visible={
+              !!appDemoStageA &&
+              (appDemoFrontSlot === 'a'
+                ? !appDemoCrossfading && appDemoStageReady.a
+                : appDemoPendingSlot === 'a' && appDemoCrossfading)
+            }
+            interactive={
+              !!appDemoStageA &&
+              (appDemoFrontSlot === 'a'
+                ? !appDemoCrossfading && appDemoStageReady.a
+                : appDemoPendingSlot === 'a' && appDemoCrossfading)
+            }
+            zIndex={appDemoFrontSlot === 'a' ? 1 : 2}
+            onDemoAdvance={advanceAppDemo}
+            onDemoExit={stopAppDemo}
+            onRuntimeReady={() => handleAppDemoStageReady('a')}
+            onQuit={stopAppDemo}
+          />
+          <ExperienceSurface
+            experience={appDemoStageB}
+            dockedInset={dockedInset}
+            maxPixels={
+              appDemoPendingSlot === 'b' && !appDemoStageReady.b
+                ? appDemoPreloadMaxPixels
+                : maxPixels
+            }
+            autoDemo
+            visible={
+              !!appDemoStageB &&
+              (appDemoFrontSlot === 'b'
+                ? !appDemoCrossfading && appDemoStageReady.b
+                : appDemoPendingSlot === 'b' && appDemoCrossfading)
+            }
+            interactive={
+              !!appDemoStageB &&
+              (appDemoFrontSlot === 'b'
+                ? !appDemoCrossfading && appDemoStageReady.b
+                : appDemoPendingSlot === 'b' && appDemoCrossfading)
+            }
+            zIndex={appDemoFrontSlot === 'b' ? 1 : 2}
+            onDemoAdvance={advanceAppDemo}
+            onDemoExit={stopAppDemo}
+            onRuntimeReady={() => handleAppDemoStageReady('b')}
+            onQuit={stopAppDemo}
+          />
+        </div>
+      )}
+
       {/* ── Experience layer — keyed by id so it fades when switching ── */}
       <AnimatePresence>
-        {active && (
+        {!appDemoActive && active && (
           <motion.div
             key={active.id}
             initial={{ opacity: 0 }}
@@ -164,24 +459,42 @@ export function App() {
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="absolute inset-0 overflow-hidden"
           >
-            {/* transform creates a containing block so GameLauncher's fixed
-                children are constrained to this element when docked. */}
-            <div
-              className="fixed inset-0 overflow-hidden"
-              style={{ ...dockedInset, transform: 'translateZ(0)' }}
-            >
-              <GameLauncher
-                definition={active}
-                maxPixels={maxPixels}
-                onQuit={() => { setActive(null); setCarouselOpen(false); }}
-              />
-            </div>
+            {/* Sample page backdrop for overlay experiences (ambient / effect) */}
+            {(active.kind === 'ambient' || active.kind === 'effect') && <OverlayBackdrop />}
+            <ExperienceSurface
+              experience={active}
+              dockedInset={dockedInset}
+              maxPixels={maxPixels}
+              transparent={active.kind === 'ambient' || active.kind === 'effect'}
+              initialRenderSelection={queryRenderSelectionForExperience(active, routeMode.queryParams)}
+              experimentalRawEngine={queryExperimentalRawEngine(routeMode.queryParams)}
+              autoDemo={routeMode.fluidEngine || routeMode.fluidReference}
+              onQuit={() => {
+                setActive(null);
+                setCarouselOpen(false);
+              }}
+              className="h-full w-full overflow-hidden"
+            />
           </motion.div>
         )}
       </AnimatePresence>
 
+      {appDemoActive && appDemoVisibleExperience && appDemoVisibleReady && (
+        <div className="pointer-events-none fixed left-3 top-3 z-[70] flex max-w-[72vw] items-center gap-2 rounded-lg bg-black/55 px-2.5 py-2 text-white">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-violet-400 via-sky-300 to-cyan-300 text-base leading-none text-slate-950">
+            {appDemoVisibleExperience.icon}
+          </span>
+          <div className="min-w-0">
+            <div className="truncate text-xs font-semibold leading-tight">{appDemoVisibleExperience.name}</div>
+            <div className="bg-gradient-to-r from-violet-300 via-sky-200 to-cyan-200 bg-clip-text text-[9px] font-semibold uppercase leading-tight tracking-wide text-transparent">
+              Demo mode
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Carousel — outside the experience key so it persists across switches ── */}
-      {active && (
+      {active && !appDemoActive && (
         <>
           {/* Chevron toggle + render settings — visible when carousel is closed */}
           <AnimatePresence>
@@ -433,11 +746,11 @@ export function App() {
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="absolute inset-0 overflow-y-auto text-slate-900 dark:text-slate-100"
           >
-      <main className="max-w-5xl mx-auto px-4 sm:px-8 pt-10 sm:pt-24 pb-16 sm:pb-32">
+      <main className="max-w-5xl mx-auto px-4 sm:px-8 pt-8 sm:pt-16 pb-16 sm:pb-32">
 
         {/* Title / Logo */}
         {/* overflow:visible (default) lets particles float outside the h1 bounding box */}
-        <div className="relative mb-6 sm:mb-14 flex justify-center">
+        <div className="relative mb-5 sm:mb-8 flex justify-center">
           {LOGO_PARTICLES.map(([size, color, left, top, drift, duration, delay], i) => (
             <motion.span
               key={i}
@@ -455,7 +768,7 @@ export function App() {
         </div>
 
         {/* Segmented filter */}
-        <div className="flex justify-center mb-8 sm:mb-16">
+        <div className="flex justify-center mb-3 sm:mb-4">
           <div className="inline-flex gap-0.5 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-white/[0.06]">
             {availableKinds.map((kind) => (
               <button
@@ -474,6 +787,19 @@ export function App() {
             ))}
           </div>
         </div>
+
+        {appDemoItems.length > 0 && (
+          <div className="mb-8 flex justify-center">
+            <button
+              type="button"
+              onClick={startAppDemo}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 via-sky-400 to-cyan-400 px-4 py-2 text-sm font-bold text-white shadow-md shadow-sky-500/20 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Play size={14} />
+              Demo mode
+            </button>
+          </div>
+        )}
 
         {/* Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-10">
@@ -522,15 +848,200 @@ interface ExperienceCardProps {
   onSelect: (e: LabExperience) => void;
 }
 
+interface ExperienceSurfaceProps {
+  experience: LabExperience | null;
+  dockedInset: CSSProperties;
+  maxPixels?: number;
+  autoDemo?: boolean;
+  visible?: boolean;
+  interactive?: boolean;
+  zIndex?: number;
+  transparent?: boolean;
+  initialRenderSelection?: RenderBackendProfileSelection;
+  initialQuality?: RenderQuality;
+  experimentalRawEngine?: boolean;
+  onRenderSelectionChange?: (selection: RenderBackendProfileSelection) => void;
+  onDemoAdvance?: () => void;
+  onDemoExit?: () => void;
+  onRuntimeReady?: () => void;
+  onQuit: () => void;
+  className?: string;
+}
+
+function ExperienceSurface({
+  experience,
+  dockedInset,
+  maxPixels,
+  autoDemo = false,
+  visible = true,
+  interactive = true,
+  zIndex = 1,
+  transparent = false,
+  initialRenderSelection,
+  initialQuality,
+  experimentalRawEngine = false,
+  onRenderSelectionChange,
+  onDemoAdvance,
+  onDemoExit,
+  onRuntimeReady,
+  onQuit,
+  className = 'absolute inset-0 overflow-hidden',
+}: ExperienceSurfaceProps) {
+  if (!experience) return null;
+
+  const launcherKey = [
+    experience.id,
+    initialRenderSelection?.backend ?? '',
+    initialRenderSelection?.profile ?? '',
+    initialQuality ?? '',
+    experimentalRawEngine ? 'raw' : 'managed',
+  ].join(':');
+
+  return (
+    <div
+      className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        pointerEvents: interactive ? 'auto' : 'none',
+        transition: `opacity ${APP_DEMO_CROSSFADE_MS}ms ease-in-out`,
+        zIndex,
+      }}
+    >
+      {/* transform creates a containing block so GameLauncher's fixed
+          children are constrained to this element when docked. */}
+      <div
+        className="fixed inset-0 overflow-hidden"
+        style={{ ...dockedInset, transform: 'translateZ(0)' }}
+      >
+        <GameLauncher
+          key={launcherKey}
+          definition={experience}
+          maxPixels={maxPixels}
+          autoDemo={autoDemo}
+          initialRenderSelection={initialRenderSelection}
+          initialQuality={initialQuality}
+          experimentalRawEngine={experimentalRawEngine}
+          onRenderSelectionChange={onRenderSelectionChange}
+          transparent={transparent}
+          onDemoAdvance={onDemoAdvance}
+          onDemoExit={onDemoExit}
+          onRuntimeReady={onRuntimeReady}
+          onQuit={onQuit}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Simulated content page shown behind transparent overlay experiences. */
+function OverlayBackdrop() {
+  return (
+    <div className="fixed inset-0 overflow-y-auto bg-white text-slate-800 pointer-events-none select-none">
+      {/* Nav */}
+      <nav className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-200 bg-white/90 backdrop-blur-sm px-6 py-3">
+        <div className="flex items-center gap-3">
+          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-violet-500 to-cyan-400" />
+          <span className="text-sm font-bold tracking-tight text-slate-900">Acme Dashboard</span>
+        </div>
+        <div className="hidden sm:flex items-center gap-6 text-xs font-medium text-slate-500">
+          <span>Overview</span><span>Analytics</span><span>Reports</span><span>Settings</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-sky-400 to-violet-500" />
+        </div>
+      </nav>
+
+      <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
+        {/* Hero */}
+        <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-slate-700 p-8 text-white">
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">Good morning, James</p>
+          <h1 className="text-3xl font-bold mb-2">Your workspace at a glance</h1>
+          <p className="text-sm text-slate-300 max-w-md">All your projects, insights, and activity in one place. Dive into any area or explore something new.</p>
+          <div className="mt-5 flex gap-3">
+            <div className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold">View projects</div>
+            <div className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white/70">Invite team</div>
+          </div>
+        </div>
+
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: 'Active Projects', value: '12', delta: '+2 this week' },
+            { label: 'Team Members', value: '8', delta: '2 online now' },
+            { label: 'Tasks Due', value: '5', delta: '3 overdue' },
+            { label: 'Uptime', value: '99.9%', delta: 'Last 30 days' },
+          ].map(({ label, value, delta }) => (
+            <div key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">{delta}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Recent activity */}
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-700">Recent Activity</h2>
+            <span className="text-xs text-slate-400">View all</span>
+          </div>
+          {[
+            { icon: '📄', title: 'Q2 Report finalized', time: '2 min ago', badge: 'Docs' },
+            { icon: '🚀', title: 'v2.4.1 deployed to production', time: '18 min ago', badge: 'Deploy' },
+            { icon: '💬', title: 'Sofia commented on Onboarding flow', time: '1 hr ago', badge: 'Design' },
+            { icon: '✅', title: 'Sprint 14 review completed', time: '3 hr ago', badge: 'Agile' },
+          ].map(({ icon, title, time, badge }, i) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3 border-b last:border-0 border-slate-50">
+              <span className="text-lg leading-none">{icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-slate-800 truncate">{title}</p>
+                <p className="text-[10px] text-slate-400">{time}</p>
+              </div>
+              <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">{badge}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Paragraph copy */}
+        <div className="grid sm:grid-cols-2 gap-6 text-sm text-slate-600 leading-relaxed">
+          <p>
+            Seamlessly integrate your workflows with our powerful APIs. Build custom automations that
+            save your team hours every week — from smart notifications to real-time syncing across
+            every tool in your stack.
+          </p>
+          <p>
+            Our analytics engine processes millions of data points so you don&apos;t have to. Get
+            actionable insights, beautiful charts, and automated reports delivered straight to your
+            inbox on any schedule you choose.
+          </p>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 function ExperienceCard({ experience, index, onSelect }: ExperienceCardProps) {
   const badgeCls = KIND_BADGE[experience.kind] ?? 'bg-slate-100 text-slate-500 dark:bg-slate-700/40 dark:text-slate-400';
+  const needsDemoQa = experience.capabilities.demo && !hasPassedDemoQa(experience.id);
   const previewRef = useRef<HTMLDivElement>(null);
   const [previewSize, setPreviewSize] = useState(240);
+  const [previewActive, setPreviewActive] = useState(false);
 
   useLayoutEffect(() => {
     if (previewRef.current) {
       setPreviewSize(previewRef.current.clientWidth);
     }
+  }, []);
+
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setPreviewActive(entry.isIntersecting),
+      { rootMargin: '180px', threshold: 0.01 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
   }, []);
 
   return (
@@ -546,12 +1057,22 @@ function ExperienceCard({ experience, index, onSelect }: ExperienceCardProps) {
         ref={previewRef}
         className="relative w-full aspect-square rounded-2xl overflow-hidden pointer-events-none bg-slate-100 dark:bg-[#0d0d1e] transition-transform duration-200 group-hover:scale-[1.03]"
       >
-        <PreviewTile definition={experience} index={index} size={previewSize} />
+        <PreviewTile definition={experience} index={index} size={previewSize} active={previewActive} />
 
         {/* Kind badge — overlaid on the preview tile */}
         <span className={`absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${badgeCls}`}>
           {experience.kind}
         </span>
+
+        {needsDemoQa && (
+          <span
+            className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-amber-300/95 px-1.5 py-1 text-[9px] font-bold uppercase leading-none text-amber-950"
+            title="Manual demo QA has not passed yet"
+          >
+            <AlertTriangle size={10} strokeWidth={2.5} />
+            Needs QA
+          </span>
+        )}
       </div>
 
       {/* Name — centered below canvas */}

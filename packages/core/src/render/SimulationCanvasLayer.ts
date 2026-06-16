@@ -22,6 +22,10 @@ export interface EmitterMarker {
   deleteProgress?: number;
 }
 
+export interface SimulationFieldRenderOptions {
+  upscaleMode?: 'nearest' | 'linear';
+}
+
 export class SimulationCanvasLayer {
   readonly container = new Container();
   private readonly fieldSprite = new Sprite();
@@ -35,6 +39,7 @@ export class SimulationCanvasLayer {
   private fieldPixels: Uint8Array | null = null;
   private fieldColumns = 0;
   private fieldRows = 0;
+  private fieldUpscaleMode: 'nearest' | 'linear' | null = null;
   private quality: RenderQuality = 'basic';
 
   /** Call whenever the experience quality changes to switch rendering fidelity. */
@@ -45,7 +50,7 @@ export class SimulationCanvasLayer {
     // 'basic' = nearest-neighbour (crisp pixel grid),
     // 'enhanced'/'ultra' = linear (GPU bilinear upscale, much smoother).
     if (this.fieldSource) {
-      this.fieldSource.scaleMode = q === 'basic' ? 'nearest' : 'linear';
+      this.fieldSource.scaleMode = this.resolveFieldScaleMode(this.fieldUpscaleMode);
     }
   }
 
@@ -62,11 +67,17 @@ export class SimulationCanvasLayer {
     this.fieldSprite.visible = false;
   }
 
-  renderField(field: ScalarField, width: number, height: number, style: SimStyle): void {
+  renderField(
+    field: ScalarField,
+    width: number,
+    height: number,
+    style: SimStyle,
+    options: SimulationFieldRenderOptions = {},
+  ): void {
     // Always render at the field's native grid resolution — GPU handles upscaling.
     // 'basic' uses nearest-neighbour; 'enhanced'/'ultra' use linear bilinear filtering
     // (controlled by scaleMode on the source, set in setQuality / ensureFieldTexture).
-    this.ensureFieldTexture(field.columns, field.rows);
+    this.ensureFieldTexture(field.columns, field.rows, options.upscaleMode ?? null);
     if (!this.fieldPixels || !this.fieldSource || !this.fieldTexture) return;
 
     const palette = style.palette.length > 0 ? style.palette : [0xffffff];
@@ -174,21 +185,32 @@ export class SimulationCanvasLayer {
     this.container.destroy({ children: true });
   }
 
-  private ensureFieldTexture(columns: number, rows: number): void {
-    if (columns === this.fieldColumns && rows === this.fieldRows) return;
+  private ensureFieldTexture(columns: number, rows: number, upscaleMode: 'nearest' | 'linear' | null): void {
+    if (columns === this.fieldColumns && rows === this.fieldRows) {
+      if (this.fieldSource && this.fieldUpscaleMode !== upscaleMode) {
+        this.fieldUpscaleMode = upscaleMode;
+        this.fieldSource.scaleMode = this.resolveFieldScaleMode(upscaleMode);
+      }
+      return;
+    }
     // Detach before destroying so PixiJS doesn't reference a dead GPU resource.
     this.fieldSprite.texture = Texture.EMPTY;
     this.fieldTexture?.destroy(true);
     this.fieldPixels = new Uint8Array(columns * rows * 4);
+    this.fieldUpscaleMode = upscaleMode;
     this.fieldSource = new BufferImageSource({
       resource: this.fieldPixels,
       width: columns,
       height: rows,
-      scaleMode: this.quality === 'basic' ? 'nearest' : 'linear',
+      scaleMode: this.resolveFieldScaleMode(upscaleMode),
     });
     this.fieldTexture = new Texture({ source: this.fieldSource });
     this.fieldColumns = columns;
     this.fieldRows = rows;
+  }
+
+  private resolveFieldScaleMode(override: 'nearest' | 'linear' | null): 'nearest' | 'linear' {
+    return override ?? (this.quality === 'basic' ? 'nearest' : 'linear');
   }
 
   private ensureParticleCount(count: number): void {

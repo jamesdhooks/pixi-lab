@@ -339,6 +339,7 @@ type SimStyleManifest = {
 primitive
 paletteMap
 densityMetaball
+gpuFluid
 edgeGlow
 trailFeedback
 fieldVisualize
@@ -371,6 +372,10 @@ Turns soft particle density into continuous blobs.
 ### Trail Feedback
 
 Persistent fading render textures.
+
+### GPU Fluid Tank
+
+WebGL2 half-float ping-pong targets for bounded stable-fluid velocity, dye, pressure, divergence, and curl passes. Used when a scene needs real-time advection that must stay on the GPU rather than CPU field uploads.
 
 ### Flow Distortion
 
@@ -617,7 +622,7 @@ Sleep mode reduces brightness, saturation, motion, particle count, and disables 
 
 ## 7.5 Ambient Experience Catalog
 
-Deferred content queue:
+Implemented ambient catalog:
 - Day Rhythm Field
 - Home Weather Glass
 - Sleep Aquarium
@@ -627,7 +632,7 @@ Deferred content queue:
 - Family Orbit
 - Memory Drift
 
-These ambient implementations are deferred until the supporting engine, React layer, synthetic data adapters, and emitter systems are complete.
+These ambient implementations live in `@hooksjam/pixi-lab-ambients` with deterministic seeded models, synthetic/injected data fallbacks, preview and fullscreen/background-capable scene factories, style metadata, user-facing controls, and low-motion/sleep-mode behavior. Foreground overlay effects from the same package cover Snowfall, Embers, Fireflies, Confetti, Rain Streaks, and Leaves/Pollen.
 
 ---
 
@@ -1514,6 +1519,69 @@ Reaction-diffusion biological skin patterns.
 ### Feasibility
 
 High
+
+---
+
+## Fluid Tank
+
+### Concept
+
+A bounded high-performance dye tank based on the standalone `fluids.html` prototype.
+
+### Core Physics / Behaviors
+
+- WebGL2 stable-fluid velocity advection
+- pressure projection
+- vorticity confinement
+- bounded wall damping
+- high-resolution dye advection
+
+### Primary Data Structures
+
+- half-float velocity ping-pong targets
+- half-float dye ping-pong targets
+- pressure, divergence, and curl targets
+
+### Rendering Architecture
+
+- reusable `GpuFluidTankRenderer`
+- DOM WebGL2 canvas layer managed by the scene
+- fullscreen `gpuFluid` pass with display composite, glow, vignette, and grain
+
+### Supported Shader Features
+
+- gpuFluid
+- bloom-style display glow
+- color grade
+- optional chromatic style metadata
+
+### Style Presets
+
+- Bounded Cyan
+- Nebula Oil
+- Thermal Bloom
+
+### Shared Gestures
+
+- drag injects velocity along the pointer path
+- tap creates a small local swirl
+- settle mode taps clear velocity while preserving dye
+
+### Director Mode Events
+
+- ambient eddy
+- dye refresh
+
+### Performance Notes
+
+- simulation and dye resolutions scale from `cellSize`
+- Basic quality caps DPR at 1; Enhanced uses up to 2x DPR
+- pressure iteration count is live-tunable
+- preview uses chunkier cells and fewer pressure iterations
+
+### Feasibility
+
+High on WebGL2 devices with `EXT_color_buffer_float`; unsupported devices degrade by reporting unavailable fluid targets.
 
 ---
 

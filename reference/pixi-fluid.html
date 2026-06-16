@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PixiJS Feedback Fluid — Single Canvas Demo</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #05070d;
+      color: rgba(255,255,255,0.92);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      touch-action: none;
+      user-select: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #panel {
+      position: fixed;
+      left: 14px;
+      top: 14px;
+      z-index: 10;
+      width: min(390px, calc(100vw - 28px));
+      box-sizing: border-box;
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(7, 11, 20, 0.72);
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 20px 70px rgba(0,0,0,0.45);
+      backdrop-filter: blur(14px);
+    }
+
+    #panel h1 {
+      margin: 0 0 5px;
+      font-size: 15px;
+      line-height: 1.25;
+      font-weight: 760;
+      letter-spacing: -0.01em;
+    }
+
+    #panel p {
+      margin: 0 0 12px;
+      color: rgba(255,255,255,0.66);
+      font-size: 12px;
+      line-height: 1.42;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 9px;
+    }
+
+    .control {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px 12px;
+      align-items: center;
+    }
+
+    .control label {
+      color: rgba(255,255,255,0.76);
+      font-size: 12px;
+    }
+
+    .control output {
+      color: rgba(180,240,255,0.96);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      grid-column: 1 / -1;
+      width: 100%;
+      accent-color: #80ecff;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.055);
+      color: rgba(255,255,255,0.88);
+      padding: 7px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: 120ms ease;
+    }
+
+    button:hover {
+      background: rgba(255,255,255,0.095);
+      border-color: rgba(255,255,255,0.24);
+    }
+
+    button.active {
+      background: rgba(126, 232, 255, 0.14);
+      border-color: rgba(126, 232, 255, 0.52);
+      color: #dffbff;
+    }
+
+    #hud {
+      position: fixed;
+      right: 14px;
+      top: 14px;
+      z-index: 10;
+      padding: 9px 11px;
+      border-radius: 12px;
+      color: rgba(255,255,255,0.82);
+      background: rgba(7, 11, 20, 0.55);
+      border: 1px solid rgba(255,255,255,0.1);
+      font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      backdrop-filter: blur(12px);
+    }
+
+    #hint {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      z-index: 10;
+      max-width: calc(100vw - 24px);
+      padding: 9px 13px;
+      border-radius: 999px;
+      color: rgba(255,255,255,0.74);
+      background: rgba(7, 11, 20, 0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      font-size: 12px;
+      text-align: center;
+      white-space: nowrap;
+      backdrop-filter: blur(12px);
+    }
+
+    #fallback {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 99;
+      align-items: center;
+      justify-content: center;
+      background: #05070d;
+      color: white;
+      padding: 28px;
+      box-sizing: border-box;
+      text-align: center;
+      font: 16px/1.45 system-ui, sans-serif;
+    }
+
+    #fallback > div {
+      max-width: 620px;
+      padding: 24px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+    }
+  </style>
+</head>
+<body>
+  <div id="panel">
+    <h1>PixiJS Feedback Fluid</h1>
+    <p>
+      One PixiJS canvas. The “fluid” is built from RenderTexture ping-pong,
+      displacement, blur, decay, and directional splats.
+    </p>
+
+    <div class="grid">
+      <div class="control">
+        <label for="resolution">Resolution</label>
+        <output id="resolutionOut">0.55×</output>
+        <input id="resolution" type="range" min="0.28" max="1" step="0.01" value="0.55" />
+      </div>
+
+      <div class="control">
+        <label for="force">Finger force</label>
+        <output id="forceOut">0.44</output>
+        <input id="force" type="range" min="0" max="1.2" step="0.01" value="0.44" />
+      </div>
+
+      <div class="control">
+        <label for="finger">Finger size</label>
+        <output id="fingerOut">36 px</output>
+        <input id="finger" type="range" min="8" max="92" step="1" value="36" />
+      </div>
+
+      <div class="control">
+        <label for="retention">Dye retention</label>
+        <output id="retentionOut">0.995</output>
+        <input id="retention" type="range" min="0.94" max="0.999" step="0.001" value="0.995" />
+      </div>
+
+      <div class="control">
+        <label for="blur">Blend / softness</label>
+        <output id="blurOut">2.2</output>
+        <input id="blur" type="range" min="0" max="9" step="0.1" value="2.2" />
+      </div>
+
+      <div class="control">
+        <label for="warp">Ambient warp</label>
+        <output id="warpOut">0.20</output>
+        <input id="warp" type="range" min="0" max="1" step="0.01" value="0.20" />
+      </div>
+
+      <div class="control">
+        <label for="glow">Glow</label>
+        <output id="glowOut">0.38</output>
+        <input id="glow" type="range" min="0" max="1" step="0.01" value="0.38" />
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button id="ambientBtn" class="active">Ambient flow</button>
+      <button id="dyeBtn">New dye</button>
+      <button id="settleBtn">Settle</button>
+      <button id="resetBtn">Reset gentle</button>
+    </div>
+  </div>
+
+  <div id="hud">
+    <div>FPS: <span id="fps">0</span></div>
+    <div>RT: <span id="rtSize">0×0</span></div>
+    <div>Mode: Pixi feedback</div>
+  </div>
+
+  <div id="hint">Drag to swish the dye · click/tap to stir · this is Pixi-native feedback, not a full pressure-solved fluid</div>
+
+  <div id="fallback">
+    <div>
+      <h2>PixiJS failed to initialize</h2>
+      <p>Try a current browser with WebGL enabled. This demo uses PixiJS RenderTextures and filters.</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/pixi.js@8/dist/pixi.min.js"></script>
+
+  <script>
+    (async () => {
+      const fallback = document.getElementById('fallback');
+
+      const ui = {
+        resolution: document.getElementById('resolution'),
+        force: document.getElementById('force'),
+        finger: document.getElementById('finger'),
+        retention: document.getElementById('retention'),
+        blur: document.getElementById('blur'),
+        warp: document.getElementById('warp'),
+        glow: document.getElementById('glow'),
+        resolutionOut: document.getElementById('resolutionOut'),
+        forceOut: document.getElementById('forceOut'),
+        fingerOut: document.getElementById('fingerOut'),
+        retentionOut: document.getElementById('retentionOut'),
+        blurOut: document.getElementById('blurOut'),
+        warpOut: document.getElementById('warpOut'),
+        glowOut: document.getElementById('glowOut'),
+        fps: document.getElementById('fps'),
+        rtSize: document.getElementById('rtSize'),
+        ambientBtn: document.getElementById('ambientBtn'),
+        dyeBtn: document.getElementById('dyeBtn'),
+        settleBtn: document.getElementById('settleBtn'),
+        resetBtn: document.getElementById('resetBtn')
+      };
+
+      const app = new PIXI.Application();
+
+      try {
+        await app.init({
+          resizeTo: window,
+          backgroundColor: 0x05070d,
+          antialias: true,
+          autoDensity: true,
+          resolution: Math.min(window.devicePixelRatio || 1, 2),
+          preference: 'webgl'
+        });
+      } catch (error) {
+        console.error(error);
+        fallback.style.display = 'flex';
+        return;
+      }
+
+      document.body.appendChild(app.canvas);
+
+      app.stage.eventMode = 'static';
+      app.stage.hitArea = app.screen;
+
+      let ambient = true;
+      let hue = Math.random();
+      let elapsed = 0;
+      let rtA = null;
+      let rtB = null;
+      let flowRT = null;
+      let simW = 0;
+      let simH = 0;
+      let needsReset = false;
+
+      const softTexture = makeSoftCircleTexture(160);
+      const noiseTexture = makeVectorNoiseTexture(384);
+
+      const stageContainer = new PIXI.Container();
+      const glowSprite = new PIXI.Sprite();
+      const displaySprite = new PIXI.Sprite();
+
+      const glowFilter = new PIXI.BlurFilter({ strength: 18, quality: 4 });
+      glowSprite.filters = [glowFilter];
+      glowSprite.blendMode = 'add';
+
+      stageContainer.addChild(glowSprite);
+      stageContainer.addChild(displaySprite);
+      app.stage.addChild(stageContainer);
+
+      const feedbackContainer = new PIXI.Container();
+      const prevSprite = new PIXI.Sprite();
+      const paintLayer = new PIXI.Container();
+
+      const flowContainer = new PIXI.Container();
+      const flowBase = new PIXI.Graphics();
+      const ambientNoiseA = new PIXI.Sprite(noiseTexture);
+      const ambientNoiseB = new PIXI.Sprite(noiseTexture);
+      const flowLayer = new PIXI.Container();
+
+      const flowSprite = new PIXI.Sprite();
+      flowSprite.texture = noiseTexture;
+
+      const displacementFilter = new PIXI.DisplacementFilter({
+        sprite: flowSprite,
+        scale: { x: 0, y: 0 }
+      });
+
+      const blurFilter = new PIXI.BlurFilter({ strength: 2.2, quality: 3 });
+      blurFilter.repeatEdgePixels = true;
+
+      prevSprite.filters = [displacementFilter, blurFilter];
+      feedbackContainer.addChild(prevSprite);
+      feedbackContainer.addChild(paintLayer);
+
+      flowContainer.addChild(flowBase);
+      flowContainer.addChild(ambientNoiseA);
+      flowContainer.addChild(ambientNoiseB);
+      flowContainer.addChild(flowLayer);
+
+      const activePointers = new Map();
+
+      function rand(min, max) {
+        return min + Math.random() * (max - min);
+      }
+
+      function clamp(v, min, max) {
+        return Math.max(min, Math.min(max, v));
+      }
+
+      function hsvToRgb(h, s, v) {
+        const i = Math.floor(h * 6);
+        const f = h * 6 - i;
+        const p = v * (1 - s);
+        const q = v * (1 - f * s);
+        const t = v * (1 - (1 - f) * s);
+
+        let r, g, b;
+
+        switch (i % 6) {
+          case 0: r = v; g = t; b = p; break;
+          case 1: r = q; g = v; b = p; break;
+          case 2: r = p; g = v; b = t; break;
+          case 3: r = p; g = q; b = v; break;
+          case 4: r = t; g = p; b = v; break;
+          default: r = v; g = p; b = q;
+        }
+
+        return ((r * 255) << 16) | ((g * 255) << 8) | (b * 255);
+      }
+
+      function nextColor() {
+        hue = (hue + 0.61803398875) % 1;
+        return hsvToRgb(hue, 0.82, 1.0);
+      }
+
+      function makeSoftCircleTexture(size) {
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+
+        const cx = size / 2;
+        const cy = size / 2;
+        const g = c.getContext('2d');
+        const grad = g.createRadialGradient(cx, cy, 0, cx, cy, size / 2);
+
+        grad.addColorStop(0, 'rgba(255,255,255,1)');
+        grad.addColorStop(0.18, 'rgba(255,255,255,0.88)');
+        grad.addColorStop(0.42, 'rgba(255,255,255,0.42)');
+        grad.addColorStop(0.72, 'rgba(255,255,255,0.11)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+
+        g.fillStyle = grad;
+        g.fillRect(0, 0, size, size);
+
+        return PIXI.Texture.from(c);
+      }
+
+      function makeVectorNoiseTexture(size) {
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+
+        const g = c.getContext('2d');
+        const image = g.createImageData(size, size);
+
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            const i = (y * size + x) * 4;
+            const a = Math.sin(x * 0.071 + y * 0.029) + Math.sin(x * 0.017 - y * 0.083);
+            const b = Math.cos(x * 0.037 - y * 0.061) + Math.sin(x * 0.091 + y * 0.013);
+            image.data[i] = clamp(128 + a * 23 + rand(-9, 9), 0, 255);
+            image.data[i + 1] = clamp(128 + b * 23 + rand(-9, 9), 0, 255);
+            image.data[i + 2] = 128;
+            image.data[i + 3] = 255;
+          }
+        }
+
+        g.putImageData(image, 0, 0);
+        return PIXI.Texture.from(c);
+      }
+
+      function destroyChildren(container) {
+        const children = container.removeChildren();
+
+        for (const child of children) {
+          child.destroy();
+        }
+      }
+
+      function makeStamp(x, y, radius, color, alpha, stretch = 1, rotation = 0, blend = 'add') {
+        const sprite = new PIXI.Sprite(softTexture);
+
+        sprite.anchor.set(0.5);
+        sprite.position.set(x, y);
+        sprite.scale.set((radius * 2 * stretch) / softTexture.width, (radius * 2) / softTexture.height);
+        sprite.rotation = rotation;
+        sprite.tint = color;
+        sprite.alpha = alpha;
+        sprite.blendMode = blend;
+
+        return sprite;
+      }
+
+      function updateOutputs() {
+        ui.resolutionOut.textContent = Number(ui.resolution.value).toFixed(2) + '×';
+        ui.forceOut.textContent = Number(ui.force.value).toFixed(2);
+        ui.fingerOut.textContent = Math.round(Number(ui.finger.value)) + ' px';
+        ui.retentionOut.textContent = Number(ui.retention.value).toFixed(3);
+        ui.blurOut.textContent = Number(ui.blur.value).toFixed(1);
+        ui.warpOut.textContent = Number(ui.warp.value).toFixed(2);
+        ui.glowOut.textContent = Number(ui.glow.value).toFixed(2);
+      }
+
+      function createRenderTexture(width, height) {
+        return PIXI.RenderTexture.create({
+          width,
+          height,
+          resolution: 1,
+          antialias: false
+        });
+      }
+
+      function resizeTextures(force = false) {
+        const scale = Number(ui.resolution.value);
+        const nextW = Math.max(64, Math.round(window.innerWidth * scale));
+        const nextH = Math.max(64, Math.round(window.innerHeight * scale));
+
+        if (!force && nextW === simW && nextH === simH) {
+          return;
+        }
+
+        simW = nextW;
+        simH = nextH;
+
+        if (rtA) rtA.destroy();
+        if (rtB) rtB.destroy();
+        if (flowRT) flowRT.destroy();
+
+        rtA = createRenderTexture(simW, simH);
+        rtB = createRenderTexture(simW, simH);
+        flowRT = createRenderTexture(simW, simH);
+
+        displaySprite.texture = rtA;
+        glowSprite.texture = rtA;
+        flowSprite.texture = flowRT;
+
+        updateDisplaySprites();
+        updateFlowBase();
+        seedDye();
+
+        ui.rtSize.textContent = simW + '×' + simH;
+      }
+
+      function updateDisplaySprites() {
+        displaySprite.x = 0;
+        displaySprite.y = 0;
+        displaySprite.width = window.innerWidth;
+        displaySprite.height = window.innerHeight;
+
+        glowSprite.x = -window.innerWidth * 0.02;
+        glowSprite.y = -window.innerHeight * 0.02;
+        glowSprite.width = window.innerWidth * 1.04;
+        glowSprite.height = window.innerHeight * 1.04;
+      }
+
+      function updateFlowBase() {
+        flowBase.clear();
+        flowBase.rect(0, 0, simW, simH).fill({ color: 0x808080, alpha: 1 });
+
+        ambientNoiseA.position.set(-simW * 0.15, -simH * 0.15);
+        ambientNoiseA.width = simW * 1.3;
+        ambientNoiseA.height = simH * 1.3;
+        ambientNoiseA.alpha = 0.09;
+
+        ambientNoiseB.position.set(-simW * 0.1, -simH * 0.1);
+        ambientNoiseB.width = simW * 1.2;
+        ambientNoiseB.height = simH * 1.2;
+        ambientNoiseB.alpha = 0.055;
+      }
+
+      function renderTo(texture, container, clear = true) {
+        try {
+          app.renderer.render({
+            container,
+            target: texture,
+            clear
+          });
+        } catch (error) {
+          // Compatibility fallback for older v8/v7-style render signatures.
+          app.renderer.render(container, { renderTexture: texture, clear });
+        }
+      }
+
+      function seedDye() {
+        const seed = new PIXI.Container();
+
+        const background = new PIXI.Graphics();
+        background.rect(0, 0, simW, simH).fill({ color: 0x080914, alpha: 1 });
+        seed.addChild(background);
+
+        for (let i = 0; i < 95; i++) {
+          const x = rand(-0.08, 1.08) * simW;
+          const y = rand(-0.08, 1.08) * simH;
+          const radius = rand(55, 190) * Number(ui.resolution.value);
+          const color = nextColor();
+          const alpha = rand(0.10, 0.32);
+          const stretch = rand(0.75, 1.7);
+          const rotation = rand(0, Math.PI * 2);
+
+          seed.addChild(makeStamp(x, y, radius, color, alpha, stretch, rotation, i < 12 ? 'normal' : 'add'));
+        }
+
+        for (let i = 0; i < 120; i++) {
+          const x = Math.random() * simW;
+          const y = Math.random() * simH;
+          const radius = rand(14, 48) * Number(ui.resolution.value);
+          const color = nextColor();
+
+          seed.addChild(makeStamp(x, y, radius, color, rand(0.08, 0.22), rand(0.8, 1.4), rand(0, Math.PI * 2), 'add'));
+        }
+
+        renderTo(rtA, seed, true);
+        renderTo(rtB, seed, true);
+
+        seed.destroy({ children: true });
+      }
+
+      function settle() {
+        destroyChildren(flowLayer);
+        destroyChildren(paintLayer);
+      }
+
+      function resetGentle() {
+        ui.resolution.value = 0.55;
+        ui.force.value = 0.44;
+        ui.finger.value = 36;
+        ui.retention.value = 0.995;
+        ui.blur.value = 2.2;
+        ui.warp.value = 0.20;
+        ui.glow.value = 0.38;
+        ambient = true;
+        ui.ambientBtn.classList.add('active');
+        needsReset = true;
+      }
+
+      function pointerToSim(event) {
+        const rect = app.canvas.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width) * simW;
+        const y = ((event.clientY - rect.top) / rect.height) * simH;
+
+        return {
+          x: clamp(x, 0, simW),
+          y: clamp(y, 0, simH)
+        };
+      }
+
+      function addFlowStamp(x, y, dx, dy, radius, alpha) {
+        const force = Number(ui.force.value);
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = dx / len;
+        const ny = dy / len;
+
+        const red = Math.round(clamp(128 + nx * 112 * force, 0, 255));
+        const green = Math.round(clamp(128 + ny * 112 * force, 0, 255));
+        const color = (red << 16) | (green << 8) | 128;
+
+        const sprite = makeStamp(
+          x,
+          y,
+          radius,
+          color,
+          alpha,
+          1 + clamp(len / 28, 0, 2.8),
+          Math.atan2(dy, dx),
+          'normal'
+        );
+
+        flowLayer.addChild(sprite);
+      }
+
+      function addDyeStamp(x, y, dx, dy, radius, alpha, color = null) {
+        const len = Math.hypot(dx, dy) || 1;
+        const sprite = makeStamp(
+          x,
+          y,
+          radius * 0.82,
+          color ?? nextColor(),
+          alpha,
+          1 + clamp(len / 40, 0, 2.2),
+          Math.atan2(dy, dx),
+          'add'
+        );
+
+        paintLayer.addChild(sprite);
+      }
+
+      function addSwish(from, to) {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < 0.1) return;
+
+        const baseRadius = Number(ui.finger.value) * Number(ui.resolution.value);
+        const steps = Math.max(2, Math.ceil(dist / Math.max(baseRadius * 0.38, 4)));
+
+        for (let i = 0; i < steps; i++) {
+          const k = i / Math.max(steps - 1, 1);
+          const x = from.x + dx * k;
+          const y = from.y + dy * k;
+          const wobble = Math.sin(elapsed * 8 + i * 1.7) * baseRadius * 0.08;
+
+          addFlowStamp(x + wobble, y - wobble, dx, dy, baseRadius * rand(0.82, 1.18), 0.86);
+          addDyeStamp(x, y, dx, dy, baseRadius * rand(0.5, 0.95), 0.032 + Number(ui.force.value) * 0.018);
+        }
+      }
+
+      function burst(point) {
+        const radius = Number(ui.finger.value) * Number(ui.resolution.value);
+
+        for (let i = 0; i < 10; i++) {
+          const a = rand(0, Math.PI * 2);
+          const d = rand(0.5, 1);
+          const dx = Math.cos(a) * radius * 1.4 * d;
+          const dy = Math.sin(a) * radius * 1.4 * d;
+          const x = point.x + Math.cos(a) * radius * rand(0, 0.25);
+          const y = point.y + Math.sin(a) * radius * rand(0, 0.25);
+
+          addFlowStamp(x, y, dx, dy, radius * rand(0.65, 1.25), 0.6);
+          addDyeStamp(x, y, dx, dy, radius * rand(0.55, 1.1), 0.08, nextColor());
+        }
+      }
+
+      function addAmbient(dt) {
+        if (!ambient) return;
+
+        const warp = Number(ui.warp.value);
+
+        if (warp <= 0.001) return;
+
+        const radius = Number(ui.finger.value) * Number(ui.resolution.value);
+        const emitters = 2;
+
+        for (let i = 0; i < emitters; i++) {
+          const phase = i * Math.PI;
+          const x = simW * (0.5 + Math.sin(elapsed * 0.21 + phase) * 0.36);
+          const y = simH * (0.5 + Math.cos(elapsed * 0.17 + phase * 1.3) * 0.34);
+          const dx = Math.cos(elapsed * 1.1 + phase) * radius * 0.22;
+          const dy = Math.sin(elapsed * 0.93 + phase) * radius * 0.22;
+
+          if (Math.random() < 0.18 * warp) {
+            addFlowStamp(x, y, dx, dy, radius * rand(0.75, 1.2), 0.25 * warp);
+          }
+        }
+      }
+
+      function updateFlowMap() {
+        ambientNoiseA.rotation = elapsed * 0.035;
+        ambientNoiseA.x = -simW * 0.15 + Math.sin(elapsed * 0.11) * simW * 0.05;
+        ambientNoiseA.y = -simH * 0.15 + Math.cos(elapsed * 0.10) * simH * 0.05;
+        ambientNoiseA.alpha = 0.055 + Number(ui.warp.value) * 0.10;
+
+        ambientNoiseB.rotation = -elapsed * 0.047;
+        ambientNoiseB.x = -simW * 0.1 + Math.cos(elapsed * 0.09) * simW * 0.04;
+        ambientNoiseB.y = -simH * 0.1 + Math.sin(elapsed * 0.13) * simH * 0.04;
+        ambientNoiseB.alpha = 0.035 + Number(ui.warp.value) * 0.075;
+
+        renderTo(flowRT, flowContainer, true);
+      }
+
+      function step(dt) {
+        updateOutputs();
+
+        if (needsReset) {
+          needsReset = false;
+          resizeTextures(true);
+          return;
+        }
+
+        resizeTextures(false);
+        addAmbient(dt);
+        updateFlowMap();
+
+        blurFilter.strength = Number(ui.blur.value);
+        blurFilter.quality = Number(ui.blur.value) > 4 ? 4 : 3;
+
+        const warp = Number(ui.warp.value);
+        const force = Number(ui.force.value);
+
+        if (displacementFilter.scale.set) {
+          displacementFilter.scale.set(10 + warp * 42 + force * 30, 10 + warp * 42 + force * 30);
+        } else {
+          displacementFilter.scale.x = 10 + warp * 42 + force * 30;
+          displacementFilter.scale.y = 10 + warp * 42 + force * 30;
+        }
+
+        prevSprite.texture = rtA;
+        prevSprite.alpha = Number(ui.retention.value);
+        prevSprite.x = -simW * 0.004;
+        prevSprite.y = -simH * 0.004;
+        prevSprite.width = simW * 1.008;
+        prevSprite.height = simH * 1.008;
+
+        renderTo(rtB, feedbackContainer, true);
+
+        const temp = rtA;
+        rtA = rtB;
+        rtB = temp;
+
+        displaySprite.texture = rtA;
+        glowSprite.texture = rtA;
+
+        glowSprite.alpha = Number(ui.glow.value);
+        glowFilter.strength = 9 + Number(ui.glow.value) * 30;
+
+        destroyChildren(flowLayer);
+        destroyChildren(paintLayer);
+      }
+
+      app.canvas.addEventListener('pointerdown', (event) => {
+        app.canvas.setPointerCapture?.(event.pointerId);
+
+        const p = pointerToSim(event);
+
+        activePointers.set(event.pointerId, p);
+        burst(p);
+      });
+
+      app.canvas.addEventListener('pointermove', (event) => {
+        const prev = activePointers.get(event.pointerId);
+
+        if (!prev) return;
+
+        const curr = pointerToSim(event);
+
+        addSwish(prev, curr);
+        activePointers.set(event.pointerId, curr);
+      });
+
+      function endPointer(event) {
+        activePointers.delete(event.pointerId);
+      }
+
+      app.canvas.addEventListener('pointerup', endPointer);
+      app.canvas.addEventListener('pointercancel', endPointer);
+      app.canvas.addEventListener('pointerleave', endPointer);
+
+      window.addEventListener('resize', () => {
+        updateDisplaySprites();
+        needsReset = true;
+      });
+
+      ui.resolution.addEventListener('input', () => {
+        needsReset = true;
+      });
+
+      ui.dyeBtn.addEventListener('click', () => {
+        seedDye();
+      });
+
+      ui.settleBtn.addEventListener('click', () => {
+        settle();
+      });
+
+      ui.resetBtn.addEventListener('click', () => {
+        resetGentle();
+      });
+
+      ui.ambientBtn.addEventListener('click', () => {
+        ambient = !ambient;
+        ui.ambientBtn.classList.toggle('active', ambient);
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'r' || event.key === 'R') seedDye();
+        if (event.key === ' ') {
+          event.preventDefault();
+          settle();
+        }
+        if (event.key === 'a' || event.key === 'A') {
+          ambient = !ambient;
+          ui.ambientBtn.classList.toggle('active', ambient);
+        }
+      });
+
+      resizeTextures(true);
+
+      app.ticker.add((ticker) => {
+        const dt = Math.min(ticker.deltaMS / 1000, 0.033);
+        elapsed += dt;
+        step(dt);
+        ui.fps.textContent = Math.round(app.ticker.FPS).toString();
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -47,6 +47,24 @@ export function SettingsDrawer({ open, onClose, settings, fields, maxPixels, onM
     { label: '1080p', sub: '1920×1080', value: 2_073_600 },
   ];
 
+  const normalFields = fields.filter((field) => !field.advanced);
+  const advancedFields = fields.filter((field) => field.advanced);
+  const renderFieldSection = (label: string, sectionFields: SettingsField[]) =>
+    sectionFields.length > 0 ? (
+      <>
+        <div className="mx-0 my-2 h-px bg-white/8" />
+        <p className="px-2 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">{label}</p>
+        {sectionFields.map((field) => (
+          <FieldRow
+            key={field.key}
+            field={field}
+            value={vals[field.key]}
+            onChange={(v) => apply(field.key, v)}
+          />
+        ))}
+      </>
+    ) : null;
+
   const content = (
     <div className="p-3 space-y-0.5">
       {/* ── Common: resolution (pixel budget) ── */}
@@ -69,20 +87,8 @@ export function SettingsDrawer({ open, onClose, settings, fields, maxPixels, onM
       </div>
 
       {/* ── Experience-specific settings ── */}
-      {fields.length > 0 && (
-        <>
-          <div className="mx-0 my-2 h-px bg-white/8" />
-          <p className="px-2 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">Experience</p>
-          {fields.map((field) => (
-            <FieldRow
-              key={field.key}
-              field={field}
-              value={vals[field.key]}
-              onChange={(v) => apply(field.key, v)}
-            />
-          ))}
-        </>
-      )}
+      {renderFieldSection('Experience', normalFields)}
+      {renderFieldSection('Advanced', advancedFields)}
     </div>
   );
 
@@ -110,7 +116,7 @@ export function SettingsDrawer({ open, onClose, settings, fields, maxPixels, onM
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="absolute right-3 top-12 z-50 w-80 max-h-[70vh] overflow-y-auto rounded-2xl bg-black/80 shadow-xl backdrop-blur-md ring-1 ring-white/12"
+            className="absolute right-3 top-12 z-50 w-[min(30rem,calc(100vw-1.5rem))] max-h-[76vh] overflow-y-auto rounded-2xl bg-black/80 shadow-xl backdrop-blur-md ring-1 ring-white/12"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3">
@@ -147,7 +153,7 @@ function FieldRow({
   onChange: (v: unknown) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl px-2 py-2.5">
+    <div className="flex items-start justify-between gap-4 rounded-xl px-2 py-2.5">
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-white">{field.label}</p>
         {field.description && (
@@ -155,7 +161,7 @@ function FieldRow({
         )}
       </div>
 
-      <div className="shrink-0">
+      <div className="shrink-0 pt-0.5">
         {field.type === 'boolean' && (
           <ToggleSwitch value={Boolean(value)} onChange={onChange} />
         )}
@@ -164,6 +170,9 @@ function FieldRow({
         )}
         {field.type === 'select' && (
           <CustomSelect field={field} value={value} onChange={onChange} />
+        )}
+        {field.type === 'string' && (
+          <StringInput value={value} onChange={onChange} />
         )}
       </div>
     </div>
@@ -213,10 +222,102 @@ function NumberSlider({
         step={field.step ?? 1}
         value={num}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 w-28 cursor-pointer appearance-none rounded-full bg-white/20 accent-white"
+        className="h-1.5 w-36 cursor-pointer appearance-none rounded-full bg-white/20 accent-white"
       />
       <span className="w-9 text-right text-sm tabular-nums text-white/60">{num}</span>
     </div>
+  );
+}
+
+// ── String input ──────────────────────────────────────────────────────────────
+
+function StringInput({ value, onChange }: { value: unknown; onChange: (v: unknown) => void }) {
+  const current = typeof value === 'string' ? value : '';
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(current);
+
+  useEffect(() => {
+    if (!open) setDraft(current);
+  }, [current, open]);
+
+  const commit = () => {
+    onChange(draft.trim());
+    setOpen(false);
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onMouseDown={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setDraft(current);
+          setOpen(true);
+        }}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setDraft(current);
+          setOpen(true);
+        }}
+        className="flex w-48 max-w-[48vw] items-center justify-between gap-3 rounded-xl bg-white/10 px-3 py-2 text-left text-sm text-white ring-1 ring-white/15 transition-colors hover:bg-white/15"
+      >
+        <span className="truncate text-white/80">{current || 'Paste URL…'}</span>
+        <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-cyan-200/70">Edit</span>
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setOpen(false);
+            }}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Image URL"
+              className="w-full max-w-xl rounded-2xl bg-zinc-950 p-4 shadow-2xl ring-1 ring-white/15"
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.14 }}
+            >
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-bold text-white">Image URL</h4>
+                  <p className="mt-1 text-xs text-white/45">Paste a direct image URL for Fluid Tank texture initialization.</p>
+                </div>
+                <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-white/45 hover:bg-white/10 hover:text-white" aria-label="Close URL editor">
+                  <X size={16} />
+                </button>
+              </div>
+              <textarea
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') commit();
+                  if (e.key === 'Escape') setOpen(false);
+                }}
+                placeholder="https://example.com/image.png"
+                className="min-h-28 w-full resize-y rounded-xl bg-white/10 px-3 py-2 text-sm text-white ring-1 ring-white/15 placeholder:text-white/30 focus:outline-none focus:ring-cyan-200/50"
+              />
+              <div className="mt-3 flex justify-end gap-2">
+                <button type="button" onClick={() => setDraft('')} className="rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/10 hover:text-white">Clear</button>
+                <button type="button" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/10 hover:text-white">Cancel</button>
+                <button type="button" onClick={commit} className="rounded-xl bg-cyan-200 px-3 py-2 text-sm font-bold text-black hover:bg-cyan-100">Apply URL</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -266,7 +367,7 @@ function CustomSelect({
         ref={btnRef}
         type="button"
         onClick={handleToggle}
-        className="flex min-w-[110px] items-center justify-between gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm text-white ring-1 ring-white/15 transition-colors hover:bg-white/15"
+        className="flex min-w-[168px] max-w-[220px] items-center justify-between gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm text-white ring-1 ring-white/15 transition-colors hover:bg-white/15"
       >
         <span className="truncate">{current?.label ?? String(value)}</span>
         <ChevronDown
@@ -288,12 +389,13 @@ function CustomSelect({
                 ? { bottom: window.innerHeight - btnRect.top + 6 }
                 : { top: btnRect.bottom + 6 }),
               right: btnRect.right,
-              minWidth: Math.max(btnRect.width, 130),
+              minWidth: Math.max(btnRect.width, 190),
             }}
             className="z-[9999] overflow-hidden rounded-xl bg-black/90 p-1 shadow-2xl ring-1 ring-white/20 backdrop-blur-xl"
           >
             {field.options?.map((opt) => {
               const active = opt.value === String(value);
+              const swatch = selectOptionSwatch(field.key, opt.value);
               return (
                 <button
                   key={opt.value}
@@ -308,7 +410,16 @@ function CustomSelect({
                       : 'text-white/65 hover:bg-white/10 hover:text-white'
                   }`}
                 >
-                  <span>{opt.label}</span>
+                  <span className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+                    {swatch && (
+                      <span
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-white/30"
+                        style={{ background: swatch }}
+                      />
+                    )}
+                    <span>{opt.label}</span>
+                  </span>
                   {active && <Check size={12} className="shrink-0 text-emerald-400" />}
                 </button>
               );
@@ -318,4 +429,30 @@ function CustomSelect({
       </AnimatePresence>
     </div>
   );
+}
+
+function selectOptionSwatch(fieldKey: string, value: string): string | null {
+  if (fieldKey !== 'injectPalette') return null;
+  switch (value) {
+    case 'style':
+      return 'linear-gradient(135deg, rgb(53, 255, 229) 0%, rgb(77, 216, 255) 50%, rgb(255, 255, 255) 100%)';
+    case 'cyan':
+      return 'rgb(26, 255, 233)';
+    case 'magenta':
+      return 'rgb(255, 31, 223)';
+    case 'amber':
+      return 'rgb(255, 157, 21)';
+    case 'green':
+      return 'rgb(31, 255, 59)';
+    case 'blue':
+      return 'rgb(41, 92, 255)';
+    case 'red':
+      return 'rgb(255, 41, 20)';
+    case 'white':
+      return 'rgb(255, 255, 230)';
+    case 'rainbow':
+      return 'conic-gradient(from 90deg, rgb(255, 59, 48), rgb(255, 214, 10), rgb(50, 215, 75), rgb(100, 210, 255), rgb(191, 90, 242), rgb(255, 59, 48))';
+    default:
+      return null;
+  }
 }

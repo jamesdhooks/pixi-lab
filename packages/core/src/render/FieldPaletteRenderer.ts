@@ -15,6 +15,7 @@ export interface FieldPaletteRenderOptions {
   absolute?: boolean;
   zIndex?: number;
   palette?: readonly number[];
+  upscaleMode?: 'nearest' | 'linear';
 }
 
 interface FieldLayer {
@@ -24,6 +25,7 @@ interface FieldLayer {
   pixels: Uint8Array | null;
   columns: number;
   rows: number;
+  upscaleMode: 'nearest' | 'linear' | null;
 }
 
 export class FieldPaletteRenderer {
@@ -40,7 +42,7 @@ export class FieldPaletteRenderer {
     if (quality === this.quality) return;
     this.quality = quality;
     for (const layer of this.layers.values()) {
-      if (layer.source) layer.source.scaleMode = this.scaleMode();
+      if (layer.source) layer.source.scaleMode = this.resolveScaleMode(layer.upscaleMode);
     }
   }
 
@@ -58,6 +60,11 @@ export class FieldPaletteRenderer {
   ): void {
     const layer = this.ensureLayer(id, field.columns, field.rows, options.zIndex ?? 0);
     if (!layer.pixels || !layer.source || !layer.texture) return;
+    const upscaleMode = options.upscaleMode ?? null;
+    if (layer.upscaleMode !== upscaleMode) {
+      layer.upscaleMode = upscaleMode;
+      layer.source.scaleMode = this.resolveScaleMode(upscaleMode);
+    }
 
     const palette = options.palette ?? style.palette;
     const colors = palette.length > 0 ? palette : [0xffffff];
@@ -128,13 +135,17 @@ export class FieldPaletteRenderer {
     sprite.zIndex = zIndex;
     this.container.addChild(sprite);
 
-    const next: FieldLayer = { sprite, texture, source, pixels, columns, rows };
+    const next: FieldLayer = { sprite, texture, source, pixels, columns, rows, upscaleMode: null };
     this.layers.set(id, next);
     return next;
   }
 
   private scaleMode(): 'nearest' | 'linear' {
     return this.quality === 'basic' ? 'nearest' : 'linear';
+  }
+
+  private resolveScaleMode(override: 'nearest' | 'linear' | null): 'nearest' | 'linear' {
+    return override ?? this.scaleMode();
   }
 
   private samplePalette(

@@ -58,6 +58,7 @@ function runTap(scene: BallPitScene, input: Input, id: number, x: number, y: num
 const mockBody = {
   getPosition: () => ({ x: 0.5, y: 0.5 }),
   getAngle: () => 0,
+  isAwake: () => true,
   applyForce: vi.fn(),
   getWorldCenter: () => ({ x: 0, y: 0 }),
 };
@@ -162,6 +163,10 @@ describe('BallPitScene', () => {
 
   it('starts with score 0 and no balls', () => {
     expect(ctx.emit).not.toHaveBeenCalled();
+  });
+
+  it('does not request renders while fully idle', () => {
+    expect(scene.shouldRender()).toBe(false);
   });
 
   it('spawns a ball when a human tap completes', () => {

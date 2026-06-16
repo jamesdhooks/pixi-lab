@@ -19,6 +19,24 @@ function createModel(seed = 42) {
   });
 }
 
+function createBlankModel(seed = 42) {
+  return new MyceliumLatticeModel({
+    seed,
+    width: 480,
+    height: 320,
+    columns: 32,
+    rows: 22,
+    strainCount: 6,
+    initialSpores: 0,
+    maxTips: 4000,
+    growthProbability: 0.52,
+    branchChance: 0.10,
+    generationHueStep: 13,
+    forwardBias: 1.0,
+    sideBias: 0.42,
+  });
+}
+
 describe('MyceliumLatticeModel', () => {
   it('creates deterministic state from the same seed', () => {
     const a = createModel(11);
@@ -34,6 +52,16 @@ describe('MyceliumLatticeModel', () => {
   it('has active tips after initialisation', () => {
     const model = createModel();
     expect(model.stats().tipCount).toBeGreaterThan(0);
+  });
+
+  it('keeps a blank lattice idle after its first render', () => {
+    const model = createBlankModel();
+    expect(model.stats()).toEqual({ livingCells: 0, tipCount: 0 });
+    expect(model.hasRenderChanges()).toBe(true);
+    model.markRendered();
+    model.update(1 / 30);
+    expect(model.hasRenderChanges()).toBe(false);
+    expect(model.stats()).toEqual({ livingCells: 0, tipCount: 0 });
   });
 
   it('advances growth over multiple ticks', () => {
@@ -88,7 +116,6 @@ describe('MyceliumLatticeModel', () => {
   });
 
   it('stabilize adds new growth when stagnant', () => {
-    const model = createModel();
     // Exhaust tips by running many ticks on a small grid with high probability.
     const highProb = new MyceliumLatticeModel({
       seed: 1, width: 200, height: 100, columns: 16, rows: 8,

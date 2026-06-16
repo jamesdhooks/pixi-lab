@@ -4,9 +4,9 @@
  * Full-screen game shell. Intro → gameplay → game over.
  * Settings button pauses the engine and opens the settings drawer.
  */
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, type MouseEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { EyeOff, HelpCircle, Play, Settings as SettingsIcon, X } from 'lucide-react';
+import { Eye, EyeOff, HelpCircle, Play, Settings as SettingsIcon, X } from 'lucide-react';
 import { GameRuntime } from './GameRuntime.js';
 import { IntroCard } from './ui/IntroCard.js';
 import { GameOverModal } from './ui/GameOverModal.js';
@@ -14,18 +14,71 @@ import { HUD } from './ui/HUD.js';
 import { ModeToggle } from './ui/ModeToggle.js';
 import { SettingsDrawer } from './ui/SettingsDrawer.js';
 import { StylePicker } from './ui/StylePicker.js';
-import { QualitySelector } from './ui/QualitySelector.js';
+import { EngineConfigurationSelector } from './ui/EngineConfigurationSelector.js';
 import { DebugPanel } from './ui/DebugPanel.js';
 import { SimControlPanel } from './ui/SimControlPanel.js';
 import { OverflowMenu } from './ui/OverflowMenu.js';
 import { ViewportProvider, useViewportContext } from './ViewportProvider.js';
-import { nameSuggestions } from '@hooksjam/pixi-lab-core';
+import { resolveRenderSelection, resolveStoredRenderSelection } from './engineConfigurationSelection.js';
+import {
+  LEGACY_RENDER_QUALITY_STORAGE_KEY,
+  RENDER_SELECTION_STORAGE_KEY,
+  isEngineConfigurationVisible,
+  serializeRenderBackendProfileStorage,
+  nameSuggestions,
+} from '@hooksjam/pixi-lab-core';
 import type { LabExperience, SimulationExperience } from '@hooksjam/pixi-lab-core';
-import type { GameEvent, RenderQuality, ScoreEntry } from '@hooksjam/pixi-lab-core';
+import type { GameEvent, RenderBackendProfileSelection, RenderQuality, ScoreEntry } from '@hooksjam/pixi-lab-core';
 import type { GameApp } from '@hooksjam/pixi-lab-core';
 import type { IntroHint } from './ui/IntroCard.js';
 
 type Shell = 'playing' | 'gameover';
+
+function readStoredRenderSelection(): unknown {
+  try {
+    const storedSelection = localStorage.getItem(RENDER_SELECTION_STORAGE_KEY);
+    return storedSelection ? JSON.parse(storedSelection) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function readStoredLegacyRenderQuality(): string | null {
+  try {
+    return localStorage.getItem(LEGACY_RENDER_QUALITY_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredRenderSelection(selection: RenderBackendProfileSelection): void {
+  try {
+    localStorage.setItem(LEGACY_RENDER_QUALITY_STORAGE_KEY, selection.legacyQuality);
+    localStorage.setItem(RENDER_SELECTION_STORAGE_KEY, JSON.stringify(serializeRenderBackendProfileStorage(selection)));
+  } catch {
+    /* ignore */
+  }
+}
+
+const RUNTIME_PERF_CSS = `
+.pixi-lab-runtime-shell [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.pixi-lab-runtime-shell [class*="shadow"] {
+  box-shadow: none !important;
+}
+
+.pixi-lab-runtime-shell [class*="drop-shadow"] {
+  filter: none !important;
+}
+
+.pixi-lab-runtime-shell [class*="transition"] {
+  transition-property: none !important;
+  transition-duration: 0ms !important;
+}
+`;
 
 export interface GameLauncherProps {
   definition: LabExperience;
@@ -38,6 +91,28 @@ export interface GameLauncherProps {
   onQuit?: () => void;
   /** Cap rendered pixel count — see GameAppOptions.maxPixels */
   maxPixels?: number;
+  /** Start this experience in unattended demo mode as soon as the runtime is ready. */
+  autoDemo?: boolean;
+  /** Called when the active demo surface is clicked; defaults to shuffling the current scene. */
+  onDemoAdvance?: () => void;
+  /** Called when an unattended demo is manually exited from the launcher overlay. */
+  onDemoExit?: () => void;
+  /** Called after the Pixi runtime is ready and the launcher's initial mode is applied. */
+  onRuntimeReady?: () => void;
+  /** Optional host-selected startup engine configuration, sanitized before launch. */
+  initialRenderSelection?: RenderBackendProfileSelection;
+  /** Optional host-selected startup legacy token, sanitized against the active experience. */
+  initialQuality?: RenderQuality;
+  /** Dev/test-only raw-engine experiment switch; public hosts should leave false. */
+  experimentalRawEngine?: boolean;
+  /**
+   * Called whenever the launcher resolves renderer backend/profile state.
+   * Hosts can observe this backend-neutral descriptor while scenes continue to
+   * receive the legacy RenderQuality value during migration.
+   */
+  onRenderSelectionChange?: (selection: RenderBackendProfileSelection) => void;
+  /** Remove the black shell background so the launcher floats as a transparent overlay. */
+  transparent?: boolean;
 }
 
 export function GameLauncher(props: GameLauncherProps) {
@@ -55,31 +130,59 @@ function GameLauncherInner({
   onSubmitScore,
   onQuit,
   maxPixels,
+  autoDemo = false,
+  onDemoAdvance,
+  onDemoExit,
+  onRuntimeReady,
+  initialRenderSelection,
+  initialQuality,
+  experimentalRawEngine = false,
+  onRenderSelectionChange,
+  transparent = false,
 }: GameLauncherProps) {
   // ViewportProvider is mounted by GameLauncher wrapper; child components read context directly.
   const { isMobile, isLandscape } = useViewportContext();
   const mobilePortrait = isMobile && !isLandscape;
   const [shell, setShell] = useState<Shell>('playing');
-  const [infoCardVisible, setInfoCardVisible] = useState(true);
+  const [infoCardVisible, setInfoCardVisible] = useState(!autoDemo);
   const [infoAutoDismiss, setInfoAutoDismiss] = useState(true);
   const [playKey, setPlayKey] = useState(0);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState<number | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [uiHidden, setUiHidden] = useState(false);
-  const [isDemo, setIsDemo] = useState(false);
+  const [uiHidden, setUiHidden] = useState(autoDemo);
+  const [isDemo, setIsDemo] = useState(autoDemo);
+  const [screensaverActive, setScreensaverActive] = useState(false);
   const [styleId, setStyleId] = useState(definition.styleManifest?.defaultStyleId ?? '');
-  const [quality, setQuality] = useState<RenderQuality>(() => {
-    try { return (localStorage.getItem('pixi-lab:quality') as RenderQuality) ?? 'basic'; } catch { return 'basic'; }
-  });
+  const resolveStartupRenderSelection = useCallback(() => {
+    if (initialRenderSelection !== undefined) {
+      return resolveStoredRenderSelection(
+        serializeRenderBackendProfileStorage(initialRenderSelection),
+        initialRenderSelection.legacyQuality,
+        definition.capabilities,
+      );
+    }
+    if (initialQuality !== undefined) return resolveRenderSelection(initialQuality, definition.capabilities);
+    const storedQuality = readStoredLegacyRenderQuality();
+    const storedSelection = readStoredRenderSelection();
+    return resolveStoredRenderSelection(storedSelection, storedQuality, definition.capabilities);
+  }, [definition.capabilities, initialQuality, initialRenderSelection]);
+
+  const [renderSelection, setRenderSelection] = useState<RenderBackendProfileSelection>(() => resolveStartupRenderSelection());
+
+  useEffect(() => {
+    onRenderSelectionChange?.(renderSelection);
+  }, [onRenderSelectionChange, renderSelection]);
+
+  const sceneLegacyQuality = renderSelection.legacyQuality;
   const [localMaxPixels, setLocalMaxPixels] = useState<number | undefined>(() => {
     try {
       const stored = parseInt(localStorage.getItem('pixi-lab:maxPixels') ?? '');
       return (isNaN(stored) || stored === 0) ? maxPixels : stored;
     } catch { return maxPixels; }
   });
-  /** Tracks the quality tier actually being rendered (may differ from `quality` on fallback). */
-  const [renderedQuality, setRenderedQuality] = useState<RenderQuality | undefined>(undefined);
+  /** Tracks the legacy quality tier actually being rendered (may differ from `sceneLegacyQuality` on fallback). */
+  const [renderedLegacyQuality, setRenderedLegacyQuality] = useState<RenderQuality | undefined>(undefined);
   const [modeId, setModeId] = useState(() => definition.modes?.[0]?.id ?? '');
   const appRef = useRef<GameApp | null>(null);
   /** State mirror of appRef — triggers a re-render when the engine is ready so
@@ -93,15 +196,8 @@ function GameLauncherInner({
   // Demo mode: X button only appears on interaction, fades out after 3 s of inactivity.
   const [demoHintVisible, setDemoHintVisible] = useState(false);
   const demoHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Restore UI on any pointer interaction while hidden.
-  // Restore UI on any pointer interaction while hidden — only in non-demo mode.
-  useEffect(() => {
-    if (!uiHidden || isDemo) return;
-    const restore = () => setUiHidden(false);
-    window.addEventListener('pointerdown', restore, { once: true });
-    return () => window.removeEventListener('pointerdown', restore);
-  }, [uiHidden, isDemo]);
+  const [hiddenUiHintVisible, setHiddenUiHintVisible] = useState(false);
+  const hiddenUiHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Propagate UI visibility to the simulation canvas layer (hides emitter markers).
   useEffect(() => {
@@ -111,6 +207,17 @@ function GameLauncherInner({
   useEffect(() => {
     nameSuggestions.load().then(setSuggestions).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const nextSelection = resolveStartupRenderSelection();
+    setRenderSelection(nextSelection);
+    setRenderedLegacyQuality(undefined);
+    appRef.current = null;
+    setAppInstance(null);
+    if (initialRenderSelection === undefined && initialQuality === undefined) {
+      writeStoredRenderSelection(nextSelection);
+    }
+  }, [definition.id, initialQuality, initialRenderSelection, resolveStartupRenderSelection]);
 
   const handleEvent = useCallback((event: GameEvent) => {
     switch (event.kind) {
@@ -123,10 +230,16 @@ function GameLauncherInner({
       case 'game_over':
         setShell('gameover');
         break;
+      case 'screensaver_enter':
+        setScreensaverActive(true);
+        break;
+      case 'screensaver_exit':
+        setScreensaverActive(false);
+        break;
       case 'quality_change':
         // Governor-triggered fallback — track actual rendered quality separately.
         if (event.payload && 'quality' in event.payload) {
-          setRenderedQuality(event.payload.quality as RenderQuality);
+          setRenderedLegacyQuality(event.payload.quality as RenderQuality);
         }
         break;
       case 'style_change':
@@ -165,7 +278,8 @@ function GameLauncherInner({
     appRef.current?.setInteractionMode(id);
   }, []);
 
-  const handleOpenSettings = useCallback(() => {
+  const handleOpenSettings = useCallback((event?: MouseEvent) => {
+    event?.stopPropagation();
     setSettingsOpen(true);
   }, []);
 
@@ -186,21 +300,77 @@ function GameLauncherInner({
     try { localStorage.setItem('pixi-lab:maxPixels', String(v ?? '')); } catch { /* ignore */ }
   }, []);
 
-  const handleQualityChange = useCallback(
-    (nextQuality: RenderQuality) => {
-      setQuality(nextQuality);
-      setRenderedQuality(undefined); // user picked explicitly; clear any fallback indicator
-      appRef.current?.setQuality(nextQuality);
-      try { localStorage.setItem('pixi-lab:quality', nextQuality); } catch { /* ignore */ }
+  const handleEngineConfigurationChange = useCallback(
+    (nextLegacyQuality: RenderQuality) => {
+      const nextSelection = resolveRenderSelection(nextLegacyQuality, definition.capabilities);
+      setRenderSelection(nextSelection);
+      setRenderedLegacyQuality(undefined); // user picked explicitly; clear any fallback indicator
+      appRef.current = null;
+      setAppInstance(null);
+      writeStoredRenderSelection(nextSelection);
     },
-    [],
+    [definition.capabilities],
   );
+
+  const enterDemoMode = useCallback((app: GameApp | null = appRef.current) => {
+    if (!app || !definition.capabilities.demo) return;
+    setShell('playing');
+    setSettingsOpen(false);
+    setInfoCardVisible(false);
+    setIsDemo(true);
+    setUiHidden(true);
+    app.setUIHidden(true);
+    app.setInteractionMode('demo');
+    app.setMode('demo');
+  }, [definition.capabilities.demo]);
+
+  const exitDemoMode = useCallback(() => {
+    if (onDemoExit) {
+      onDemoExit();
+      return;
+    }
+    setIsDemo(false);
+    setUiHidden(false);
+    appRef.current?.setUIHidden(false);
+    appRef.current?.setInteractionMode(modeId);
+    appRef.current?.setMode('play');
+  }, [modeId, onDemoExit]);
+
+  useEffect(() => {
+    if (!autoDemo || !appInstance) return;
+    enterDemoMode(appInstance);
+  }, [autoDemo, appInstance, enterDemoMode]);
+
+  useEffect(() => {
+    if (!autoDemo) return;
+    setShell('playing');
+    setSettingsOpen(false);
+    setInfoCardVisible(false);
+    setIsDemo(true);
+    setUiHidden(true);
+  }, [autoDemo]);
 
   const showDemoHint = useCallback(() => {
     setDemoHintVisible(true);
     if (demoHintTimerRef.current !== null) clearTimeout(demoHintTimerRef.current);
     demoHintTimerRef.current = setTimeout(() => setDemoHintVisible(false), 3000);
   }, []);
+
+  const advanceDemo = useCallback(() => {
+    showDemoHint();
+    if (onDemoAdvance) {
+      onDemoAdvance();
+      return;
+    }
+    appRef.current?.demoShuffle();
+  }, [onDemoAdvance, showDemoHint]);
+
+  const showHiddenUiHint = useCallback(() => {
+    if (!uiHidden || isDemo) return;
+    setHiddenUiHintVisible(true);
+    if (hiddenUiHintTimerRef.current !== null) clearTimeout(hiddenUiHintTimerRef.current);
+    hiddenUiHintTimerRef.current = setTimeout(() => setHiddenUiHintVisible(false), 3000);
+  }, [uiHidden, isDemo]);
 
   // Clean up timer and hide button when demo mode exits.
   useEffect(() => {
@@ -212,11 +382,61 @@ function GameLauncherInner({
     setDemoHintVisible(false);
   }, [isDemo]);
 
+  useEffect(() => {
+    if (!uiHidden || isDemo) {
+      if (hiddenUiHintTimerRef.current !== null) {
+        clearTimeout(hiddenUiHintTimerRef.current);
+        hiddenUiHintTimerRef.current = null;
+      }
+      setHiddenUiHintVisible(false);
+      return;
+    }
+
+    const reveal = () => showHiddenUiHint();
+    window.addEventListener('pointerdown', reveal, { passive: true });
+    window.addEventListener('pointermove', reveal, { passive: true });
+    window.addEventListener('keydown', reveal);
+
+    return () => {
+      window.removeEventListener('pointerdown', reveal);
+      window.removeEventListener('pointermove', reveal);
+      window.removeEventListener('keydown', reveal);
+    };
+  }, [uiHidden, isDemo, showHiddenUiHint]);
+
+  useEffect(() => {
+    if (!screensaverActive) return;
+
+    const exitScreensaver = () => {
+      appRef.current?.exitScreensaver();
+    };
+
+    window.addEventListener('pointerdown', exitScreensaver, { passive: true });
+    window.addEventListener('pointermove', exitScreensaver, { passive: true });
+    window.addEventListener('keydown', exitScreensaver);
+
+    return () => {
+      window.removeEventListener('pointerdown', exitScreensaver);
+      window.removeEventListener('pointermove', exitScreensaver);
+      window.removeEventListener('keydown', exitScreensaver);
+    };
+  }, [screensaverActive]);
+
   const hasModes = (definition.modes?.length ?? 0) > 1;
-  const hasQualityModes = (definition.capabilities.qualityModes?.length ?? 0) > 0;
+  const hasEngineConfigurations = (definition.capabilities.engineConfigurations?.length ?? 0) > 0;
   const isSimulation = definition.kind === 'simulation';
-  const topNumericFields = (definition.settingsFields ?? []).filter(
-    (f) => f.type === 'number' && (!f.visibleModes || f.visibleModes.includes(modeId)),
+  const isFieldVisible = useCallback(
+    (f: NonNullable<LabExperience['settingsFields']>[number]) =>
+      (!f.visibleModes || f.visibleModes.includes(modeId)) && isEngineConfigurationVisible(f, renderSelection),
+    [modeId, renderSelection],
+  );
+  const visibleSettingsFields = useMemo(
+    () => (definition.settingsFields ?? []).filter(isFieldVisible),
+    [definition.settingsFields, isFieldVisible],
+  );
+  const topControlFields = useMemo(
+    () => visibleSettingsFields.filter((f) => !f.advanced && (f.type === 'number' || f.type === 'select')),
+    [visibleSettingsFields],
   );
 
   // On mobile portrait, style + mode are shown at the top of SimControlPanel instead of HUD/OverflowMenu.
@@ -259,28 +479,35 @@ function GameLauncherInner({
         .map((m) => ({ label: m.label, action: m.description! }));
 
   // Append a slider hint if the experience has numeric settings visible at default mode
-  const defaultNumericFields = (definition.settingsFields ?? []).filter(
-    (f) => f.type === 'number' && (!f.visibleModes || f.visibleModes.includes(modeId)),
-  );
+  const defaultNumericFields = visibleSettingsFields.filter((f) => f.type === 'number');
   if (defaultNumericFields.length > 0) {
     introHints.push({ label: 'Sliders', action: 'adjust physics and visual settings at the top' });
   }
 
   return (
-    <div className="fixed top-0 left-0 w-full h-full z-50 overflow-hidden bg-black">
+    <div className={`pixi-lab-runtime-shell fixed top-0 left-0 w-full h-full z-50 overflow-hidden${transparent ? '' : ' bg-black'}`}>
+      <style>{RUNTIME_PERF_CSS}</style>
       {/* Game canvas — always mounted */}
       <GameRuntime
         definition={definition}
         userId={userId}
-        mode="play"
-        quality={quality}
+        mode={autoDemo && definition.capabilities.demo ? 'demo' : 'play'}
+        renderSelection={renderSelection}
+        quality={sceneLegacyQuality}
+        experimentalRawEngine={experimentalRawEngine}
+        transparent={transparent}
         maxPixels={localMaxPixels}
         onEvent={handleEvent}
         onReady={(app) => {
           appRef.current = app;
           setAppInstance(app);
           const initMode = definition.modes?.[0]?.id ?? '';
-          if (initMode) app.setInteractionMode(initMode);
+          if (autoDemo && definition.capabilities.demo) {
+            enterDemoMode(app);
+          } else if (initMode) {
+            app.setInteractionMode(initMode);
+          }
+          onRuntimeReady?.();
         }}
         className="w-full h-full"
       />
@@ -332,7 +559,7 @@ function GameLauncherInner({
             }
           />
 
-          {/* Top-right controls: quality, reset, settings, hide-ui, demo — adaptive via OverflowMenu */}
+          {/* Top-right controls: engine configuration, reset, settings, hide-ui, demo — adaptive via OverflowMenu */}
           <OverflowMenu
             items={[
               // On mobile portrait, style + mode move from HUD center into the overflow sheet.
@@ -371,15 +598,15 @@ function GameLauncherInner({
                 ) : null,
               },
               {
-                key: 'quality',
-                label: 'Quality',
-                hidden: !hasQualityModes,
+                key: 'engine-configuration',
+                label: 'Engine configuration',
+                hidden: !hasEngineConfigurations,
                 node: (
-                  <QualitySelector
-                    value={quality}
-                    renderedValue={renderedQuality}
-                    options={definition.capabilities.qualityModes!}
-                    onChange={handleQualityChange}
+                  <EngineConfigurationSelector
+                    value={sceneLegacyQuality}
+                    renderedValue={renderedLegacyQuality}
+                    configurations={definition.capabilities.engineConfigurations}
+                    onChange={handleEngineConfigurationChange}
                   />
                 ),
               },
@@ -433,10 +660,7 @@ function GameLauncherInner({
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={() => {
-                      setIsDemo(true);
-                      setUiHidden(true);
-                      appRef.current?.setInteractionMode('demo');
-                      appRef.current?.setMode('demo');
+                      enterDemoMode();
                     }}
                     aria-label="Demo mode"
                     className="flex h-8 items-center gap-1.5 rounded-xl bg-black/30 px-2.5 text-white/40 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white/70"
@@ -468,17 +692,17 @@ function GameLauncherInner({
               open={settingsOpen}
               onClose={handleCloseSettings}
               settings={appRef.current.settings}
-              fields={definition.settingsFields ?? []}
+              fields={visibleSettingsFields}
               maxPixels={localMaxPixels}
               onMaxPixelsChange={handleMaxPixelsChange}
             />
           )}
 
           {/* Top: numeric sliders for any experience that exposes number settings */}
-          {(topNumericFields.length > 0 || controlsHeaderSlot) && (
+          {(topControlFields.length > 0 || controlsHeaderSlot) && (
             <SimControlPanel
               app={appInstance}
-              fields={topNumericFields}
+              fields={topControlFields}
               settingsVersion={settingsVersion}
               headerSlot={controlsHeaderSlot}
             />
@@ -498,7 +722,7 @@ function GameLauncherInner({
           <div
             className="absolute inset-0 z-10 cursor-pointer"
             onPointerMove={showDemoHint}
-            onClick={() => { showDemoHint(); appRef.current?.demoShuffle(); }}
+            onClick={advanceDemo}
           />
           {/* Close button — fades in on interaction, auto-hides after 3 s of inactivity */}
           <AnimatePresence>
@@ -513,9 +737,7 @@ function GameLauncherInner({
                 aria-label="Exit demo"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsDemo(false);
-                  setUiHidden(false);
-                  appRef.current?.setMode('play');
+                  exitDemoMode();
                 }}
               >
                 <X size={14} />
@@ -523,6 +745,28 @@ function GameLauncherInner({
             )}
           </AnimatePresence>
         </>
+      )}
+
+      {uiHidden && !isDemo && (
+        <AnimatePresence>
+          {hiddenUiHintVisible && (
+            <motion.button
+              key="hidden-ui-eye"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute right-3 top-3 z-40 flex h-8 w-8 items-center justify-center rounded-xl bg-black/30 text-white/60 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
+              aria-label="Restore UI"
+              onClick={(e) => {
+                e.stopPropagation();
+                setUiHidden(false);
+              }}
+            >
+              <Eye size={14} />
+            </motion.button>
+          )}
+        </AnimatePresence>
       )}
 
       {/* ── Game-over shell ────────────────────────────────────────────────────────── */}

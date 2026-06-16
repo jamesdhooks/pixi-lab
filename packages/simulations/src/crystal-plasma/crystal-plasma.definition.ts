@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { CRYSTAL_PLASMA_DEFAULTS, CRYSTAL_PLASMA_SETTINGS_FIELDS } from './crystal-plasma.config.js';
 import { CrystalPlasmaDemoAI } from './CrystalPlasmaDemoAI.js';
 import { CrystalPlasmaPreviewScene } from './CrystalPlasmaPreviewScene.js';
@@ -25,7 +25,7 @@ export const crystalPlasmaDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

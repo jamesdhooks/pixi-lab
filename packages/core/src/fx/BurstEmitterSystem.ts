@@ -34,6 +34,7 @@ const DEFAULT_PALETTES: Record<BurstEffectKind, readonly number[]> = {
 const QUALITY_CAPS: Record<RenderQuality, number> = {
   basic: 900,
   enhanced: 1800,
+  raw: 1800,
 };
 
 export class BurstEmitterSystem {

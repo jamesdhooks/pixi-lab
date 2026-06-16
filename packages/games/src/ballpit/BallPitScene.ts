@@ -304,6 +304,13 @@ export class BallPitScene extends Scene {
     this.shockwaves = this.shockwaves.filter((s) => s.age < RING_DURATION);
   }
 
+  shouldRender(): boolean {
+    if (this.isResetting) return true;
+    if (this.interactionMode === 'demo') return true;
+    if (this.shockwaves.length > 0) return true;
+    return false;
+  }
+
   render(_alpha: number) {
     for (const entry of this.balls) {
       const pos = entry.handle.body.getPosition();
@@ -313,8 +320,6 @@ export class BallPitScene extends Scene {
       // enhanced quality the sphere shading is baked into the texture so
       // rotating it would spin the specular highlight — do not rotate.
     }
-
-    this.ctx_.systems.particles.update(1 / 60);
 
     // Draw expanding shockwave rings.
     this.ringGfx.clear();

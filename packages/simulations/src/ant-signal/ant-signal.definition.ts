@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { ANT_SIGNAL_DEFAULTS, ANT_SIGNAL_SETTINGS_FIELDS } from './ant-signal.config.js';
 import { AntSignalDemoAI } from './AntSignalDemoAI.js';
 import { AntSignalPreviewScene } from './AntSignalPreviewScene.js';
@@ -25,7 +25,7 @@ export const antSignalDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

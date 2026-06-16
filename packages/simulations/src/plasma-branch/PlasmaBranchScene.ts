@@ -117,8 +117,11 @@ export class PlasmaBranchScene extends SimulationScene {
       this.particleRenderer.clear();
       this.particleRenderer.renderParticles(particles, style, { sizeScale: 0.62, zIndex: 3 });
     }
-    const stats = this.model.stats();
-    this.ctx_.systems.debug?.update({ fps: 0, quality: this.quality, particleCount: stats.branchCount, fieldVariance: stats.chargeVariance });
+    const debug = this.ctx_.systems.debug;
+    if (debug?.isEnabled()) {
+      const stats = this.model.stats();
+      debug.update({ fps: 0, quality: this.quality, particleCount: stats.branchCount, fieldVariance: stats.chargeVariance });
+    }
   }
 
   override resize(width: number, height: number): void {

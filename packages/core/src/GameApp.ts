@@ -10,7 +10,17 @@
  * - Emit GameEvents upward to the React shell via the provided callback
  * - Clean shutdown on destroy()
  */
-import type { AmbientDataAdapter, BurstEffect, GameContext, GameEvent, GameMode, RenderQuality } from './types.js';
+import type {
+  AmbientDataAdapter,
+  BurstEffect,
+  GameContext,
+  GameEvent,
+  GameMode,
+  GestureEvent,
+  InputSnapshot,
+  RenderQuality,
+} from './types.js';
+import type { RenderBackendProfileSelection } from './runtime/RenderBackendProfile.js';
 import type { Scene } from './Scene.js';
 import { Ticker } from './Ticker.js';
 import { Input } from './Input.js';
@@ -52,7 +62,12 @@ export interface GameAppOptions {
   /** Palette name from Styles registry */
   palette?: string;
   seed?: number;
+  /** Canonical engine/backend/profile selection chosen by the host runtime. */
+  renderSelection?: RenderBackendProfileSelection;
+  /** Legacy scene compatibility tier derived from renderSelection. */
   quality?: RenderQuality;
+  /** Dev/test-only raw-engine experiment switch; public hosts should leave false. */
+  experimentalRawEngine?: boolean;
   transparent?: boolean;
   sleepMode?: boolean;
   lowMotion?: boolean;
@@ -112,6 +127,9 @@ export class GameApp {
   private destroyed = false;
   private quality: RenderQuality;
   private resizeObserver: ResizeObserver | null = null;
+  private renderInvalidated = true;
+  private resizeCount = 0;
+  private screensaverUsingAi = false;
 
   // Track if any human input happened this frame
   private hasHumanInputThisFrame = false;
@@ -162,7 +180,7 @@ export class GameApp {
       height: measuredH,
       background: styleRegistry.getPalette(palette ?? definition.paletteHint ?? 'rainbow')
         .background,
-      backgroundAlpha: this.opts.transparent ? 0 : 1,
+      backgroundAlpha: this.opts.transparent || definition.transparentBackground ? 0 : 1,
       // Force WebGL — skips WebGPU auto-detection which adds overhead and can
       // be unstable on embedded GPU drivers (e.g. Raspberry Pi VideoCore).
       preference: 'webgl',
@@ -184,6 +202,9 @@ export class GameApp {
     this.physicsWorld = new PhysicsWorld();
     this.renderTargets = new RenderTargetPool(this.pixi.renderer);
     this.styleManager = new RenderStyleManager();
+    if (definition.styleManifest) {
+      this.styleManager.setManifest(definition.styleManifest);
+    }
     this.procedural = new ProceduralTextureLibrary(this.pixi.renderer);
     this.gestures = new GestureInterpreter();
     this.governor = new PerformanceGovernor({
@@ -213,6 +234,7 @@ export class GameApp {
       mode: this._mode,
       seed: this.opts.seed ?? definition.defaultSeed ?? 1,
       quality: this.quality,
+      experimentalRawEngine: this.opts.experimentalRawEngine,
       width: this.pixi.width,
       height: this.pixi.height,
       systems: {
@@ -239,10 +261,9 @@ export class GameApp {
     this.input.mount(container);
     this.telemetry.mount(container);
 
-    // AI controller
-    if (definition.kind === 'game' && definition.capabilities.aiAutoplay && definition.aiFactory) {
-      this.aiController = definition.aiFactory(this.ctx);
-    }
+    // Game AI is opt-in. `capabilities.aiAutoplay` means "supported", not
+    // "run in normal play"; hidden AI input keeps scenes hot and can force
+    // continuous renders even when nothing is visible.
     // Simulation demo AI
     if (definition.kind === 'simulation') {
       const simDef = definition as SimulationExperience;
@@ -293,6 +314,8 @@ export class GameApp {
     this.currentScene?.onExit();
     this.currentScene = scene;
     scene.onEnter(this.ctx, this.input);
+    this.pixi.setImageRendering(scene.getCanvasImageRendering());
+    this.renderInvalidated = true;
     // Propagate current interaction mode to the incoming scene
     if (this._interactionMode) scene.setMode(this._interactionMode);
   }
@@ -317,6 +340,7 @@ export class GameApp {
     if (this.currentScene instanceof SimulationScene) {
       this.currentScene.setQuality(quality);
     }
+    this.renderInvalidated = true;
   }
 
   setStyle(styleId: string) {
@@ -324,20 +348,20 @@ export class GameApp {
     this.styleManager.setStyle(styleId);
     // Forward to all scene types — SimulationScene and game scenes alike
     this.currentScene?.setStyle(styleId);
+    this.renderInvalidated = true;
     this.onEvent({ kind: 'style_change', payload: { styleId } });
   }
 
   setDebugEnabled(enabled: boolean) {
     if (!this.ready) return;
     this.debug.setEnabled(enabled);
+    this.renderInvalidated = true;
   }
 
-  /** Notify the active simulation scene that the host UI visibility has changed. */
+  /** Notify the active scene that the host UI visibility has changed. */
   setUIHidden(hidden: boolean) {
     if (!this.ready) return;
-    if (this.currentScene instanceof SimulationScene) {
-      this.currentScene.onUIHidden(hidden);
-    }
+    this.currentScene?.onUIHidden(hidden);
   }
 
   private buildSimAIContext(dt: number): SimAIContext {
@@ -363,10 +387,22 @@ export class GameApp {
     };
   }
 
+  private canPushSceneGestures(scene: Scene | null | undefined): scene is Scene & { pushGestures: (gestures: GestureEvent[]) => void } {
+    return typeof (scene as { pushGestures?: unknown } | null | undefined)?.pushGestures === 'function';
+  }
+
+  private pushSceneGestures(gestures: GestureEvent[]): void {
+    const scene = this.currentScene;
+    if (!this.canPushSceneGestures(scene)) return;
+    scene.pushGestures(gestures);
+    this.renderInvalidated = true;
+  }
+
   /** Trigger a scene reset (drain/clear/restart cycle). Scene must override reset(). */
   resetScene() {
     if (!this.ready) return;
     this.currentScene?.reset();
+    this.renderInvalidated = true;
   }
 
   /**
@@ -388,51 +424,73 @@ export class GameApp {
   /** Live debug stats for the React debug panel. */
   getDebugStats(): {
     fps: number;
+    renderFps: number;
     frameMs: number;
     quality: string;
     interactionMode: string;
+    aiEnabled: boolean;
     bodyCount: number;
+    awakeBodies: number;
     canvasW: number;
     canvasH: number;
+    bufferW: number;
+    bufferH: number;
+    resolution: number;
+    resizeCount: number;
     heapMB: number | null;
+    scene?: Record<string, string | number | boolean | null> | null;
   } {
     const fps = Math.round(this.ticker.fps);
+    const renderFps = Math.round(this.ticker.renderFps);
     const mem = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
     return {
       fps,
+      renderFps,
       frameMs: fps > 0 ? Math.round(1000 / fps) : 0,
       quality: this.quality,
       interactionMode: this._interactionMode,
+      aiEnabled: this.aiController !== null,
       bodyCount: this.physicsWorld.world.getBodyCount(),
+      awakeBodies: this.physicsWorld.countAwakeDynamicBodies(),
       canvasW: this.ctx?.width ?? 0,
       canvasH: this.ctx?.height ?? 0,
+      bufferW: this.pixi?.bufferWidth ?? 0,
+      bufferH: this.pixi?.bufferHeight ?? 0,
+      resolution: this.pixi?.resolution ?? 0,
+      resizeCount: this.resizeCount,
       heapMB: mem ? Math.round(mem.usedJSHeapSize / 1024 / 1024) : null,
+      scene: this.currentScene?.getDebugStats() ?? null,
     };
   }
 
   emitBurst(effect: BurstEffect) {
     if (!this.ready) return;
     this.burstEmitters.emit(effect);
+    this.renderInvalidated = true;
     this.onEvent({ kind: 'burst_effect', payload: { kind: effect.kind, id: effect.id } });
   }
 
   setMaxPixels(maxPixels: number | undefined) {
     this.pixi.setMaxPixels(maxPixels);
+    this.renderInvalidated = true;
   }
 
   setSleepMode(enabled: boolean) {
     if (!this.ready) return;
     this.burstEmitters.setSleepMode(enabled);
+    this.renderInvalidated = true;
   }
 
   setLowMotion(enabled: boolean) {
     if (!this.ready) return;
     this.burstEmitters.setSleepMode(enabled || (this.opts.sleepMode ?? false));
+    this.renderInvalidated = true;
   }
 
   setGlobalIntensity(value: number) {
     if (!this.ready) return;
     this.burstEmitters.setGlobalIntensity(value);
+    this.renderInvalidated = true;
   }
 
   get scoreHandler(): HighScoreProvider {
@@ -463,14 +521,23 @@ export class GameApp {
   setAIEnabled(enabled: boolean) {
     if (!enabled) {
       this.aiController = null;
-    } else if (!this.aiController && this.definition.kind === 'game' && this.definition.aiFactory) {
+      return;
+    }
+    if (!this.ready) return;
+    if (!this.aiController && this.definition.kind === 'game' && this.definition.aiFactory) {
       this.aiController = this.definition.aiFactory(this.ctx);
+      this.renderInvalidated = true;
     }
   }
 
   /** Update screensaver idle threshold. */
   setScreensaverThreshold(ms: number) {
     this.screensaverManager.setThresholdMs(ms);
+  }
+
+  exitScreensaver() {
+    if (!this.ready) return;
+    this.screensaverManager.forceExit();
   }
 
   destroy() {
@@ -500,7 +567,9 @@ export class GameApp {
 
   private onFixedUpdate = (dt: number) => {
     if (this._mode === 'paused') return;
-    this.physicsWorld.step(dt);
+    if (this.physicsWorld.hasAwakeDynamicBodies()) {
+      this.physicsWorld.step(dt);
+    }
     this.currentScene?.fixedUpdate(dt);
   };
 
@@ -510,25 +579,24 @@ export class GameApp {
     // Flush input — captures justDown/justUp this frame
     this.input.flush();
     const snap = this.input.snapshot;
-    this.hasHumanInputThisFrame = snap.justDown.size > 0;
+    this.hasHumanInputThisFrame =
+      snap.justDown.size > 0 || snap.justUp.size > 0 || snap.pointers.size > 0;
     const gestureEvents = this.gestures.update(snap);
     if (gestureEvents.length > 0) {
       this.hasHumanInputThisFrame = true;
-      if (this.currentScene instanceof SimulationScene) {
-        this.currentScene.pushGestures(gestureEvents);
-      }
+      this.pushSceneGestures(gestureEvents);
     }
 
     // Simulation demo AI — inject synthetic gestures when in demo mode
     if (
       this._mode === 'demo' &&
       this.simulationAi &&
-      this.currentScene instanceof SimulationScene
+      this.canPushSceneGestures(this.currentScene)
     ) {
       const aiCtx = this.buildSimAIContext(dt);
       const aiGestures = this.simulationAi.think(aiCtx);
       if (aiGestures.length > 0) {
-        this.currentScene.pushGestures(aiGestures);
+        this.pushSceneGestures(aiGestures);
       }
     }
 
@@ -557,10 +625,18 @@ export class GameApp {
       this.onEvent({ kind: 'director_event', payload: { id: directorEvent.id } });
     }
 
-    this.currentScene?.update(dt);
-  this.burstEmitters.update(dt);
+    const hasSceneWork = this.shouldRunSceneUpdate(snap);
+    if (hasSceneWork) {
+      this.currentScene?.update(dt);
+    }
+    if (this.particleSystem.count > 0) {
+      this.particleSystem.update(dt);
+    }
+    if (this.burstEmitters.count > 0) {
+      this.burstEmitters.update(dt);
+    }
 
-    const newQuality = this.governor.update(dt);
+    const newQuality = hasSceneWork ? this.governor.update(dt) : null;
     if (newQuality) {
       this.onEvent({ kind: 'quality_change', payload: { quality: newQuality } });
     }
@@ -572,33 +648,59 @@ export class GameApp {
       }
     }
 
-    this.debug.update({
-      fps: this.ticker.fps,
-      quality: this.quality,
-      renderTargets: JSON.stringify(this.renderTargets.stats()),
-    });
+    if (this.debug.isEnabled()) {
+      this.debug.update({
+        fps: this.ticker.fps,
+        quality: this.quality,
+        renderTargets: JSON.stringify(this.renderTargets.stats()),
+      });
+    }
 
     // Update telemetry
-    this.telemetry.update({
-      fps: this.ticker.fps,
-      sceneName: this.currentScene?.name,
-      mode: this._mode,
-    });
+    if (this.telemetry.isEnabled) {
+      this.telemetry.update({
+        fps: this.ticker.fps,
+        sceneName: this.currentScene?.name,
+        mode: this._mode,
+      });
+    }
   };
 
-  private onRender = (alpha: number) => {
-    if (this._mode === 'paused') return;
-    this.currentScene?.render(alpha);
+  private onRender = (alpha: number): boolean => {
+    if (this._mode === 'paused') return false;
+    const scene = this.currentScene;
+    const shouldRenderScene = scene?.shouldRender() ?? false;
+    const shouldRenderSystems =
+      this.renderInvalidated
+      || this.input.snapshot.pointers.size > 0
+      || this.particleSystem.count > 0
+      || this.burstEmitters.count > 0
+      || this.physicsWorld.hasAwakeDynamicBodies()
+      || this.debug.isEnabled();
+    if (!shouldRenderScene && !shouldRenderSystems) return false;
+    scene?.render(alpha);
+    this.renderInvalidated = false;
+    this.pixi.render();
+    return true;
   };
 
   private handleResize = (width: number, height: number) => {
     if (!this.ready || !this.pixi) return;
     if (width <= 0 || height <= 0) return; // skip degenerate sizes from layout glitches
-    this.pixi.resize(width, height);
-    this.renderTargets.resizePersistent(width, height);
-    this.ctx.width = width;
-    this.ctx.height = height;
-    this.currentScene?.resize(width, height);
+    const nextWidth = Math.max(1, Math.round(width));
+    const nextHeight = Math.max(1, Math.round(height));
+    if (nextWidth === this.ctx.width && nextHeight === this.ctx.height) return;
+    this.resizeCount++;
+    this.pixi.resize(nextWidth, nextHeight);
+    this.input.setScale(
+      nextWidth / Math.max(1, this.pixi.canvas.getBoundingClientRect().width),
+      nextHeight / Math.max(1, this.pixi.canvas.getBoundingClientRect().height),
+    );
+    this.renderTargets.resizePersistent(nextWidth, nextHeight);
+    this.ctx.width = nextWidth;
+    this.ctx.height = nextHeight;
+    this.currentScene?.resize(nextWidth, nextHeight);
+    this.renderInvalidated = true;
   };
 
   private handleScreensaverEnter = () => {
@@ -607,6 +709,9 @@ export class GameApp {
     if (this.definition.kind === 'game' && this.definition.capabilities.screensaver && this.definition.screensaverFactory) {
       const scene = this.definition.screensaverFactory(this.ctx);
       this.switchScene(scene);
+    } else if (this.definition.kind === 'game' && this.definition.capabilities.aiAutoplay) {
+      this.screensaverUsingAi = true;
+      this.setAIEnabled(true);
     }
     this.onEvent({ kind: 'screensaver_enter' });
   };
@@ -614,9 +719,24 @@ export class GameApp {
   private handleScreensaverExit = () => {
     this._mode = 'play';
     this.ctx.mode = 'play';
+    if (this.screensaverUsingAi) {
+      this.setAIEnabled(false);
+      this.screensaverUsingAi = false;
+    }
     // Restore main scene
     const scene = this.definition.factory(this.ctx);
     this.switchScene(scene);
     this.onEvent({ kind: 'screensaver_exit' });
   };
+
+  private shouldRunSceneUpdate(snap: Readonly<InputSnapshot>): boolean {
+    if (this.currentScene instanceof SimulationScene) return true;
+    if (this._mode === 'demo' || this._mode === 'screensaver') return true;
+    if (this.aiController) return true;
+    if (this.renderInvalidated) return true;
+    if (snap.justDown.size > 0 || snap.justUp.size > 0 || snap.pointers.size > 0) return true;
+    if (this.particleSystem.count > 0 || this.burstEmitters.count > 0) return true;
+    if (this.physicsWorld.hasAwakeDynamicBodies()) return true;
+    return this.currentScene?.shouldRender() ?? false;
+  }
 }

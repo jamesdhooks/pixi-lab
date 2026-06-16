@@ -18,9 +18,10 @@ A standalone, publishable **PixiJS v8** game engine and interactive experience l
 |---|---|---|
 | [`@hooksjam/pixi-lab-core`](packages/core) | 0.1.0 | Engine: game loop, scene lifecycle, input, physics, AI, render systems, scoring |
 | [`@hooksjam/pixi-lab-react`](packages/react) | 0.1.0 | React shell: `GameRuntime`, `GameLauncher`, `GameTile`, full UI library |
-| [`@hooksjam/pixi-lab-games`](packages/games) | 0.1.0 | Game content: Ball Pit |
-| [`@hooksjam/pixi-lab-simulations`](packages/simulations) | 0.1.0 | Simulation content: Harmonic Sand Plate |
-| [`@hooksjam/pixi-lab-demo`](packages/demo) | — | Vite demo app (not published) |
+| [`@hooksjam/pixi-lab-games`](packages/games) | 0.1.0 | Game content registry (`GAME_REGISTRY`) |
+| [`@hooksjam/pixi-lab-simulations`](packages/simulations) | 0.1.0 | Simulation content registry (`SIMULATION_REGISTRY`) including Pixi and raw WebGL-backed scenes |
+| [`@hooksjam/pixi-lab-ambients`](packages/ambients) | 0.1.0 | Ambient / overlay content registry (`AMBIENT_REGISTRY`) |
+| [`@hooksjam/pixi-lab-demo`](packages/demo) | — | Vite demo app and dashboard (not published) |
 
 ---
 
@@ -56,7 +57,7 @@ packages/
     render/             PixiJS wrappers (PixiApp, Sprites, Particles, passes, procedural)
     scoring/            HighScoreProvider, NameSuggestions
     screensaver/        ScreensaverManager
-    sim/                Simulation base utilities
+    sim/                Simulation base utilities, including DomScriptScene for DOM/WebGL adapters
     stagnation/         Stagnation-detection for auto-reset
     style/              Style / palette registry
 
@@ -69,20 +70,46 @@ packages/
                             DebugPanel, SimControlPanel, ShaderTuningDrawer, …
 
   games/src/
-    ballpit/            Ball Pit game (single / rapid / explode modes, palette styles)
+    */                  Game definitions exported through GAME_REGISTRY
 
   simulations/src/
-    harmonic-sand/      Harmonic Sand Plate simulation (Chladni-style wave physics,
-                        configurable frequency, emitters, field resolution)
+    */                  Simulation definitions exported through SIMULATION_REGISTRY
+                        Scenes may be Pixi-native, custom shader pipelines, or raw WebGL
+                        adapters, but all enter through the same LabExperience factory
+
+  ambients/src/
+    */                  Ambient/effect definitions exported through AMBIENT_REGISTRY
 ```
 
 ### The `LabExperience` contract
 
-Every game and simulation is described by a `LabExperience` definition object — a single structure that carries its metadata, factory functions, AI factories, gesture hints, settings fields, and capabilities flags. `GameLauncher` and `GameTile` consume only this interface; they are completely agnostic of implementation details.
+Every game, simulation, ambient, overlay, and toy is described by a `LabExperience` definition object — a single structure that carries its metadata, factory functions, AI factories, gesture hints, settings fields, and capabilities flags. `GameLauncher`, `GameTile`, and the dashboard consume only this interface; they are agnostic of implementation details.
 
 ```ts
 import type { LabExperience } from '@hooksjam/pixi-lab-core';
 ```
+
+### Shared runtime, multiple render backends
+
+All experiences enter through the same lifecycle:
+
+```txt
+GameLauncher → GameRuntime → GameApp → LabExperience.factory() → Scene
+```
+
+A scene can be Pixi-native, shader-heavy, DOM-backed, or raw WebGL-backed. For ports such as Fluid Tank, `DomScriptScene` supplies a generic adapter: the simulation package owns the markup/script and receives the active style palette through `data-pixi-lab-style` plus a `pixi-lab-style-change` event. Core stays generic; content packages own renderer-specific code.
+
+### Render-variant engine plan
+
+The GPU field rendering upgrade report recommends promoting common field rendering ideas into reusable variants instead of one-off scene forks. The next engine pass should add a small render-variant registry that lets definitions declare capabilities such as:
+
+- field source: particles, scalar field, velocity field, dye texture, signed-distance field
+- backend: Pixi primitives, Pixi render texture pipeline, custom shader pass, raw WebGL adapter
+- presentation: fullscreen scene, background layer, foreground overlay, widget, preview tile
+- style inputs: palette, exposure, edge darkening, bloom/color-grade settings
+- quality controls: resolution scale, render-target budget, FPS governor hints
+
+That keeps host apps and React UI stable while allowing simulations to swap implementation details behind the existing `LabExperience`/`Scene` boundary.
 
 ---
 

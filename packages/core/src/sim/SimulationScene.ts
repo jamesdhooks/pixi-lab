@@ -42,6 +42,10 @@ export abstract class SimulationScene extends Scene {
     this.ctx_.systems.styleManager?.setQuality(quality);
   }
 
+  override shouldRender(): boolean {
+    return true;
+  }
+
   consumeGestures(): GestureEvent[] {
     const gestures = this.gesturesThisFrame;
     this.gesturesThisFrame = [];

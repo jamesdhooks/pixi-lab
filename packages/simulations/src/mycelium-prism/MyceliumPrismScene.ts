@@ -30,7 +30,6 @@ export class MyceliumPrismScene extends SimulationScene {
   private model: MyceliumPrismModel | null = null;
   private modelOptions: MyceliumPrismModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
-  private resetOnHoldArmed = true;
   /** Cached settings values — detect changes each update tick and apply live. */
   private lastGrowthRate = 0;
   private lastNutrientDiffusion = 0;
@@ -110,14 +109,8 @@ export class MyceliumPrismScene extends SimulationScene {
     }
 
     for (const gesture of this.consumeGestures()) {
-      if (gesture.kind === 'hold' && this.resetOnHoldArmed) {
-        this.resetOnHoldArmed = false;
-        this.reset();
-        continue;
-      }
       this.model.handleGesture(gesture);
     }
-    if (this.input_.snapshot.pointers.size === 0) this.resetOnHoldArmed = true;
     this.model.update(dt);
     this.stagnationReport = this.model.detectStagnation(dt);
     if (this.stagnationReport.stagnant) this.stabilize();
@@ -128,18 +121,33 @@ export class MyceliumPrismScene extends SimulationScene {
     const style = this.ctx_.systems.styleManager?.getStyle() ?? neonMoldStyle;
     this.fieldRenderer.clear();
     // Primary pass — square-grid cells coloured by strain band.
-    this.fieldRenderer.renderField('cells', this.model.field, this.ctx_.width, this.ctx_.height, style, { alpha: 1.0, gamma: 0.48, maxAlpha: 230, zIndex: 0 });
+    this.fieldRenderer.renderField('cells', this.model.field, this.ctx_.width, this.ctx_.height, style, {
+      alpha: 1.0,
+      gamma: 0.48,
+      maxAlpha: 230,
+      zIndex: 0,
+      upscaleMode: 'nearest',
+    });
     if (this.quality === 'enhanced') {
       // Soft glow pass: wider blend, lower alpha, slightly different gamma.
-      this.fieldRenderer.renderField('glow', this.model.field, this.ctx_.width, this.ctx_.height, style, { alpha: 0.22, gamma: 0.32, maxAlpha: 90, zIndex: 1 });
+      this.fieldRenderer.renderField('glow', this.model.field, this.ctx_.width, this.ctx_.height, style, {
+        alpha: 0.22,
+        gamma: 0.32,
+        maxAlpha: 90,
+        zIndex: 1,
+        upscaleMode: 'nearest',
+      });
     }
-    const stats = this.model.stats();
-    this.ctx_.systems.debug?.update({
-      fps: 0,
-      quality: this.quality,
-      particleCount: stats.activeCells,
-      fieldVariance: stats.meanEnergy,
-    });
+    const debug = this.ctx_.systems.debug;
+    if (debug?.isEnabled()) {
+      const stats = this.model.stats();
+      debug.update({
+        fps: 0,
+        quality: this.quality,
+        particleCount: stats.activeCells,
+        fieldVariance: stats.meanEnergy,
+      });
+    }
   }
 
   override resize(width: number, height: number): void {
@@ -163,6 +171,10 @@ export class MyceliumPrismScene extends SimulationScene {
   override setQuality(quality: RenderQuality): void {
     super.setQuality(quality);
     this.fieldRenderer?.setQuality(quality);
+  }
+
+  override getCanvasImageRendering(): 'auto' | 'pixelated' {
+    return 'pixelated';
   }
 
   getRenderLayers(): SimRenderLayers {

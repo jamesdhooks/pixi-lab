@@ -57,7 +57,7 @@ When authoring `definition.capabilities`, consider:
 | `qualityModes: ['basic', 'enhanced']` | Scene has two rendering tiers | Implement `setQuality()` |
 | `reset: true` | Scene supports user-triggered drain/restart | Override `Scene.reset()` — see `BallPitScene` |
 | `tutorial: true` | `tutorialPages` array is non-empty | Provide at least one tutorial page |
-| `aiAutoplay: true` | AI player extends `BasicAI` | Implement `<Name>AI.ts` |
+| `aiAutoplay: true` | Supports opt-in AI/screensaver fallback | Implement `<Name>AI.ts`; never assume AI is on in normal play |
 | `screensaver: true` | Safe to run unattended | No score requirement, stable infinite loop |
 
 ## UI provided by the shell (GameLauncher)
@@ -78,9 +78,13 @@ For every new game, simulation, ambient, effect, or toy:
 3. Write or update behavior tests first, then implement the smallest code change that makes them pass.
 4. Keep deterministic model/state logic separate from Pixi scene rendering whenever practical.
 5. Add a cheap deterministic preview scene with reduced budgets.
-6. Register the experience through the package registry so the demo discovers it automatically.
-7. Update the tracking document with status, validation notes, deferred gaps, and implementation notes.
-8. Run the full quality gate from a built workspace before considering the task complete.
+6. Preserve the engine idle path: blank/settled game scenes must not force continuous rendering, physics stepping, particle aging, AI input churn, or Pixi buffer uploads. Override `Scene.shouldRender()` only for custom visual animation that `GameApp` cannot infer from pointers, particles, burst emitters, or awake physics bodies.
+7. Register the experience through the package registry so the demo discovers it automatically.
+8. Leave new demo-capable experiences out of `DEMO_QA_PASSED_IDS` so the gallery marks them as needing manual QA by default.
+9. Update the tracking document with status, validation notes, deferred gaps, implementation notes, and a Manual Demo QA row.
+10. Run the full quality gate from a built workspace before considering the task complete.
+
+When James later gives an explicit thumbs-up for a demo, use `.github/skills/qa-experience/SKILL.md` to update both the docs and gallery status.
 
 ## Quality gates
 

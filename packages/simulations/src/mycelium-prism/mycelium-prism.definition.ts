@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { MYCELIUM_PRISM_DEFAULTS, MYCELIUM_PRISM_SETTINGS_FIELDS } from './mycelium-prism.config.js';
 import { MyceliumPrismDemoAI } from './MyceliumPrismDemoAI.js';
 import { MyceliumPrismPreviewScene } from './MyceliumPrismPreviewScene.js';
@@ -25,7 +25,7 @@ export const myceliumPrismDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },
@@ -35,7 +35,6 @@ export const myceliumPrismDefinition: SimulationDefinition = {
   gestureMap: {
     tap: 'add a new spore colony',
     drag: 'continuously add spore colonies',
-    hold: 'reset the colony bed',
   },
   directorEvents: [
     { id: 'spore-rain', label: 'Spore Rain', minIntervalMs: 7000, maxIntervalMs: 14000, intensity: 0.35 },
@@ -53,6 +52,5 @@ export const myceliumPrismDefinition: SimulationDefinition = {
   demoAiFactory: () => new MyceliumPrismDemoAI(),
   tutorialPages: [
     { icon: '✦', title: 'Add Spores', body: 'Tap or drag to plant new glowing fungal colonies.' },
-    { icon: '↺', title: 'Reset Growth', body: 'Hold to restart the colony bed.' },
   ],
 };
