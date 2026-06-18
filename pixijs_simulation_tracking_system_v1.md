@@ -6,6 +6,266 @@ This document is a companion to the main master architecture/specification docum
 
 # 0. Plan Execution Log
 
+## 2026-06-07 — Runtime Engine Configuration Architecture Reset Completion Slice
+
+Scope:
+- converted runtime/launcher render-selection seams to carry canonical `backend/profile` render selection instead of treating legacy `qualityModes` as the primary path;
+- removed duplicated `qualityModes` declarations from all simulation, ambient/effect, and game definitions after explicit `engineConfigurations` coverage was complete;
+- added registry guardrails so ambients/effects and simulations preserve engine-configuration coverage without reintroducing legacy definition metadata.
+
+Verification:
+- `pnpm -s lint && pnpm -s typecheck && pnpm -s test && pnpm -s build && git diff --check` passed.
+- Source probe confirmed 37 definition files, zero `qualityModes` occurrences, and zero missing `engineConfigurations`.
+- Built registry probe confirmed 37 definitions total: 22 simulations, 8 ambients, 6 effects, and 1 game, with no missing engine configurations and no legacy `qualityModes` metadata.
+- Browser smoke covered Harmonic Sand and Fluid Tank normal engine selector switching across Pixi Basic/Enhanced and WebGL2 Raw paths, raw canvas markers, Pixi switch-back cleanup, and no console messages.
+
+Compatibility note:
+- visible selector option values and scene-facing props still bridge through legacy quality tokens (`basic`/`enhanced`/`raw`) at external/runtime compatibility boundaries; labels and selection state now use canonical engine configuration metadata.
+
+## 2026-06-07 — Raw Definition Engine Configuration Conversion Slice
+
+Scope:
+- removed duplicated raw-capable `qualityModes` declarations from simulation definitions that already declare `engineConfigurations`;
+- converted registry tests to assert `engineConfigurations` as the source of truth and `qualityModes` as undefined for those converted definitions;
+- removed the recently-added `DEFAULT_LEGACY_RENDER_QUALITIES` alias crutch and restored the existing default constant until it can be truly replaced.
+
+Verification:
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts packages/simulations/src/__tests__/SimulationRegistry.test.ts`
+- `pnpm -s typecheck`
+
+## 2026-06-07 — React Selector Barrel Canonical Export Slice
+
+Scope:
+- routed React package canonical `EngineConfigurationSelector` exports through `ui/EngineConfigurationSelector.js` directly;
+- kept `QualitySelector` and `QualitySelectorProps` exported through the legacy compatibility module;
+- left selector runtime behavior unchanged.
+
+Validation:
+- `pnpm exec vitest run packages/react/src/ui/QualitySelector.test.tsx` passed (3 tests).
+- `pnpm -s typecheck` passed.
+
+## 2026-06-07 — Default Legacy Render Qualities Alias Slice
+
+Scope:
+- added `DEFAULT_LEGACY_RENDER_QUALITIES` as the canonical default capability export;
+- kept `DEFAULT_RENDER_QUALITY_MODES` as a forwarding compatibility shim;
+- updated core export/test coverage to assert the shim relationship explicitly.
+
+Validation:
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts` passed (30 tests).
+- `pnpm -s typecheck` passed.
+
+## 2026-06-06 — Registry Engine Configuration Test Slice
+
+Scope:
+- shifted raw-capable registry assertions to derive selectable support from `engineConfigurations` first;
+- retained explicit `qualityModes` compatibility checks against the engine configuration legacy aliases;
+- kept raw scene path coverage unchanged for Fluid/Amoeba/Orbital.
+
+Validation:
+- `pnpm exec vitest run packages/simulations/src/__tests__/SimulationRegistry.test.ts && pnpm -s typecheck` — passed.
+
+## 2026-06-06 — Launcher Engine Configuration Predicate Slice
+
+Scope:
+- renamed the launcher UI predicate from `hasQualityModes` to `hasEngineConfigurations`;
+- changed the overflow item key from `quality` to `engine-configuration`;
+- kept scene-facing `quality` props and `qualityModes` fallback intact as compatibility boundaries.
+
+Validation:
+- `pnpm -s typecheck` — passed.
+
+## 2026-06-06 — Demo Route Legacy Quality Alias Slice
+
+Scope:
+- renamed demo route parsing internals toward `parseLegacyQualityRouteValue(...)` and `queryLegacyQualityForExperience(...)`;
+- preserved `parseQueryQuality(...)` / `queryQualityForExperience(...)` as compatibility aliases;
+- updated route tests to target the legacy-quality route boundary explicitly while keeping alias coverage.
+
+Validation:
+- `pnpm exec vitest run packages/demo/src/__tests__/queryRoute.test.ts && pnpm -s typecheck` — passed.
+
+Notes:
+- Route param `quality=` remains intentionally supported as a legacy deep-link bridge.
+
+## 2026-06-06 — Core Engine Configuration Helper Boundary Slice
+
+Scope:
+- added engine-configuration-first helper names for legacy-quality fallback seams in `RenderBackendProfile.ts`;
+- preserved quality-mode helper names as explicit compatibility shims;
+- updated core tests to exercise the engine-first helper names while proving old exports still forward correctly.
+
+Validation:
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts && pnpm -s typecheck` — passed.
+
+Notes:
+- This does not remove `RenderQuality` yet; it narrows where quality terminology is treated as compatibility glue.
+
+## 2026-06-06 — Engine Configuration Route/React Compatibility Slice
+
+Scope:
+- centralized canonical `experience=` / legacy `lab=` route lookup behind `findQueryExperienceFromParams(...)`, with canonical nonblank experience routes winning over legacy aliases and blank canonical values still allowing old lab links.
+- renamed the React selection implementation/test seam to `engineConfigurationSelection` while keeping `qualitySelection.ts` as a public compatibility shim.
+- added Fluid Tank raw compatibility-route regression coverage for `lab=fluid-tank&quality=raw` and blank canonical fallback behavior.
+- moved Fluid Tank GPU shader program creation onto the shared raw WebGL2 linker instead of maintaining private shader compile/link helpers.
+
+Validation:
+- focused query route, React selection, and raw WebGL2 tests passed.
+- browser QA covered Harmonic Sand Basic/Enhanced/Raw selector changes, reset/demo controls, Fluid legacy raw route resolution, settings visibility, and visual layout; one blank browser-tool exception appeared once after onboarding overlay dismissal but did not reproduce on fresh route load.
+
+## 2026-06-06 — Engine Configuration Storage/Host Resolver Slice
+
+Scope:
+- added `resolveEngineConfigurationStorageSelection(...)` so stored backend/profile selections resolve through explicit engine configurations.
+- made React selection compatibility prefer explicit engine configurations instead of legacy mode arrays.
+- added `initialRenderSelection` to `GameLauncher` while preserving `initialQuality` as a compatibility prop.
+- moved the demo host from `queryQualityForExperience(...)` to `queryRenderSelectionForExperience(...)`, preserving explicit backend/profile startup selections.
+- fixed exact-match precedence for engine configs that share backend/profile but differ by legacy alias, e.g. Pixi enhanced vs Pixi-owned raw.
+
+Validation:
+- `pnpm --filter @hooksjam/pixi-lab-core -s build` — pass.
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts packages/demo/src/__tests__/queryRoute.test.ts` — pass, 42 tests.
+- `pnpm -s typecheck` — pass.
+- `pnpm -s lint` — pass.
+- `pnpm -s build` — pass.
+- `git diff --check` — pass.
+
+## 2026-06-06 — Catalog Engine Configuration Declaration Slice
+
+Scope:
+- declared explicit Basic/Enhanced engine configurations for the remaining ambient/effect and Ballpit definitions that still only advertised legacy `qualityModes`.
+- preserved `qualityModes` on every definition as an incremental compatibility alias while making `engineConfigurations` complete across all definition files.
+- verified there are zero `*.definition.ts` files with `qualityModes` but no explicit `engineConfigurations`.
+
+Validation:
+- `pnpm -s typecheck`, `pnpm -s lint`, `pnpm -s build`, and `git diff --check` passed.
+
+## 2026-06-06 — Engine Configuration Settings Visibility Slice
+
+Scope:
+- added `visibleEngineConfigurations` as the engine-first settings-field visibility filter while keeping `visibleQualities` as a legacy compatibility fallback.
+- routed launcher settings visibility through shared core helper `isEngineConfigurationVisible(...)` so fields can target `backend/profile` tokens such as `webgl2/high` instead of only legacy quality ids.
+- migrated Harmonic Sand raw-only settings onto `visibleEngineConfigurations: ['webgl2/high']` and declared explicit Basic/Enhanced engine configurations for the remaining 18 non-raw simulation definitions.
+
+Validation:
+- `pnpm --filter @hooksjam/pixi-lab-core -s build` passed.
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts packages/simulations/src/__tests__/SimulationRegistry.test.ts` passed (37 tests).
+- `pnpm -s typecheck`, `pnpm -s lint`, `pnpm -s build`, and `git diff --check` passed.
+
+## 2026-06-06 — Engine Configuration Route Resolver Slice
+
+Scope:
+- added `resolveEngineConfigurationQuerySelection(...)` so demo routes prefer explicit engine configuration metadata instead of legacy quality-mode backend guesses.
+- switched demo query selection to `getSupportedEngineConfigurations(...)`, preserving legacy `quality` deep links as a compatibility bridge.
+- added regression coverage for Pixi-owned raw routes: unsupported WebGL2 route params fall back safely, while `quality=raw` resolves to Pixi high raw when the definition declares it.
+
+Validation:
+- `pnpm --filter @hooksjam/pixi-lab-core -s build` passed.
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts packages/demo/src/__tests__/queryRoute.test.ts` passed.
+
+## 2026-06-06 — Engine Configuration Factory Slice
+
+Scope:
+- added `createEngineConfigurations(...)` at the core runtime boundary so definitions can declare first-class engine configs without hand-written labels/backend/profile objects.
+- moved Amoeba Lamp, Fluid Tank, Harmonic Sand Plate, and Orbital Shrapnel onto the shared helper.
+- preserved Pixi-owned raw compatibility for Amoeba/Orbital through an explicit `rawBackend: 'pixi'` option while WebGL2 raw demos keep the default raw backend.
+
+Validation:
+- `pnpm --filter @hooksjam/pixi-lab-core -s build` passed to refresh workspace package exports.
+- `pnpm -s typecheck` passed.
+- `pnpm exec vitest run packages/core/src/__tests__/RenderBackendProfile.test.ts packages/simulations/src/__tests__/SimulationRegistry.test.ts` passed.
+- `search_files` confirmed no remaining hand-written `engineConfigurations: [` arrays in `packages/simulations/src`.
+
+## 2026-06-06 — Raw-Capable Engine Configuration Declarations Slice
+
+Scope:
+- added explicit backend/profile `engineConfigurations` declarations to Amoeba Lamp and Orbital Shrapnel Field
+- broadened the simulation registry guard so every raw-capable simulation declares engine configurations aligned with its legacy compatibility modes
+- distinguished Pixi-owned raw adapters from WebGL2 raw scene paths in the guardrail labels
+
+Validation notes:
+- focused simulation registry test passed (9 tests)
+- `pnpm lint` passed
+- `pnpm typecheck` passed
+
+---
+
+## 2026-06-06 — Lint Gate Restoration Slice
+
+Scope:
+- added a root ESLint config matching the installed TypeScript ESLint stack and the repo’s underscore placeholder convention
+- added `eslint-plugin-react-hooks` so existing hook dependency suppression comments resolve correctly
+- fixed the actual lint findings: empty storage catch, irregular DebugPanel spacing glyphs, and one unused Mycelium Lattice test local
+
+Validation notes:
+- `pnpm lint` now passes; the previous missing-config blocker is resolved
+- `pnpm typecheck` passed
+- focused Mycelium Lattice model test passed (11 tests)
+
+---
+
+## 2026-06-06 — Launcher Engine Boundary Naming Slice
+
+Scope:
+- renamed launcher internals from generic `quality`/`renderedQuality`/`handleQualityChange` toward `sceneLegacyQuality`, `renderedLegacyQuality`, and `handleEngineConfigurationChange`
+- kept the public `initialQuality` prop and scene-facing `RenderQuality` calls intact as explicit compatibility APIs
+- clarified comments so host code talks about backend/profile render selection while scenes still receive the legacy token during migration
+
+Validation notes:
+- `pnpm typecheck` passed
+- focused route + selector tests passed (15 tests)
+
+---
+
+## 2026-06-06 — Fluid Raw Adapter Removal + Selector Terminology Slice
+
+Scope:
+- removed the obsolete Fluid Tank standalone DOM/script runtime files after raw launch moved to `RawFluidTankScene`
+- kept the shared legacy DOM script adapter compatibility surface intact while deleting Fluid-specific dead code
+- moved the real React selector implementation to `EngineConfigurationSelector.tsx` and reduced `QualitySelector.tsx` to a compatibility shim
+- updated architecture notes so the next reset slice targets launcher variable/prop terminology instead of already-completed Fluid route action regression work
+
+Validation notes:
+- focused tests passed for the engine selector, simulation registry, and raw WebGL2 scene lifecycle (15 tests)
+- `pnpm typecheck` passed after deleting the Fluid runtime remnants and moving selector implementation
+- full gate passed: `pnpm test` (55 files / 318 tests) and `pnpm build`
+- browser smoke passed for Fluid Tank raw and Harmonic Sand raw via `backend=webgl2&profile=high`; engine selector showed `WebGL2 / High · Raw`, canvases mounted, runtime readouts included `WEBGL2`/`HIGH`, and browser console stayed clean
+
+---
+
+## 2026-06-06 — Explicit Engine Configuration Contract Slice
+
+Scope:
+- moved `EngineConfiguration` into the shared core type contract and allowed capabilities to advertise explicit backend/profile engine configurations
+- updated core helpers, React launch state, and the engine selector to prefer `engineConfigurations` while preserving `qualityModes`/legacy quality compatibility
+- migrated Harmonic Sand Plate and Fluid Tank reset demos to declare explicit Basic/Enhanced/Raw engine configurations
+- added Fluid raw compatibility-route regression coverage and registry guards that keep explicit engine configurations aligned with legacy compatibility tokens
+
+Validation notes:
+- focused contract tests passed for render backend profiles, engine selector UI, quality-selection compatibility, query routes, and simulation registry (61 tests)
+- full automated gate passed after the slice: `pnpm typecheck`, `pnpm test` (55 files / 317 tests), and `pnpm build`
+- browser smoke passed for Fluid Tank raw and Harmonic Sand raw via backend/profile deep links; engine selector selected `WebGL2 / High · Raw`, canvases mounted, runtime readouts showed `WEBGL2 / HIGH`, and console stayed clean
+
+---
+
+## 2026-06-06 — Engine Configuration + Raw WebGL2 Architecture Reset
+
+Scope:
+- introduced first-class engine configuration mapping while preserving legacy quality tokens for compatibility
+- moved visible launcher/runtime controls to “Engine configuration” and retained the `QualitySelector` alias for existing callers
+- added Raw WebGL2 scene infrastructure and raw-specific Harmonic Sand / Fluid Tank scene paths
+- routed Harmonic Sand and Fluid Tank raw launches through dedicated raw scene factories instead of broadening the legacy Pixi scene paths
+- updated demo runtime compatibility helpers and architecture notes for backend/profile route handling
+
+Validation notes:
+- focused architecture tests passed for render backend profiles, raw WebGL2 scene lifecycle, engine selector UI, query routes, and simulation registry
+- full automated gate passed: `pnpm build`, `pnpm --recursive typecheck`, and `pnpm test`
+- built `packages/simulations/dist/index.js` registry QA passed for 22 simulations with no missing capabilities/settings/config/schema issues
+- browser smoke passed for Harmonic Sand Basic/Enhanced/Raw and Fluid Tank Basic/Enhanced/Raw at `http://127.0.0.1:5173/pixi-lab/`; engine selector rendered, canvases mounted, runtime readouts matched the active backend/profile, and browser console stayed clean
+- `pnpm lint` remains blocked because the repo has no ESLint configuration file for the configured lint script, not because this slice introduced lint findings
+
+---
+
 ## 2026-05-28 — Post-Backlog Registry + Gallery Smoke Refresh
 
 Scope:

@@ -1,5 +1,4 @@
 import {
-  DomScriptQualityAdapter,
   Graphics,
   SimulationScene,
   type GameContext,
@@ -11,15 +10,12 @@ import {
   type StagnationReport,
 } from '@hooksjam/pixi-lab-core';
 import {
-  GpuFluidTankRenderer,
   velocityFromScreenDelta,
   type FluidSplat,
   type GpuFluidTankOptions,
   type GpuFluidTankStats,
 } from './GpuFluidTankRenderer.js';
 import { PixiFeedbackFluidRenderer } from './PixiFeedbackFluidRenderer.js';
-import { fluidRuntimeMarkup } from './fluid-runtime-markup.js';
-import { mountFluidRuntime } from './fluid-runtime-mount.js';
 import { FLUID_TANK_DEFAULTS } from './fluid-tank.config.js';
 import { boundedCyanStyle } from './styles/bounded-cyan.js';
 import { auroraBorealisStyle } from './styles/aurora-borealis.js';
@@ -54,6 +50,7 @@ interface FluidRendererAdapter {
   smallSwirl(x: number, y: number): void;
   settleVelocity(): void;
   splat(splat: FluidSplat): void;
+  stir(splat: FluidSplat): void;
   update(dt: number): void;
   render(): void;
   stats(): GpuFluidTankStats;
@@ -72,12 +69,6 @@ export const fluidTankStyleManifest: SimStyleManifest = {
 export class FluidTankScene extends SimulationScene {
   readonly name = 'FluidTank';
   private renderer: FluidRendererAdapter | null = null;
-  private readonly rawQualityAdapter = new DomScriptQualityAdapter({
-    name: 'Fluid Tank',
-    markup: fluidRuntimeMarkup,
-    mount: mountFluidRuntime,
-    isActiveQuality: (quality) => quality === 'raw',
-  });
   private wallLayer: Graphics | null = null;
   private rippleLayer: Graphics | null = null;
   private options: GpuFluidTankOptions | null = null;
@@ -135,17 +126,12 @@ export class FluidTankScene extends SimulationScene {
       };
     }
 
-    if (this.rawQualityAdapter.sync(ctx.quality, ctx, input).active) {
-      ctx.systems.debug?.setEnabled(false);
-      return;
-    }
-
     const parent = ctx.systems.pixi.canvas.parentElement;
     if (!parent) return;
     parent.style.position = parent.style.position || 'relative';
     ctx.systems.pixi.canvas.style.zIndex = '2';
     ctx.systems.pixi.canvas.dataset.pixiLabFluidRendererHost = 'pixi-shared';
-    this.renderer = this.createRenderer(parent, ctx.quality);
+    this.renderer = this.createRenderer(ctx.quality);
     this.wallLayer = new Graphics();
     this.rippleLayer = new Graphics();
     this.wallLayer.zIndex = 1;
@@ -162,7 +148,6 @@ export class FluidTankScene extends SimulationScene {
   }
 
   override onExit(): void {
-    this.rawQualityAdapter.unmount();
     this.renderer?.destroy();
     this.wallLayer?.destroy();
     this.rippleLayer?.destroy();
@@ -175,10 +160,6 @@ export class FluidTankScene extends SimulationScene {
   }
 
   override update(dt: number): void {
-    if (this.rawQualityAdapter.isMounted()) {
-      this.rawQualityAdapter.update(dt);
-      return;
-    }
     if (!this.renderer || !this.options) return;
     if (this.debugStill) return;
     if (!this.debugMinimal) this.pollSettings();
@@ -223,7 +204,7 @@ export class FluidTankScene extends SimulationScene {
             0.95,
           );
         } else {
-          this.renderer.splat({
+          this.renderer.stir({
             x: gesture.x / Math.max(1, this.ctx_.width),
             y: gesture.y / Math.max(1, this.ctx_.height),
             dx: velocity.dx,
@@ -240,10 +221,6 @@ export class FluidTankScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (this.rawQualityAdapter.isMounted()) {
-      this.rawQualityAdapter.render(_alpha);
-      return;
-    }
     this.renderer?.render();
     this.drawTankFrame();
     this.drawRipples();
@@ -260,16 +237,11 @@ export class FluidTankScene extends SimulationScene {
   }
 
   override resize(width: number, height: number): void {
-    this.rawQualityAdapter.resize(width, height);
     this.renderer?.resize(width, height);
     this.drawTankFrame(width, height);
   }
 
   override reset(): void {
-    if (this.rawQualityAdapter.isMounted()) {
-      this.rawQualityAdapter.reset();
-      return;
-    }
     if (!this.renderer || !this.options) return;
     const seed = this.options.seed + 1;
     this.options = { ...this.options, seed };
@@ -278,65 +250,24 @@ export class FluidTankScene extends SimulationScene {
   }
 
   override clearEmitters(): void {
-    if (this.rawQualityAdapter.isMounted()) return;
     this.renderer?.settleVelocity();
   }
 
   override setQuality(quality: RenderQuality): void {
-    const wasRaw = this.rawQualityAdapter.isMounted();
     super.setQuality(quality);
-    const switchResult = this.rawQualityAdapter.sync(quality, this.ctx_, this.input_);
-
-    if (wasRaw && switchResult.active) return;
-
-    if (wasRaw && switchResult.unmounted && this.options) {
-      const parent = this.ctx_.systems.pixi.canvas.parentElement;
-      if (!parent) return;
-      this.renderer = this.createRenderer(parent, quality);
-      if (!this.wallLayer || !this.rippleLayer) {
-        this.wallLayer = new Graphics();
-        this.rippleLayer = new Graphics();
-        this.wallLayer.zIndex = 1;
-        this.rippleLayer.zIndex = 2;
-        this.ctx_.systems.pixi.stage.sortableChildren = true;
-        this.ctx_.systems.pixi.stage.addChild(this.wallLayer);
-        this.ctx_.systems.pixi.stage.addChild(this.rippleLayer);
-      }
-      this.renderer.resize(this.ctx_.width, this.ctx_.height, true);
-      this.renderer.randomizeDye(this.options.seed, !(this.debugStill || this.debugNoSeedMotion));
-      this.applyStyleOptions();
-      return;
-    }
-
-    if (!wasRaw && switchResult.mounted) {
-      this.renderer?.destroy();
-      this.renderer = null;
-      this.wallLayer?.destroy();
-      this.rippleLayer?.destroy();
-      this.wallLayer = null;
-      this.rippleLayer = null;
-      this.ctx_.systems.debug?.setEnabled(false);
-      return;
-    }
-
     this.renderer?.setQuality(quality);
   }
 
   override setStyle(styleId: string): void {
     super.setStyle(styleId);
-    this.rawQualityAdapter.setStyle(styleId);
-    if (this.rawQualityAdapter.isMounted()) return;
     this.applyStyleOptions();
   }
 
   override setMode(id: string): void {
-    this.rawQualityAdapter.setMode(id);
-    if (this.rawQualityAdapter.isMounted()) return;
     if (id === 'stir' || id === 'inject') this.interactionMode = id;
   }
 
   getRenderLayers(): SimRenderLayers {
-    if (this.rawQualityAdapter.isMounted()) return {};
     return {
       fluid: this.renderer?.layer ?? this.renderer?.canvas,
     };
@@ -365,11 +296,8 @@ export class FluidTankScene extends SimulationScene {
     this.reset();
   }
 
-  private createRenderer(parent: HTMLElement, quality: RenderQuality): FluidRendererAdapter {
+  private createRenderer(quality: RenderQuality): FluidRendererAdapter {
     if (!this.options) throw new Error('Fluid Tank renderer options must be initialized before renderer creation.');
-    if (quality === 'raw') {
-      return new GpuFluidTankRenderer(parent, this.options, quality);
-    }
     return new PixiFeedbackFluidRenderer(this.ctx_.systems.pixi.app, this.options, quality);
   }
 
@@ -403,7 +331,7 @@ export class FluidTankScene extends SimulationScene {
         if (this.interactionMode === 'inject') {
           this.renderer.inject(px, py, vx, vy, 0.9);
         } else {
-          this.renderer.splat({
+          this.renderer.stir({
             x: px,
             y: py,
             dx: vx,

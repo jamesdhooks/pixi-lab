@@ -78,6 +78,8 @@ describe('AMBIENT_REGISTRY', () => {
       expect(definition.factory, `${definition.id}.factory`).toEqual(expect.any(Function));
       expect(definition.previewFactory, `${definition.id}.previewFactory`).toEqual(expect.any(Function));
       expect(definition.defaultSeed, `${definition.id}.defaultSeed`).toEqual(expect.any(Number));
+      expect(definition.capabilities.engineConfigurations?.map((configuration) => configuration.legacyQuality), `${definition.id}.engineConfigurations`).toEqual(['basic', 'enhanced']);
+      expect(definition.capabilities.qualityModes, `${definition.id}.legacyQualityModes`).toBeUndefined();
     }
   });
 

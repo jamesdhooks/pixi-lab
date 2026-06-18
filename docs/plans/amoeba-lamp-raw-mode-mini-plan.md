@@ -171,6 +171,10 @@ Added the first scene-owned Pixi raw adapter boundary: `AmoebaLampRawRenderer`. 
 
 After rebasing onto the typed DOM mount engine changes, the Amoeba raw adapter still aligns because it does not depend on `DomScriptScene`. The source-level blocker was stale built core output: registry tests resolved `@hooksjam/pixi-lab-core` from `packages/core/dist`, which had not yet exported `DomScriptQualityAdapter`. Rebuilding core fixed the registry smoke. Future raw slices should keep this validation order: rebuild core after bridge/export changes, then run focused raw tests, registry probes, package typecheck/build, and browser smoke.
 
+## 2026-06-01 raw exposure slice note
+
+Enabled `raw` in Amoeba Lamp's advertised `qualityModes` and style-manifest capabilities now that the scene-owned Pixi adapter exists. Added registry tests that keep raw scoped to `amoeba-lamp` and `fluid-tank`, verify Amoeba's full scene/preview factories stay off the DOM bridge, and preserve the expectation that previews remain basic/Pixi-safe. Browser smoke covered Amoeba `basic`, `enhanced`, and Pixi-owned `raw` routes with a single shared Pixi canvas and no console errors, then launched Harmonic Sand from `?quality=raw` to confirm unsupported raw sanitizes back to `basic`.
+
 ## Non-goals for the first raw slice
 
 - Do not extract a generic GPU Field Engine.

@@ -1,4 +1,4 @@
-import type { AmbientDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type  AmbientDefinition } from '@hooksjam/pixi-lab-core';
 import { DEFAULT_AMBIENT_BEHAVIOR } from '@hooksjam/pixi-lab-core';
 import { MUSIC_DREAM_FIELD_DEFAULTS } from './music-dream-field.config.js';
 import { MusicDreamFieldScene, musicDreamFieldStyles } from './MusicDreamFieldScene.js';
@@ -22,7 +22,7 @@ export const musicDreamFieldDefinition: AmbientDefinition = {
     styleExport: true,
     lowMotion: true,
     sleepMode: true,
-    qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     settings: true,
   },
   dataBindings: [

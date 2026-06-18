@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { AMOEBA_LAMP_DEFAULTS, AMOEBA_LAMP_SETTINGS_FIELDS } from './amoeba-lamp.config.js';
 import { AmoebaLampDemoAI } from './AmoebaLampDemoAI.js';
 import { AmoebaLampPreviewScene } from './AmoebaLampPreviewScene.js';
@@ -25,7 +25,7 @@ export const amoebaLampDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced', 'raw'], { rawBackend: 'pixi' }),
     demo: true,
     settings: true,
   },

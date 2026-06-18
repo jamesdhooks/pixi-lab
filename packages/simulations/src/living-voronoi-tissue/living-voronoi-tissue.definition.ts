@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { LIVING_VORONOI_TISSUE_DEFAULTS, LIVING_VORONOI_TISSUE_SETTINGS_FIELDS } from './living-voronoi-tissue.config.js';
 import { LivingVoronoiTissueDemoAI } from './LivingVoronoiTissueDemoAI.js';
 import { LivingVoronoiTissuePreviewScene } from './LivingVoronoiTissuePreviewScene.js';
@@ -25,7 +25,7 @@ export const livingVoronoiTissueDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

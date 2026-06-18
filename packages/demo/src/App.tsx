@@ -6,8 +6,14 @@ import { useViewport } from '@hooksjam/pixi-lab-react';
 import { AMBIENT_REGISTRY } from '@hooksjam/pixi-lab-ambients';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
 import { SIMULATION_REGISTRY, fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
-import type { LabExperience, RenderQuality } from '@hooksjam/pixi-lab-core';
+import { type LabExperience, type RenderBackendProfileSelection, type RenderQuality } from '@hooksjam/pixi-lab-core';
 import { hasPassedDemoQa } from './demoQaStatus';
+import {
+  applyCompatibilityRouteRenderSelection,
+  findQueryExperienceFromParams,
+  queryExperimentalRawEngine,
+  queryRenderSelectionForExperience,
+} from './demoRuntime';
 
 const ALL_EXPERIENCES: readonly LabExperience[] = [
   ...GAME_REGISTRY,
@@ -21,10 +27,6 @@ const APP_DEMO_PRELOAD_MAX_PIXELS = 147_456;
 type DemoStageSlot = 'a' | 'b';
 
 type FilterKind = 'all' | 'overlays' | LabExperience['kind'];
-
-function parseQueryQuality(value: string | null): RenderQuality | undefined {
-  return value === 'basic' || value === 'enhanced' || value === 'raw' ? value : undefined;
-}
 
 const KIND_LABELS: Record<string, string> = {
   all: 'All',
@@ -83,7 +85,8 @@ export function App() {
       fluidGallery: params.has('fluidGallery'),
       fluidEngine: params.has('fluidEngine'),
       fluidReference: params.has('fluidReference'),
-      quality: parseQueryQuality(params.get('quality')),
+      experience: findQueryExperienceFromParams(params, ALL_EXPERIENCES),
+      queryParams: params,
     };
   }, []);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -92,19 +95,28 @@ export function App() {
 
   // Persist maxPixels to localStorage
   useEffect(() => {
-    try { localStorage.setItem('pixi-lab:maxPixels', String(maxPixels || '')); } catch {}
+    try {
+      localStorage.setItem('pixi-lab:maxPixels', String(maxPixels || ''));
+    } catch {
+      // Storage can be unavailable in private/sandboxed contexts.
+    }
   }, [maxPixels]);
 
   useEffect(() => {
     if (routeMode.fluidGallery) return;
     if (routeMode.fluidEngine || routeMode.fluidReference) {
-      if (routeMode.quality) {
-        try { localStorage.setItem('pixi-lab:quality', routeMode.quality); } catch { /* ignore */ }
-      }
+      try { applyCompatibilityRouteRenderSelection(fluidTankDefinition, routeMode.queryParams); } catch { /* ignore */ }
       setAppDemoActive(false);
       setCarouselOpen(false);
       setCarouselDocked(false);
       setActive(fluidTankDefinition);
+      return;
+    }
+    if (routeMode.experience) {
+      setAppDemoActive(false);
+      setCarouselOpen(false);
+      setCarouselDocked(false);
+      setActive(routeMode.experience);
     }
   }, [routeMode]);
 
@@ -167,7 +179,6 @@ export function App() {
   const appDemoVisibleReady = appDemoCrossfading && appDemoPendingSlot
     ? appDemoStageReady[appDemoPendingSlot]
     : appDemoStageReady[appDemoFrontSlot];
-
   const activeCarouselIndex = useMemo(
     () => (active ? carouselItems.findIndex((e) => e.id === active.id) : -1),
     [active, carouselItems],
@@ -455,7 +466,8 @@ export function App() {
               dockedInset={dockedInset}
               maxPixels={maxPixels}
               transparent={active.kind === 'ambient' || active.kind === 'effect'}
-              initialQuality={routeMode.quality}
+              initialRenderSelection={queryRenderSelectionForExperience(active, routeMode.queryParams)}
+              experimentalRawEngine={queryExperimentalRawEngine(routeMode.queryParams)}
               autoDemo={routeMode.fluidEngine || routeMode.fluidReference}
               onQuit={() => {
                 setActive(null);
@@ -845,7 +857,10 @@ interface ExperienceSurfaceProps {
   interactive?: boolean;
   zIndex?: number;
   transparent?: boolean;
+  initialRenderSelection?: RenderBackendProfileSelection;
   initialQuality?: RenderQuality;
+  experimentalRawEngine?: boolean;
+  onRenderSelectionChange?: (selection: RenderBackendProfileSelection) => void;
   onDemoAdvance?: () => void;
   onDemoExit?: () => void;
   onRuntimeReady?: () => void;
@@ -862,7 +877,10 @@ function ExperienceSurface({
   interactive = true,
   zIndex = 1,
   transparent = false,
+  initialRenderSelection,
   initialQuality,
+  experimentalRawEngine = false,
+  onRenderSelectionChange,
   onDemoAdvance,
   onDemoExit,
   onRuntimeReady,
@@ -870,6 +888,14 @@ function ExperienceSurface({
   className = 'absolute inset-0 overflow-hidden',
 }: ExperienceSurfaceProps) {
   if (!experience) return null;
+
+  const launcherKey = [
+    experience.id,
+    initialRenderSelection?.backend ?? '',
+    initialRenderSelection?.profile ?? '',
+    initialQuality ?? '',
+    experimentalRawEngine ? 'raw' : 'managed',
+  ].join(':');
 
   return (
     <div
@@ -888,11 +914,14 @@ function ExperienceSurface({
         style={{ ...dockedInset, transform: 'translateZ(0)' }}
       >
         <GameLauncher
-          key={experience.id}
+          key={launcherKey}
           definition={experience}
           maxPixels={maxPixels}
           autoDemo={autoDemo}
+          initialRenderSelection={initialRenderSelection}
           initialQuality={initialQuality}
+          experimentalRawEngine={experimentalRawEngine}
+          onRenderSelectionChange={onRenderSelectionChange}
           transparent={transparent}
           onDemoAdvance={onDemoAdvance}
           onDemoExit={onDemoExit}

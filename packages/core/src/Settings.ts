@@ -25,9 +25,12 @@ export class Settings<T extends SettingsMap = SettingsMap> {
       defaults[f.key] = f.default;
     }
 
-    // Load persisted overrides
+    // Load persisted overrides, but validate them against the current field schema.
+    // Browser storage can outlive registry/setting migrations, so stale values must
+    // not leak into scenes or be re-persisted after the user touches any control.
     const stored = this.load();
     this.data = { ...defaults, ...stored } as T;
+    this.sanitizeAll();
   }
 
   get<K extends keyof T>(key: K): T[K] {
@@ -38,16 +41,10 @@ export class Settings<T extends SettingsMap = SettingsMap> {
     const field = this.fields.find((f) => f.key === (key as string));
     if (!field) return;
 
-    // Clamp numbers
-    if (field.type === 'number' && typeof value === 'number') {
-      const clamped = Math.max(field.min ?? -Infinity, Math.min(field.max ?? Infinity, value));
-      value = clamped as T[K];
-    }
-
-    this.data[key] = value;
+    this.data[key] = this.sanitizeValue(field, value) as T[K];
     this.persist();
     for (const cb of this.listeners) {
-      cb(key, value as SettingsValue);
+      cb(key, this.data[key] as SettingsValue);
     }
   }
 
@@ -69,6 +66,46 @@ export class Settings<T extends SettingsMap = SettingsMap> {
       this.data[f.key as keyof T] = f.default as T[keyof T];
     }
     this.persist();
+  }
+
+  private sanitizeAll() {
+    const allowedKeys = new Set(this.fields.map((field) => field.key));
+
+    for (const key of Object.keys(this.data)) {
+      if (!allowedKeys.has(key)) {
+        delete this.data[key as keyof T];
+      }
+    }
+
+    for (const field of this.fields) {
+      this.data[field.key as keyof T] = this.sanitizeValue(
+        field,
+        this.data[field.key as keyof T],
+      ) as T[keyof T];
+    }
+  }
+
+  private sanitizeValue(field: SettingsField, value: unknown): SettingsValue {
+    switch (field.type) {
+      case 'number': {
+        const numeric = typeof value === 'number' && Number.isFinite(value) ? value : Number(field.default);
+        const fallback = Number.isFinite(numeric) ? numeric : 0;
+        return Math.max(field.min ?? -Infinity, Math.min(field.max ?? Infinity, fallback));
+      }
+      case 'boolean':
+        return typeof value === 'boolean' ? value : Boolean(field.default);
+      case 'select': {
+        const stringValue = typeof value === 'string' ? value : String(field.default ?? '');
+        if (!field.options?.length || field.options.some((option) => option.value === stringValue)) {
+          return stringValue;
+        }
+        return field.options[0]?.value ?? String(field.default ?? '');
+      }
+      case 'string':
+        return typeof value === 'string' ? value : String(field.default ?? '');
+      default:
+        return field.default;
+    }
   }
 
   private storageKey() {

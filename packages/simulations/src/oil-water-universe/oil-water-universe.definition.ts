@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { OIL_WATER_UNIVERSE_DEFAULTS, OIL_WATER_UNIVERSE_SETTINGS_FIELDS } from './oil-water-universe.config.js';
 import { OilWaterUniverseDemoAI } from './OilWaterUniverseDemoAI.js';
 import { OilWaterUniversePreviewScene } from './OilWaterUniversePreviewScene.js';
@@ -25,7 +25,7 @@ export const oilWaterUniverseDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

@@ -5,9 +5,20 @@
  * Mounts a canvas into a container div, inits GameApp, starts/stops on mount/unmount.
  */
 import { useEffect, useRef, useCallback } from 'react';
-import { GameApp, type GameAppOptions } from '@hooksjam/pixi-lab-core';
-import type { LabExperience } from '@hooksjam/pixi-lab-core';
-import type { AmbientDataAdapter, GameEvent, RenderQuality } from '@hooksjam/pixi-lab-core';
+import { GameApp } from '@hooksjam/pixi-lab-core';
+import type {
+  AmbientDataAdapter,
+  GameAppOptions,
+  GameEvent,
+  LabExperience,
+  RenderBackendProfileSelection,
+  RenderQuality,
+} from '@hooksjam/pixi-lab-core';
+
+function clearRuntimeHost(host: HTMLElement | null): void {
+  if (!host) return;
+  host.replaceChildren();
+}
 
 export interface GameRuntimeProps {
   definition: LabExperience;
@@ -15,7 +26,10 @@ export interface GameRuntimeProps {
   palette?: string;
   seed?: number;
   mode?: 'play' | 'screensaver' | 'demo';
+  renderSelection?: RenderBackendProfileSelection;
+  /** Legacy scene compatibility tier derived from renderSelection. */
   quality?: RenderQuality;
+  experimentalRawEngine?: boolean;
   transparent?: boolean;
   sleepMode?: boolean;
   lowMotion?: boolean;
@@ -37,7 +51,9 @@ export function GameRuntime({
   palette,
   seed,
   mode = 'play',
+  renderSelection,
   quality,
+  experimentalRawEngine,
   transparent,
   sleepMode,
   lowMotion,
@@ -50,6 +66,9 @@ export function GameRuntime({
 }: GameRuntimeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<GameApp | null>(null);
+  const runtimeEngineKey = renderSelection
+    ? `${renderSelection.backend}/${renderSelection.profile}/${renderSelection.legacyQuality}`
+    : `legacy/${quality ?? 'basic'}`;
 
   const handleEvent = useCallback(
     (event: GameEvent) => {
@@ -64,6 +83,8 @@ export function GameRuntime({
 
     let cancelled = false;
     let rafId = 0;
+
+    clearRuntimeHost(container);
 
     // Defer to the next animation frame for two reasons:
     // 1. Ensures the browser has performed a layout pass so getBoundingClientRect()
@@ -81,7 +102,9 @@ export function GameRuntime({
         mode,
         palette,
         seed,
+        renderSelection,
         quality,
+        experimentalRawEngine,
         transparent,
         sleepMode,
         lowMotion,
@@ -119,9 +142,10 @@ export function GameRuntime({
         app.destroy();
         appRef.current = null;
       }
+      clearRuntimeHost(container);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [definition.id]); // Only re-create when game changes
+  }, [definition.id, runtimeEngineKey, experimentalRawEngine]); // Re-create when the experience or engine configuration changes
 
   useEffect(() => {
     appRef.current?.setSleepMode((sleepMode ?? false) || (lowMotion ?? false));

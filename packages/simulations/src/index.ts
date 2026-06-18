@@ -64,12 +64,14 @@ export { ElectroOsmoticAmoebaModel, type ElectroOsmoticAmoebaModelOptions, type 
 
 export { fluidTankDefinition } from './fluid-tank/fluid-tank.definition.js';
 export { FluidTankScene, fluidTankStyleManifest } from './fluid-tank/FluidTankScene.js';
+export { RawFluidTankScene } from './fluid-tank/RawFluidTankScene.js';
 export { FluidTankPreviewScene } from './fluid-tank/FluidTankPreviewScene.js';
 export { FluidTankDemoAI } from './fluid-tank/FluidTankDemoAI.js';
 export type { SceneRenderVariant } from './rendering/SceneRenderVariant.js';
 
 export { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
 export { HarmonicSandScene, harmonicSandStyleManifest } from './harmonic-sand/HarmonicSandScene.js';
+export { RawHarmonicSandScene } from './harmonic-sand/RawHarmonicSandScene.js';
 export { HarmonicSandPreviewScene } from './harmonic-sand/HarmonicSandPreviewScene.js';
 export { HarmonicSandModel, type HarmonicEmitter, type HarmonicSandModelOptions } from './harmonic-sand/HarmonicSandModel.js';
 
@@ -104,6 +106,7 @@ export { OilWaterUniversePreviewScene } from './oil-water-universe/OilWaterUnive
 export { OilWaterUniverseModel, type OilWaterUniverseModelOptions, type OilWaterUniverseStats } from './oil-water-universe/OilWaterUniverseModel.js';
 
 export { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
+export { OrbitalShrapnelExperimentalRawEngineScene } from './orbital-shrapnel/OrbitalShrapnelExperimentalRawEngineScene.js';
 export { OrbitalShrapnelScene, orbitalShrapnelStyleManifest } from './orbital-shrapnel/OrbitalShrapnelScene.js';
 export { OrbitalShrapnelPreviewScene } from './orbital-shrapnel/OrbitalShrapnelPreviewScene.js';
 export { OrbitalShrapnelModel, type OrbitalShrapnelModelOptions, type OrbitalShrapnelStats } from './orbital-shrapnel/OrbitalShrapnelModel.js';

@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { MYCELIUM_PRISM_DEFAULTS, MYCELIUM_PRISM_SETTINGS_FIELDS } from './mycelium-prism.config.js';
 import { MyceliumPrismDemoAI } from './MyceliumPrismDemoAI.js';
 import { MyceliumPrismPreviewScene } from './MyceliumPrismPreviewScene.js';
@@ -25,7 +25,7 @@ export const myceliumPrismDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

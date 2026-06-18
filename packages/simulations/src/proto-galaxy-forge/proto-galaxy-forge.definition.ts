@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { PROTO_GALAXY_FORGE_DEFAULTS, PROTO_GALAXY_FORGE_SETTINGS_FIELDS } from './proto-galaxy-forge.config.js';
 import { ProtoGalaxyForgeDemoAI } from './ProtoGalaxyForgeDemoAI.js';
 import { ProtoGalaxyForgePreviewScene } from './ProtoGalaxyForgePreviewScene.js';
@@ -25,7 +25,7 @@ export const protoGalaxyForgeDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

@@ -7,7 +7,13 @@
 export { ExperienceRuntime, GameRuntime, SimulationRuntime, type ExperienceRuntimeProps, type GameRuntimeProps } from './GameRuntime.js';
 export { GameTile, PreviewTile, type GameTileProps, type PreviewTileProps } from './GameTile.js';
 export { GameLauncher, type GameLauncherProps } from './GameLauncher.js';
-export { isRenderQuality, sanitizeRenderQuality } from './qualitySelection.js';
+export {
+  isRenderQuality,
+  resolveRenderSelection,
+  resolveStoredRenderSelection,
+  sanitizeRenderQuality,
+  type EngineConfigurationSupport,
+} from './engineConfigurationSelection.js';
 export { Gallery, type GalleryProps } from './Gallery.js';
 export { AmbientLayer, type AmbientLayerProps } from './AmbientLayer.js';
 export { ForegroundAmbientOverlay, type ForegroundAmbientOverlayProps } from './ForegroundAmbientOverlay.js';
@@ -27,6 +33,7 @@ export { PressHint } from './ui/PressHint.js';
 export { StartCard } from './ui/StartCard.js';
 export { SettingsDrawer } from './ui/SettingsDrawer.js';
 export { StylePicker, type StylePickerProps } from './ui/StylePicker.js';
+export { EngineConfigurationSelector, type EngineConfigurationSelectorProps } from './ui/EngineConfigurationSelector.js';
 export { QualitySelector, type QualitySelectorProps } from './ui/QualitySelector.js';
 export { DebugToggle, type DebugToggleProps } from './ui/DebugToggle.js';
 export { DebugPanel, type DebugPanelProps } from './ui/DebugPanel.js';

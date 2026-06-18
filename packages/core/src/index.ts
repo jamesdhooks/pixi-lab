@@ -35,6 +35,8 @@ export type {
   Rect,
   RGBA,
   GameMode,
+  RendererBackend,
+  RenderProfile,
   RenderQuality,
   ExperienceKind,
   ExperienceRenderMode,
@@ -57,6 +59,7 @@ export type {
   SettingsField,
   GameCapabilities,
   ExperienceCapabilities,
+  EngineConfiguration,
   ExperienceMode,
   AmbientDataSource,
   AmbientDataBinding,
@@ -105,11 +108,72 @@ export { styleRegistry, PALETTES, DEFAULT_STYLE } from './render/Styles.js';
 export { RenderTargetPool, type RenderTargetRequest, type RenderTargetStats } from './render/RenderTargetPool.js';
 export { PingPong } from './render/PingPong.js';
 export { RenderStyleManager } from './render/RenderStyleManager.js';
+export {
+  createEngineConfigurations,
+  DEFAULT_RENDER_QUALITY_MODES,
+  LEGACY_RENDER_QUALITY_STORAGE_KEY,
+  RENDER_SELECTION_STORAGE_KEY,
+  formatRenderBackendProfileSelection,
+  getSupportedEngineConfigurations,
+  getSupportedLegacyRenderQualities,
+  getSupportedRenderQualityModes,
+  groupBackendProfileCandidates,
+  groupLegacyQualitiesByBackend,
+  groupQualityModesByBackend,
+  isDefaultRenderBackendProfileSelection,
+  isEngineConfigurationVisible,
+  isRenderProfile,
+  isRenderQuality,
+  isRendererBackend,
+  mapLegacyQualitiesToBackendProfileCandidates,
+  mapQualityModesToBackendProfiles,
+  parseRenderBackendProfileStorage,
+  resolveEngineConfigurationQuerySelection,
+  resolveEngineConfigurationStorageSelection,
+  resolveEngineConfigurationSelection,
+  resolveRenderBackendProfileQuerySelection,
+  resolveRenderBackendProfileSelection,
+  resolveRenderBackendProfileStorageSelection,
+  sanitizeLegacyQualityForEngineConfigurations,
+  sanitizeLegacyRenderQuality,
+  serializeRenderBackendProfileRoute,
+  serializeRenderBackendProfileStorage,
+  toEngineConfiguration,
+  toRenderBackendProfileCandidate,
+  type RenderBackendProfileCandidate,
+  type RenderBackendProfileGroup,
+  type RenderBackendProfileQueryRequest,
+  type RenderBackendProfileRouteParams,
+  type RenderBackendProfileSelection,
+  type RenderBackendProfileSelectionLabel,
+  type RenderBackendProfileStorageSnapshot,
+  type SerializeRenderBackendProfileRouteOptions,
+} from './runtime/RenderBackendProfile.js';
 export { SimulationCanvasLayer } from './render/SimulationCanvasLayer.js';
 export type { EmitterMarker } from './render/SimulationCanvasLayer.js';
 export { FieldPaletteRenderer, type FieldPaletteRenderOptions } from './render/FieldPaletteRenderer.js';
 export { ParticlePointRenderer, type ParticlePointRenderOptions } from './render/ParticlePointRenderer.js';
 export { TrailFeedbackRenderer, type TrailFeedbackRenderOptions } from './render/TrailFeedbackRenderer.js';
+export {
+  createFieldPaletteLayer,
+  createParticlePointLayer,
+  createRenderFrame,
+  createTrailFeedbackLayer,
+  type FieldPaletteLayer,
+  type ParticlePointLayer,
+  type RenderFrame,
+  type RenderFrameOptions,
+  type SemanticRenderLayer,
+  type SemanticRenderLayerKind,
+  type TrailFeedbackLayer,
+} from './render/semantic/SemanticRenderFrame.js';
+export {
+  PixiSemanticRenderPipeline,
+  WebGL2SemanticRenderPipeline,
+  type PixiSemanticRenderPipelineOptions,
+  type SemanticRenderPipeline,
+  type WebGL2SemanticRenderPipelineOptions,
+} from './render/semantic/SemanticRenderPipelines.js';
 export { DensityMetaballRenderer, type DensityMetaballRenderOptions } from './render/DensityMetaballRenderer.js';
 export { MeshLatticeRenderer, type MeshLatticeRenderOptions } from './render/MeshLatticeRenderer.js';
 export { ArcLineRenderer, type ArcLineRenderOptions } from './render/ArcLineRenderer.js';
@@ -117,6 +181,25 @@ export { EmitterMarkerRenderer } from './render/EmitterMarkerRenderer.js';
 export { ProceduralTextureLibrary, type ProceduralTextureId } from './render/procedural/ProceduralTextureLibrary.js';
 export { createSharedPass, SHARED_RENDER_PASS_IDS } from './render/passes/SharedPasses.js';
 export { NoopRenderPass, type RenderPass, type RenderPassContext } from './render/passes/RenderPass.js';
+export {
+  RawWebGL2Scene,
+  colorNumberToRgb,
+  finiteNumberSetting,
+  type RawWebGL2RenderState,
+  type RawWebGL2SceneOptions,
+} from './render/raw/RawWebGL2Scene.js';
+export {
+  RawWebGL2ResourceContext,
+  compileRawWebGL2Shader,
+  linkRawWebGL2Program,
+  type RawFramebuffer,
+  type RawRenderTexture,
+  type RawRenderTextureOptions,
+  type RawResourceSize,
+  type RawTexturePrecision,
+  type RawWebGL2Capabilities,
+  type RawWebGL2ProgramSources,
+} from './render/raw/RawWebGL2ResourceContext.js';
 
 // Simulation primitives
 export { SimulationScene } from './sim/SimulationScene.js';

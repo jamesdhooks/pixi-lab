@@ -49,6 +49,9 @@ export class HarmonicSandScene extends SimulationScene {
   /** Cached settings values — detect changes each update tick. */
   private lastFieldResolution = 0;
   private lastBaseFrequency = 0;
+  private lastWavePeriod = 1;
+  private uiHidden = false;
+  private demoModeActive = false;
 
   constructor(private readonly previewFieldColumns?: number) {
     super();
@@ -68,6 +71,7 @@ export class HarmonicSandScene extends SimulationScene {
       fieldColumns: this.previewFieldColumns ?? ((settings.get('resolution') as number) ?? (HARMONIC_SAND_DEFAULTS.resolution as number)),
       emitterCount: (HARMONIC_SAND_DEFAULTS.emitterCount as number),
       baseFrequency: (settings.get('baseFrequency') as number) ?? (HARMONIC_SAND_DEFAULTS.baseFrequency as number),
+      wavePeriod: (settings.get('wavePeriod') as number) ?? (HARMONIC_SAND_DEFAULTS.wavePeriod as number),
     };
     this.model = new HarmonicSandModel(this.modelOptions);
     this.lastFieldResolution = this.modelOptions.fieldColumns;
@@ -88,7 +92,17 @@ export class HarmonicSandScene extends SimulationScene {
   }
 
   override onUIHidden(hidden: boolean): void {
-    this.emitterRenderer?.setVisible(!hidden);
+    this.uiHidden = hidden;
+    this.syncEmitterMarkerVisibility();
+  }
+
+  override setMode(mode: string): void {
+    this.demoModeActive = mode === 'demo';
+    this.syncEmitterMarkerVisibility();
+  }
+
+  private syncEmitterMarkerVisibility(): void {
+    this.emitterRenderer?.setVisible(!this.uiHidden && !this.demoModeActive);
   }
 
   override update(dt: number): void {
@@ -115,6 +129,14 @@ export class HarmonicSandScene extends SimulationScene {
       this.model.setBaseFrequency(newFreq);
     }
 
+    const newWavePeriod = (settings.get('wavePeriod') as number | undefined)
+      ?? (HARMONIC_SAND_DEFAULTS.wavePeriod as number);
+    if (newWavePeriod !== this.lastWavePeriod) {
+      this.lastWavePeriod = newWavePeriod;
+      this.modelOptions = { ...this.modelOptions, wavePeriod: newWavePeriod };
+      this.model.setWavePeriod(newWavePeriod);
+    }
+
     for (const gesture of this.consumeGestures()) {
       this.model.handleGesture(gesture);
     }
@@ -129,6 +151,7 @@ export class HarmonicSandScene extends SimulationScene {
     this.model = new HarmonicSandModel(this.modelOptions);
     this.lastFieldResolution = this.modelOptions.fieldColumns;
     this.lastBaseFrequency = this.modelOptions.baseFrequency;
+    this.lastWavePeriod = this.modelOptions.wavePeriod ?? 1;
   }
 
   override render(_alpha: number): void {

@@ -1,4 +1,4 @@
-import type { AmbientDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type  AmbientDefinition } from '@hooksjam/pixi-lab-core';
 import { DEFAULT_AMBIENT_BEHAVIOR } from '@hooksjam/pixi-lab-core';
 import { MEMORY_DRIFT_DEFAULTS } from './memory-drift.config.js';
 import { MemoryDriftScene, memoryDriftStyles } from './MemoryDriftScene.js';
@@ -22,7 +22,7 @@ export const memoryDriftDefinition: AmbientDefinition = {
     styleExport: true,
     lowMotion: true,
     sleepMode: true,
-    qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     settings: true,
   },
   dataBindings: [

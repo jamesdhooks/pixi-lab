@@ -1,7 +1,8 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { FluidTankDemoAI } from './FluidTankDemoAI.js';
 import { FluidTankPreviewScene } from './FluidTankPreviewScene.js';
 import { FluidTankScene, fluidTankStyleManifest } from './FluidTankScene.js';
+import { RawFluidTankScene } from './RawFluidTankScene.js';
 import { FLUID_TANK_DEFAULTS, FLUID_TANK_SETTINGS_FIELDS } from './fluid-tank.config.js';
 
 export const fluidTankDefinition: SimulationDefinition = {
@@ -26,7 +27,7 @@ export const fluidTankDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced', 'raw'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced', 'raw']),
     demo: true,
     settings: true,
   },
@@ -34,7 +35,7 @@ export const fluidTankDefinition: SimulationDefinition = {
   configDefaults: FLUID_TANK_DEFAULTS,
   styleManifest: fluidTankStyleManifest,
   modes: [
-    { id: 'stir', label: 'Stir', icon: '~', description: 'Drag to inject velocity along your finger path.' },
+    { id: 'stir', label: 'Stir', icon: '~', description: 'Drag to stir velocity along your finger path without adding dye.' },
     {
       id: 'inject',
       label: 'Inject',
@@ -43,7 +44,7 @@ export const fluidTankDefinition: SimulationDefinition = {
     },
   ],
   gestureMap: {
-    tap: 'create a small swirl, or inject a concentrated dye drip in inject mode',
+    tap: 'create a small velocity swirl, or inject a concentrated dye drip in inject mode',
     drag: 'stir velocity in stir mode, or drip dye with spreading force in inject mode',
     fast_swipe: 'stir the tank with a stronger sweep or inject a stronger dye stream in inject mode',
   },
@@ -57,7 +58,7 @@ export const fluidTankDefinition: SimulationDefinition = {
     severity: 0,
   },
   defaultSeed: 260527,
-  factory: () => new FluidTankScene(),
+  factory: (ctx) => (ctx.quality === 'raw' ? new RawFluidTankScene() : new FluidTankScene()),
   previewFactory: () => new FluidTankPreviewScene(),
   demoAiFactory: () => new FluidTankDemoAI(),
   tutorialPages: [

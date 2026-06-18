@@ -10,7 +10,17 @@
  * - Emit GameEvents upward to the React shell via the provided callback
  * - Clean shutdown on destroy()
  */
-import type { AmbientDataAdapter, BurstEffect, GameContext, GameEvent, GameMode, InputSnapshot, RenderQuality } from './types.js';
+import type {
+  AmbientDataAdapter,
+  BurstEffect,
+  GameContext,
+  GameEvent,
+  GameMode,
+  GestureEvent,
+  InputSnapshot,
+  RenderQuality,
+} from './types.js';
+import type { RenderBackendProfileSelection } from './runtime/RenderBackendProfile.js';
 import type { Scene } from './Scene.js';
 import { Ticker } from './Ticker.js';
 import { Input } from './Input.js';
@@ -52,7 +62,12 @@ export interface GameAppOptions {
   /** Palette name from Styles registry */
   palette?: string;
   seed?: number;
+  /** Canonical engine/backend/profile selection chosen by the host runtime. */
+  renderSelection?: RenderBackendProfileSelection;
+  /** Legacy scene compatibility tier derived from renderSelection. */
   quality?: RenderQuality;
+  /** Dev/test-only raw-engine experiment switch; public hosts should leave false. */
+  experimentalRawEngine?: boolean;
   transparent?: boolean;
   sleepMode?: boolean;
   lowMotion?: boolean;
@@ -219,6 +234,7 @@ export class GameApp {
       mode: this._mode,
       seed: this.opts.seed ?? definition.defaultSeed ?? 1,
       quality: this.quality,
+      experimentalRawEngine: this.opts.experimentalRawEngine,
       width: this.pixi.width,
       height: this.pixi.height,
       systems: {
@@ -342,12 +358,10 @@ export class GameApp {
     this.renderInvalidated = true;
   }
 
-  /** Notify the active simulation scene that the host UI visibility has changed. */
+  /** Notify the active scene that the host UI visibility has changed. */
   setUIHidden(hidden: boolean) {
     if (!this.ready) return;
-    if (this.currentScene instanceof SimulationScene) {
-      this.currentScene.onUIHidden(hidden);
-    }
+    this.currentScene?.onUIHidden(hidden);
   }
 
   private buildSimAIContext(dt: number): SimAIContext {
@@ -371,6 +385,17 @@ export class GameApp {
       resetScene: () => this.resetScene(),
       clearEmittersOnly: () => this.currentScene?.clearEmitters(),
     };
+  }
+
+  private canPushSceneGestures(scene: Scene | null | undefined): scene is Scene & { pushGestures: (gestures: GestureEvent[]) => void } {
+    return typeof (scene as { pushGestures?: unknown } | null | undefined)?.pushGestures === 'function';
+  }
+
+  private pushSceneGestures(gestures: GestureEvent[]): void {
+    const scene = this.currentScene;
+    if (!this.canPushSceneGestures(scene)) return;
+    scene.pushGestures(gestures);
+    this.renderInvalidated = true;
   }
 
   /** Trigger a scene reset (drain/clear/restart cycle). Scene must override reset(). */
@@ -413,6 +438,7 @@ export class GameApp {
     resolution: number;
     resizeCount: number;
     heapMB: number | null;
+    scene?: Record<string, string | number | boolean | null> | null;
   } {
     const fps = Math.round(this.ticker.fps);
     const renderFps = Math.round(this.ticker.renderFps);
@@ -433,6 +459,7 @@ export class GameApp {
       resolution: this.pixi?.resolution ?? 0,
       resizeCount: this.resizeCount,
       heapMB: mem ? Math.round(mem.usedJSHeapSize / 1024 / 1024) : null,
+      scene: this.currentScene?.getDebugStats() ?? null,
     };
   }
 
@@ -557,21 +584,19 @@ export class GameApp {
     const gestureEvents = this.gestures.update(snap);
     if (gestureEvents.length > 0) {
       this.hasHumanInputThisFrame = true;
-      if (this.currentScene instanceof SimulationScene) {
-        this.currentScene.pushGestures(gestureEvents);
-      }
+      this.pushSceneGestures(gestureEvents);
     }
 
     // Simulation demo AI — inject synthetic gestures when in demo mode
     if (
       this._mode === 'demo' &&
       this.simulationAi &&
-      this.currentScene instanceof SimulationScene
+      this.canPushSceneGestures(this.currentScene)
     ) {
       const aiCtx = this.buildSimAIContext(dt);
       const aiGestures = this.simulationAi.think(aiCtx);
       if (aiGestures.length > 0) {
-        this.currentScene.pushGestures(aiGestures);
+        this.pushSceneGestures(aiGestures);
       }
     }
 

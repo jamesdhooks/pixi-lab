@@ -1,4 +1,4 @@
-import type { AmbientDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type  AmbientDefinition } from '@hooksjam/pixi-lab-core';
 import { DEFAULT_AMBIENT_BEHAVIOR } from '@hooksjam/pixi-lab-core';
 import { FAMILY_ORBIT_DEFAULTS } from './family-orbit.config.js';
 import { FamilyOrbitScene, familyOrbitStyles } from './FamilyOrbitScene.js';
@@ -22,7 +22,7 @@ export const familyOrbitDefinition: AmbientDefinition = {
     styleExport: true,
     lowMotion: true,
     sleepMode: true,
-    qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     settings: true,
   },
   dataBindings: [

@@ -66,15 +66,21 @@ export function SimControlPanel({ app, fields, settingsVersion, headerSlot }: Si
 
   if (numericFields.length === 0 && selectFields.length === 0 && !headerSlot) return null;
 
-  // On desktop, push controls below the HUD (which contains style dropdown on desktop).
-  // HUD is ~44px tall (padding + 32px button height). Add gap for breathing room.
-  // On mobile portrait, HUD is also present but more compact; still use similar offset.
-  const hudHeight = 44; // safeArea.top + 12px padding + 8 + 24 height + gap
-  const topOffset = `${(safeArea.top || 0) + 12 + hudHeight + 8}px`;
+  // On desktop/landscape, push controls below the HUD. On mobile portrait, align
+  // the settings block to the top safe area so the first color-scheme row does
+  // not float below a blank band.
+  const hudHeight = 44;
+  const isMobilePortrait = isMobile && !isLandscape;
+  const topOffset = isMobilePortrait
+    ? `${(safeArea.top || 0) + 8}px`
+    : `${(safeArea.top || 0) + 12 + hudHeight + 8}px`;
+  const scrollMaxHeight = isMobilePortrait
+    ? `calc(100dvh - ${(safeArea.top || 0) + (safeArea.bottom || 0) + 72}px)`
+    : 'min(64vh, 34rem)';
   // Narrow labels on mobile portrait to avoid overflow at 375 px.
   const labelClass = isMobile && !isLandscape
-    ? 'w-16 shrink-0 text-right text-[10px] font-semibold uppercase tracking-widest text-white/70'
-    : 'w-24 shrink-0 text-right text-[10px] font-semibold uppercase tracking-widest text-white/70';
+    ? 'w-16 shrink-0 pt-1 text-right text-[10px] font-semibold uppercase tracking-widest text-white/70'
+    : 'w-24 shrink-0 pt-1 text-right text-[10px] font-semibold uppercase tracking-widest text-white/70';
 
   return (
     <motion.div
@@ -92,91 +98,96 @@ export function SimControlPanel({ app, fields, settingsVersion, headerSlot }: Si
       </div>
 
       {/* Slider rows — animate in/out on collapse */}
-      <AnimatePresence initial={false}>
-        {!collapsed && numericFields.map((field) => {
-          const val = values[field.key] ?? (field.default as number);
-          return (
-            <motion.div
-              key={field.key}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.18, ease: 'easeInOut' }}
-              className="pointer-events-auto flex w-full max-w-xs items-center gap-3 overflow-hidden rounded-full bg-black/25 px-3 py-1 backdrop-blur-sm"
-            >
-              {/* Label */}
-              <span className={labelClass}>
-                {field.label}
-              </span>
-              {/* Slider */}
-              <input
-                type="range"
-                min={field.min}
-                max={field.max}
-                step={field.step}
-                value={val}
-                onChange={(e) => handleChange(field.key, parseFloat(e.target.value))}
-                className={[
-                  'h-1 flex-1 cursor-pointer appearance-none rounded-full bg-white/35',
-                  '[&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5',
-                  '[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full',
-                  '[&::-webkit-slider-thumb]:bg-white/90',
-                  '[&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5',
-                  '[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0',
-                  '[&::-moz-range-thumb]:bg-white/90',
-                ].join(' ')}
-              />
-              {/* Value */}
-              <span className="w-8 text-left font-mono text-[11px] font-semibold text-white/80">
-                {formatValue(val, field)}
-              </span>
-            </motion.div>
-          );
-        })}
-        {!collapsed && selectFields.map((field) => {
-          const current = selectValues[field.key] ?? String(field.default);
-          const options = field.options ?? [];
-          const isInjectPalette = field.key === 'injectPalette';
-          return (
-            <motion.div
-              key={field.key}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.18, ease: 'easeInOut' }}
-              className="pointer-events-auto flex w-full max-w-xs items-center gap-3 overflow-hidden rounded-full bg-black/25 px-3 py-1"
-            >
-              <span className={labelClass}>{field.label}</span>
-              <div className="flex flex-1 items-center justify-end gap-1.5 overflow-x-auto">
-                {options.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => handleSelectChange(field.key, opt.value)}
-                    title={opt.label}
-                    aria-label={opt.label}
-                    className={[
-                      isInjectPalette
-                        ? 'h-5 w-5 rounded-full border transition-transform'
-                        : 'rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors',
-                      isInjectPalette
-                        ? (current === opt.value
-                            ? 'border-white ring-2 ring-white/55 scale-105'
-                            : 'border-white/35 hover:border-white/75')
-                        : (current === opt.value
-                            ? 'bg-white text-black'
-                            : 'bg-white/10 text-white/80 hover:bg-white/20'),
-                    ].join(' ')}
-                    style={isInjectPalette ? chipStyleForInjectOption(opt.value) : undefined}
-                  >
-                    {!isInjectPalette ? opt.label : ''}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
+      <div
+        className="pointer-events-none flex w-full flex-col items-center gap-2 overflow-y-auto overscroll-contain pr-1"
+        style={{ maxHeight: scrollMaxHeight }}
+      >
+        <AnimatePresence initial={false}>
+          {!collapsed && numericFields.map((field) => {
+            const val = values[field.key] ?? (field.default as number);
+            return (
+              <motion.div
+                key={field.key}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.18, ease: 'easeInOut' }}
+                className="pointer-events-auto flex w-full max-w-md items-center gap-3 overflow-hidden rounded-full bg-black/25 px-3 py-1 backdrop-blur-sm"
+              >
+                {/* Label */}
+                <span className={labelClass}>
+                  {field.label}
+                </span>
+                {/* Slider */}
+                <input
+                  type="range"
+                  min={field.min}
+                  max={field.max}
+                  step={field.step}
+                  value={val}
+                  onChange={(e) => handleChange(field.key, parseFloat(e.target.value))}
+                  className={[
+                    'h-1 flex-1 cursor-pointer appearance-none rounded-full bg-white/35',
+                    '[&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5',
+                    '[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full',
+                    '[&::-webkit-slider-thumb]:bg-white/90',
+                    '[&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5',
+                    '[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0',
+                    '[&::-moz-range-thumb]:bg-white/90',
+                  ].join(' ')}
+                />
+                {/* Value */}
+                <span className="w-8 text-left font-mono text-[11px] font-semibold text-white/80">
+                  {formatValue(val, field)}
+                </span>
+              </motion.div>
+            );
+          })}
+          {!collapsed && selectFields.map((field) => {
+            const current = selectValues[field.key] ?? String(field.default);
+            const options = field.options ?? [];
+            const isInjectPalette = field.key === 'injectPalette';
+            return (
+              <motion.div
+                key={field.key}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.18, ease: 'easeInOut' }}
+                className="pointer-events-auto flex w-full max-w-md items-start gap-3 overflow-visible rounded-2xl bg-black/25 px-3 py-2"
+              >
+                <span className={labelClass}>{field.label}</span>
+                <div className="flex flex-1 flex-wrap items-center justify-end gap-1.5 overflow-visible">
+                  {options.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => handleSelectChange(field.key, opt.value)}
+                      title={opt.label}
+                      aria-label={opt.label}
+                      className={[
+                        isInjectPalette
+                          ? 'h-5 w-5 rounded-full border transition-transform'
+                          : 'rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors',
+                        isInjectPalette
+                          ? (current === opt.value
+                              ? 'border-white ring-2 ring-white/55 scale-105'
+                              : 'border-white/35 hover:border-white/75')
+                          : (current === opt.value
+                              ? 'bg-white text-black'
+                              : 'bg-white/10 text-white/80 hover:bg-white/20'),
+                      ].join(' ')}
+                      style={isInjectPalette ? chipStyleForInjectOption(opt.value) : undefined}
+                    >
+                      {!isInjectPalette ? opt.label : ''}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
 
       {/* Collapse/expand chevron — positioned below all controls */}
       {(numericFields.length > 0 || selectFields.length > 0 || headerSlot) && (
@@ -193,17 +204,21 @@ export function SimControlPanel({ app, fields, settingsVersion, headerSlot }: Si
 }
 
 function chipStyleForInjectOption(value: string): CSSProperties {
-  if (value === 'cyan') return { background: '#35ffe5' };
-  if (value === 'magenta') return { background: '#ff41dc' };
-  if (value === 'amber') return { background: '#ffbe4a' };
+  if (value === 'cyan') return { background: 'rgb(26, 255, 233)' };
+  if (value === 'magenta') return { background: 'rgb(255, 31, 223)' };
+  if (value === 'amber') return { background: 'rgb(255, 157, 21)' };
+  if (value === 'green') return { background: 'rgb(31, 255, 59)' };
+  if (value === 'blue') return { background: 'rgb(41, 92, 255)' };
+  if (value === 'red') return { background: 'rgb(255, 41, 20)' };
+  if (value === 'white') return { background: 'rgb(255, 255, 230)' };
   if (value === 'rainbow') {
     return {
       background:
-        'conic-gradient(from 210deg, #ff4d4d, #ffb84d, #f8ff4d, #4dff8e, #4dd8ff, #824dff, #ff4de3, #ff4d4d)',
+        'conic-gradient(from 210deg, rgb(255, 77, 77), rgb(255, 184, 77), rgb(248, 255, 77), rgb(77, 255, 142), rgb(77, 216, 255), rgb(130, 77, 255), rgb(255, 77, 227), rgb(255, 77, 77))',
     };
   }
   return {
     background:
-      'linear-gradient(135deg, #35ffe5 0%, #4dd8ff 33%, #ff41dc 66%, #ffbe4a 100%)',
+      'linear-gradient(135deg, rgb(53, 255, 229) 0%, rgb(77, 216, 255) 33%, rgb(255, 65, 220) 66%, rgb(255, 190, 74) 100%)',
   };
 }

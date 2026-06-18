@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { ELECTRO_OSMOTIC_AMOEBA_DEFAULTS, ELECTRO_OSMOTIC_AMOEBA_SETTINGS_FIELDS } from './electro-osmotic-amoeba.config.js';
 import { ElectroOsmoticAmoebaDemoAI } from './ElectroOsmoticAmoebaDemoAI.js';
 import { ElectroOsmoticAmoebaPreviewScene } from './ElectroOsmoticAmoebaPreviewScene.js';
@@ -25,7 +25,7 @@ export const electroOsmoticAmoebaDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

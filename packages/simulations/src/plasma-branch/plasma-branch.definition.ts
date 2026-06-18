@@ -1,4 +1,4 @@
-import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { PLASMA_BRANCH_DEFAULTS, PLASMA_BRANCH_SETTINGS_FIELDS } from './plasma-branch.config.js';
 import { PlasmaBranchDemoAI } from './PlasmaBranchDemoAI.js';
 import { PlasmaBranchPreviewScene } from './PlasmaBranchPreviewScene.js';
@@ -25,7 +25,7 @@ export const plasmaBranchDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    qualityModes: ['basic', 'enhanced'],
+    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
     demo: true,
     settings: true,
   },

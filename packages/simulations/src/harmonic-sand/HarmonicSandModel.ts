@@ -19,6 +19,7 @@ export interface HarmonicSandModelOptions {
   fieldColumns: number;
   emitterCount: number;
   baseFrequency: number;
+  wavePeriod?: number;
 }
 
 export class HarmonicSandModel {
@@ -124,8 +125,15 @@ export class HarmonicSandModel {
     }
   }
 
+  /** Wave period in seconds-ish: larger values make phase travel slower. */
+  setWavePeriod(period: number): void {
+    this.options.wavePeriod = Math.max(0.1, period);
+  }
+
   update(dt: number): void {
-    this.time += dt;
+    const configuredPeriod = typeof this.options.wavePeriod === 'number' ? this.options.wavePeriod : 1;
+    const period = Math.max(0.1, configuredPeriod);
+    this.time += dt / period;
     // Advance deletion animation, remove emitter when complete.
     if (this.pendingDeleteIndex >= 0 && this.pendingDeleteIndex < this.emitters.length) {
       this.pendingDeleteElapsed += dt;

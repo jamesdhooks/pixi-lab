@@ -1,6 +1,9 @@
 import {
-  SimulationCanvasLayer,
+  PixiSemanticRenderPipeline,
   SimulationScene,
+  createFieldPaletteLayer,
+  createParticlePointLayer,
+  createRenderFrame,
   type GameContext,
   type Input,
   type RenderQuality,
@@ -26,7 +29,7 @@ export const jellyWebStyleManifest: SimStyleManifest = {
 
 export class JellyWebScene extends SimulationScene {
   readonly name: string = 'JellyWeb';
-  private layer: SimulationCanvasLayer | null = null;
+  private pipeline: PixiSemanticRenderPipeline | null = null;
   private model: JellyWebModel | null = null;
   private modelOptions: JellyWebModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
@@ -44,8 +47,7 @@ export class JellyWebScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
-    this.layer.setQuality(ctx.quality);
+    this.pipeline = new PixiSemanticRenderPipeline({ app: ctx.systems.pixi.app, quality: ctx.quality });
     const settings = ctx.systems.settings;
     const resolution = this.previewResolution ?? ((settings.get('resolution') as number | undefined) ?? (JELLY_WEB_DEFAULTS.resolution as number));
     const ringCount = this.previewRings ?? ((settings.get('ringCount') as number | undefined) ?? (JELLY_WEB_DEFAULTS.ringCount as number));
@@ -77,8 +79,8 @@ export class JellyWebScene extends SimulationScene {
   }
 
   override onExit(): void {
-    this.layer?.destroy();
-    this.layer = null;
+    this.pipeline?.destroy();
+    this.pipeline = null;
     this.model = null;
     this.modelOptions = null;
   }
@@ -93,11 +95,17 @@ export class JellyWebScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (!this.layer || !this.model) return;
+    if (!this.pipeline || !this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? moonJellyStyle;
-    this.layer.clear();
-    this.layer.renderField(this.model.resonanceField, this.ctx_.width, this.ctx_.height, style);
-    this.layer.renderParticles(this.model.renderParticles(), style);
+    this.pipeline.render(createRenderFrame({
+      width: this.ctx_.width,
+      height: this.ctx_.height,
+      style,
+      layers: [
+        createFieldPaletteLayer({ id: 'resonance', field: this.model.resonanceField, alpha: 0.9, gamma: 0.55, zIndex: 0 }),
+        createParticlePointLayer({ id: 'nodes', particles: this.model.renderParticles(), zIndex: 1 }),
+      ],
+    }));
     const debug = this.ctx_.systems.debug;
     if (debug?.isEnabled()) {
       const stats = this.model.stats();
@@ -119,10 +127,10 @@ export class JellyWebScene extends SimulationScene {
 
   override setQuality(quality: RenderQuality): void {
     super.setQuality(quality);
-    this.layer?.setQuality(quality);
+    this.pipeline?.setQuality(quality);
   }
 
-  getRenderLayers(): SimRenderLayers { return this.layer?.getRenderLayers() ?? {}; }
+  getRenderLayers(): SimRenderLayers { return {}; }
   getStyleManifest(): SimStyleManifest { return jellyWebStyleManifest; }
   detectStagnation(): StagnationReport { return this.stagnationReport; }
   stabilize(): void { this.model?.stabilize(); this.stagnationReport = { stagnant: false, severity: 0 }; }

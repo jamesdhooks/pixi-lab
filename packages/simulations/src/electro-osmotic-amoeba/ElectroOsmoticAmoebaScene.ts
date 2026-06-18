@@ -1,6 +1,9 @@
 import {
-  SimulationCanvasLayer,
+  PixiSemanticRenderPipeline,
   SimulationScene,
+  createFieldPaletteLayer,
+  createParticlePointLayer,
+  createRenderFrame,
   type GameContext,
   type Input,
   type RenderQuality,
@@ -26,7 +29,7 @@ export const electroOsmoticAmoebaStyleManifest: SimStyleManifest = {
 
 export class ElectroOsmoticAmoebaScene extends SimulationScene {
   readonly name: string = 'ElectroOsmoticAmoeba';
-  private layer: SimulationCanvasLayer | null = null;
+  private pipeline: PixiSemanticRenderPipeline | null = null;
   private model: ElectroOsmoticAmoebaModel | null = null;
   private modelOptions: ElectroOsmoticAmoebaModelOptions | null = null;
   private stagnationReport: StagnationReport = { stagnant: false, severity: 0 };
@@ -44,8 +47,7 @@ export class ElectroOsmoticAmoebaScene extends SimulationScene {
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
-    this.layer = new SimulationCanvasLayer(ctx.systems.pixi.app);
-    this.layer.setQuality(ctx.quality);
+    this.pipeline = new PixiSemanticRenderPipeline({ app: ctx.systems.pixi.app, quality: ctx.quality });
     const settings = ctx.systems.settings;
     const columns = this.previewColumns ?? ((settings.get('resolution') as number | undefined) ?? (ELECTRO_OSMOTIC_AMOEBA_DEFAULTS.resolution as number));
     const particleBudget = this.previewBudget ?? ((settings.get('particleBudget') as number | undefined) ?? (ELECTRO_OSMOTIC_AMOEBA_DEFAULTS.particleBudget as number));
@@ -77,8 +79,8 @@ export class ElectroOsmoticAmoebaScene extends SimulationScene {
   }
 
   override onExit(): void {
-    this.layer?.destroy();
-    this.layer = null;
+    this.pipeline?.destroy();
+    this.pipeline = null;
     this.model = null;
     this.modelOptions = null;
   }
@@ -120,11 +122,17 @@ export class ElectroOsmoticAmoebaScene extends SimulationScene {
   }
 
   override render(_alpha: number): void {
-    if (!this.layer || !this.model) return;
+    if (!this.pipeline || !this.model) return;
     const style = this.ctx_.systems.styleManager?.getStyle() ?? ionBloomStyle;
-    this.layer.clear();
-    this.layer.renderField(this.model.densityField, this.ctx_.width, this.ctx_.height, style);
-    this.layer.renderParticles(this.model.renderParticles(), style);
+    this.pipeline.render(createRenderFrame({
+      width: this.ctx_.width,
+      height: this.ctx_.height,
+      style,
+      layers: [
+        createFieldPaletteLayer({ id: 'density', field: this.model.densityField, alpha: 0.9, gamma: 0.55, zIndex: 0 }),
+        createParticlePointLayer({ id: 'ions', particles: this.model.renderParticles(), zIndex: 1 }),
+      ],
+    }));
     const debug = this.ctx_.systems.debug;
     if (debug?.isEnabled()) {
       const stats = this.model.stats();
@@ -146,10 +154,10 @@ export class ElectroOsmoticAmoebaScene extends SimulationScene {
 
   override setQuality(quality: RenderQuality): void {
     super.setQuality(quality);
-    this.layer?.setQuality(quality);
+    this.pipeline?.setQuality(quality);
   }
 
-  getRenderLayers(): SimRenderLayers { return this.layer?.getRenderLayers() ?? {}; }
+  getRenderLayers(): SimRenderLayers { return {}; }
   getStyleManifest(): SimStyleManifest { return electroOsmoticAmoebaStyleManifest; }
   detectStagnation(): StagnationReport { return this.stagnationReport; }
   stabilize(): void { this.model?.stabilize(); this.stagnationReport = { stagnant: false, severity: 0 }; }
