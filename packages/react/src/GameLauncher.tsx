@@ -14,7 +14,7 @@ import { HUD } from './ui/HUD.js';
 import { ModeToggle } from './ui/ModeToggle.js';
 import { SettingsDrawer } from './ui/SettingsDrawer.js';
 import { StylePicker } from './ui/StylePicker.js';
-import { QualitySelector } from './ui/QualitySelector.js';
+import { EngineConfigurationSelector, type EngineConfigurationOption } from './ui/EngineConfigurationSelector.js';
 import { DebugPanel } from './ui/DebugPanel.js';
 import { SimControlPanel } from './ui/SimControlPanel.js';
 import { OverflowMenu } from './ui/OverflowMenu.js';
@@ -181,6 +181,13 @@ function GameLauncherInner({
     [],
   );
 
+  const handleEngineConfigurationChange = useCallback(
+    (selection: EngineConfigurationOption) => {
+      handleQualityChange(selection.legacyQuality);
+    },
+    [handleQualityChange],
+  );
+
   const showDemoHint = useCallback(() => {
     setDemoHintVisible(true);
     if (demoHintTimerRef.current !== null) clearTimeout(demoHintTimerRef.current);
@@ -198,7 +205,19 @@ function GameLauncherInner({
   }, [isDemo]);
 
   const hasModes = (definition.modes?.length ?? 0) > 1;
-  const hasQualityModes = (definition.capabilities.qualityModes?.length ?? 0) > 0;
+  const engineConfigurationOptions: readonly EngineConfigurationOption[] = (
+    definition.capabilities.qualityModes ?? ['basic']
+  ).map((qualityMode) => ({
+    id: qualityMode,
+    legacyQuality: qualityMode,
+    label:
+      qualityMode === 'raw'
+        ? 'Raw'
+        : qualityMode === 'enhanced'
+          ? 'Enhanced'
+          : 'Basic',
+  }));
+  const hasEngineConfigurations = engineConfigurationOptions.length > 0;
   const hasSettings = (definition.capabilities.settings !== false) && (definition.settingsFields?.length ?? 0) > 0;
   const isSimulation = definition.kind === 'simulation';
   const topNumericFields = (definition.settingsFields ?? []).filter(
@@ -355,15 +374,15 @@ function GameLauncherInner({
                 ) : null,
               },
               {
-                key: 'quality',
-                label: 'Quality',
-                hidden: !hasQualityModes,
+                key: 'engine',
+                label: 'Engine',
+                hidden: !hasEngineConfigurations,
                 node: (
-                  <QualitySelector
+                  <EngineConfigurationSelector
                     value={quality}
                     renderedValue={renderedQuality}
-                    options={definition.capabilities.qualityModes!}
-                    onChange={handleQualityChange}
+                    options={engineConfigurationOptions}
+                    onChange={handleEngineConfigurationChange}
                   />
                 ),
               },

@@ -22,6 +22,7 @@ export class PerformanceGovernor {
 
   update(dt: number): RenderQuality | null {
     if (dt <= 0) return null;
+    if (this.quality === 'raw') return null;
     this.frameSamples.push(1 / dt);
     if (this.frameSamples.length < 90) return null;
 

@@ -37,7 +37,7 @@ export interface RGBA {
 // ── Runtime mode ──────────────────────────────────────────────────────────────
 
 export type GameMode = 'play' | 'screensaver' | 'demo' | 'paused';
-export type RenderQuality = 'basic' | 'enhanced';
+export type RenderQuality = 'basic' | 'enhanced' | 'raw';
 export type ExperienceKind = 'game' | 'simulation' | 'ambient' | 'effect' | 'toy';
 export type ExperienceRenderMode =
   | 'fullscreen'
