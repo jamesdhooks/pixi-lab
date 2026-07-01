@@ -28,6 +28,7 @@ export const tutorialPages = [
 ];
 
 export const ballPitDefinition: GameDefinition = {
+  kind: 'game',
   id: 'ball-pit',
   name: 'Ball Pit',
   short: 'Spawn bouncy balls!',

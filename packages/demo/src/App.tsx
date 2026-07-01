@@ -452,7 +452,7 @@ export function App() {
               transparent={active.kind === 'ambient' || active.kind === 'effect'}
               initialRenderSelection={queryRenderSelectionForExperience(active, routeMode.queryParams)}
               experimentalRawEngine={queryExperimentalRawEngine(routeMode.queryParams)}
-              autoDemo={routeMode.fluidEngine || routeMode.fluidReference}
+              autoDemo={false}
               onQuit={() => {
                 setActive(null);
                 setCarouselOpen(false);

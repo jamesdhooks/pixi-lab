@@ -47,8 +47,8 @@ const mockHandle = {
   sync: vi.fn(),
 };
 
-vi.mock('@/lib/games/engine', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/games/engine')>();
+vi.mock('@hooksjam/pixi-lab-core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@hooksjam/pixi-lab-core')>();
   return {
     ...actual,
     createCircleBody: vi.fn(() => ({ ...mockHandle, id: `ball-${Date.now()}` })),
@@ -207,7 +207,7 @@ describe('BallPitScene', () => {
         ?.value ?? 0;
 
     // Simulate the ball's body returning a position below drain threshold
-    const { createCircleBody } = await import('@/lib/games/engine');
+    const { createCircleBody } = await import('@hooksjam/pixi-lab-core');
     const createdHandle = vi.mocked(createCircleBody).mock.results[0]?.value as typeof mockHandle;
     if (createdHandle) {
       createdHandle.body.getPosition = () => ({ x: 0, y: (ctx.height + 100) * 0.01 });

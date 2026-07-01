@@ -2,7 +2,7 @@
   "name": "@hooksjam/pixi-lab",
   "private": true,
   "version": "0.0.1",
-  "description": "Game & Simulation Lab \u2014 core engine, React integration, content packages",
+  "description": "Game & Simulation Lab — core engine, React integration, content packages",
   "scripts": {
     "dev": "pnpm --filter @hooksjam/pixi-lab-demo dev",
     "dev-lan": "pnpm --filter @hooksjam/pixi-lab-demo dev --host 0.0.0.0 --port 5173 --strictPort",
@@ -22,6 +22,8 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.2",
     "jsdom": "^29.1.1",
+    "pixi.js": "^8.18.1",
+    "planck": "^1.5.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   },
