@@ -2,25 +2,32 @@
   "name": "@hooksjam/pixi-lab",
   "private": true,
   "version": "0.0.1",
-  "description": "Game & Simulation Lab — core engine, React integration, content packages",
+  "description": "Game & Simulation Lab \u2014 core engine, React integration, content packages",
   "scripts": {
     "dev": "pnpm --filter @hooksjam/pixi-lab-demo dev",
-    "build": "pnpm --recursive --filter './packages/*' build",
-    "typecheck": "pnpm --recursive typecheck",
+    "dev-lan": "pnpm --filter @hooksjam/pixi-lab-demo dev --host 0.0.0.0 --port 5173 --strictPort",
+    "build": "pnpm --filter @hooksjam/pixi-lab-core build && pnpm --filter @hooksjam/pixi-lab-react build && pnpm --filter @hooksjam/pixi-lab-games build && pnpm --filter @hooksjam/pixi-lab-simulations build",
+    "typecheck": "pnpm --filter @hooksjam/pixi-lab-core typecheck && pnpm --filter @hooksjam/pixi-lab-react typecheck && pnpm --filter @hooksjam/pixi-lab-games typecheck && pnpm --filter @hooksjam/pixi-lab-simulations typecheck && pnpm --filter @hooksjam/pixi-lab-demo typecheck",
     "lint": "eslint 'packages/*/src/**/*.{ts,tsx}'",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "pack:dry-run": "pnpm --filter @hooksjam/pixi-lab-core pack --dry-run && pnpm --filter @hooksjam/pixi-lab-react pack --dry-run && pnpm --filter @hooksjam/pixi-lab-games pack --dry-run && pnpm --filter @hooksjam/pixi-lab-simulations pack --dry-run",
+    "publish:dry-run": "pnpm --filter @hooksjam/pixi-lab-core publish --dry-run --no-git-checks && pnpm --filter @hooksjam/pixi-lab-react publish --dry-run --no-git-checks && pnpm --filter @hooksjam/pixi-lab-games publish --dry-run --no-git-checks && pnpm --filter @hooksjam/pixi-lab-simulations publish --dry-run --no-git-checks",
+    "publish:packages": "pnpm --filter @hooksjam/pixi-lab-core publish --no-git-checks && pnpm --filter @hooksjam/pixi-lab-react publish --no-git-checks && pnpm --filter @hooksjam/pixi-lab-games publish --no-git-checks && pnpm --filter @hooksjam/pixi-lab-simulations publish --no-git-checks"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "jsdom": "^29.1.1",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   },
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"
-  }
+  },
+  "packageManager": "pnpm@10.33.0"
 }

@@ -1,5 +1,6 @@
 node_modules/
 dist/
+*.tsbuildinfo
 *.d.ts.map
 *.js.map
 .env
