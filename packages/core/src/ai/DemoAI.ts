@@ -4,9 +4,9 @@
  * Screensaver / demo mode AI. Slower cadence, biased toward visually
  * interesting actions: big bursts, long drags, gravity sweeps.
  */
-import { BasicAI } from './BasicAI';
-import type { AIContext } from './AIController';
-import type { Intent } from '../types';
+import { BasicAI } from './BasicAI.js';
+import type { AIContext } from './AIController.js';
+import type { Intent } from '../types.js';
 
 export class DemoAI extends BasicAI {
   constructor() {

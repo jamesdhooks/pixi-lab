@@ -5,7 +5,7 @@
  * Human and AI both produce the same PointerEvent records.
  * AI intents are injected via injectIntent().
  */
-import type { InputSnapshot, PointerEvent as GamePointerEvent, Intent } from './types';
+import type { InputSnapshot, PointerEvent as GamePointerEvent, Intent } from './types.js';
 
 export class Input {
   private canvas: HTMLElement | null = null;
@@ -66,7 +66,7 @@ export class Input {
 
   /** AI can inject simulated intents which become PointerEvents in the queue */
   injectIntent(intent: Intent) {
-    const id = -1 - Math.floor(Math.random() * 10000); // negative ids for AI
+    const id = intent.id ?? this.createAiPointerId();
     const now = performance.now();
     if (intent.kind === 'tap') {
       const ev: GamePointerEvent = {
@@ -106,6 +106,14 @@ export class Input {
       this._snapshot.pointers.delete(id);
       this.pendingUp.add(id);
     }
+  }
+
+  private createAiPointerId(): number {
+    let id = -1 - Math.floor(Math.random() * 1_000_000_000);
+    while (this._snapshot.pointers.has(id)) {
+      id = -1 - Math.floor(Math.random() * 1_000_000_000);
+    }
+    return id;
   }
 
   private clientToGame(clientX: number, clientY: number): { x: number; y: number } {

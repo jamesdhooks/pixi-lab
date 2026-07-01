@@ -5,7 +5,7 @@
  * Default implementation calls the /api/games/scores endpoint.
  * Can be swapped for a localStorage-only impl for offline / preview scenes.
  */
-import type { ScoreEntry } from '../types';
+import type { ScoreEntry } from '../types.js';
 
 export interface SubmitScoreInput {
   gameId: string;

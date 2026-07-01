@@ -39,7 +39,7 @@ export function GameOverModal({
   };
 
   return (
-    <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-md">
+    <div className="absolute top-0 left-0 w-full h-full z-40 flex items-center justify-center bg-black/70 backdrop-blur-md">
       <motion.div
         initial={{ scale: 0.85, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -93,7 +93,7 @@ export function GameOverModal({
             </motion.button>
           </div>
         ) : (
-          <p className="mb-4 text-center text-sm text-green-300">Score saved! 🎉</p>
+          <p className="mb-4 text-center text-sm text-emerald-400">Score saved!</p>
         )}
 
         {/* Top scores snippet */}

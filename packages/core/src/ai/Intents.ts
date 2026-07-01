@@ -4,4 +4,4 @@
  * Standardised Intent types emitted by AI controllers.
  * Both BasicAI and DemoAI produce these; they feed into Input.injectIntent().
  */
-export type { Intent, IntentKind } from '../types';
+export type { Intent, IntentKind } from '../types.js';

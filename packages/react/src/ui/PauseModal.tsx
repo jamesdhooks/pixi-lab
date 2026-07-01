@@ -1,6 +1,3 @@
-/**
- * components/games/ui/PauseModal.tsx
- */
 import { motion } from 'framer-motion';
 import { Play, Settings, X } from 'lucide-react';
 
@@ -12,40 +9,40 @@ interface PauseModalProps {
 
 export function PauseModal({ onResume, onSettings, onQuit }: PauseModalProps) {
   return (
-    <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-md">
+    <div className="absolute top-0 left-0 w-full h-full z-40 flex items-center justify-center bg-black/60 backdrop-blur-md">
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 300, damping: 26 }}
-        className="mx-4 w-full max-w-xs rounded-3xl border border-white/20 bg-white/10 p-8 text-center text-white shadow-2xl"
+        className="mx-4 w-full max-w-xs rounded-2xl bg-white/10 p-8 text-center text-white shadow-2xl backdrop-blur-xl"
       >
-        <h2 className="mb-6 text-2xl font-bold">Paused</h2>
+        <h2 className="mb-6 text-xl font-bold tracking-wide">Paused</h2>
 
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={onResume}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-3 font-bold text-black transition-colors hover:bg-white/90"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 font-bold text-black transition-colors hover:bg-white/90"
           >
-            <Play size={16} fill="currentColor" />
+            <Play size={15} fill="currentColor" />
             Resume
           </motion.button>
 
           {onSettings && (
             <button
               onClick={onSettings}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 py-2.5 font-medium text-white transition-colors hover:bg-white/20"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 font-medium text-white transition-colors hover:bg-white/20"
             >
-              <Settings size={16} />
+              <Settings size={15} />
               Settings
             </button>
           )}
 
           <button
             onClick={onQuit}
-            className="flex w-full items-center justify-center gap-2 py-1 text-sm text-white/50 transition-colors hover:text-white"
+            className="flex w-full items-center justify-center gap-1.5 py-1 text-sm text-white/40 transition-colors hover:text-white/80"
           >
-            <X size={14} />
+            <X size={13} />
             Quit
           </button>
         </div>

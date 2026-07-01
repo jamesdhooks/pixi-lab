@@ -8,8 +8,8 @@
  * Lifecycle:
  *   onEnter → [update* + fixedUpdate* + resize*] → onExit
  */
-import type { GameContext } from './types';
-import type { Input } from './Input';
+import type { GameContext } from './types.js';
+import type { Input } from './Input.js';
 
 export abstract class Scene {
   /** Display name shown in the dev overlay */
@@ -56,9 +56,78 @@ export abstract class Scene {
   }
 
   /**
+   * Return true when the scene has custom visual work that still needs a frame
+   * even if the engine has no active physics bodies, particles, or pointers.
+   *
+   * Game scenes default to idle-until-active so future physics-driven scenes
+   * automatically stop presenting frames once the world settles.
+   */
+  shouldRender(): boolean {
+    return false;
+  }
+
+  /**
    * Called when the canvas is resized.
    */
   resize(_width: number, _height: number): void {
     // Optional override
+  }
+
+  /**
+   * Called when the shell requests a scene reset (e.g. user taps the Reset button).
+   * Override to drain/clear content and restart the scene cycle.
+   * Default: no-op.
+   */
+  reset(): void {
+    // Optional override
+  }
+
+  /**
+   * Soft-clear simulation entities (e.g. emitters) without resetting visual or
+   * field state. Override in simulation scenes to avoid black-flash on config
+   * transitions. Default: no-op.
+   */
+  clearEmitters(): void {
+    // Optional override
+  }
+
+  /**
+   * Optional scene-owned debug metrics for host panels. Raw/WebGL scenes can use
+   * this to surface renderer stats without drawing their own in-canvas overlays.
+   */
+  getDebugStats(): Record<string, string | number | boolean | null> | null {
+    return null;
+  }
+
+  /**
+   * Called when the active interaction mode changes (e.g. single → rapid → explode).
+   * Default: no-op. Override to switch scene behaviour.
+   */
+  setMode(_id: string): void {
+    // Optional override
+  }
+
+  /**
+   * Called when host controls/chrome visibility changes.
+   * Default: no-op. Override to hide scene-level controls/markers with the UI.
+   */
+  onUIHidden(_hidden: boolean): void {
+    // Optional override
+  }
+
+  /**
+   * Called when the active style changes (e.g. rainbow → neon).
+   * Default: no-op. Override to recolour content.
+   */
+  setStyle(_id: string): void {
+    // Optional override
+  }
+
+  /**
+   * Hint for how the host canvas should be filtered when the browser has to
+   * upscale it back to CSS size (for example when maxPixels lowers resolution).
+   */
+  getCanvasImageRendering(): 'auto' | 'pixelated' {
+    return 'auto';
   }
 }

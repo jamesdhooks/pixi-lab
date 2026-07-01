@@ -6,14 +6,18 @@
  *
  * Games extend this and override actionWeights / buildActions.
  */
-import type { AIController, AIContext } from './AIController';
-import type { Intent } from '../types';
+import type { AIController, AIContext } from './AIController.js';
+import type { Intent } from '../types.js';
 
 type ActionKind = 'tap' | 'drag' | 'hold_release';
 
 interface WeightedAction {
   kind: ActionKind;
   weight: number;
+}
+
+function createAiPointerId(): number {
+  return -1 - Math.floor(Math.random() * 1_000_000_000);
 }
 
 export class BasicAI implements AIController {
@@ -42,6 +46,7 @@ export class BasicAI implements AIController {
       if (this.dragState.remaining <= 0) {
         intents.push({
           kind: 'drag_end',
+          id: this.dragState.id,
           x: this.dragState.x,
           y: this.dragState.y,
         });
@@ -54,6 +59,7 @@ export class BasicAI implements AIController {
         this.dragState.y = Math.max(10, Math.min(ctx.height - 10, this.dragState.y));
         intents.push({
           kind: 'drag_move',
+          id: this.dragState.id,
           x: this.dragState.x,
           y: this.dragState.y,
         });
@@ -74,10 +80,10 @@ export class BasicAI implements AIController {
       this.dragState = {
         x: rx,
         y: ry,
-        id: Date.now(),
+        id: createAiPointerId(),
         remaining: 0.5 + Math.random() * 1.0,
       };
-      intents.push({ kind: 'drag_start', x: rx, y: ry });
+      intents.push({ kind: 'drag_start', id: this.dragState.id, x: rx, y: ry });
     } else if (action.kind === 'hold_release') {
       intents.push({ kind: 'release', x: rx, y: ry });
     }

@@ -5,32 +5,70 @@
  * Mounts a canvas into a container div, inits GameApp, starts/stops on mount/unmount.
  */
 import { useEffect, useRef, useCallback } from 'react';
-import { GameApp, type GameAppOptions } from '@hooksjam/pixi-lab-core';
-import type { GameDefinition } from '@hooksjam/pixi-lab-core';
-import type { GameEvent } from '@hooksjam/pixi-lab-core';
+import { GameApp } from '@hooksjam/pixi-lab-core';
+import type {
+  AmbientDataAdapter,
+  GameAppOptions,
+  GameEvent,
+  LabExperience,
+  RenderBackendProfileSelection,
+  RenderQuality,
+} from '@hooksjam/pixi-lab-core';
+
+function clearRuntimeHost(host: HTMLElement | null): void {
+  if (!host) return;
+  host.replaceChildren();
+}
 
 export interface GameRuntimeProps {
-  definition: GameDefinition;
+  definition: LabExperience;
   userId?: string;
   palette?: string;
+  seed?: number;
   mode?: 'play' | 'screensaver' | 'demo';
+  renderSelection?: RenderBackendProfileSelection;
+  /** Legacy scene compatibility tier derived from renderSelection. */
+  quality?: RenderQuality;
+  experimentalRawEngine?: boolean;
+  transparent?: boolean;
+  sleepMode?: boolean;
+  lowMotion?: boolean;
+  globalIntensity?: number;
+  ambientDataAdapters?: AmbientDataAdapter[];
   onEvent?: (event: GameEvent) => void;
   className?: string;
+  /** Cap rendered pixel count — see GameAppOptions.maxPixels */
+  maxPixels?: number;
   /** Called when the GameApp instance is ready */
   onReady?: (app: GameApp) => void;
 }
+
+export type ExperienceRuntimeProps = GameRuntimeProps;
 
 export function GameRuntime({
   definition,
   userId,
   palette,
+  seed,
   mode = 'play',
+  renderSelection,
+  quality,
+  experimentalRawEngine,
+  transparent,
+  sleepMode,
+  lowMotion,
+  globalIntensity,
+  ambientDataAdapters,
   onEvent,
   className,
+  maxPixels,
   onReady,
 }: GameRuntimeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<GameApp | null>(null);
+  const runtimeEngineKey = renderSelection
+    ? `${renderSelection.backend}/${renderSelection.profile}/${renderSelection.legacyQuality}`
+    : `legacy/${quality ?? 'basic'}`;
 
   const handleEvent = useCallback(
     (event: GameEvent) => {
@@ -43,35 +81,99 @@ export function GameRuntime({
     const container = containerRef.current;
     if (!container) return;
 
-    const options: GameAppOptions = {
-      container,
-      definition,
-      userId,
-      mode,
-      palette,
-      onEvent: handleEvent,
-    };
+    let cancelled = false;
+    let rafId = 0;
 
-    const app = new GameApp(options);
-    appRef.current = app;
+    clearRuntimeHost(container);
 
-    void app.init().then(() => {
-      app.start();
-      onReady?.(app);
+    // Defer to the next animation frame for two reasons:
+    // 1. Ensures the browser has performed a layout pass so getBoundingClientRect()
+    //    returns correct dimensions (clientWidth can be 0 before the first paint
+    //    for elements whose size is derived from inset:0 constraints).
+    // 2. React 18 StrictMode double-invokes effects — the first RAF is cancelled
+    //    by the cleanup before it fires, so only the second (real) mount runs init.
+    rafId = requestAnimationFrame(() => {
+      if (cancelled) return;
+
+      const options: GameAppOptions = {
+        container,
+        definition,
+        userId,
+        mode,
+        palette,
+        seed,
+        renderSelection,
+        quality,
+        experimentalRawEngine,
+        transparent,
+        sleepMode,
+        lowMotion,
+        globalIntensity,
+        ambientDataAdapters,
+        maxPixels,
+        onEvent: handleEvent,
+      };
+
+      const app = new GameApp(options);
+      appRef.current = app;
+
+      void app.init().then(() => {
+        if (cancelled) {
+          // Cleanup fired while init was in-flight (unlikely after the rAF guard,
+          // but handled defensively). GameApp.destroy() already set destroyed=true
+          // so this second call is a safe no-op if destroy was already called, but
+          // we call it here in case init resolved before cleanup ran.
+          app.destroy();
+          return;
+        }
+        app.start();
+        onReady?.(app);
+      });
+
+      // The rAF guarantees the browser has painted at least once so
+      // clientWidth/clientHeight inside GameApp.init() will be non-zero.
     });
 
     return () => {
-      app.destroy();
-      appRef.current = null;
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+      const app = appRef.current;
+      if (app) {
+        app.destroy();
+        appRef.current = null;
+      }
+      clearRuntimeHost(container);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [definition.id]); // Only re-create when game changes
+  }, [definition.id, runtimeEngineKey, experimentalRawEngine]); // Re-create when the experience or engine configuration changes
+
+  useEffect(() => {
+    appRef.current?.setSleepMode((sleepMode ?? false) || (lowMotion ?? false));
+  }, [sleepMode, lowMotion]);
+
+  useEffect(() => {
+    appRef.current?.setMaxPixels(maxPixels);
+  }, [maxPixels]);
+
+  useEffect(() => {
+    if (typeof globalIntensity === 'number') appRef.current?.setGlobalIntensity(globalIntensity);
+  }, [globalIntensity]);
+
+  useEffect(() => {
+    if (quality) appRef.current?.setQuality(quality);
+  }, [quality]);
 
   return (
     <div
       ref={containerRef}
       className={className}
-      style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}
+      // className fully controls positioning and sizing.
+      // When used in GameLauncher, className="w-full h-full" — the parent has
+      // explicit w-screen h-screen so percentage sizing resolves correctly.
+      style={{ overflow: 'hidden', position: 'relative' }}
     />
   );
 }
+
+export const ExperienceRuntime = GameRuntime;
+export const SimulationRuntime = GameRuntime;

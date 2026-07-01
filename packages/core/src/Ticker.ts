@@ -12,7 +12,7 @@ const MAX_CATCH_UP_STEPS = 5; // prevent spiral-of-death
 
 export type TickCallback = (dt: number, physicsSteps: number) => void;
 export type FixedStepCallback = (dt: number) => void;
-export type RenderCallback = (alpha: number) => void;
+export type RenderCallback = (alpha: number) => boolean;
 
 export class Ticker {
   private rafId = 0;
@@ -23,20 +23,31 @@ export class Ticker {
   private readonly onFixedUpdate: FixedStepCallback;
   private readonly onUpdate: TickCallback;
   private readonly onRender: RenderCallback;
+  /** Minimum milliseconds between processed frames (0 = uncapped). */
+  private readonly minFrameMs: number;
 
   // FPS sampling
   private frameCount = 0;
+  private renderFrameCount = 0;
   private fpsWindow = 0;
   fps = 0;
+  renderFps = 0;
 
   constructor(opts: {
     onFixedUpdate: FixedStepCallback;
     onUpdate: TickCallback;
     onRender: RenderCallback;
+    /**
+     * Cap the tick rate. Frames arriving sooner than `1000/maxFps` ms since
+     * the last processed frame are skipped. Useful for preview tiles that need
+     * to share the JS thread without saturating it.
+     */
+    maxFps?: number;
   }) {
     this.onFixedUpdate = opts.onFixedUpdate;
     this.onUpdate = opts.onUpdate;
     this.onRender = opts.onRender;
+    this.minFrameMs = opts.maxFps != null && opts.maxFps > 0 ? 1000 / opts.maxFps : 0;
   }
 
   start() {
@@ -63,6 +74,11 @@ export class Ticker {
       return;
     }
 
+    // FPS cap: skip this rAF if the minimum frame interval hasn't elapsed yet.
+    // lastTime is only updated when we actually process a frame, so the elapsed
+    // calculation for the next eligible frame remains correct.
+    if (this.minFrameMs > 0 && now - this.lastTime < this.minFrameMs) return;
+
     const elapsed = Math.min((now - this.lastTime) / 1000, 0.25); // cap at 250 ms
     this.lastTime = now;
 
@@ -79,14 +95,18 @@ export class Ticker {
 
     // alpha is how far we are between the last and next physics step
     const alpha = this.accumulator / PHYSICS_DT;
-    this.onRender(alpha);
+    if (this.onRender(alpha)) {
+      this.renderFrameCount++;
+    }
 
     // FPS sampling (update every second)
     this.frameCount++;
     this.fpsWindow += elapsed;
     if (this.fpsWindow >= 1) {
       this.fps = Math.round(this.frameCount / this.fpsWindow);
+      this.renderFps = Math.round(this.renderFrameCount / this.fpsWindow);
       this.frameCount = 0;
+      this.renderFrameCount = 0;
       this.fpsWindow = 0;
     }
   };

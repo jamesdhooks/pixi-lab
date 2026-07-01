@@ -7,7 +7,7 @@
  * - collision listener routing
  */
 import * as planck from 'planck';
-import type { BodyUserData } from '../types';
+import type { BodyUserData } from '../types.js';
 
 export type CollisionCallback = (
   dataA: BodyUserData,
@@ -32,6 +32,21 @@ export class PhysicsWorld {
 
   step(dt: number) {
     this.world.step(dt, 8, 3);
+  }
+
+  hasAwakeDynamicBodies(): boolean {
+    for (let body = this.world.getBodyList(); body; body = body.getNext()) {
+      if ((body.isDynamic() || body.isKinematic()) && body.isAwake()) return true;
+    }
+    return false;
+  }
+
+  countAwakeDynamicBodies(): number {
+    let count = 0;
+    for (let body = this.world.getBodyList(); body; body = body.getNext()) {
+      if ((body.isDynamic() || body.isKinematic()) && body.isAwake()) count++;
+    }
+    return count;
   }
 
   setGravity(x: number, y: number) {
