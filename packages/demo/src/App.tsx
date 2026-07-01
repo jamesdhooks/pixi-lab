@@ -3,13 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff, Play } from 'lucide-react';
 import { GameLauncher, PreviewTile } from '@hooksjam/pixi-lab-react';
 import { useViewport } from '@hooksjam/pixi-lab-react';
-import { AMBIENT_REGISTRY } from '@hooksjam/pixi-lab-ambients';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
-import { SIMULATION_REGISTRY, fluidTankDefinition } from '@hooksjam/pixi-lab-simulations';
+import { SIMULATION_REGISTRY } from '@hooksjam/pixi-lab-simulations';
 import { type LabExperience, type RenderBackendProfileSelection, type RenderQuality } from '@hooksjam/pixi-lab-core';
 import { hasPassedDemoQa } from './demoQaStatus';
 import {
-  applyCompatibilityRouteRenderSelection,
   findQueryExperienceFromParams,
   queryExperimentalRawEngine,
   queryRenderSelectionForExperience,
@@ -18,7 +16,6 @@ import {
 const ALL_EXPERIENCES: readonly LabExperience[] = [
   ...GAME_REGISTRY,
   ...SIMULATION_REGISTRY,
-  ...AMBIENT_REGISTRY,
 ];
 const APP_DEMO_INTERVAL_MS = 10_000;
 const APP_DEMO_CROSSFADE_MS = 220;
@@ -82,9 +79,6 @@ export function App() {
   const routeMode = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return {
-      fluidGallery: params.has('fluidGallery'),
-      fluidEngine: params.has('fluidEngine'),
-      fluidReference: params.has('fluidReference'),
       experience: findQueryExperienceFromParams(params, ALL_EXPERIENCES),
       queryParams: params,
     };
@@ -103,15 +97,6 @@ export function App() {
   }, [maxPixels]);
 
   useEffect(() => {
-    if (routeMode.fluidGallery) return;
-    if (routeMode.fluidEngine || routeMode.fluidReference) {
-      try { applyCompatibilityRouteRenderSelection(fluidTankDefinition, routeMode.queryParams); } catch { /* ignore */ }
-      setAppDemoActive(false);
-      setCarouselOpen(false);
-      setCarouselDocked(false);
-      setActive(fluidTankDefinition);
-      return;
-    }
     if (routeMode.experience) {
       setAppDemoActive(false);
       setCarouselOpen(false);
@@ -138,14 +123,13 @@ export function App() {
 
   const filtered = useMemo(
     () => {
-      if (routeMode.fluidGallery) return [fluidTankDefinition];
       return filter === 'all'
         ? ALL_EXPERIENCES
         : filter === 'overlays'
           ? ALL_EXPERIENCES.filter((e) => e.kind === 'ambient' || e.kind === 'effect')
           : ALL_EXPERIENCES.filter((e) => e.kind === filter);
     },
-    [filter, routeMode.fluidGallery],
+    [filter],
   );
 
   const carouselItems = useMemo(

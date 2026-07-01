@@ -291,7 +291,7 @@ function StringInput({ value, onChange }: { value: unknown; onChange: (v: unknow
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <h4 className="text-sm font-bold text-white">Image URL</h4>
-                  <p className="mt-1 text-xs text-white/45">Paste a direct image URL for Fluid Tank texture initialization.</p>
+                  <p className="mt-1 text-xs text-white/45">Paste a direct image URL for texture initialization.</p>
                 </div>
                 <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-white/45 hover:bg-white/10 hover:text-white" aria-label="Close URL editor">
                   <X size={16} />

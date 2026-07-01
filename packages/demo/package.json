@@ -1,7 +1,7 @@
 {
   "name": "@hooksjam/pixi-lab-demo",
   "version": "0.1.0",
-  "description": "Interactive demo showcasing all pixi-lab games and simulations",
+  "description": "Interactive demo for the curated Pixi Lab core experiences",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +11,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hooksjam/pixi-lab-ambients": "workspace:*",
     "@hooksjam/pixi-lab-core": "workspace:*",
     "@hooksjam/pixi-lab-games": "workspace:*",
     "@hooksjam/pixi-lab-react": "workspace:*",

@@ -1,174 +1,97 @@
 # Pixi Lab
 
-A standalone, publishable **PixiJS v8** game engine and interactive experience library — built as a pnpm monorepo with TypeScript 5.4+ strict mode throughout.
+A standalone **PixiJS v8** engine lab rebuilt around a small, intentional foundation: core runtime capabilities first, React host shell second, and only the curated launch set after that.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-0f62fe?logo=github&logoColor=white)](https://jamesdhooks.github.io/pixi-lab/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4+-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![PixiJS](https://img.shields.io/badge/PixiJS-v8-e72264?logo=data:image/svg+xml;base64,)](https://pixijs.com/)
+[![PixiJS](https://img.shields.io/badge/PixiJS-v8-e72264)](https://pixijs.com/)
 [![React](https://img.shields.io/badge/React-18-61dafb?logo=react&logoColor=white)](https://react.dev/)
 [![pnpm](https://img.shields.io/badge/pnpm-workspace-f69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
 
-**[▶ Open live demo →](https://jamesdhooks.github.io/pixi-lab/)**
+## Current main scope
 
----
+Main is intentionally narrow. It contains the reusable engine and host shell plus three content experiences:
+
+- **Ball Pit** — game package baseline and physics/game-loop proving ground.
+- **Harmonic Sand Plate** — simulation controls, presets, preview, and raw/Pixi rendering coverage.
+- **Orbital Shrapnel** — orbital simulation with raw renderer/composite planning coverage.
+
+Reference scenes, ambient packages, exploratory ports, and broad documentation drafts stay off main until they are cleaned up and promoted deliberately.
 
 ## Packages
 
-| Package | Version | Description |
-|---|---|---|
-| [`@hooksjam/pixi-lab-core`](packages/core) | 0.1.0 | Engine: game loop, scene lifecycle, input, physics, AI, render systems, scoring |
-| [`@hooksjam/pixi-lab-react`](packages/react) | 0.1.0 | React shell: `GameRuntime`, `GameLauncher`, `GameTile`, full UI library |
-| [`@hooksjam/pixi-lab-games`](packages/games) | 0.1.0 | Game content registry (`GAME_REGISTRY`) |
-| [`@hooksjam/pixi-lab-simulations`](packages/simulations) | 0.1.0 | Simulation content registry (`SIMULATION_REGISTRY`) including Pixi and raw WebGL-backed scenes |
-| [`@hooksjam/pixi-lab-ambients`](packages/ambients) | 0.1.0 | Ambient / overlay content registry (`AMBIENT_REGISTRY`) |
-| [`@hooksjam/pixi-lab-demo`](packages/demo) | — | Vite demo app and dashboard (not published) |
+| Package | Description |
+|---|---|
+| [`@hooksjam/pixi-lab-core`](packages/core) | Engine/runtime contracts, scene lifecycle, input, physics, rendering helpers, simulation adapters, styles, scoring, and quality controls. |
+| [`@hooksjam/pixi-lab-react`](packages/react) | React runtime shell, launcher, gallery tiles, HUD, settings, debug, and simulation controls. |
+| [`@hooksjam/pixi-lab-games`](packages/games) | Curated game registry. Currently exports Ball Pit only. |
+| [`@hooksjam/pixi-lab-simulations`](packages/simulations) | Curated simulation registry. Currently exports Harmonic Sand Plate and Orbital Shrapnel only. |
+| [`@hooksjam/pixi-lab-demo`](packages/demo) | Vite demo app for launching and validating the curated set. |
 
----
-
-## Quick Start
+## Quick start
 
 ```bash
-# Requires Node ≥ 20 and pnpm ≥ 9
 pnpm install
 pnpm --filter @hooksjam/pixi-lab-demo dev
 ```
 
-Open `http://localhost:5173` to browse and launch all experiences.
-
----
+Open `http://localhost:5173`.
 
 ## Architecture
 
-```
+```txt
 packages/
-  core/src/
-    GameApp.ts          Main runtime orchestrator
-    LabExperience.ts    Shared contract for games, simulations, and toys
-    Scene.ts            Base scene class
-    types.ts            Primitive types (Vec2, GameEvent, ScoreEntry, …)
-    ai/                 AI controller abstractions (BasicAI, DemoAI, SimulationAI)
-    ambient/            Ambient background layer system
-    debug/              In-app debug panel
-    director/           Scene-level director / scripting
-    fx/                 Visual effects helpers
-    gestures/           Pointer gesture recogniser (tap, drag, swipe, hold, pinch)
-    performance/        Adaptive quality / FPS guard
-    physics/            planck-js wrappers (Bodies, World, Categories, Pool)
-    render/             PixiJS wrappers (PixiApp, Sprites, Particles, passes, procedural)
-    scoring/            HighScoreProvider, NameSuggestions
-    screensaver/        ScreensaverManager
-    sim/                Simulation base utilities, including DomScriptScene for DOM/WebGL adapters
-    stagnation/         Stagnation-detection for auto-reset
-    style/              Style / palette registry
-
-  react/src/
-    GameRuntime.tsx         Mounts canvas, owns GameApp lifecycle
-    GameLauncher.tsx        Full-screen shell (intro → play → pause → game-over)
-    GameTile.tsx / Gallery  Animated preview tile with live canvas
-    ui/                     HUD, QuitButton, IntroCard, TutorialOverlay, PauseModal,
-                            GameOverModal, SettingsDrawer, StylePicker, QualitySelector,
-                            DebugPanel, SimControlPanel, ShaderTuningDrawer, …
-
-  games/src/
-    */                  Game definitions exported through GAME_REGISTRY
-
-  simulations/src/
-    */                  Simulation definitions exported through SIMULATION_REGISTRY
-                        Scenes may be Pixi-native, custom shader pipelines, or raw WebGL
-                        adapters, but all enter through the same LabExperience factory
-
-  ambients/src/
-    */                  Ambient/effect definitions exported through AMBIENT_REGISTRY
+  core/src/         Shared engine/runtime primitives and renderer adapters
+  react/src/        App-agnostic React host shell and UI controls
+  games/src/        Curated games exposed through GAME_REGISTRY
+  simulations/src/  Curated simulations exposed through SIMULATION_REGISTRY
+  demo/src/         Vite host app that composes the curated registries
 ```
 
-### The `LabExperience` contract
-
-Every game, simulation, ambient, overlay, and toy is described by a `LabExperience` definition object — a single structure that carries its metadata, factory functions, AI factories, gesture hints, settings fields, and capabilities flags. `GameLauncher`, `GameTile`, and the dashboard consume only this interface; they are agnostic of implementation details.
-
-```ts
-import type { LabExperience } from '@hooksjam/pixi-lab-core';
-```
-
-### Shared runtime, multiple render backends
-
-All experiences enter through the same lifecycle:
+All launchable content enters through the shared `LabExperience` contract:
 
 ```txt
 GameLauncher → GameRuntime → GameApp → LabExperience.factory() → Scene
 ```
 
-A scene can be Pixi-native, shader-heavy, DOM-backed, or raw WebGL-backed. For ports such as Fluid Tank, `DomScriptScene` supplies a generic adapter: the simulation package owns the markup/script and receives the active style palette through `data-pixi-lab-style` plus a `pixi-lab-style-change` event. Core stays generic; content packages own renderer-specific code.
+A scene may be Pixi-native, shader-heavy, DOM-backed, or raw WebGL-backed. Core owns reusable adapters and lifecycle rules; content packages own scene-specific implementation.
 
-### Render-variant engine plan
-
-The GPU field rendering upgrade report recommends promoting common field rendering ideas into reusable variants instead of one-off scene forks. The next engine pass should add a small render-variant registry that lets definitions declare capabilities such as:
-
-- field source: particles, scalar field, velocity field, dye texture, signed-distance field
-- backend: Pixi primitives, Pixi render texture pipeline, custom shader pass, raw WebGL adapter
-- presentation: fullscreen scene, background layer, foreground overlay, widget, preview tile
-- style inputs: palette, exposure, edge darkening, bloom/color-grade settings
-- quality controls: resolution scale, render-target budget, FPS governor hints
-
-That keeps host apps and React UI stable while allowing simulations to swap implementation details behind the existing `LabExperience`/`Scene` boundary.
-
----
-
-## Development Commands
+## Development commands
 
 ```bash
-pnpm install                              # install all workspace deps
-pnpm dev                                  # run the demo app (Vite)
+pnpm install
+pnpm --recursive build
+pnpm --recursive typecheck
+pnpm test
+pnpm --filter @hooksjam/pixi-lab-demo dev
+```
 
-pnpm --recursive build                    # build all packages (tsc)
-pnpm --recursive typecheck                # typecheck all packages
-pnpm test                                 # run all tests (Vitest)
-pnpm test:watch                           # watch mode
+Package-specific builds:
 
+```bash
 pnpm --filter @hooksjam/pixi-lab-core build
 pnpm --filter @hooksjam/pixi-lab-react build
 pnpm --filter @hooksjam/pixi-lab-games build
 pnpm --filter @hooksjam/pixi-lab-simulations build
 ```
 
----
+## Adding content
 
-## Adding a New Experience
+Use [`.github/skills/add-experience/SKILL.md`](.github/skills/add-experience/SKILL.md) for the current scaffold rules.
 
-Read [`.github/skills/add-experience/SKILL.md`](.github/skills/add-experience/SKILL.md) — it routes to the correct scaffold for a game or simulation.
+Promotion to main should happen in this order:
 
-**Key rules:**
-- Each game lives in `packages/games/src/<name>/`
-- Each simulation lives in `packages/simulations/src/<name>/`
-- Start with a `<name>.definition.ts` file, register it in the package `index.ts`
-- Never import `pixi.js` or `planck` directly from `packages/react` or `packages/games` — go through `@hooksjam/pixi-lab-core`
-
----
-
-## Stack
-
-| Concern | Library |
-|---|---|
-| Renderer | [PixiJS v8](https://pixijs.com/) |
-| Physics | [planck-js v1](https://github.com/piqnt/planck.js) |
-| React shell | [React 18](https://react.dev/) |
-| Animations | [Framer Motion 11](https://www.framer.com/motion/) |
-| Icons | [Lucide React](https://lucide.dev/) |
-| Styles | [Tailwind CSS v3](https://tailwindcss.com/) |
-| Build | [Vite 5](https://vitejs.dev/) + `tsc` |
-| Tests | [Vitest](https://vitest.dev/) |
-| Package manager | [pnpm](https://pnpm.io/) (workspaces) |
-
----
+1. Add or extend shared engine capability when needed.
+2. Add tests for the engine/content behavior.
+3. Register exactly one polished experience.
+4. Keep documentation consolidated here or under `docs/architecture/`.
 
 ## Conventions
 
-- **TypeScript strict** — no `any`, no `@ts-ignore` without a comment
-- **No `console.log`** in library code
-- **Conventional Commits** — `type(scope): subject`
-  - Scopes: `core` · `react` · `games` · `sims` · `demo` · `ci` · `deps` · `config`
-- `GameLauncher` is app-agnostic — no routing, no `fetch`. Host apps inject `onQuit`, `onSubmitScore`, `topScores`
-
----
+- TypeScript strict mode.
+- Conventional commits with focused scopes: `core`, `react`, `games`, `sims`, `demo`, `docs`, `config`.
+- React shell stays app-agnostic; host apps own routing and persistence.
+- No broad reference-scene dumps on main.
 
 ## License
 

@@ -18,22 +18,23 @@ import {
 
 const RESET_ENGINE_CONFIGURATIONS = createEngineConfigurations(['basic', 'enhanced', 'raw']);
 const PIXI_RAW_ENGINE_CONFIGURATIONS = createEngineConfigurations(['basic', 'enhanced', 'raw'], { rawBackend: 'pixi' });
+const WEBGL_RAW_ENGINE_CONFIGURATIONS = createEngineConfigurations(['basic', 'enhanced', 'raw'], { rawBackend: 'webgl2' });
 
 const EXPERIENCES = [
   {
-    id: 'amoeba-lamp',
-    name: 'Amoeba Lamp',
+    id: 'ball-pit',
+    name: 'Ball Pit',
     capabilities: { engineConfigurations: PIXI_RAW_ENGINE_CONFIGURATIONS },
-  },
-  {
-    id: 'fluid-tank',
-    name: 'Fluid Tank',
-    capabilities: { engineConfigurations: RESET_ENGINE_CONFIGURATIONS },
   },
   {
     id: 'harmonic-sand',
     name: 'Harmonic Sand Plate',
     capabilities: { engineConfigurations: RESET_ENGINE_CONFIGURATIONS, settings: true },
+  },
+  {
+    id: 'orbital-shrapnel',
+    name: 'Orbital Shrapnel',
+    capabilities: { engineConfigurations: WEBGL_RAW_ENGINE_CONFIGURATIONS, settings: true },
   },
 ] as LabExperience[];
 
@@ -51,7 +52,6 @@ describe('demo query routing helpers', () => {
     expect(parseLegacyQualityRouteValue(null)).toBeUndefined();
   });
 
-
   it('keeps query quality helpers as compatibility aliases', () => {
     expect(parseQueryQuality('raw')).toBe(parseLegacyQualityRouteValue('raw'));
     expect(queryQualityForExperience(EXPERIENCES[1], params('quality=raw'))).toBe(
@@ -60,9 +60,9 @@ describe('demo query routing helpers', () => {
   });
 
   it('finds an experience by id without enabling unknown raw routes globally', () => {
-    expect(findQueryExperience('amoeba-lamp', EXPERIENCES)?.id).toBe('amoeba-lamp');
-    expect(findQueryExperience(' AMOEBA-LAMP ', EXPERIENCES)?.id).toBe('amoeba-lamp');
-    expect(findQueryExperience('harmonic-sand', EXPERIENCES)?.name).toBe('Harmonic Sand Plate');
+    expect(findQueryExperience('ball-pit', EXPERIENCES)?.id).toBe('ball-pit');
+    expect(findQueryExperience(' BALL-PIT ', EXPERIENCES)?.id).toBe('ball-pit');
+    expect(findQueryExperience('orbital-shrapnel', EXPERIENCES)?.name).toBe('Orbital Shrapnel');
     expect(findQueryExperience('missing-experience', EXPERIENCES)).toBeUndefined();
     expect(findQueryExperience('', EXPERIENCES)).toBeUndefined();
     expect(findQueryExperience(null, EXPERIENCES)).toBeUndefined();
@@ -70,10 +70,10 @@ describe('demo query routing helpers', () => {
 
   it('resolves canonical experience routes before legacy lab aliases', () => {
     expect(findQueryExperienceFromParams(params('experience=harmonic-sand'), EXPERIENCES)?.id).toBe('harmonic-sand');
-    expect(findQueryExperienceFromParams(params('lab=fluid-tank'), EXPERIENCES)?.id).toBe('fluid-tank');
-    expect(findQueryExperienceFromParams(params('experience=harmonic-sand&lab=fluid-tank'), EXPERIENCES)?.id).toBe('harmonic-sand');
-    expect(findQueryExperienceFromParams(params('experience=&lab=fluid-tank'), EXPERIENCES)?.id).toBe('fluid-tank');
-    expect(findQueryExperienceFromParams(params('experience=missing-experience&lab=fluid-tank'), EXPERIENCES)).toBeUndefined();
+    expect(findQueryExperienceFromParams(params('lab=harmonic-sand'), EXPERIENCES)?.id).toBe('harmonic-sand');
+    expect(findQueryExperienceFromParams(params('experience=orbital-shrapnel&lab=harmonic-sand'), EXPERIENCES)?.id).toBe('orbital-shrapnel');
+    expect(findQueryExperienceFromParams(params('experience=&lab=harmonic-sand'), EXPERIENCES)?.id).toBe('harmonic-sand');
+    expect(findQueryExperienceFromParams(params('experience=missing-experience&lab=harmonic-sand'), EXPERIENCES)).toBeUndefined();
   });
 
   it('sanitizes query quality against the selected experience before launch', () => {
@@ -131,7 +131,7 @@ describe('demo query routing helpers', () => {
         profile: 'high',
         legacyQuality: 'raw',
       }),
-    ).toBe('?experience=amoeba-lamp&backend=webgl2&profile=high');
+    ).toBe('?experience=ball-pit&backend=webgl2&profile=high');
   });
 
   it('keeps default Pixi standard routes legacy-clean and hides the explicit migration link', () => {
@@ -142,8 +142,8 @@ describe('demo query routing helpers', () => {
     } as const;
 
     expect(shouldExposeExperienceBackendProfileRoute(selection)).toBe(false);
-    expect(buildExperienceBackendProfileRoute(EXPERIENCES[1], selection)).toBe('?experience=fluid-tank');
-    expect(buildExperienceBackendProfileRoute(EXPERIENCES[2], selection)).toBe('?experience=harmonic-sand');
+    expect(buildExperienceBackendProfileRoute(EXPERIENCES[1], selection)).toBe('?experience=harmonic-sand');
+    expect(buildExperienceBackendProfileRoute(EXPERIENCES[2], selection)).toBe('?experience=orbital-shrapnel');
   });
 
   it('exposes the explicit backend/profile link for non-default profiles', () => {
@@ -183,7 +183,7 @@ describe('demo query routing helpers', () => {
       }),
     ).toEqual({
       label: 'PixiJS / High',
-      backendProfileRoute: '?experience=harmonic-sand&backend=pixi&profile=high',
+      backendProfileRoute: '?experience=orbital-shrapnel&backend=pixi&profile=high',
     });
 
     expect(
@@ -194,7 +194,7 @@ describe('demo query routing helpers', () => {
       }),
     ).toEqual({
       label: 'PixiJS / High',
-      backendProfileRoute: '?experience=amoeba-lamp&backend=pixi&profile=high',
+      backendProfileRoute: '?experience=ball-pit&backend=pixi&profile=high',
     });
   });
 
@@ -216,7 +216,7 @@ describe('demo query routing helpers', () => {
     );
   });
 
-  it('applies Fluid raw compatibility route render selection through one demo runtime action', () => {
+  it('applies Harmonic Sand raw compatibility route render selection through one demo runtime action', () => {
     const stored = new Map<string, string>();
     const selection = applyCompatibilityRouteRenderSelection(
       EXPERIENCES[1],
@@ -231,15 +231,15 @@ describe('demo query routing helpers', () => {
     );
   });
 
-  it('bridges legacy Fluid lab quality routes to the explicit WebGL2 raw engine configuration', () => {
-    const routeParams = params('experience=&lab=fluid-tank&quality=raw');
-    const fluidExperience = findQueryExperienceFromParams(routeParams, EXPERIENCES);
+  it('bridges legacy Harmonic Sand lab quality routes to supported engine configurations', () => {
+    const routeParams = params('experience=&lab=harmonic-sand&quality=raw');
+    const harmonicSandExperience = findQueryExperienceFromParams(routeParams, EXPERIENCES);
     const stored = new Map<string, string>();
 
-    expect(fluidExperience?.id).toBe('fluid-tank');
+    expect(harmonicSandExperience?.id).toBe('harmonic-sand');
 
     const selection = applyCompatibilityRouteRenderSelection(
-      fluidExperience!,
+      harmonicSandExperience!,
       routeParams,
       { setItem: (key, value) => { stored.set(key, value); } },
     );

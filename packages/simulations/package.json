@@ -1,0 +1,42 @@
+{
+  "name": "@hooksjam/pixi-lab-simulations",
+  "version": "0.1.0",
+  "description": "Simulation content for pixi-lab",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build --force tsconfig.json",
+    "typecheck": "tsc --noEmit --project tsconfig.json",
+    "test": "vitest run",
+    "prepack": "pnpm build"
+  },
+  "peerDependencies": {
+    "@hooksjam/pixi-lab-core": "^0.1.0",
+    "pixi.js": ">=8.0.0"
+  },
+  "devDependencies": {
+    "@hooksjam/pixi-lab-core": "workspace:*",
+    "pixi.js": "^8.18.1",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/jamesdhooks/pixi-lab.git"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
