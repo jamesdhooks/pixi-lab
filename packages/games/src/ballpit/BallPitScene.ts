@@ -4,22 +4,19 @@
  * Main Ball Pit gameplay scene.
  *
  * Mechanics:
- *  - Tap spawns a ball at the tap position (up to maxBalls real physics bodies)
+ *  - Single tap spawns one ball at the tap position (up to maxBalls real physics bodies)
+ *  - Stream mode emits a continuous fountain while a pointer is held
+ *  - Explosion mode creates a radial burst from each tap
  *  - Overflow spawns a fake particle burst instead of a physics body
- *  - Balls that fall below (height + 60px) are "drained" → +5 points
- *  - Score increases by 1 per ball spawned, +5 per drain
  *  - Drag creates a gentle attractor force pulling nearby balls toward the finger
- *  - 4 static boundary walls enclose the scene (left/right/top, bottom is OPEN for drain)
- *
- * Emits game events:
- *  - score_update { value: number }
+ *  - 4 static boundary walls enclose the scene so balls stay on-screen
  */
 import type { GameContext } from '@hooksjam/pixi-lab-core';
 import type { Input } from '@hooksjam/pixi-lab-core';
 import {
   Scene,
+  createBoundaryWalls,
   createCircleBody,
-  createEdgeWall,
   destroyBody,
   styleRegistry,
 } from '@hooksjam/pixi-lab-core';
@@ -30,6 +27,7 @@ import * as planck from 'planck';
 const MIN_RADIUS = 10;
 const MAX_RADIUS = 28;
 const DRAIN_Y_BUFFER = 60; // px below canvas bottom to trigger drain
+type BallPitInputMode = 'single' | 'stream' | 'explosion';
 
 interface BallEntry {
   handle: BodyHandle;
@@ -40,7 +38,8 @@ export class BallPitScene extends Scene {
   readonly name = 'BallPit';
 
   private balls: BallEntry[] = [];
-  private score = 0;
+  private mode: BallPitInputMode = 'single';
+  private streamAccumulatorMs = 0;
   private ctx_!: GameContext;
   private input_!: Input;
   private wallHandles: BodyHandle[] = [];
@@ -48,17 +47,14 @@ export class BallPitScene extends Scene {
   onEnter(ctx: GameContext, input: Input) {
     this.ctx_ = ctx;
     this.input_ = input;
-    this.score = 0;
+    this.mode = 'single';
+    this.streamAccumulatorMs = 0;
 
     const { width, height, systems } = ctx;
     const { world } = systems;
 
-    // 3 walls only (left, right, top) — bottom is open so balls drain out
-    this.wallHandles = [
-      createEdgeWall(world, { x1: 0, y1: 0, x2: width, y2: 0 }),
-      createEdgeWall(world, { x1: 0, y1: 0, x2: 0, y2: height }),
-      createEdgeWall(world, { x1: width, y1: 0, x2: width, y2: height }),
-    ];
+    // Closed bounds: the game is a pit, not a drain. Keep balls visible and playable.
+    this.wallHandles = createBoundaryWalls(world, width, height, { restitution: 0.78, friction: 0.08 });
   }
 
   onExit() {
@@ -78,16 +74,23 @@ export class BallPitScene extends Scene {
     void sprites; // sprites is handled through sprite.destroy() above
   }
 
-  update(_dt: number) {
+  update(dt: number) {
     const snap = this.input_.snapshot;
     const { width } = this.ctx_;
 
-    // Process new taps — spawn balls
+    // Process human input according to the selected interaction mode.
+    this.streamAccumulatorMs += dt * 1000;
     for (const [, ptr] of snap.pointers) {
-      if (snap.justDown.has(ptr.id) && ptr.source === 'human') {
+      if (ptr.source !== 'human') continue;
+      if (snap.justDown.has(ptr.id)) {
+        if (this.mode === 'explosion') this.spawnExplosion(ptr.x, ptr.y);
+        else this.spawnBall(ptr.x, ptr.y);
+      }
+      if (this.mode === 'stream' && !snap.justUp.has(ptr.id) && this.streamAccumulatorMs >= 42) {
         this.spawnBall(ptr.x, ptr.y);
       }
     }
+    if (this.streamAccumulatorMs >= 42) this.streamAccumulatorMs = 0;
 
     // Drag attractor
     for (const [, ptr] of snap.pointers) {
@@ -128,20 +131,23 @@ export class BallPitScene extends Scene {
     this.ctx_.systems.particles.update(1 / 60);
   }
 
+  setMode(id: string): void {
+    if (id === 'single' || id === 'stream' || id === 'explosion') {
+      this.mode = id;
+      this.streamAccumulatorMs = 0;
+    }
+  }
+
   resize(width: number, height: number) {
-    // Recreate 3 walls on resize
+    // Recreate closed bounds on resize.
     const { world } = this.ctx_.systems;
     for (const w of this.wallHandles) destroyBody(world, w);
-    this.wallHandles = [
-      createEdgeWall(world, { x1: 0, y1: 0, x2: width, y2: 0 }),
-      createEdgeWall(world, { x1: 0, y1: 0, x2: 0, y2: height }),
-      createEdgeWall(world, { x1: width, y1: 0, x2: width, y2: height }),
-    ];
+    this.wallHandles = createBoundaryWalls(world, width, height, { restitution: 0.78, friction: 0.08 });
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
 
-  private spawnBall(x: number, y: number) {
+  private spawnBall(x: number, y: number, velocity?: { x: number; y: number }) {
     const { world, sprites, particles, audio, settings } = this.ctx_.systems;
     const maxBalls = (settings.get('maxBalls') as number) ?? 200;
     const radius = MIN_RADIUS + Math.random() * (MAX_RADIUS - MIN_RADIUS);
@@ -172,6 +178,9 @@ export class BallPitScene extends Scene {
 
     const sprite = sprites.makeCircleSprite(radius, color);
     this.ctx_.systems.pixi.app.stage.addChild(sprite);
+    if (velocity) {
+      handle.body.setLinearVelocity(planck.Vec2(velocity.x * 0.01, velocity.y * 0.01));
+    }
     this.balls.push({ handle, sprite });
 
     // Audible pop
@@ -179,8 +188,20 @@ export class BallPitScene extends Scene {
       audio.playTone('pop');
     }
 
-    this.score += 1;
-    this.ctx_.emit({ kind: 'score_update', value: this.score });
+  }
+
+  private spawnExplosion(x: number, y: number) {
+    const count = 18;
+    for (let i = 0; i < count; i += 1) {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.18;
+      const speed = 220 + Math.random() * 260;
+      const radius = Math.random() * 34;
+      this.spawnBall(
+        x + Math.cos(angle) * radius,
+        y + Math.sin(angle) * radius,
+        { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed },
+      );
+    }
   }
 
   private drainBall(entry: BallEntry) {
@@ -202,8 +223,6 @@ export class BallPitScene extends Scene {
       audio.playTone('drain');
     }
 
-    this.score += 5;
-    this.ctx_.emit({ kind: 'score_update', value: this.score });
   }
 
   private applyAttractor(x: number, y: number, radius: number, strength: number) {

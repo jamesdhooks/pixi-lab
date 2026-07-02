@@ -1,12 +1,12 @@
 import type { SettingsField } from '@hooksjam/pixi-lab-core';
 
 export const ORBITAL_SHRAPNEL_SETTINGS_FIELDS: SettingsField[] = [
-  { key: 'particleCount', label: 'Debris Count', type: 'number', min: 120, max: 1200, step: 40, default: 520 },
-  { key: 'resolution', label: 'Resolution', type: 'number', min: 32, max: 512, step: 32, default: 64 },
-  { key: 'gravity', label: 'Planet Gravity', type: 'number', min: 600, max: 3200, step: 50, default: 1550 },
+  { key: 'particleCount', label: 'Debris Count', type: 'number', min: 120, max: 1200, step: 40, default: 720 },
+  { key: 'resolution', label: 'Resolution', type: 'number', min: 32, max: 512, step: 32, default: 96 },
+  { key: 'gravity', label: 'Planet Gravity', type: 'number', min: 600, max: 3200, step: 50, default: 1850 },
   { key: 'planetRadius', label: 'Planet Radius', type: 'number', min: 22, max: 92, step: 2, default: 46 },
-  { key: 'trailFade', label: 'Trail Persistence', type: 'number', min: 0.86, max: 0.995, step: 0.005, default: 0.955 },
-  { key: 'debrisSize', label: 'Debris Size', type: 'number', min: 0.35, max: 2.4, step: 0.05, default: 0.58 },
+  { key: 'trailFade', label: 'Trail Persistence', type: 'number', min: 0.86, max: 0.995, step: 0.005, default: 0.972 },
+  { key: 'debrisSize', label: 'Debris Size', type: 'number', min: 0.35, max: 2.4, step: 0.05, default: 0.72 },
   {
     key: 'trailGamma',
     label: 'Trail Contrast',
@@ -15,7 +15,7 @@ export const ORBITAL_SHRAPNEL_SETTINGS_FIELDS: SettingsField[] = [
     min: 0.2,
     max: 0.9,
     step: 0.02,
-    default: 0.36,
+    default: 0.3,
   },
   {
     key: 'rawParticleTextureSize',
@@ -86,17 +86,17 @@ export const ORBITAL_SHRAPNEL_SETTINGS_FIELDS: SettingsField[] = [
 ];
 
 export const ORBITAL_SHRAPNEL_DEFAULTS: Record<string, unknown> = {
-  particleCount: 520,
-  resolution: 64,
-  gravity: 1550,
+  particleCount: 720,
+  resolution: 96,
+  gravity: 1850,
   planetRadius: 46,
-  drag: 0.002,
-  trailFade: 0.955,
+  drag: 0.0016,
+  trailFade: 0.972,
   rawParticleTextureSize: '256',
   rawTrailTextureWidth: '320',
   rawMaxSpeed: 2.3,
-  debrisSize: 0.58,
-  trailGamma: 0.36,
+  debrisSize: 0.72,
+  trailGamma: 0.3,
   bloomStrength: 1.25,
   streakStrength: 0.75,
   style: 'ice-ring',

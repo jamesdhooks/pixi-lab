@@ -39,6 +39,7 @@ Use these terms for architecture work:
 - Do not promote scene-owned WebGL/WebGPU experiments into core until repeated implementation patterns prove the boundary.
 - Keep Pixi as the default shared backend and preserve demo/gallery discovery through `LabExperience`.
 - Add small pure helpers/types before runtime rewiring, then validate with focused package checks.
+- Keep tweakable experience settings in the gear/settings drawer; avoid duplicate top-of-scene sliders or selects that compete with the canvas.
 - Keep reference scenes, exploratory ports, and draft documentation off main until they are intentionally promoted.
 
 ## Promotion order

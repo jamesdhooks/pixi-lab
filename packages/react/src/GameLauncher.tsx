@@ -434,10 +434,8 @@ function GameLauncherInner({
     () => (definition.settingsFields ?? []).filter(isFieldVisible),
     [definition.settingsFields, isFieldVisible],
   );
-  const topControlFields = useMemo(
-    () => visibleSettingsFields.filter((f) => !f.advanced && (f.type === 'number' || f.type === 'select')),
-    [visibleSettingsFields],
-  );
+  // Settings fields belong in the gear drawer. The runtime canvas should not get
+  // duplicate top-of-scene tuning controls that compete with the experience.
 
   // On mobile portrait, style + mode are shown at the top of SimControlPanel instead of HUD/OverflowMenu.
   const controlsHeaderSlot =
@@ -481,7 +479,7 @@ function GameLauncherInner({
   // Append a slider hint if the experience has numeric settings visible at default mode
   const defaultNumericFields = visibleSettingsFields.filter((f) => f.type === 'number');
   if (defaultNumericFields.length > 0) {
-    introHints.push({ label: 'Sliders', action: 'adjust physics and visual settings at the top' });
+    introHints.push({ label: 'Settings', action: 'use the gear to tune physics and visual settings' });
   }
 
   return (
@@ -698,11 +696,11 @@ function GameLauncherInner({
             />
           )}
 
-          {/* Top: numeric sliders for any experience that exposes number settings */}
-          {(topControlFields.length > 0 || controlsHeaderSlot) && (
+          {/* Mobile-only style/mode affordance; tweakable settings live in the gear drawer. */}
+          {controlsHeaderSlot && (
             <SimControlPanel
               app={appInstance}
-              fields={topControlFields}
+              fields={[]}
               settingsVersion={settingsVersion}
               headerSlot={controlsHeaderSlot}
             />

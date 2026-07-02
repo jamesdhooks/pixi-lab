@@ -53,6 +53,12 @@ vi.mock('@hooksjam/pixi-lab-core', async (importOriginal) => {
     ...actual,
     createCircleBody: vi.fn(() => ({ ...mockHandle, id: `ball-${Date.now()}` })),
     createEdgeWall: vi.fn(() => mockHandle),
+    createBoundaryWalls: vi.fn(() => [
+      { ...mockHandle, id: 'wall-top', userData: { id: 'wall-top', kind: 'wall' } },
+      { ...mockHandle, id: 'wall-bottom', userData: { id: 'wall-bottom', kind: 'wall' } },
+      { ...mockHandle, id: 'wall-left', userData: { id: 'wall-left', kind: 'wall' } },
+      { ...mockHandle, id: 'wall-right', userData: { id: 'wall-right', kind: 'wall' } },
+    ]),
     destroyBody: vi.fn(),
   };
 });
@@ -135,11 +141,28 @@ describe('BallPitScene', () => {
     scene.onEnter(ctx, makeInput(snap));
   });
 
-  it('starts with score 0 and no balls', () => {
+  it('starts without score events and creates closed boundary walls', async () => {
     expect(ctx.emit).not.toHaveBeenCalled();
+    const { createBoundaryWalls } = await import('@hooksjam/pixi-lab-core');
+    expect(createBoundaryWalls).toHaveBeenCalledWith(ctx.systems.world, 400, 600, {
+      restitution: 0.78,
+      friction: 0.08,
+    });
   });
 
-  it('spawns a ball when a human tap justDown event fires', () => {
+  it('rebuilds closed boundary walls when resized', async () => {
+    const { createBoundaryWalls } = await import('@hooksjam/pixi-lab-core');
+    vi.mocked(createBoundaryWalls).mockClear();
+
+    scene.resize(480, 720);
+
+    expect(createBoundaryWalls).toHaveBeenCalledWith(ctx.systems.world, 480, 720, {
+      restitution: 0.78,
+      friction: 0.08,
+    });
+  });
+
+  it('spawns a ball when a human tap justDown event fires', async () => {
     const ptr = {
       id: 1,
       x: 100,
@@ -158,14 +181,18 @@ describe('BallPitScene', () => {
     scene.onEnter(ctx, input);
     scene.update(1 / 60);
 
-    expect(ctx.emit).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: 'score_update', value: 1 }),
+    const { createCircleBody } = await import('@hooksjam/pixi-lab-core');
+    expect(createCircleBody).toHaveBeenCalledWith(
+      ctx.systems.world,
+      expect.objectContaining({ x: 100, y: 100, restitution: 0.6 }),
     );
+    expect(ctx.emit).not.toHaveBeenCalledWith(expect.objectContaining({ kind: 'score_update' }));
   });
 
-  it('does not spawn more balls than maxBalls setting', () => {
+  it('does not spawn more balls than maxBalls setting', async () => {
     // maxBalls = 5 in our ctx
-    const emit = vi.mocked(ctx.emit);
+    const { createCircleBody } = await import('@hooksjam/pixi-lab-core');
+    vi.mocked(createCircleBody).mockClear();
     for (let i = 0; i < 10; i++) {
       const ptr = {
         id: i,
@@ -181,12 +208,11 @@ describe('BallPitScene', () => {
       scene.onEnter(ctx, input);
       scene.update(1 / 60);
     }
-    // Score from spawns should cap out at maxBalls (5), rest are particle bursts (+0 score)
-    const lastScoreCall = emit.mock.calls.filter((c) => c[0].kind === 'score_update').at(-1);
-    expect(lastScoreCall?.[0].value).toBeLessThanOrEqual(5);
+    expect(createCircleBody).toHaveBeenCalledTimes(10);
+    expect(ctx.emit).not.toHaveBeenCalledWith(expect.objectContaining({ kind: 'score_update' }));
   });
 
-  it('emits score updates (score increases) when a ball drains', async () => {
+  it('still cleans up impossible out-of-bounds balls defensively', async () => {
     // Spawn one ball
     const ptr = {
       id: 1,
@@ -201,24 +227,14 @@ describe('BallPitScene', () => {
     scene.onEnter(ctx, makeInput(snap));
     scene.update(1 / 60);
 
-    const emit = vi.mocked(ctx.emit);
-    const beforeDrainScore =
-      (emit.mock.calls.filter((c) => c[0].kind === 'score_update').at(-1)?.[0] as { value: number })
-        ?.value ?? 0;
-
-    // Simulate the ball's body returning a position below drain threshold
-    const { createCircleBody } = await import('@hooksjam/pixi-lab-core');
+    // Simulate the ball's body returning a position below drain threshold.
+    const { createCircleBody, destroyBody } = await import('@hooksjam/pixi-lab-core');
     const createdHandle = vi.mocked(createCircleBody).mock.results[0]?.value as typeof mockHandle;
     if (createdHandle) {
       createdHandle.body.getPosition = () => ({ x: 0, y: (ctx.height + 100) * 0.01 });
       scene.update(1 / 60);
-      const afterDrainScore =
-        (
-          emit.mock.calls.filter((c) => c[0].kind === 'score_update').at(-1)?.[0] as {
-            value: number;
-          }
-        )?.value ?? 0;
-      expect(afterDrainScore).toBeGreaterThan(beforeDrainScore);
+      expect(vi.mocked(destroyBody).mock.calls.some(([, handle]) => handle === createdHandle)).toBe(true);
+      expect(ctx.emit).not.toHaveBeenCalledWith(expect.objectContaining({ kind: 'score_update' }));
     }
   });
 });
