@@ -1,22 +1,58 @@
 import type { SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { alienVascularTreeDefinition } from './alien-vascular-tree/alien-vascular-tree.definition.js';
+import { chainRainDefinition } from './chain-rain/chain-rain.definition.js';
+import { fireworksDefinition } from './fireworks/fireworks.definition.js';
+import { fluidTankDefinition } from './fluid-tank/fluid-tank.definition.js';
 import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
+import { lavaLampDefinition } from './lava-lamp/lava-lamp.definition.js';
+import { myceliumDefinition } from './mycelium/mycelium.definition.js';
 import { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
+import { softBodyBlobDefinition } from './soft-body-blob/soft-body-blob.definition.js';
+import { turingSkinDefinition } from './turing-skin/turing-skin.definition.js';
+import { waterTankDefinition } from './water-tank/water-tank.definition.js';
 
+export { alienVascularTreeDefinition, alienVascularTreeStyleManifest } from './alien-vascular-tree/alien-vascular-tree.definition.js';
+export { GpuVascularTreeScene } from './alien-vascular-tree/GpuVascularTreeScene.js';
+export { chainRainDefinition } from './chain-rain/chain-rain.definition.js';
+export { fireworksDefinition } from './fireworks/fireworks.definition.js';
+export { fireworksStyleManifest } from './fireworks/fireworksStyleManifest.js';
+export { RawFireworksScene } from './fireworks/RawFireworksScene.js';
+export { FireworksPreviewScene } from './fireworks/FireworksPreviewScene.js';
+export { fluidTankDefinition } from './fluid-tank/fluid-tank.definition.js';
+export { fluidTankStyleManifest } from './fluid-tank/fluidTankStyleManifest.js';
+export { RawFluidTankScene } from './fluid-tank/RawFluidTankScene.js';
+export { FluidTankPreviewScene } from './fluid-tank/FluidTankPreviewScene.js';
 export { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition.js';
-export { HarmonicSandScene, harmonicSandStyleManifest } from './harmonic-sand/HarmonicSandScene.js';
+export { harmonicSandStyleManifest } from './harmonic-sand/harmonicSandStyleManifest.js';
 export { RawHarmonicSandScene } from './harmonic-sand/RawHarmonicSandScene.js';
 export { HarmonicSandPreviewScene } from './harmonic-sand/HarmonicSandPreviewScene.js';
-export { HarmonicSandModel, type HarmonicEmitter, type HarmonicSandModelOptions } from './harmonic-sand/HarmonicSandModel.js';
+export { lavaLampDefinition, lavaLampStyleManifest } from './lava-lamp/lava-lamp.definition.js';
 
+export { myceliumDefinition, myceliumStyleManifest } from './mycelium/mycelium.definition.js';
+export { GpuMyceliumScene } from './mycelium/GpuMyceliumScene.js';
 export { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
-export { OrbitalShrapnelExperimentalRawEngineScene } from './orbital-shrapnel/OrbitalShrapnelExperimentalRawEngineScene.js';
-export { OrbitalShrapnelScene, orbitalShrapnelStyleManifest } from './orbital-shrapnel/OrbitalShrapnelScene.js';
+export { RawOrbitalShrapnelReferenceScene } from './orbital-shrapnel/RawOrbitalShrapnelReferenceScene.js';
+export { orbitalShrapnelStyleManifest } from './orbital-shrapnel/orbitalShrapnelStyleManifest.js';
 export { OrbitalShrapnelPreviewScene } from './orbital-shrapnel/OrbitalShrapnelPreviewScene.js';
-export { OrbitalShrapnelModel, type OrbitalShrapnelModelOptions, type OrbitalShrapnelStats } from './orbital-shrapnel/OrbitalShrapnelModel.js';
+export { softBodyBlobDefinition } from './soft-body-blob/soft-body-blob.definition.js';
+export { AdvancedConstraintParticlesRawScene } from './advanced-physics/AdvancedConstraintParticlesRawScene.js';
+export { turingSkinDefinition, turingSkinStyleManifest } from './turing-skin/turing-skin.definition.js';
+export { GpuTuringSkinScene } from './turing-skin/GpuTuringSkinScene.js';
+export { waterTankDefinition, waterTankStyleManifest } from './water-tank/water-tank.definition.js';
+export { RawParticleMetaballScene } from './shared/RawParticleMetaballScene.js';
 
 export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   harmonicSandDefinition,
   orbitalShrapnelDefinition,
+  fireworksDefinition,
+  fluidTankDefinition,
+  chainRainDefinition,
+  softBodyBlobDefinition,
+  lavaLampDefinition,
+  waterTankDefinition,
+  myceliumDefinition,
+  turingSkinDefinition,
+  alienVascularTreeDefinition,
 ] as const;
 
 export function getSimulation(id: string): SimulationDefinition | undefined {

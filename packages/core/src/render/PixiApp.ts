@@ -5,6 +5,7 @@
  * Handles DPR-aware resolution, antialias config, and teardown.
  */
 import { Application } from 'pixi.js';
+import { trackWebGLContext } from './WebGLContextTracker.js';
 
 export interface PixiAppOptions {
   container: HTMLElement;
@@ -37,6 +38,7 @@ export class PixiApp {
   private _height: number;
   private _maxDpr: number;
   private _maxPixels: number | undefined;
+  private releaseWebGLContext: (() => void) | undefined;
 
   private constructor(opts: PixiAppOptions) {
     this._width = PixiApp.normalizeSize(opts.width);
@@ -73,6 +75,10 @@ export class PixiApp {
     instance.app.canvas.style.width = '100%';
     instance.app.canvas.style.height = '100%';
     opts.container.appendChild(instance.app.canvas);
+    instance.releaseWebGLContext = trackWebGLContext(instance.app.canvas, {
+      kind: 'pixi',
+      label: opts.container.dataset.pixiLabContextLabel ?? 'PixiApp',
+    });
     return instance;
   }
 
@@ -137,6 +143,8 @@ export class PixiApp {
     // GlobalResourceRegistry.release(), which clears the shared batch pool and
     // corrupts any other Pixi Application instances still running in the same tab
     // (e.g. GameTile preview apps on the home screen behind the GameLauncher).
+    this.releaseWebGLContext?.();
+    this.releaseWebGLContext = undefined;
     this.app.destroy({ removeView: true }, { children: true });
   }
 

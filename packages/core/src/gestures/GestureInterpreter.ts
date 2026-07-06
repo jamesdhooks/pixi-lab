@@ -72,8 +72,11 @@ export class GestureInterpreter {
           events.push({ kind: 'double_tap', id, x: state.latest.x, y: state.latest.y, durationMs, timestamp: now });
         }
         this.lastTap = { x: state.latest.x, y: state.latest.y, timestamp: now };
-      } else if (velocity >= swipeVelocity) {
-        events.push({ kind: 'fast_swipe', id, x: state.latest.x, y: state.latest.y, dx, dy, velocity, durationMs, timestamp: now });
+      } else {
+        events.push({ kind: 'release', id, x: state.latest.x, y: state.latest.y, dx, dy, velocity, durationMs, timestamp: now });
+        if (velocity >= swipeVelocity) {
+          events.push({ kind: 'fast_swipe', id, x: state.latest.x, y: state.latest.y, dx, dy, velocity, durationMs, timestamp: now });
+        }
       }
 
       this.states.delete(id);

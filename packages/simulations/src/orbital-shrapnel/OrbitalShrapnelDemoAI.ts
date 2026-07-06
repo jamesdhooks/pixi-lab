@@ -1,17 +1,30 @@
-import type { GestureEvent, SimAIContext, SimulationAI } from '@hooksjam/pixi-lab-core';
+import type { GestureEvent, SettingsField, SimAIContext, SimulationAI } from '@hooksjam/pixi-lab-core';
+import { ORBITAL_SHRAPNEL_SETTINGS_FIELDS } from './orbital-shrapnel.config.js';
 
-const PARAM_PRESETS: Array<[number, number, number, number]> = [
-  [180, 82, 1200, 0.976],
-  [240, 58, 780, 0.965],
-  [320, 104, 1450, 0.982],
-  [140, 44, 610, 0.955],
-  [280, 92, 1680, 0.988],
-];
+const RAW_PARTICLE_TEXTURE_SIZE_PREVIEW_LIMIT = 256;
+
+interface OrbitalShrapnelDemoAIOptions {
+  liteMode?: boolean;
+  rawParticleTextureSizeMax?: number;
+}
 
 export class OrbitalShrapnelDemoAI implements SimulationAI {
+  private readonly liteMode: boolean;
+  private readonly rawParticleTextureSizeMax: number;
   private nextGestureIn = 0.35;
   private elapsedSinceOverhaul = 0;
   private nextOverhaulIn = 0;
+
+  constructor(options: OrbitalShrapnelDemoAIOptions = {}) {
+    this.liteMode = options.liteMode ?? false;
+    this.rawParticleTextureSizeMax =
+      options.rawParticleTextureSizeMax !== undefined
+        ? Math.max(64, options.rawParticleTextureSizeMax)
+        : RAW_PARTICLE_TEXTURE_SIZE_PREVIEW_LIMIT;
+    if (!this.liteMode) {
+      this.rawParticleTextureSizeMax = Number.POSITIVE_INFINITY;
+    }
+  }
 
   onActivate(ctx: SimAIContext): void {
     this.doOverhaul(ctx);
@@ -44,15 +57,59 @@ export class OrbitalShrapnelDemoAI implements SimulationAI {
   }
 
   private doOverhaul(ctx: SimAIContext): void {
-    const { styleIds, applyStyle, applyNumericSetting, resetScene } = ctx;
+    const { styleIds, applyStyle, applySetting, applyNumericSetting, resetScene } = ctx;
     resetScene();
     if (styleIds.length > 0) applyStyle(styleIds[Math.floor(Math.random() * styleIds.length)]);
-    const [particleCount, planetRadius, gravity, trailFade] = PARAM_PRESETS[Math.floor(Math.random() * PARAM_PRESETS.length)];
-    applyNumericSetting('particleCount', particleCount);
-    applyNumericSetting('planetRadius', planetRadius);
-    applyNumericSetting('gravity', gravity);
-    applyNumericSetting('trailFade', trailFade);
+
+    for (const field of ORBITAL_SHRAPNEL_SETTINGS_FIELDS) {
+      switch (field.type) {
+        case 'number': {
+          const value = pickRandomNumberForField(field);
+          applyNumericSetting(field.key, value);
+          break;
+        }
+        case 'boolean': {
+          applySetting(field.key, Math.random() < 0.5);
+          break;
+        }
+        case 'select': {
+          const options = field.key === 'rawParticleTextureSize' && this.liteMode
+            ? getLiteRawParticleTextureSizeOptions(field.options, this.rawParticleTextureSizeMax)
+            : field.options ?? [];
+          if (options.length === 0) break;
+          const choice = options[Math.floor(Math.random() * options.length)]?.value;
+          if (choice !== undefined) {
+            applySetting(field.key, choice);
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    }
     this.nextOverhaulIn = 18 + Math.random() * 14;
     this.elapsedSinceOverhaul = 0;
   }
+}
+
+function getLiteRawParticleTextureSizeOptions(
+  options: { label: string; value: string }[] = [],
+  maxSize: number,
+): { label: string; value: string }[] {
+  if (options.length === 0) return [];
+  const filtered = options.filter((option) => Number(option.value) <= maxSize);
+  if (filtered.length > 0) return filtered;
+  return options;
+}
+
+function pickRandomNumberForField(field: SettingsField): number {
+  const min = typeof field.min === 'number' ? field.min : 0;
+  const max = typeof field.max === 'number' ? field.max : min;
+  const step = typeof field.step === 'number' && field.step > 0 ? field.step : 1;
+  const span = Math.max(0, max - min);
+  const base = min + Math.random() * span;
+  const quantized = Math.round(base / step) * step;
+  const snapped = Math.max(min, Math.min(max, quantized));
+  const decimals = step < 1 ? step.toString().split('.')[1]?.length ?? 0 : 0;
+  return Number(snapped.toFixed(Math.min(4, decimals)));
 }

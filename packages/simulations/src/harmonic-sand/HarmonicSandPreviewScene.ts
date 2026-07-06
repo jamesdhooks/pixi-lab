@@ -1,33 +1,67 @@
 import type { GameContext, Input } from '@hooksjam/pixi-lab-core';
-import { HarmonicSandScene, harmonicSandStyleManifest } from './HarmonicSandScene.js';
+import { harmonicSandStyleManifest } from './harmonicSandStyleManifest.js';
+import {
+  applyHarmonicSandPreviewCaps,
+  HARMONIC_PREVIEW_PROFILES,
+  pickRandomStyleId,
+  randomizeHarmonicSandSettings,
+} from './harmonicSandRandomization.js';
+import { RawHarmonicSandScene } from './RawHarmonicSandScene.js';
 
-const PREVIEW_FREQS = [1.2, 2.0, 3.0, 4.2, 6.0];
-
-export class HarmonicSandPreviewScene extends HarmonicSandScene {
+export class HarmonicSandPreviewScene extends RawHarmonicSandScene {
   override readonly name = 'HarmonicSandPreview';
 
   constructor() {
-    // Low-resolution field for a preview tile — keeps CPU low.
-    super(32);
+    super();
+    this.setQuality('basic');
   }
 
   override onEnter(ctx: GameContext, input: Input): void {
     super.onEnter(ctx, input);
     const { width, height } = ctx;
 
-    // Randomise style and base frequency so each tile looks different.
-    const styles = harmonicSandStyleManifest.styles.filter((s) => s.id !== '__random__');
-    const style = styles[Math.floor(Math.random() * styles.length)];
-    this.setStyle(style.id);
-    const freq = PREVIEW_FREQS[Math.floor(Math.random() * PREVIEW_FREQS.length)];
-    ctx.systems.settings.set('baseFrequency', freq);
+    const styleIds = harmonicSandStyleManifest.styles
+      .filter((style) => style.id !== '__random__')
+      .map((style) => style.id);
+    const styleId = pickRandomStyleId(styleIds);
+    ctx.systems.styleManager?.setStyle(styleId);
+    this.setStyle(styleId);
 
-    // Pre-queue 3 taps at randomised positions spread across the canvas.
+    const settings = randomizeHarmonicSandSettings(
+      {
+        applySetting: (key, value) => ctx.systems.settings.set(key, value),
+        applyNumericSetting: (key, value) => ctx.systems.settings.set(key, value),
+      },
+      HARMONIC_PREVIEW_PROFILES,
+    );
+    const previewSettings = applyHarmonicSandPreviewCaps(settings);
+    if (previewSettings.rawParticleCount < settings.rawParticleCount) {
+      ctx.systems.settings.set('rawParticleCount', previewSettings.rawParticleCount);
+    }
+    if (previewSettings.rawParticleDensity < settings.rawParticleDensity) {
+      ctx.systems.settings.set('rawParticleDensity', previewSettings.rawParticleDensity);
+    }
+    if (previewSettings.rawEmitterLimit < settings.rawEmitterLimit) {
+      ctx.systems.settings.set('rawEmitterLimit', previewSettings.rawEmitterLimit);
+    }
+    if (previewSettings.rawLineSharpness < settings.rawLineSharpness) {
+      ctx.systems.settings.set('rawLineSharpness', previewSettings.rawLineSharpness);
+    }
+    if (previewSettings.rawGlow < settings.rawGlow) {
+      ctx.systems.settings.set('rawGlow', previewSettings.rawGlow);
+    }
+
+    const count = Math.max(2, Math.min(5, Math.round(previewSettings.rawEmitterLimit)));
     const now = Date.now();
-    this.pushGestures([
-      { kind: 'tap', x: width * (0.15 + Math.random() * 0.25), y: height * (0.15 + Math.random() * 0.25), timestamp: now },
-      { kind: 'tap', x: width * (0.55 + Math.random() * 0.25), y: height * (0.15 + Math.random() * 0.25), timestamp: now + 1 },
-      { kind: 'tap', x: width * (0.25 + Math.random() * 0.40), y: height * (0.60 + Math.random() * 0.20), timestamp: now + 2 },
-    ]);
+    const gestures: Parameters<this['pushGestures']>[0] = [];
+    for (let index = 0; index < count; index += 1) {
+      gestures.push({
+        kind: 'tap' as const,
+        x: width * (0.12 + Math.random() * 0.76),
+        y: height * (0.14 + Math.random() * 0.72),
+        timestamp: now + index,
+      });
+    }
+    this.pushGestures(gestures);
   }
 }

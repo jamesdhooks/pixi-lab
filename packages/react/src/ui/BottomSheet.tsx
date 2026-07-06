@@ -2,7 +2,7 @@
  * packages/react/src/ui/BottomSheet.tsx
  *
  * Mobile-first sheet that slides up from the bottom.
- * Used by OverflowMenu, SettingsDrawer, StylePicker on mobile.
+ * Used by OverflowMenu and SettingsDrawer on mobile.
  *
  * Props:
  *   open      — controlled visibility

@@ -4,19 +4,19 @@
  * Full-screen game shell. Intro → gameplay → game over.
  * Settings button pauses the engine and opens the settings drawer.
  */
-import { useState, useCallback, useRef, useEffect, useMemo, type MouseEvent } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, HelpCircle, Play, Settings as SettingsIcon, X } from 'lucide-react';
+import { Dices, Eye, EyeOff, HelpCircle, Play, Settings as SettingsIcon, X } from 'lucide-react';
 import { GameRuntime } from './GameRuntime.js';
 import { IntroCard } from './ui/IntroCard.js';
 import { GameOverModal } from './ui/GameOverModal.js';
 import { HUD } from './ui/HUD.js';
 import { ModeToggle } from './ui/ModeToggle.js';
-import { SettingsDrawer } from './ui/SettingsDrawer.js';
-import { StylePicker } from './ui/StylePicker.js';
+import { SettingsDrawer, type SettingsDefaultsSaveRequest } from './ui/SettingsDrawer.js';
 import { EngineConfigurationSelector } from './ui/EngineConfigurationSelector.js';
 import { DebugPanel } from './ui/DebugPanel.js';
 import { SimControlPanel } from './ui/SimControlPanel.js';
+import { TopbarSelect } from './ui/TopbarSelect.js';
 import { OverflowMenu } from './ui/OverflowMenu.js';
 import { ViewportProvider, useViewportContext } from './ViewportProvider.js';
 import { resolveRenderSelection, resolveStoredRenderSelection } from './engineConfigurationSelection.js';
@@ -26,6 +26,7 @@ import {
   isEngineConfigurationVisible,
   serializeRenderBackendProfileStorage,
   nameSuggestions,
+  withCommonSimulationSettings,
 } from '@hooksjam/pixi-lab-core';
 import type { LabExperience, SimulationExperience } from '@hooksjam/pixi-lab-core';
 import type { GameEvent, RenderBackendProfileSelection, RenderQuality, ScoreEntry } from '@hooksjam/pixi-lab-core';
@@ -58,6 +59,49 @@ function writeStoredRenderSelection(selection: RenderBackendProfileSelection): v
   } catch {
     /* ignore */
   }
+}
+
+function styleStorageKey(definition: LabExperience): string {
+  return `pixi-lab:style:${definition.id}`;
+}
+
+function defaultStyleId(definition: LabExperience): string {
+  return definition.styleManifest?.defaultStyleId ?? definition.styleManifest?.styles[0]?.id ?? '';
+}
+
+function readStoredStyleId(definition: LabExperience): string {
+  const fallback = defaultStyleId(definition);
+  if (!definition.styleManifest) return fallback;
+  try {
+    const stored = localStorage.getItem(styleStorageKey(definition));
+    if (stored && definition.styleManifest.styles.some((style) => style.id === stored)) return stored;
+  } catch {
+    /* ignore */
+  }
+  return fallback;
+}
+
+function writeStoredStyleId(definition: LabExperience, styleId: string): void {
+  if (!definition.styleManifest?.styles.some((style) => style.id === styleId)) return;
+  try {
+    localStorage.setItem(styleStorageKey(definition), styleId);
+  } catch {
+    /* ignore */
+  }
+}
+
+const RENDER_STYLE_FIELD_KEY = 'renderStyle';
+
+function getRenderStyleField(definition: LabExperience): NonNullable<LabExperience['settingsFields']>[number] | undefined {
+  return definition.settingsFields?.find((field) => field.key === RENDER_STYLE_FIELD_KEY && field.type === 'select');
+}
+
+function defaultRenderStyleId(definition: LabExperience): string {
+  const configured = definition.configDefaults?.[RENDER_STYLE_FIELD_KEY];
+  if (typeof configured === 'string') return configured;
+  const field = getRenderStyleField(definition);
+  if (typeof field?.default === 'string') return field.default;
+  return field?.options?.[0]?.value ?? '';
 }
 
 const RUNTIME_PERF_CSS = `
@@ -113,6 +157,14 @@ export interface GameLauncherProps {
   onRenderSelectionChange?: (selection: RenderBackendProfileSelection) => void;
   /** Remove the black shell background so the launcher floats as a transparent overlay. */
   transparent?: boolean;
+  /** Host callback for persisting the current scene tuning as disk-backed defaults. */
+  onSaveDefaults?: (payload: SceneDefaultsSavePayload) => Promise<void> | void;
+}
+
+export interface SceneDefaultsSavePayload {
+  definitionId: string;
+  section: string | null;
+  defaults: Record<string, unknown>;
 }
 
 export function GameLauncher(props: GameLauncherProps) {
@@ -139,6 +191,7 @@ function GameLauncherInner({
   experimentalRawEngine = false,
   onRenderSelectionChange,
   transparent = false,
+  onSaveDefaults,
 }: GameLauncherProps) {
   // ViewportProvider is mounted by GameLauncher wrapper; child components read context directly.
   const { isMobile, isLandscape } = useViewportContext();
@@ -150,10 +203,13 @@ function GameLauncherInner({
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState<number | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [imageUrlEditorOpen, setImageUrlEditorOpen] = useState(false);
+  const [imageUrlDraft, setImageUrlDraft] = useState('');
   const [uiHidden, setUiHidden] = useState(autoDemo);
   const [isDemo, setIsDemo] = useState(autoDemo);
   const [screensaverActive, setScreensaverActive] = useState(false);
-  const [styleId, setStyleId] = useState(definition.styleManifest?.defaultStyleId ?? '');
+  const [styleId, setStyleId] = useState(() => readStoredStyleId(definition));
+  const [renderStyleId, setRenderStyleId] = useState(() => defaultRenderStyleId(definition));
   const resolveStartupRenderSelection = useCallback(() => {
     if (initialRenderSelection !== undefined) {
       return resolveStoredRenderSelection(
@@ -212,12 +268,14 @@ function GameLauncherInner({
     const nextSelection = resolveStartupRenderSelection();
     setRenderSelection(nextSelection);
     setRenderedLegacyQuality(undefined);
+    setStyleId(readStoredStyleId(definition));
+    setRenderStyleId(defaultRenderStyleId(definition));
     appRef.current = null;
     setAppInstance(null);
     if (initialRenderSelection === undefined && initialQuality === undefined) {
       writeStoredRenderSelection(nextSelection);
     }
-  }, [definition.id, initialQuality, initialRenderSelection, resolveStartupRenderSelection]);
+  }, [definition, initialQuality, initialRenderSelection, resolveStartupRenderSelection]);
 
   const handleEvent = useCallback((event: GameEvent) => {
     switch (event.kind) {
@@ -244,10 +302,15 @@ function GameLauncherInner({
         break;
       case 'style_change':
         if (event.payload && 'styleId' in event.payload) {
-          setStyleId(event.payload.styleId as string);
+          const nextStyleId = event.payload.styleId as string;
+          setStyleId(nextStyleId);
+          writeStoredStyleId(definition, nextStyleId);
         }
         break;
       case 'setting_change':
+        if (event.payload && event.payload.key === RENDER_STYLE_FIELD_KEY && typeof event.payload.value === 'string') {
+          setRenderStyleId(event.payload.value);
+        }
         setSettingsVersion((v) => v + 1);
         break;
       default:
@@ -276,9 +339,48 @@ function GameLauncherInner({
   const handleModeChange = useCallback((id: string) => {
     setModeId(id);
     appRef.current?.setInteractionMode(id);
+  }, [definition]);
+
+  const handleRenderStyleChange = useCallback((id: string) => {
+    const renderOptions = getRenderStyleField(definition)?.options?.map((option) => ({ id: option.value, label: option.label })) ?? [];
+    const nextId = definition.id === 'fluid-tank' && id === 'random'
+      ? pickRandomRenderStyle(renderOptions)
+      : id;
+    setRenderStyleId(nextId);
+    appRef.current?.settings.set(RENDER_STYLE_FIELD_KEY, nextId);
+    if (definition.id === 'fluid-tank') appRef.current?.resetScene();
+  }, [definition]);
+
+  const handleStyleChange = useCallback((nextStyleId: string) => {
+    const resolvedStyleId = nextStyleId === '__random__'
+      ? pickRandomStyleId(definition.styleManifest?.styles ?? [])
+      : nextStyleId;
+    setStyleId(resolvedStyleId);
+    writeStoredStyleId(definition, resolvedStyleId);
+    appRef.current?.setStyle(resolvedStyleId);
+    if (definition.kind !== 'simulation') appRef.current?.settings.set('style', resolvedStyleId);
+    if (definition.id === 'fluid-tank') appRef.current?.resetScene();
+  }, [definition]);
+
+  const handleImageUrlPrompt = useCallback(() => {
+    const app = appRef.current;
+    if (!app) return;
+    const currentValue = app.settings.get('initImageUrl');
+    const current = typeof currentValue === 'string' ? currentValue : '';
+    setImageUrlDraft(current);
+    setImageUrlEditorOpen(true);
   }, []);
 
-  const handleOpenSettings = useCallback((event?: MouseEvent) => {
+  const applyImageUrlDraft = useCallback(() => {
+    const app = appRef.current;
+    if (!app) return;
+    app.settings.set('initImageUrl', imageUrlDraft.trim());
+    app.resetScene();
+    setSettingsVersion((v) => v + 1);
+    setImageUrlEditorOpen(false);
+  }, [imageUrlDraft]);
+
+  const handleOpenSettings = useCallback((event?: ReactMouseEvent) => {
     event?.stopPropagation();
     setSettingsOpen(true);
   }, []);
@@ -365,6 +467,35 @@ function GameLauncherInner({
     appRef.current?.demoShuffle();
   }, [onDemoAdvance, showDemoHint]);
 
+  const randomizeWithDemoAi = useCallback(() => {
+    appRef.current?.randomizeFromDemoAi();
+    setSettingsVersion((v) => v + 1);
+  }, []);
+
+  const handleSaveDefaults = useCallback(async (request: SettingsDefaultsSaveRequest) => {
+    const app = appRef.current;
+    if (!app || !onSaveDefaults) return;
+    const defaults: Record<string, unknown> = request.section === null
+      ? { ...app.settings.getAll() }
+      : { ...request.values };
+    if (request.section === null) {
+      if (definition.styleManifest) defaults.style = styleId;
+      const renderStyle = app.settings.get(RENDER_STYLE_FIELD_KEY);
+      if (typeof renderStyle === 'string') defaults[RENDER_STYLE_FIELD_KEY] = renderStyle;
+      if (definition.id === 'fluid-tank') {
+        const injectPalette = app.settings.get('injectPalette');
+        if (typeof injectPalette === 'string') defaults.injectPalette = injectPalette;
+      }
+    }
+    app.settings.setDefaults(defaults);
+    await onSaveDefaults({
+      definitionId: definition.id,
+      section: request.section,
+      defaults,
+    });
+    setSettingsVersion((v) => v + 1);
+  }, [definition.id, definition.styleManifest, onSaveDefaults, styleId]);
+
   const showHiddenUiHint = useCallback(() => {
     if (!uiHidden || isDemo) return;
     setHiddenUiHintVisible(true);
@@ -423,35 +554,111 @@ function GameLauncherInner({
   }, [screensaverActive]);
 
   const hasModes = (definition.modes?.length ?? 0) > 1;
-  const hasEngineConfigurations = (definition.capabilities.engineConfigurations?.length ?? 0) > 0;
+  const settingsFields = useMemo(() => withCommonSimulationSettings(definition), [definition]);
+  const renderStyleField = useMemo(() => getRenderStyleField(definition), [definition]);
+  const renderStyleModes = useMemo(
+    () => (renderStyleField?.options ?? []).map((option) => ({ id: option.value, label: option.label })),
+    [renderStyleField],
+  );
+  const injectPaletteField = useMemo(
+    () => definition.id === 'fluid-tank'
+      ? settingsFields.find((field) => field.key === 'injectPalette' && field.type === 'select')
+      : undefined,
+    [definition.id, settingsFields],
+  );
+  const hasRenderStylePicker = renderStyleModes.length > 1;
+  const hasEngineConfigurations = (definition.capabilities.engineConfigurations?.length ?? 0) > 1;
   const isSimulation = definition.kind === 'simulation';
+  const hasDemoRandomizer = isSimulation && Boolean((definition as SimulationExperience).demoAiFactory);
+  const colorSchemeOptions = useMemo(
+    () => (definition.styleManifest?.styles ?? []).map((style) => ({
+      id: style.id,
+      label: style.name,
+      chipColors: style.id === '__random__' ? undefined : style.palette.slice(0, 4),
+    })),
+    [definition.styleManifest],
+  );
+  const colorSchemeControl = definition.styleManifest ? (
+    <TopbarSelect
+      label="Color"
+      value={styleId}
+      options={colorSchemeOptions}
+      onChange={handleStyleChange}
+    />
+  ) : null;
   const isFieldVisible = useCallback(
     (f: NonNullable<LabExperience['settingsFields']>[number]) =>
-      (!f.visibleModes || f.visibleModes.includes(modeId)) && isEngineConfigurationVisible(f, renderSelection),
-    [modeId, renderSelection],
+      (!f.visibleModes || f.visibleModes.includes(modeId))
+      && (!f.visibleRenderStyles || f.visibleRenderStyles.includes(renderStyleId))
+      && isEngineConfigurationVisible(f, renderSelection),
+    [modeId, renderSelection, renderStyleId],
   );
   const visibleSettingsFields = useMemo(
-    () => (definition.settingsFields ?? []).filter(isFieldVisible),
-    [definition.settingsFields, isFieldVisible],
+    () => settingsFields.filter((field) => {
+      if (field.key === RENDER_STYLE_FIELD_KEY) return false;
+      if (definition.id === 'fluid-tank' && field.key === 'injectPalette') return false;
+      return isFieldVisible(field);
+    }),
+    [definition.id, settingsFields, isFieldVisible],
   );
+  const injectPaletteValue = appInstance?.settings.get('injectPalette');
+  const injectPaletteId = typeof injectPaletteValue === 'string'
+    ? injectPaletteValue
+    : String(injectPaletteField?.default ?? 'style');
+  const handleInjectPaletteChange = useCallback((value: string) => {
+    appRef.current?.settings.set('injectPalette', value);
+    setSettingsVersion((v) => v + 1);
+  }, []);
+  const hasImageInitUrlField = settingsFields.some((field) => field.key === 'initImageUrl');
+  const imageUrlValue = appInstance?.settings.get('initImageUrl');
+  const imageUrlIsSet = typeof imageUrlValue === 'string' && imageUrlValue.trim().length > 0;
+  const imageSourceButton = definition.id === 'fluid-tank' && renderStyleId === 'image' && hasImageInitUrlField ? (
+    <button
+      type="button"
+      onClick={handleImageUrlPrompt}
+      className={`flex h-8 items-center gap-1.5 rounded-xl px-2.5 text-[10px] font-bold uppercase tracking-widest transition-colors ${
+        imageUrlIsSet
+          ? 'bg-emerald-300/18 text-emerald-50 hover:bg-emerald-300/26'
+          : 'bg-white/10 text-white/55 hover:bg-white/16 hover:text-white/85'
+      }`}
+      aria-label="Set fluid image URL"
+      title={imageUrlIsSet ? 'Image URL set' : 'Using random public image'}
+    >
+      <span>Image URL</span>
+      <span className="rounded-full bg-black/25 px-1.5 py-0.5 text-[9px]">{imageUrlIsSet ? 'Set' : 'Random'}</span>
+    </button>
+  ) : null;
+  const renderStyleControl = hasRenderStylePicker ? (
+    definition.id === 'fluid-tank' ? (
+      <TopbarSelect
+        label="Style"
+        value={renderStyleId}
+        options={renderStyleModes}
+        onChange={handleRenderStyleChange}
+      />
+    ) : (
+      <ModeToggle modes={renderStyleModes} value={renderStyleId} onChange={handleRenderStyleChange} />
+    )
+  ) : null;
+  const injectPaletteControl = definition.id === 'fluid-tank' && injectPaletteField?.options?.length ? (
+    <TopbarSelect
+      label="Inject"
+      value={injectPaletteId}
+      options={injectPaletteField.options.map((option) => ({ id: option.value, label: option.label, chipStyle: fluidInjectChipStyle(option.value) }))}
+      onChange={handleInjectPaletteChange}
+    />
+  ) : null;
   // Settings fields belong in the gear drawer. The runtime canvas should not get
   // duplicate top-of-scene tuning controls that compete with the experience.
 
   // On mobile portrait, style + mode are shown at the top of SimControlPanel instead of HUD/OverflowMenu.
   const controlsHeaderSlot =
-    mobilePortrait && (definition.styleManifest || hasModes) ? (
+    mobilePortrait && (definition.styleManifest || hasRenderStylePicker || hasModes) ? (
       <>
-        {definition.styleManifest && (
-          <StylePicker
-            manifest={definition.styleManifest}
-            value={styleId}
-            onChange={(nextStyleId) => {
-              setStyleId(nextStyleId);
-              appRef.current?.setStyle(nextStyleId);
-              if (!isSimulation) appRef.current?.settings.set('style', nextStyleId);
-            }}
-          />
-        )}
+        {colorSchemeControl}
+        {renderStyleControl}
+        {imageSourceButton}
+        {injectPaletteControl}
         {hasModes && (
           <ModeToggle modes={definition.modes!} value={modeId} onChange={handleModeChange} />
         )}
@@ -499,6 +706,17 @@ function GameLauncherInner({
         onReady={(app) => {
           appRef.current = app;
           setAppInstance(app);
+          const storedRenderStyle = app.settings.get(RENDER_STYLE_FIELD_KEY);
+          if (typeof storedRenderStyle === 'string' && renderStyleModes.some((mode) => mode.id === storedRenderStyle)) {
+            setRenderStyleId(storedRenderStyle);
+          } else if (renderStyleId) {
+            app.settings.set(RENDER_STYLE_FIELD_KEY, renderStyleId);
+          }
+          const storedStyleId = readStoredStyleId(definition);
+          if (storedStyleId) {
+            setStyleId(storedStyleId);
+            app.setStyle(storedStyleId);
+          }
           const initMode = definition.modes?.[0]?.id ?? '';
           if (autoDemo && definition.capabilities.demo) {
             enterDemoMode(app);
@@ -536,19 +754,12 @@ function GameLauncherInner({
             lives={lives}
             onQuit={handleQuit}
             controls={
-              (definition.styleManifest && !mobilePortrait) || (hasModes && !mobilePortrait) ? (
+              (definition.styleManifest && !mobilePortrait) || (hasRenderStylePicker && !mobilePortrait) || (hasModes && !mobilePortrait) ? (
                 <div className="flex items-center gap-1.5">
-                  {definition.styleManifest && !mobilePortrait && (
-                    <StylePicker
-                      manifest={definition.styleManifest}
-                      value={styleId}
-                      onChange={(nextStyleId) => {
-                        setStyleId(nextStyleId);
-                        appRef.current?.setStyle(nextStyleId);
-                        if (!isSimulation) appRef.current?.settings.set('style', nextStyleId);
-                      }}
-                    />
-                  )}
+                  {definition.styleManifest && !mobilePortrait && colorSchemeControl}
+                  {hasRenderStylePicker && !mobilePortrait && renderStyleControl}
+                  {imageSourceButton}
+                  {injectPaletteControl}
                   {hasModes && (
                     <ModeToggle modes={definition.modes!} value={modeId} onChange={handleModeChange} />
                   )}
@@ -560,23 +771,20 @@ function GameLauncherInner({
           {/* Top-right controls: engine configuration, reset, settings, hide-ui, demo — adaptive via OverflowMenu */}
           <OverflowMenu
             items={[
-              // On mobile portrait, style + mode move from HUD center into the overflow sheet.
+              // On mobile portrait, color scheme + mode move from HUD center into the overflow sheet.
               {
-                key: 'style',
-                label: 'Style',
+                key: 'color-scheme',
+                label: 'Color scheme',
                 hidden: !definition.styleManifest || !mobilePortrait || !!controlsHeaderSlot,
                 fullWidth: true,
-                sectionLabel: 'Style',
+                sectionLabel: 'Color scheme',
                 node: definition.styleManifest ? (
-                  <StylePicker
-                    manifest={definition.styleManifest}
+                  <TopbarSelect
+                    label="Color"
                     value={styleId}
+                    options={colorSchemeOptions}
                     listMode
-                    onChange={(nextStyleId) => {
-                      setStyleId(nextStyleId);
-                      appRef.current?.setStyle(nextStyleId);
-                      if (!isSimulation) appRef.current?.settings.set('style', nextStyleId);
-                    }}
+                    onChange={handleStyleChange}
                   />
                 ) : null,
               },
@@ -637,6 +845,22 @@ function GameLauncherInner({
                 ),
               },
               {
+                key: 'randomize',
+                label: 'Randomize',
+                hidden: !hasDemoRandomizer,
+                node: (
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={randomizeWithDemoAi}
+                    aria-label="Randomize settings"
+                    title="Randomize settings"
+                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-black/30 text-white/70 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
+                  >
+                    <Dices size={15} />
+                  </motion.button>
+                ),
+              },
+              {
                 key: 'hide-ui',
                 label: 'Hide UI',
                 node: (
@@ -691,10 +915,63 @@ function GameLauncherInner({
               onClose={handleCloseSettings}
               settings={appRef.current.settings}
               fields={visibleSettingsFields}
+              settingsVersion={settingsVersion}
               maxPixels={localMaxPixels}
               onMaxPixelsChange={handleMaxPixelsChange}
+              onSaveDefaults={onSaveDefaults ? handleSaveDefaults : undefined}
             />
           )}
+
+          <AnimatePresence>
+            {imageUrlEditorOpen && (
+              <motion.div
+                className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/72 p-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onMouseDown={(event) => {
+                  if (event.target === event.currentTarget) setImageUrlEditorOpen(false);
+                }}
+              >
+                <motion.div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Fluid image URL"
+                  className="w-full max-w-xl rounded-2xl bg-zinc-950 p-4 shadow-2xl ring-1 ring-white/15"
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                  transition={{ duration: 0.14 }}
+                >
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Fluid image URL</h4>
+                      <p className="mt-1 text-xs text-white/45">Paste a direct image URL. Leave blank to use a random public image.</p>
+                    </div>
+                    <button type="button" onClick={() => setImageUrlEditorOpen(false)} className="rounded-lg p-2 text-white/45 hover:bg-white/10 hover:text-white" aria-label="Close URL editor">
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <textarea
+                    autoFocus
+                    value={imageUrlDraft}
+                    onChange={(event) => setImageUrlDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') applyImageUrlDraft();
+                      if (event.key === 'Escape') setImageUrlEditorOpen(false);
+                    }}
+                    placeholder="https://example.com/image.png"
+                    className="min-h-28 w-full resize-y rounded-xl bg-white/10 px-3 py-2 text-sm text-white ring-1 ring-white/15 placeholder:text-white/30 focus:outline-none focus:ring-cyan-200/50"
+                  />
+                  <div className="mt-3 flex justify-end gap-2">
+                    <button type="button" onClick={() => setImageUrlDraft('')} className="rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/10 hover:text-white">Clear</button>
+                    <button type="button" onClick={() => setImageUrlEditorOpen(false)} className="rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/10 hover:text-white">Cancel</button>
+                    <button type="button" onClick={applyImageUrlDraft} className="rounded-xl bg-cyan-200 px-3 py-2 text-sm font-bold text-black hover:bg-cyan-100">Apply URL</button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Mobile-only style/mode affordance; tweakable settings live in the gear drawer. */}
           {controlsHeaderSlot && (
@@ -782,4 +1059,36 @@ function GameLauncherInner({
       )}
     </div>
   );
+}
+
+function pickRandomRenderStyle(options: Array<{ id: string; label: string }>): string {
+  const candidates = options.filter((option) => option.id !== 'random');
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  return pick?.id ?? options[0]?.id ?? '';
+}
+
+function pickRandomStyleId(styles: Array<{ id: string }>): string {
+  const candidates = styles.filter((style) => style.id !== '__random__');
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  return pick?.id ?? styles[0]?.id ?? '';
+}
+
+function fluidInjectChipStyle(value: string): CSSProperties {
+  if (value === 'cyan') return { background: 'rgb(26, 255, 233)' };
+  if (value === 'magenta') return { background: 'rgb(255, 31, 223)' };
+  if (value === 'amber') return { background: 'rgb(255, 157, 21)' };
+  if (value === 'green') return { background: 'rgb(31, 255, 59)' };
+  if (value === 'blue') return { background: 'rgb(41, 92, 255)' };
+  if (value === 'red') return { background: 'rgb(255, 41, 20)' };
+  if (value === 'white') return { background: 'rgb(255, 255, 230)' };
+  if (value === 'rainbow') {
+    return {
+      background:
+        'conic-gradient(from 210deg, rgb(255, 77, 77), rgb(255, 184, 77), rgb(248, 255, 77), rgb(77, 255, 142), rgb(77, 216, 255), rgb(130, 77, 255), rgb(255, 77, 227), rgb(255, 77, 77))',
+    };
+  }
+  return {
+    background:
+      'linear-gradient(135deg, rgb(53, 255, 229) 0%, rgb(77, 216, 255) 33%, rgb(255, 65, 220) 66%, rgb(255, 190, 74) 100%)',
+  };
 }

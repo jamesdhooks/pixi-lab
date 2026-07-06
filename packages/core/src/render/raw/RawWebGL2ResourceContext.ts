@@ -74,10 +74,50 @@ export interface RawFramebuffer {
   texture: RawRenderTexture;
 }
 
+export interface RawPingPongRenderTargetOptions extends RawRenderTextureOptions {}
+
+export class RawPingPongRenderTarget {
+  private frontBuffer: RawFramebuffer;
+  private backBuffer: RawFramebuffer;
+
+  constructor(private readonly resources: RawWebGL2ResourceContext, options: RawPingPongRenderTargetOptions) {
+    this.frontBuffer = resources.createFramebuffer(resources.createRenderTexture(options));
+    this.backBuffer = resources.createFramebuffer(resources.createRenderTexture(options));
+  }
+
+  get read(): RawFramebuffer {
+    return this.frontBuffer;
+  }
+
+  get write(): RawFramebuffer {
+    return this.backBuffer;
+  }
+
+  get width(): number {
+    return this.frontBuffer.texture.width;
+  }
+
+  get height(): number {
+    return this.frontBuffer.texture.height;
+  }
+
+  swap(): void {
+    const next = this.frontBuffer;
+    this.frontBuffer = this.backBuffer;
+    this.backBuffer = next;
+  }
+
+  destroy(): void {
+    this.resources.destroyFramebuffer(this.frontBuffer);
+    this.resources.destroyFramebuffer(this.backBuffer);
+  }
+}
+
 export interface RawRenderTextureOptions {
   width: number;
   height: number;
   precision?: RawTexturePrecision;
+  filter?: 'nearest' | 'linear';
 }
 
 export class RawWebGL2ResourceContext {
@@ -131,10 +171,11 @@ export class RawWebGL2ResourceContext {
 
     const internalFormat = precision === 'float' ? this.gl.RGBA32F : this.gl.RGBA16F;
     const type = precision === 'float' ? this.gl.FLOAT : this.gl.HALF_FLOAT;
+    const filter = options.filter === 'linear' ? this.gl.LINEAR : this.gl.NEAREST;
 
     this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
-    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, filter);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, filter);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
     this.gl.texImage2D(this.gl.TEXTURE_2D, 0, internalFormat, width, height, 0, this.gl.RGBA, type, null);
@@ -160,6 +201,17 @@ export class RawWebGL2ResourceContext {
 
     this.framebuffers.add(framebuffer);
     return { framebuffer, texture };
+  }
+
+  destroyRenderTexture(texture: RawRenderTexture): void {
+    this.textures.delete(texture.texture);
+    this.gl.deleteTexture(texture.texture);
+  }
+
+  destroyFramebuffer(framebuffer: RawFramebuffer): void {
+    this.framebuffers.delete(framebuffer.framebuffer);
+    this.gl.deleteFramebuffer(framebuffer.framebuffer);
+    this.destroyRenderTexture(framebuffer.texture);
   }
 
   destroy(): void {

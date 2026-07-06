@@ -5,26 +5,45 @@
  * controls bar. Opens below the settings button with a slide-down animation.
  * Less blur, less dramatic than a full modal.
  */
-import { useState, useEffect, useRef } from 'react';
+import { Fragment, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronDown, Check } from 'lucide-react';
+import { X, ChevronDown, Check, RotateCcw, Save } from 'lucide-react';
 import type { Settings } from '@hooksjam/pixi-lab-core';
 import type { SettingsField } from '@hooksjam/pixi-lab-core';
 import { BottomSheet } from './BottomSheet.js';
 import { useViewportContext } from '../ViewportProvider.js';
+
+export interface SettingsDefaultsSaveRequest {
+  section: string | null;
+  keys: string[];
+  values: Record<string, unknown>;
+}
 
 interface SettingsDrawerProps {
   open: boolean;
   onClose: () => void;
   settings: Settings;
   fields: SettingsField[];
+  settingsVersion?: number;
   maxPixels?: number;
   onMaxPixelsChange?: (v: number | undefined) => void;
+  onSaveDefaults?: (request: SettingsDefaultsSaveRequest) => Promise<void> | void;
 }
 
-export function SettingsDrawer({ open, onClose, settings, fields, maxPixels, onMaxPixelsChange }: SettingsDrawerProps) {
+export function SettingsDrawer({
+  open,
+  onClose,
+  settings,
+  fields,
+  settingsVersion,
+  maxPixels,
+  onMaxPixelsChange,
+  onSaveDefaults,
+}: SettingsDrawerProps) {
   const { isMobile, isLandscape } = useViewportContext();
   const [vals, setVals] = useState<Record<string, unknown>>({});
+  const [sectionFilter, setSectionFilter] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
     if (!open) return;
@@ -33,11 +52,42 @@ export function SettingsDrawer({ open, onClose, settings, fields, maxPixels, onM
       next[f.key] = settings.get(f.key);
     }
     setVals(next);
-  }, [open, fields, settings]);
+  }, [open, fields, settings, settingsVersion]);
 
   const apply = (key: string, value: unknown) => {
     settings.set(key, value as string | number | boolean);
     setVals((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const resetVisibleSettings = () => {
+    const fieldsToReset = visibleSections.flatMap((section) => section.fields);
+    settings.reset(fieldsToReset.map((field) => field.key));
+    const next: Record<string, unknown> = {};
+    for (const f of fields) next[f.key] = settings.get(f.key);
+    setVals(next);
+    if (!sectionFilter) onMaxPixelsChange?.(undefined);
+  };
+
+  const saveVisibleDefaults = async () => {
+    if (!onSaveDefaults || saveState === 'saving') return;
+    const fieldsToSave = visibleSections.flatMap((section) => section.fields);
+    const values: Record<string, unknown> = {};
+    for (const field of fieldsToSave) {
+      values[field.key] = settings.get(field.key);
+    }
+    setSaveState('saving');
+    try {
+      await onSaveDefaults({
+        section: sectionFilter,
+        keys: fieldsToSave.map((field) => field.key),
+        values,
+      });
+      setSaveState('saved');
+      window.setTimeout(() => setSaveState('idle'), 1200);
+    } catch {
+      setSaveState('error');
+      window.setTimeout(() => setSaveState('idle'), 1800);
+    }
   };
 
   const PIXEL_PRESETS: Array<{ label: string; sub: string; value: number | undefined }> = [
@@ -47,13 +97,52 @@ export function SettingsDrawer({ open, onClose, settings, fields, maxPixels, onM
     { label: '1080p', sub: '1920×1080', value: 2_073_600 },
   ];
 
-  const normalFields = fields.filter((field) => !field.advanced);
-  const advancedFields = fields.filter((field) => field.advanced);
-  const renderFieldSection = (label: string, sectionFields: SettingsField[]) =>
+  const sectionLabelFor = (field: SettingsField): string => field.section ?? (field.advanced ? 'Advanced' : 'Experience');
+  const sections = fields.reduce<Array<{ label: string; fields: SettingsField[] }>>((acc, field) => {
+    const label = sectionLabelFor(field);
+    const existing = acc.find((section) => section.label === label);
+    if (existing) existing.fields.push(field);
+    else acc.push({ label, fields: [field] });
+    return acc;
+  }, []);
+  const visibleSections = sectionFilter ? sections.filter((section) => section.label === sectionFilter) : sections;
+
+  useEffect(() => {
+    if (sectionFilter && !sections.some((section) => section.label === sectionFilter)) setSectionFilter(null);
+  }, [sectionFilter, sections]);
+
+  const sectionFilters = (
+    <div className="flex flex-wrap content-start gap-1 px-1 pb-1">
+      <button
+        type="button"
+        aria-pressed={sectionFilter === null}
+        onClick={() => setSectionFilter(null)}
+        className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] transition-colors ${
+          sectionFilter === null ? 'bg-white/18 text-white' : 'bg-white/[0.06] text-white/45 hover:bg-white/10 hover:text-white/75'
+        }`}
+      >
+        All
+      </button>
+      {sections.map((section) => (
+        <button
+          key={section.label}
+          type="button"
+          aria-pressed={sectionFilter === section.label}
+          onClick={() => setSectionFilter((current) => current === section.label ? null : section.label)}
+          className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] transition-colors ${
+            sectionFilter === section.label ? 'bg-cyan-200/22 text-cyan-50' : 'bg-white/[0.06] text-white/45 hover:bg-white/10 hover:text-white/75'
+          }`}
+        >
+          {section.label}
+        </button>
+      ))}
+    </div>
+  );
+  const renderFieldSection = (label: string, sectionFields: SettingsField[], first = false) =>
     sectionFields.length > 0 ? (
-      <>
-        <div className="mx-0 my-2 h-px bg-white/8" />
-        <p className="px-2 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">{label}</p>
+      <Fragment key={label}>
+        {!first && <div className="mx-1 my-1 h-px bg-white/8" />}
+        <p className={`${first ? 'px-2 pb-0.5' : 'px-2 pb-1'} text-[9px] font-semibold uppercase tracking-[0.18em] text-white/30`}>{label}</p>
         {sectionFields.map((field) => (
           <FieldRow
             key={field.key}
@@ -62,33 +151,66 @@ export function SettingsDrawer({ open, onClose, settings, fields, maxPixels, onM
             onChange={(v) => apply(field.key, v)}
           />
         ))}
-      </>
+      </Fragment>
     ) : null;
 
-  const content = (
-    <div className="p-3 space-y-0.5">
-      {/* ── Common: resolution (pixel budget) ── */}
-      <p className="px-2 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/30">Resolution</p>
-      <div className="grid grid-cols-4 gap-1 mb-2">
+  const resolutionSection = (
+    <>
+      <div className="mx-1 my-1.5 h-px bg-white/8" />
+      <p className="px-2 pb-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-white/30">Resolution</p>
+      <div className="grid grid-cols-4 gap-1 px-1 pb-0.5">
         {PIXEL_PRESETS.map(({ label, sub, value }) => (
           <button
             key={label}
             onClick={() => onMaxPixelsChange?.(value)}
-            className={`flex flex-col items-center py-1.5 rounded-xl transition-colors ${
+            className={`flex flex-col items-center rounded-lg px-1 py-1.5 transition-colors ${
               maxPixels === value
                 ? 'bg-white/15 text-white'
                 : 'bg-white/[0.05] text-white/40 hover:bg-white/10 hover:text-white/70'
             }`}
           >
-            <span className="text-[11px] font-bold leading-none">{label}</span>
-            <span className="text-[9px] mt-0.5 opacity-60">{sub}</span>
+            <span className="text-[10px] font-bold leading-none">{label}</span>
+            <span className="mt-0.5 text-[8px] leading-none opacity-60">{sub}</span>
           </button>
         ))}
       </div>
+    </>
+  );
 
-      {/* ── Experience-specific settings ── */}
-      {renderFieldSection('Experience', normalFields)}
-      {renderFieldSection('Advanced', advancedFields)}
+  const content = (
+    <div className="space-y-0.5 px-2.5 pb-2.5 pt-1.5">
+      {isMobile && !isLandscape && (
+        <div className="flex justify-end gap-1 px-1 pb-1">
+          {onSaveDefaults && (
+            <button
+              onClick={saveVisibleDefaults}
+              disabled={saveState === 'saving'}
+              className={`rounded-lg p-1.5 transition-colors ${
+                saveState === 'saved'
+                  ? 'text-emerald-200'
+                  : saveState === 'error'
+                    ? 'text-rose-200'
+                    : 'text-white/45 hover:bg-white/10 hover:text-white'
+              } disabled:opacity-45`}
+              aria-label={sectionFilter ? `Save ${sectionFilter} defaults` : 'Save scene defaults'}
+              title={sectionFilter ? `Save ${sectionFilter} as defaults` : 'Save visible settings as defaults'}
+            >
+              <Save size={15} />
+            </button>
+          )}
+          <button
+            onClick={resetVisibleSettings}
+            className="rounded-lg p-1.5 text-white/45 transition-colors hover:bg-white/10 hover:text-white"
+            aria-label={sectionFilter ? `Reset ${sectionFilter} settings` : 'Reset settings'}
+            title={sectionFilter ? `Reset ${sectionFilter}` : 'Reset all settings'}
+          >
+            <RotateCcw size={15} />
+          </button>
+        </div>
+      )}
+      {sectionFilters}
+      {visibleSections.map((section, index) => renderFieldSection(section.label, section.fields, index === 0))}
+      {resolutionSection}
     </div>
   );
 
@@ -106,9 +228,6 @@ export function SettingsDrawer({ open, onClose, settings, fields, maxPixels, onM
     <AnimatePresence>
       {open && (
         <>
-          {/* Transparent click-catcher for outside-dismiss */}
-          <div className="absolute inset-0 z-40" onClick={onClose} />
-
           {/* Dropdown panel — slides in from top-right */}
           <motion.div
             key="panel"
@@ -116,22 +235,49 @@ export function SettingsDrawer({ open, onClose, settings, fields, maxPixels, onM
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="absolute right-3 top-12 z-50 w-[min(30rem,calc(100vw-1.5rem))] max-h-[76vh] overflow-y-auto rounded-2xl bg-black/80 shadow-xl backdrop-blur-md ring-1 ring-white/12"
+            className="absolute right-3 top-12 z-50 w-[min(28rem,calc(100vw-1.5rem))] max-h-[76vh] overflow-y-auto rounded-2xl bg-black/80 shadow-xl backdrop-blur-md ring-1 ring-white/12"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center justify-between px-3.5 py-1.5">
               <h3 className="text-sm font-bold text-white">Settings</h3>
-              <button
-                onClick={onClose}
-                className="text-white/40 transition-colors hover:text-white"
-                aria-label="Close settings"
-              >
-                <X size={14} />
-              </button>
+              <div className="flex items-center gap-1">
+                {onSaveDefaults && (
+                  <button
+                    onClick={saveVisibleDefaults}
+                    disabled={saveState === 'saving'}
+                    className={`rounded-lg p-1 transition-colors ${
+                      saveState === 'saved'
+                        ? 'text-emerald-200'
+                        : saveState === 'error'
+                          ? 'text-rose-200'
+                          : 'text-white/40 hover:bg-white/10 hover:text-white'
+                    } disabled:opacity-45`}
+                    aria-label={sectionFilter ? `Save ${sectionFilter} defaults` : 'Save scene defaults'}
+                    title={sectionFilter ? `Save ${sectionFilter} as defaults` : 'Save visible settings as defaults'}
+                  >
+                    <Save size={14} />
+                  </button>
+                )}
+                <button
+                  onClick={resetVisibleSettings}
+                  className="rounded-lg p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+                  aria-label={sectionFilter ? `Reset ${sectionFilter} settings` : 'Reset settings'}
+                  title={sectionFilter ? `Reset ${sectionFilter}` : 'Reset all settings'}
+                >
+                  <RotateCcw size={14} />
+                </button>
+                <button
+                  onClick={onClose}
+                  className="rounded-lg p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+                  aria-label="Close settings"
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </div>
 
             {/* Divider */}
-            <div className="mx-4 h-px bg-white/8" />
+            <div className="mx-3.5 h-px bg-white/8" />
 
             {content}
           </motion.div>
@@ -153,15 +299,15 @@ function FieldRow({
   onChange: (v: unknown) => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-xl px-2 py-2.5">
+    <div className="flex items-start justify-between gap-3 rounded-lg px-2 py-1.5">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-white">{field.label}</p>
+        <p className="text-xs font-semibold text-white">{field.label}</p>
         {field.description && (
-          <p className="mt-0.5 text-xs leading-snug text-white/45">{field.description}</p>
+          <p className="mt-0.5 text-[10px] leading-snug text-white/45">{field.description}</p>
         )}
       </div>
 
-      <div className="shrink-0 pt-0.5">
+      <div className="shrink-0">
         {field.type === 'boolean' && (
           <ToggleSwitch value={Boolean(value)} onChange={onChange} />
         )}
@@ -188,13 +334,13 @@ function ToggleSwitch({ value, onChange }: { value: boolean; onChange: (v: unkno
       role="switch"
       aria-checked={value}
       onClick={() => onChange(!value)}
-      className={`relative h-7 w-12 rounded-full transition-colors duration-200 ${
+      className={`relative h-6 w-10 rounded-full transition-colors duration-200 ${
         value ? 'bg-emerald-500' : 'bg-white/15'
       }`}
     >
       <motion.div
-        className="absolute top-1 h-5 w-5 rounded-full bg-white shadow-md"
-        animate={{ x: value ? 22 : 2 }}
+        className="absolute top-1 h-4 w-4 rounded-full bg-white shadow-md"
+        animate={{ x: value ? 20 : 4 }}
         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
       />
     </button>
@@ -214,7 +360,7 @@ function NumberSlider({
 }) {
   const num = typeof value === 'number' ? value : (field.min ?? 0);
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       <input
         type="range"
         min={field.min}
@@ -222,9 +368,9 @@ function NumberSlider({
         step={field.step ?? 1}
         value={num}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 w-36 cursor-pointer appearance-none rounded-full bg-white/20 accent-white"
+        className="h-1.5 w-32 cursor-pointer appearance-none rounded-full bg-white/20 accent-white"
       />
-      <span className="w-9 text-right text-sm tabular-nums text-white/60">{num}</span>
+      <span className="w-8 text-right text-xs tabular-nums text-white/60">{num}</span>
     </div>
   );
 }
@@ -261,9 +407,14 @@ function StringInput({ value, onChange }: { value: unknown; onChange: (v: unknow
           setDraft(current);
           setOpen(true);
         }}
-        className="flex w-48 max-w-[48vw] items-center justify-between gap-3 rounded-xl bg-white/10 px-3 py-2 text-left text-sm text-white ring-1 ring-white/15 transition-colors hover:bg-white/15"
+        className="flex w-44 max-w-[48vw] items-center justify-between gap-2 rounded-lg bg-white/10 px-2.5 py-1.5 text-left text-xs text-white ring-1 ring-white/15 transition-colors hover:bg-white/15"
       >
-        <span className="truncate text-white/80">{current || 'Paste URL…'}</span>
+        <span className="truncate text-white/80">{current ? 'Image URL set' : 'No image URL set'}</span>
+        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+          current ? 'bg-emerald-300/18 text-emerald-100' : 'bg-white/10 text-white/45'
+        }`}>
+          {current ? 'Set' : 'Random'}
+        </span>
         <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-cyan-200/70">Edit</span>
       </button>
 
@@ -291,7 +442,7 @@ function StringInput({ value, onChange }: { value: unknown; onChange: (v: unknow
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <h4 className="text-sm font-bold text-white">Image URL</h4>
-                  <p className="mt-1 text-xs text-white/45">Paste a direct image URL for texture initialization.</p>
+                  <p className="mt-1 text-xs text-white/45">Paste a direct image URL for texture initialization. Leave it blank to use a random public image.</p>
                 </div>
                 <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-white/45 hover:bg-white/10 hover:text-white" aria-label="Close URL editor">
                   <X size={16} />
@@ -367,7 +518,7 @@ function CustomSelect({
         ref={btnRef}
         type="button"
         onClick={handleToggle}
-        className="flex min-w-[168px] max-w-[220px] items-center justify-between gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm text-white ring-1 ring-white/15 transition-colors hover:bg-white/15"
+        className="flex min-w-[148px] max-w-[200px] items-center justify-between gap-2 rounded-lg bg-white/10 px-2.5 py-1.5 text-xs text-white ring-1 ring-white/15 transition-colors hover:bg-white/15"
       >
         <span className="truncate">{current?.label ?? String(value)}</span>
         <ChevronDown
@@ -404,7 +555,7 @@ function CustomSelect({
                     onChange(opt.value);
                     setOpen(false);
                   }}
-                  className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                     active
                       ? 'bg-white/15 text-white'
                       : 'text-white/65 hover:bg-white/10 hover:text-white'

@@ -1,0 +1,43 @@
+import type { SettingsField } from '@hooksjam/pixi-lab-core';
+
+export const MYCELIUM_SETTINGS_FIELDS: SettingsField[] = [
+  { key: 'renderStyle', label: 'Style', section: 'Rendering', type: 'select', default: 'enhanced', options: [{ label: 'Basic', value: 'basic' }, { label: 'Enhanced', value: 'enhanced' }, { label: 'Bloom', value: 'bloom' }] },
+  { key: 'topology', label: 'Topology', section: 'Simulation', type: 'select', default: 'triangle', options: [{ label: 'Triangle', value: 'triangle' }, { label: 'Square', value: 'square' }] },
+  { key: 'timeScale', label: 'Timescale', section: 'Simulation', type: 'number', min: 0, max: 2, step: 0.05, default: 1 },
+  { key: 'resolution', label: 'Resolution', section: 'Simulation', type: 'number', min: 48, max: 4096, step: 16, default: 160 },
+  { key: 'branchChance', label: 'Branch Chance', section: 'Growth', type: 'number', min: 0, max: 1, step: 0.01, default: 0.22 },
+  { key: 'overwriteChance', label: 'Overwrite Chance', section: 'Growth', type: 'number', min: 0, max: 1, step: 0.01, default: 0.08 },
+  { key: 'growthClumping', label: 'Growth Clumping', section: 'Growth', type: 'number', min: 0, max: 1, step: 0.01, default: 0.38 },
+  { key: 'growthRate', label: 'Growth Rate', section: 'Growth', type: 'number', min: 0.05, max: 8, step: 0.05, default: 0.9 },
+  { key: 'colorMutation', label: 'Color Mutation', section: 'Growth', type: 'number', min: 0, max: 1, step: 0.01, default: 0.32 },
+  { key: 'colorDriftFrequency', label: 'Color Drift Frequency', section: 'Growth', type: 'number', min: 0, max: 1, step: 0.01, default: 0.08 },
+  { key: 'branchColorSplit', label: 'Branch Color Split', section: 'Growth', type: 'number', min: 0, max: 1, step: 0.01, default: 0.45 },
+  { key: 'substrateColorBias', label: 'Substrate Color Bias', section: 'Growth', type: 'number', min: 0, max: 1, step: 0.01, default: 0.12 },
+  { key: 'brushRadius', label: 'Paint Brush Size', section: 'Input Mode', type: 'number', min: 0.002, max: 0.04, step: 0.001, default: 0.008, visibleModes: ['paint'] },
+  { key: 'fieldSpread', label: 'Spore Glow', section: 'Rendering', type: 'number', min: 0.4, max: 5.5, step: 0.1, default: 2.4 },
+  { key: 'pruneRate', label: 'Decay Rate', section: 'Growth', type: 'number', min: 0.01, max: 1.4, step: 0.01, default: 0.18 },
+  { key: 'demoSeedColonies', label: 'Demo Seed Colonies', section: 'Demo', type: 'number', min: 0, max: 16, step: 1, default: 0, visibleModes: ['__demo__'] },
+  { key: 'demoSeedRadius', label: 'Demo Seed Radius', section: 'Demo', type: 'number', min: 0.001, max: 0.08, step: 0.001, default: 0.012, visibleModes: ['__demo__'] },
+];
+
+export const MYCELIUM_DEFAULTS: Record<string, unknown> = {
+  renderStyle: 'enhanced',
+  topology: 'triangle',
+  timeScale: 1,
+  resolution: 160,
+  branchChance: 0.22,
+  overwriteChance: 0.08,
+  growthClumping: 0.38,
+  growthRate: 0.9,
+  colorMutation: 0.32,
+  colorDriftFrequency: 0.08,
+  branchColorSplit: 0.45,
+  substrateColorBias: 0.12,
+  brushRadius: 0.008,
+  fieldSpread: 2.4,
+  pruneRate: 0.18,
+  demoSeedColonies: 0,
+  demoSeedRadius: 0.012,
+  style: 'synaptic-fungus',
+  screensaverMs: 60_000,
+};

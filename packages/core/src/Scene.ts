@@ -8,7 +8,7 @@
  * Lifecycle:
  *   onEnter → [update* + fixedUpdate* + resize*] → onExit
  */
-import type { GameContext } from './types.js';
+import type { GameContext, RenderQuality } from './types.js';
 import type { Input } from './Input.js';
 
 export abstract class Scene {
@@ -129,5 +129,14 @@ export abstract class Scene {
    */
   getCanvasImageRendering(): 'auto' | 'pixelated' {
     return 'auto';
+  }
+
+  /**
+   * Called when the host requests a renderer fidelity change.
+   * Raw/DOM-only scenes override this to swap internal budgets and shader
+   * detail without replacing the full scene.
+   */
+  setQuality(_quality: RenderQuality): void {
+    // Optional hook for scenes that support quality tuning.
   }
 }

@@ -33,7 +33,7 @@ const EXPERIENCES = [
   },
   {
     id: 'orbital-shrapnel',
-    name: 'Orbital Shrapnel',
+    name: 'Space Debris',
     capabilities: { engineConfigurations: WEBGL_RAW_ENGINE_CONFIGURATIONS, settings: true },
   },
 ] as LabExperience[];
@@ -62,7 +62,7 @@ describe('demo query routing helpers', () => {
   it('finds an experience by id without enabling unknown raw routes globally', () => {
     expect(findQueryExperience('ball-pit', EXPERIENCES)?.id).toBe('ball-pit');
     expect(findQueryExperience(' BALL-PIT ', EXPERIENCES)?.id).toBe('ball-pit');
-    expect(findQueryExperience('orbital-shrapnel', EXPERIENCES)?.name).toBe('Orbital Shrapnel');
+    expect(findQueryExperience('orbital-shrapnel', EXPERIENCES)?.name).toBe('Space Debris');
     expect(findQueryExperience('missing-experience', EXPERIENCES)).toBeUndefined();
     expect(findQueryExperience('', EXPERIENCES)).toBeUndefined();
     expect(findQueryExperience(null, EXPERIENCES)).toBeUndefined();

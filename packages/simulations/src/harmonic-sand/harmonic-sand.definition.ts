@@ -1,7 +1,7 @@
 import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { HARMONIC_SAND_DEFAULTS, HARMONIC_SAND_SETTINGS_FIELDS } from './harmonic-sand.config.js';
 import { HarmonicSandPreviewScene } from './HarmonicSandPreviewScene.js';
-import { HarmonicSandScene, harmonicSandStyleManifest } from './HarmonicSandScene.js';
+import { harmonicSandStyleManifest } from './harmonicSandStyleManifest.js';
 import { RawHarmonicSandScene } from './RawHarmonicSandScene.js';
 import { HarmonicSandDemoAI } from './HarmonicSandDemoAI.js';
 
@@ -26,7 +26,7 @@ export const harmonicSandDefinition: SimulationDefinition = {
     styleExport: true,
     proceduralTextures: true,
     renderTargetPool: true,
-    engineConfigurations: createEngineConfigurations(['basic', 'enhanced', 'raw']),
+    engineConfigurations: createEngineConfigurations(['raw'], { rawBackend: 'webgl2' }),
     demo: true,
     settings: true,
   },
@@ -51,10 +51,18 @@ export const harmonicSandDefinition: SimulationDefinition = {
     reason: 'Recover when field or particle variance remains low for more than 2.5 seconds.',
     severity: 0,
   },
+  advancedPhysics: {
+    renderer: 'raw-webgl2',
+    engine: 'custom-raw-model',
+    portability: 'demo-adapter',
+    supportedShapes: ['circle'],
+    reusableFor: ['raw shader fidelity controls', 'field-driven particle visualizations', 'quality-scaled WebGL rendering'],
+    caveats: ['This is a shader-field simulation, not a collision benchmark.'],
+  },
   defaultSeed: 240524,
-  factory: (ctx) => (ctx.quality === 'raw' ? new RawHarmonicSandScene() : new HarmonicSandScene()),
+  factory: () => new RawHarmonicSandScene(),
   previewFactory: () => new HarmonicSandPreviewScene(),
-  demoAiFactory: () => new HarmonicSandDemoAI(),
+  demoAiFactory: (ctx) => new HarmonicSandDemoAI({ previewMode: ctx.isPreview }),
   tutorialPages: [
     { icon: '•', title: 'Seed Resonance', body: 'Tap an empty spot to place a new wave source on the plate.' },
     { icon: '↔', title: 'Shape the Field', body: 'Drag any emitter to reposition it and reshape the pattern.' },

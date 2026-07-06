@@ -56,16 +56,31 @@ export class Settings<T extends SettingsMap = SettingsMap> {
     return this.fields;
   }
 
+  setDefaults(defaults: Record<string, unknown>) {
+    for (const field of this.fields) {
+      if (!Object.prototype.hasOwnProperty.call(defaults, field.key)) continue;
+      field.default = this.sanitizeValue(field, defaults[field.key]);
+    }
+  }
+
   onChange(cb: ChangeListener<T>): () => void {
     this.listeners.add(cb);
     return () => this.listeners.delete(cb);
   }
 
-  reset() {
+  reset(keys?: Iterable<string>) {
+    const requestedKeys = keys ? new Set(keys) : null;
+    const changed: Array<[keyof T, SettingsValue]> = [];
     for (const f of this.fields) {
-      this.data[f.key as keyof T] = f.default as T[keyof T];
+      if (requestedKeys && !requestedKeys.has(f.key)) continue;
+      const key = f.key as keyof T;
+      this.data[key] = f.default as T[keyof T];
+      changed.push([key, this.data[key] as SettingsValue]);
     }
     this.persist();
+    for (const [key, value] of changed) {
+      for (const cb of this.listeners) cb(key, value);
+    }
   }
 
   private sanitizeAll() {

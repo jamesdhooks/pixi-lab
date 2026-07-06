@@ -9,7 +9,7 @@ Pixi Lab has moved from a broad legacy branch into a focused rebuild baseline. T
 
 - Ball Pit;
 - Harmonic Sand Plate;
-- Orbital Shrapnel Field.
+- Space Debris.
 
 The old main catalog is intentionally not the active tracking source anymore. This document replaces the old scattered tracker style with a concise record of what is implemented, what was deliberately left behind, and what remains before the rebuild should be treated as accepted on `main`.
 
@@ -107,7 +107,7 @@ Tracking notes:
 - Serves as the resonance-field and simulation-control proof point.
 - Remaining work is visual QA across style presets and render profiles, performance tuning for preview/fullscreen budgets, and model regression expansion when controls change.
 
-### Orbital Shrapnel Field
+### Space Debris
 
 Status: implemented and promoted.
 
@@ -125,6 +125,25 @@ Tracking notes:
 - Serves as the high-end renderer/orbital-model proof point.
 - Experimental raw engine path is intentionally gated to localhost/test conditions.
 - Remaining work is visual QA across Pixi/enhanced/raw paths, keyboard/touch validation, and measured confidence before expanding experimental raw engine availability.
+
+### Fireworks
+
+Status: implemented and registered; awaiting manual demo QA.
+
+Evidence:
+
+- Registered in `SIMULATION_REGISTRY`.
+- Definition id: `fireworks`.
+- Kind: `simulation`.
+- Exposes raw WebGL2 scene, preview scene, demo AI, tutorial pages, modes, settings/defaults, style manifest, gesture map, director events, stagnation policy, and raw engine configuration.
+- Advertises interactive, ambient, gestures, reset, director mode, stagnation recovery, debug overlay, style export, procedural textures, render target pool, demo, and settings capabilities.
+- Covered by `packages/simulations/src/fireworks/__tests__/FireworksDemoAI.test.ts` and `packages/simulations/src/fireworks/__tests__/fireworks.definition.test.ts`.
+
+Tracking notes:
+
+- Serves as the event-command GPU particle proof point: CPU-scheduled launch actors feed bounded spawn commands while dense spark motion, lifespan aging, color transition, point rendering, and trail feedback stay GPU-resident.
+- Includes 32 shader-level explosion templates plus probabilistic secondary shell actors for recursive smaller bursts.
+- Remaining work is James' manual demo QA, visual tuning across styles/densities, and performance capture for high-density finale settings.
 
 ## Legacy material disposition
 
@@ -154,7 +173,8 @@ Disposition policy:
 - [x] Demo app composes promoted registries.
 - [x] Ball Pit is implemented and registered.
 - [x] Harmonic Sand Plate is implemented and registered.
-- [x] Orbital Shrapnel Field is implemented and registered.
+- [x] Space Debris is implemented and registered.
+- [x] Fireworks is implemented and registered.
 - [x] Typecheck passed.
 - [x] Test suite passed.
 - [x] Recursive build passed.
@@ -169,7 +189,8 @@ Disposition policy:
 - [ ] Browser-open deployed app through Cloudflare Access and visually test the gallery.
 - [ ] Launch Ball Pit from the deployed app and verify gameplay loop, scoring, tutorial, preview, and AI/screensaver behavior.
 - [ ] Launch Harmonic Sand Plate from the deployed app and verify touch gestures, settings, style presets, demo mode, debug overlay, and render profile behavior.
-- [ ] Launch Orbital Shrapnel Field from the deployed app and verify add/influence modes, raw controls where available, style presets, demo mode, and render profile behavior.
+- [ ] Launch Space Debris from the deployed app and verify add/influence modes, raw controls where available, style presets, demo mode, and render profile behavior.
+- [ ] Launch Fireworks from the deployed app and verify launch/fan/finale modes, secondary bursts, style presets, demo mode, debug overlay, and raw density behavior.
 - [ ] Decide whether to address Vite large-bundle warning before or after main promotion.
 - [ ] Decide whether to merge/squash/promote `agent/pixi-lab-core-rebuild-clean` onto `main` as the new baseline.
 

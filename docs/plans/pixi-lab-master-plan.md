@@ -13,7 +13,7 @@ Pixi Lab is no longer the broad legacy catalog from the old `main` branch. The a
 - exactly three fully promoted launch experiences:
   - Ball Pit;
   - Harmonic Sand Plate;
-  - Orbital Shrapnel Field.
+  - Space Debris.
 
 This is the new baseline. The old ambient catalog, exploratory ports, raw-mode drafts, and scattered implementation notes are legacy/reference material until a future slice deliberately cleans and promotes them.
 
@@ -40,7 +40,7 @@ As of this update, that foundation is implemented and deployed from the rebuild 
 - Curated launch experiences:
   - Ball Pit;
   - Harmonic Sand Plate;
-  - Orbital Shrapnel Field.
+  - Space Debris.
 - Package-level tests that protect runtime and promoted content behavior.
 - Deployment through the dev-tools lab stack.
 
@@ -209,7 +209,7 @@ Remaining hardening:
 - tune particle counts and field resolution under preview/fullscreen budgets;
 - expand tests around model invariants when controls change.
 
-### Orbital Shrapnel Field
+### Space Debris
 
 Package: `@hooksjam/pixi-lab-simulations`
 
@@ -243,6 +243,37 @@ Remaining hardening:
 - verify keyboard controls and touch controls across devices;
 - use existing raw texture/composite tests as the baseline for future renderer upgrades.
 
+### Fireworks
+
+Package: `@hooksjam/pixi-lab-simulations`
+
+Registry status: registered via `SIMULATION_REGISTRY`; manual demo QA still pending.
+
+Implemented definition includes:
+
+- id `fireworks`;
+- raw WebGL2 scene;
+- preview scene;
+- settings/defaults;
+- style manifest;
+- demo AI with full style and numeric setting overhauls;
+- tutorial pages;
+- launch, fan, and finale modes;
+- gesture map for taps, double taps, drags, and fast swipes;
+- director events;
+- stagnation policy;
+- raw engine configuration;
+- capabilities for interactivity, ambient behavior, gestures, reset, director mode, stagnation recovery, debug overlay, style export, procedural texture capability, render target pooling, demo, and settings.
+
+Product role: the high-count event-command particle showcase. It validates 32 GPU shader explosion templates, GPU-resident spark stepping, lifespan aging, color transitions, point-sprite rendering, trail feedback, probabilistic secondary shell actors, and demo-AI-driven parameter overhauls.
+
+Remaining hardening:
+
+- James' manual demo QA pass;
+- browser visual QA across launch/fan/finale modes;
+- tune style palettes and high-density finale budgets after live inspection;
+- capture screenshots or clips once the look is approved.
+
 ## Testing and verification baseline
 
 The clean foundation is expected to pass:
@@ -260,7 +291,7 @@ Current known package-level coverage includes:
 - demo query route tests;
 - Ball Pit scene tests;
 - Harmonic Sand model tests;
-- Orbital Shrapnel model/raw texture/raw composite tests.
+- Space Debris model/raw texture/raw composite tests.
 
 Deployment readiness requires the dev-tools Pixi Lab container to rebuild successfully and serve the demo app locally, with the public hostname protected by Cloudflare Access where configured.
 
@@ -310,7 +341,8 @@ The clean-slate rebuild is done when:
 - the engine package exposes the shared runtime needed by the curated set;
 - the React shell launches experiences without scene-specific host forks;
 - the demo app composes registries and supports direct launch/demo/gallery behavior;
-- Ball Pit, Harmonic Sand Plate, and Orbital Shrapnel Field are implemented as promoted experiences;
+- Ball Pit, Harmonic Sand Plate, and Space Debris are implemented as promoted experiences;
+- Fireworks is implemented as a registered raw simulation awaiting manual QA approval;
 - typecheck, tests, and build pass;
 - the lab service deploys and serves the current demo app;
 - this master plan and the tracking summary describe the new reality accurately.

@@ -104,6 +104,7 @@ export type GestureKind =
   | 'tap'
   | 'drag'
   | 'hold'
+  | 'release'
   | 'fast_swipe'
   | 'double_tap'
   | 'pinch'
@@ -192,6 +193,7 @@ export type RenderPassId =
   | 'edgeGlow'
   | 'trailFeedback'
   | 'fieldVisualize'
+  | 'body'
   | 'bloom'
   | 'distortion'
   | 'chromaticAberration'
@@ -246,6 +248,7 @@ export interface SimRenderLayers {
   fluid?: unknown;
   trails?: unknown;
   field?: unknown;
+  body?: unknown;
   mask?: unknown;
   glow?: unknown;
   debug?: unknown;
@@ -391,6 +394,8 @@ export interface SettingsField {
   key: string;
   label: string;
   description?: string;
+  /** Optional drawer section label. Use this to group related settings such as Physics, Rendering, or Input Mode. */
+  section?: string;
   type: 'number' | 'boolean' | 'select' | 'string';
   min?: number;
   max?: number;
@@ -403,6 +408,8 @@ export interface SettingsField {
   visibleEngineConfigurations?: EngineConfigurationVisibility[];
   /** If set, the field is only shown for these engine configurations / legacy render qualities. */
   visibleQualities?: RenderQuality[];
+  /** If set, the field is only shown for these experience-specific render style ids. */
+  visibleRenderStyles?: string[];
   /** Advanced fields stay out of compact top controls and render under an Advanced section in the settings drawer. */
   advanced?: boolean;
 }
@@ -492,6 +499,8 @@ export interface GameContext {
   mode: GameMode;
   seed: number;
   quality: RenderQuality;
+  /** True when this app instance was created for a tile preview. */
+  isPreview?: boolean;
   /** Dev/test-only feature gates requested by the host runtime. */
   experimentalRawEngine?: boolean;
   /** Canvas dimensions in logical pixels */

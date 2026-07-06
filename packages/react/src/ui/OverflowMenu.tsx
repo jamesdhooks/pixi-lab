@@ -27,7 +27,7 @@ export interface OverflowItem {
   hidden?: boolean;
   /**
    * When true, renders the node full-width with no label/justify-between split.
-   * Used for multi-button controls like ModeToggle and StylePicker list.
+   * Used for multi-button controls like ModeToggle and TopbarSelect lists.
    */
   fullWidth?: boolean;
   /** Section label shown above a fullWidth item */

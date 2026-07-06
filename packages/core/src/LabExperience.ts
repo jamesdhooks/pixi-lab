@@ -23,6 +23,7 @@ import type {
 import type { Scene } from './Scene.js';
 import type { AIController } from './ai/AIController.js';
 import type { SimulationAI } from './ai/SimulationAI.js';
+import type { AdvancedPhysicsMetadata } from './physics/AdvancedPhysicsEngine.js';
 
 export interface TutorialPage {
   icon: string;
@@ -79,6 +80,8 @@ export interface LabExperienceBase {
   stagnationPolicy?: StagnationReport;
   /** Stable default seed for reproducible previews and demos */
   defaultSeed?: number;
+  /** Optional notes for raw simulation architecture, portability, and caveats. */
+  advancedPhysics?: AdvancedPhysicsMetadata;
   /** Tutorial pages shown before first play */
   tutorialPages?: TutorialPage[];
   /**

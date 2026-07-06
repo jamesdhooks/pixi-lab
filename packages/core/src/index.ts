@@ -98,9 +98,49 @@ export {
   PX_TO_M,
   M_TO_PX,
 } from './physics/Bodies.js';
+export {
+  AdvancedCircleParticleEngine,
+  type AdvancedDistanceConstraintOptions,
+  type AdvancedCircleParticleSettings,
+  type AdvancedCircleParticleNeighborSlotSeed,
+  type AdvancedCircleParticleSpatialNeighborSlotStats,
+  type AdvancedCircleParticleStats,
+  type AdvancedCircleSpawnOptions,
+  type AdvancedParticleOptions,
+} from './physics/AdvancedCircleParticleEngine.js';
+export {
+  AdvancedCollisionStressEngine,
+  type AdvancedCollisionStressRenderShapeBuffer,
+  type AdvancedCollisionStressSettings,
+  type AdvancedCollisionStressShape,
+  type AdvancedCollisionStressSpatialNeighborSlotStats,
+  type AdvancedCollisionStressStats,
+} from './physics/AdvancedCollisionStressEngine.js';
+export {
+  ADVANCED_PHYSICS_FIDELITY_PROFILES,
+  resolveAdvancedPhysicsFidelityProfile,
+  type AdvancedPhysicsEngine,
+  type AdvancedPhysicsEngineKind,
+  type AdvancedPhysicsFidelityProfile,
+  type AdvancedPhysicsMetadata,
+  type AdvancedPhysicsPortability,
+  type AdvancedPhysicsShapeKind,
+} from './physics/AdvancedPhysicsEngine.js';
+export {
+  AdvancedUniformGrid,
+  type AdvancedUniformGridCell,
+} from './physics/AdvancedUniformGrid.js';
 
 // Render
 export { PixiApp } from './render/PixiApp.js';
+export {
+  getWebGLContextDebugSnapshot,
+  trackWebGLContext,
+  type WebGLContextDebugEntry,
+  type WebGLContextDebugSnapshot,
+  type WebGLContextOwnerKind,
+  type WebGLContextTrackOptions,
+} from './render/WebGLContextTracker.js';
 export { Graphics } from 'pixi.js';
 export { SpriteFactory } from './render/Sprites.js';
 export { ParticleSystem } from './render/Particles.js';
@@ -182,6 +222,188 @@ export { ProceduralTextureLibrary, type ProceduralTextureId } from './render/pro
 export { createSharedPass, SHARED_RENDER_PASS_IDS } from './render/passes/SharedPasses.js';
 export { NoopRenderPass, type RenderPass, type RenderPassContext } from './render/passes/RenderPass.js';
 export {
+  RawGpuFieldPass,
+  type RawGpuFieldPassRenderOptions,
+} from './render/raw/RawGpuFieldPass.js';
+export {
+  createRawGpuSimulationMetrics,
+  type RawGpuSimulationMetrics,
+} from './render/raw/RawGpuMetrics.js';
+export {
+  rawGpuMetricsToDebugStats,
+  rawUploadDebugStats,
+  type RawSceneDebugStats,
+} from './render/raw/RawSceneDebugStats.js';
+export {
+  RawGpuInstancedSegments,
+  type RawGpuInstancedSegmentsRenderOptions,
+  type RawGpuInstancedSegmentsPackedRenderOptions,
+  type RawGpuSegmentInstance,
+} from './render/raw/RawGpuInstancedSegments.js';
+export {
+  RawGpuInstancedSegmentField,
+  type RawGpuInstancedSegmentFieldImpulseOptions,
+  type RawGpuInstancedSegmentFieldRenderOptions,
+  type RawGpuInstancedSegmentFieldStats,
+} from './render/raw/RawGpuInstancedSegmentField.js';
+export {
+  RawGpuTexturePointSampler,
+  type RawGpuTexturePointSamplerOptions,
+  type RawGpuTexturePointSamplerSampleOptions,
+  type RawGpuTexturePointSamplerStats,
+} from './render/raw/RawGpuTexturePointSampler.js';
+export {
+  RawGpuParticleState,
+  type RawGpuParticleStateOptions,
+  type RawGpuParticleStateSeed,
+} from './render/raw/RawGpuParticleState.js';
+export {
+  RawGpuConstraintParticleCandidateSlotPass,
+  type RawGpuConstraintParticleCandidateSlotOptions,
+  type RawGpuConstraintParticleCandidateSlotStats,
+} from './render/raw/RawGpuConstraintParticleCandidateSlotPass.js';
+export {
+  RawGpuConstraintParticleCellRangeBridge,
+  type RawGpuConstraintParticleCellRangeBridgeStats,
+  type RawGpuConstraintParticleCellRangeUploadOptions,
+  type RawGpuConstraintParticleCellRangeUploadResult,
+} from './render/raw/RawGpuConstraintParticleCellRangeBridge.js';
+export {
+  RawGpuConstraintParticleIndexMapBridge,
+  type RawGpuConstraintParticleIndexMapBridgeStats,
+  type RawGpuConstraintParticleIndexMapUploadFromSortedKeysOptions,
+  type RawGpuConstraintParticleIndexMapUploadOptions,
+  type RawGpuConstraintParticleIndexMapUploadResult,
+} from './render/raw/RawGpuConstraintParticleIndexMapBridge.js';
+export {
+  RawGpuConstraintParticleIndexMapGatherPass,
+  type RawGpuConstraintParticleIndexMapGatherOptions,
+  type RawGpuConstraintParticleIndexMapGatherStats,
+} from './render/raw/RawGpuConstraintParticleIndexMapGatherPass.js';
+export {
+  RawGpuConstraintParticleSortedCellCandidatePass,
+  type RawGpuConstraintParticleSortedCellCandidateOptions,
+  type RawGpuConstraintParticleSortedCellCandidateStats,
+} from './render/raw/RawGpuConstraintParticleSortedCellCandidatePass.js';
+export {
+  RawGpuConstraintParticleState,
+  type RawGpuConstraintParticleSeed,
+  type RawGpuConstraintParticleStateMetricsOptions,
+  type RawGpuConstraintParticleStateOptions,
+} from './render/raw/RawGpuConstraintParticleState.js';
+export {
+  RawGpuConstraintParticleGridKeyPass,
+  type RawGpuConstraintParticleGridKeyOptions,
+  type RawGpuConstraintParticleGridKeyStats,
+} from './render/raw/RawGpuConstraintParticleGridKeyPass.js';
+export {
+  RawGpuConstraintParticleStepPass,
+  type RawGpuConstraintParticleBounds,
+  type RawGpuConstraintParticleStepOptions,
+} from './render/raw/RawGpuConstraintParticleStepPass.js';
+export {
+  RawGpuConstraintParticleViscosityPass,
+  type RawGpuConstraintParticleViscosityOptions,
+  type RawGpuConstraintParticleViscosityStats,
+} from './render/raw/RawGpuConstraintParticleViscosityPass.js';
+export {
+  RawGpuConstraintParticlePressurePass,
+  type RawGpuConstraintParticlePressureOptions,
+  type RawGpuConstraintParticlePressureStats,
+} from './render/raw/RawGpuConstraintParticlePressurePass.js';
+export {
+  RawGpuConstraintParticleBodyMetadataBridge,
+  type RawGpuConstraintParticleBodyMetadataStats,
+  type RawGpuConstraintParticleBodyMetadataUploadOptions,
+  type RawGpuConstraintParticleBodyMetadataUploadResult,
+} from './render/raw/RawGpuConstraintParticleBodyMetadataBridge.js';
+export {
+  RawGpuConstraintParticleBodyShapePass,
+  type RawGpuConstraintParticleBodyShapeOptions,
+  type RawGpuConstraintParticleBodyShapeStats,
+} from './render/raw/RawGpuConstraintParticleBodyShapePass.js';
+export {
+  RawGpuConstraintParticleCellOccupancyPass,
+  type RawGpuConstraintParticleCellOccupancyOptions,
+  type RawGpuConstraintParticleCellOccupancyStats,
+} from './render/raw/RawGpuConstraintParticleCellOccupancyPass.js';
+export {
+  RawGpuFloatPrefixSumPass,
+  type RawGpuFloatPrefixSumOptions,
+  type RawGpuFloatPrefixSumStats,
+} from './render/raw/RawGpuFloatPrefixSumPass.js';
+export {
+  RawGpuConstraintParticleCellOffsetPass,
+  type RawGpuConstraintParticleCellOffsetOptions,
+  type RawGpuConstraintParticleCellOffsetStats,
+} from './render/raw/RawGpuConstraintParticleCellOffsetPass.js';
+export {
+  RawGpuConstraintParticleCellRangeFromOffsetsPass,
+  type RawGpuConstraintParticleCellRangeFromOffsetsOptions,
+  type RawGpuConstraintParticleCellRangeFromOffsetsStats,
+} from './render/raw/RawGpuConstraintParticleCellRangeFromOffsetsPass.js';
+export {
+  RawGpuConstraintParticleCellKeyPass,
+  type RawGpuConstraintParticleCellKeyOptions,
+  type RawGpuConstraintParticleCellKeyStats,
+} from './render/raw/RawGpuConstraintParticleCellKeyPass.js';
+export {
+  RawGpuConstraintParticleSortedKeyRangePass,
+  type RawGpuConstraintParticleSortedKeyRangeOptions,
+  type RawGpuConstraintParticleSortedKeyRangeStats,
+} from './render/raw/RawGpuConstraintParticleSortedKeyRangePass.js';
+export {
+  RawGpuConstraintParticleResidentListFromSortedKeysPass,
+  type RawGpuConstraintParticleResidentListFromSortedKeysOptions,
+  type RawGpuConstraintParticleResidentListFromSortedKeysStats,
+} from './render/raw/RawGpuConstraintParticleResidentListFromSortedKeysPass.js';
+export {
+  RawGpuConstraintParticleResidentListCandidatePass,
+  type RawGpuConstraintParticleResidentListCandidateOptions,
+  type RawGpuConstraintParticleResidentListCandidateStats,
+} from './render/raw/RawGpuConstraintParticleResidentListCandidatePass.js';
+export {
+  RawGpuConstraintParticleSortedKeyGatherPass,
+  type RawGpuConstraintParticleSortedKeyGatherOptions,
+  type RawGpuConstraintParticleSortedKeyGatherStats,
+} from './render/raw/RawGpuConstraintParticleSortedKeyGatherPass.js';
+export {
+  RawGpuKeyIndexSortPass,
+  type RawGpuKeyIndexSortOptions,
+  type RawGpuKeyIndexSortStats,
+} from './render/raw/RawGpuKeyIndexSortPass.js';
+export {
+  RawGpuConstraintParticlePointRenderer,
+  type RawGpuConstraintParticlePointRenderOptions,
+} from './render/raw/RawGpuConstraintParticlePointRenderer.js';
+export {
+  RawGpuConstraintParticleDensityRenderer,
+  type RawGpuConstraintParticleDensityRenderOptions,
+} from './render/raw/RawGpuConstraintParticleDensityRenderer.js';
+export {
+  RawGpuConstraintParticleJacobiPass,
+  type RawGpuConstraintParticleJacobiOptions,
+} from './render/raw/RawGpuConstraintParticleJacobiPass.js';
+export {
+  RawGpuConstraintParticleCircleCollisionPass,
+  type RawGpuConstraintParticleCircleCollisionCapabilities,
+  type RawGpuConstraintParticleCircleCollisionOptions,
+  type RawGpuConstraintParticleCircleCollisionStats,
+} from './render/raw/RawGpuConstraintParticleCircleCollisionPass.js';
+export {
+  RawGpuConstraintParticleNeighborSlots,
+  type RawGpuConstraintParticleNeighborSlotSeed,
+  type RawGpuConstraintParticleNeighborSlotsOptions,
+} from './render/raw/RawGpuConstraintParticleNeighborSlots.js';
+export {
+  createRawGpuDoubleTarget,
+  createRawGpuTarget,
+  rawRenderTextureOptionsFromTarget,
+  type RawGpuDoubleTarget,
+  type RawGpuTarget,
+  type RawGpuTargetOptions,
+} from './render/raw/RawGpuTarget.js';
+export {
   RawWebGL2Scene,
   colorNumberToRgb,
   finiteNumberSetting,
@@ -190,9 +412,11 @@ export {
 } from './render/raw/RawWebGL2Scene.js';
 export {
   RawWebGL2ResourceContext,
+  RawPingPongRenderTarget,
   compileRawWebGL2Shader,
   linkRawWebGL2Program,
   type RawFramebuffer,
+  type RawPingPongRenderTargetOptions,
   type RawRenderTexture,
   type RawRenderTextureOptions,
   type RawResourceSize,
@@ -209,6 +433,12 @@ export {
   type DomMountContext,
   type DomStylePayload,
 } from './sim/DomScriptScene.js';
+export {
+  SIMULATION_TIME_SCALE_FIELD,
+  SIMULATION_TIME_SCALE_SETTING_KEY,
+  simulationTimeScaleFromSettings,
+  withCommonSimulationSettings,
+} from './sim/SimulationSettings.js';
 export {
   DomScriptQualityAdapter,
   type DomScriptQualityAdapterOptions,

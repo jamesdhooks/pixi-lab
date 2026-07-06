@@ -30,9 +30,11 @@
 5. `GameLauncher` in react is app-agnostic — no routing, no fetch calls
 6. Each game is a self-contained folder under `packages/games/src/<game-name>/`
 7. Simulation rendering must use the appropriate core renderer family, not the lowest-common-denominator field painter. Use `FieldPaletteRenderer` for true scalar/wave fields, `DensityMetaballRenderer` for blobs, `TrailFeedbackRenderer` for persistent trails, `MeshLatticeRenderer` for triangular/crystal/fungal grids, `ArcLineRenderer` for plasma/discharge/streaks, and `ParticlePointRenderer` for agents/debris.
-8. Rendering is idle-by-default. Plain `Scene` subclasses must not force continuous rendering or per-frame simulation when there are no active pointers, particles, awake physics bodies, or custom visual animations. Override `shouldRender()` only for visual work the engine cannot infer, and prefer dirty/active flags over unconditional buffer uploads.
-9. `aiAutoplay` means the game supports AI; it must not run in normal play unless explicitly enabled by the host/runtime. AI drags must use stable negative pointer ids and must always release them.
-10. Conventional Commits: `type(scope): subject` — scopes: `core` `react` `games` `sims` `demo` `ci` `deps` `config`
+8. Raw WebGL simulations must expose debug stats that identify their placement: `simulation`, `rendering`, `gpuSimulated`, `gpuRendered`, `cpuTopology`, and `cpuUpload`. Dense constraint-particle stress modes should use `RawGpuConstraintParticleState`, `RawGpuConstraintParticleNeighborSlots`, `RawGpuConstraintParticleJacobiPass`, and the shared GPU particle renderers as their backend before adding scene-specific state containers. See `docs/architecture/raw-gpu-optimization.md`.
+9. Rendering is idle-by-default. Plain `Scene` subclasses must not force continuous rendering or per-frame simulation when there are no active pointers, particles, awake physics bodies, or custom visual animations. Override `shouldRender()` only for visual work the engine cannot infer, and prefer dirty/active flags over unconditional buffer uploads.
+10. `aiAutoplay` means the game supports AI; it must not run in normal play unless explicitly enabled by the host/runtime. AI drags must use stable negative pointer ids and must always release them.
+11. Settings fields must be grouped with `section`; input-tool-specific controls belong under `section: 'Input Mode'` and must use `visibleModes` so the drawer only shows controls relevant to the active input mode. See `docs/architecture/settings-fields.md`.
+12. Conventional Commits: `type(scope): subject` — scopes: `core` `react` `games` `sims` `demo` `ci` `deps` `config`
 
 ## Adding a New Experience
 

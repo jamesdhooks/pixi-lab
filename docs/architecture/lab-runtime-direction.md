@@ -1,6 +1,6 @@
 # Lab Runtime Direction
 
-Pixi Lab main now carries the reusable browser Lab Runtime plus a deliberately small curated content set: Ball Pit, Harmonic Sand Plate, and Orbital Shrapnel. The runtime should support games, simulations, previews, overlays, and future renderer backends, but main should only promote cleaned-up content one slice at a time.
+Pixi Lab main now carries the reusable browser Lab Runtime plus a deliberately small curated content set: Ball Pit, Harmonic Sand Plate, and Space Debris. The runtime should support games, simulations, previews, overlays, and future renderer backends, but main should only promote cleaned-up content one slice at a time.
 
 ## Runtime boundary
 

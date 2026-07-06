@@ -13,7 +13,7 @@ export interface SimControlPanelProps {
   fields: SettingsField[];
   /** Bumped when the demo AI changes a setting — triggers a re-sync from app.settings. */
   settingsVersion?: number;
-  /** Optional content shown at the top of the panel (e.g. StylePicker + ModeToggle on mobile). */
+  /** Optional content shown at the top of the panel (e.g. TopbarSelect + ModeToggle on mobile). */
   headerSlot?: ReactNode;
 }
 

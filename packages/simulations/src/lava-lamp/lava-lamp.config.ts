@@ -1,0 +1,52 @@
+import type { SettingsField } from '@hooksjam/pixi-lab-core';
+
+export const LAVA_LAMP_SETTINGS_FIELDS: SettingsField[] = [
+  {
+    key: 'renderStyle',
+    label: 'Style',
+    section: 'Rendering',
+    type: 'select',
+    options: [
+      { label: 'Smooth', value: 'smooth' },
+      { label: 'Glow', value: 'glow' },
+      { label: 'Cellular', value: 'cellular' },
+    ],
+    default: 'glow',
+  },
+  { key: 'maxParticles', label: 'Max Blobs', section: 'Physics', type: 'number', min: 60, max: 900, step: 20, default: 280 },
+  { key: 'initialBlobs', label: 'Initial Blobs', section: 'Physics', type: 'number', min: 20, max: 520, step: 10, default: 170 },
+  { key: 'blobRadius', label: 'Blob Radius', section: 'Physics', type: 'number', min: 8, max: 54, step: 1, default: 22 },
+  { key: 'gravity', label: 'Gravity', section: 'Physics', type: 'number', min: 0, max: 420, step: 5, default: 72 },
+  { key: 'buoyancy', label: 'Buoyancy', section: 'Physics', type: 'number', min: 80, max: 1200, step: 10, default: 560 },
+  { key: 'heatRate', label: 'Heat Rate', section: 'Physics', type: 'number', min: 0, max: 0.5, step: 0.005, default: 0.11 },
+  { key: 'coolRate', label: 'Cool Rate', section: 'Physics', type: 'number', min: 0, max: 0.5, step: 0.005, default: 0.07 },
+  { key: 'surfaceTension', label: 'Surface Tension', section: 'Physics', type: 'number', min: 0, max: 1, step: 0.01, default: 0.44 },
+  { key: 'clumping', label: 'Clumping', section: 'Physics', type: 'number', min: 0, max: 1.5, step: 0.01, default: 0.62 },
+  { key: 'inputRadius', label: 'Input Radius', section: 'Input Mode', type: 'number', min: 24, max: 220, step: 2, default: 92, visibleModes: ['heat', 'cool'] },
+  { key: 'inputLift', label: 'Raise / Lower Force', section: 'Input Mode', type: 'number', min: 40, max: 720, step: 10, default: 240, visibleModes: ['heat', 'cool'] },
+  { key: 'inputThermalRate', label: 'Thermal Brush', section: 'Input Mode', type: 'number', min: 0.01, max: 0.28, step: 0.005, default: 0.09, visibleModes: ['heat', 'cool'] },
+  { key: 'metaballBlend', label: 'Metaball Blend', section: 'Rendering', type: 'number', min: 0, max: 1, step: 0.01, default: 0.94 },
+  { key: 'opacity', label: 'Opacity', section: 'Rendering', type: 'number', min: 0.05, max: 1, step: 0.01, default: 0.46 },
+  { key: 'renderScale', label: 'Render Size', section: 'Rendering', type: 'number', min: 1.4, max: 5.5, step: 0.05, default: 3.15 },
+  { key: 'substeps', label: 'Substeps', section: 'Physics', type: 'number', min: 1, max: 4, step: 1, default: 1 },
+];
+
+export const LAVA_LAMP_DEFAULTS: Record<string, unknown> = {
+  renderStyle: 'glow',
+  maxParticles: 280,
+  initialBlobs: 170,
+  blobRadius: 22,
+  gravity: 72,
+  buoyancy: 560,
+  heatRate: 0.11,
+  coolRate: 0.07,
+  surfaceTension: 0.44,
+  clumping: 0.62,
+  inputRadius: 92,
+  inputLift: 240,
+  inputThermalRate: 0.09,
+  metaballBlend: 0.94,
+  opacity: 0.46,
+  renderScale: 3.15,
+  substeps: 1,
+};

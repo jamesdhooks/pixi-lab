@@ -1,12 +1,16 @@
 import { useState, useMemo, useRef, useLayoutEffect, useEffect, useCallback, type CSSProperties } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff, Play } from 'lucide-react';
-import { GameLauncher, PreviewTile } from '@hooksjam/pixi-lab-react';
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeft, PanelBottom, PanelRight, Pin, PinOff, Play } from 'lucide-react';
+import { GameLauncher, PreviewTile, type SceneDefaultsSavePayload } from '@hooksjam/pixi-lab-react';
 import { useViewport } from '@hooksjam/pixi-lab-react';
 import { GAME_REGISTRY } from '@hooksjam/pixi-lab-games';
 import { SIMULATION_REGISTRY } from '@hooksjam/pixi-lab-simulations';
-import { type LabExperience, type RenderBackendProfileSelection, type RenderQuality } from '@hooksjam/pixi-lab-core';
-import { hasPassedDemoQa } from './demoQaStatus';
+import {
+  type LabExperience,
+  type RenderBackendProfileSelection,
+  type RenderQuality,
+  type SettingsField,
+} from '@hooksjam/pixi-lab-core';
 import {
   findQueryExperienceFromParams,
   queryExperimentalRawEngine,
@@ -20,6 +24,77 @@ const ALL_EXPERIENCES: readonly LabExperience[] = [
 const APP_DEMO_INTERVAL_MS = 10_000;
 const APP_DEMO_CROSSFADE_MS = 220;
 const APP_DEMO_PRELOAD_MAX_PIXELS = 147_456;
+const GALLERY_PAGE_SIZE = 16;
+const DEFAULT_GALLERY_PREVIEW_LIMIT = GALLERY_PAGE_SIZE;
+const SCENE_DEFAULTS_ENDPOINT = '/__pixi-lab-scene-defaults';
+
+type SceneDefaultValue = string | number | boolean;
+type SceneDefaultsMap = Record<string, Record<string, SceneDefaultValue>>;
+
+function normalizeSceneDefaults(payload: unknown): SceneDefaultsMap {
+  if (!isRecord(payload)) return {};
+  const scenes = payload.scenes;
+  if (!isRecord(scenes)) return {};
+  const normalized: SceneDefaultsMap = {};
+  for (const [id, defaults] of Object.entries(scenes)) {
+    if (!isRecord(defaults)) continue;
+    const cleanDefaults: Record<string, SceneDefaultValue> = {};
+    for (const [key, value] of Object.entries(defaults)) {
+      if (isSceneDefaultValue(value)) cleanDefaults[key] = value;
+    }
+    normalized[id] = cleanDefaults;
+  }
+  return normalized;
+}
+
+function applySceneDefaults(definition: LabExperience, defaults: Record<string, SceneDefaultValue> | undefined): LabExperience {
+  if (!defaults || Object.keys(defaults).length === 0) return definition;
+  const configDefaults = { ...(definition.configDefaults ?? {}), ...defaults };
+  const settingsFields = mergeSettingsFieldDefaults(definition.settingsFields, defaults);
+  const styleId = typeof defaults.style === 'string' ? defaults.style : undefined;
+  const styleManifest = styleId && definition.styleManifest?.styles.some((style) => style.id === styleId)
+    ? { ...definition.styleManifest, defaultStyleId: styleId }
+    : definition.styleManifest;
+  return {
+    ...definition,
+    configDefaults,
+    settingsFields,
+    styleManifest,
+  } as LabExperience;
+}
+
+function mergeSettingsFieldDefaults(
+  fields: LabExperience['settingsFields'],
+  defaults: Record<string, SceneDefaultValue>,
+): SettingsField[] | undefined {
+  if (!fields) return fields;
+  return fields.map((field) => {
+    if (!Object.prototype.hasOwnProperty.call(defaults, field.key)) return field;
+    return { ...field, default: sanitizeFieldDefault(field, defaults[field.key]) };
+  });
+}
+
+function sanitizeFieldDefault(field: SettingsField, value: SceneDefaultValue): SceneDefaultValue {
+  if (field.type === 'number') {
+    const numeric = typeof value === 'number' && Number.isFinite(value) ? value : Number(field.default);
+    return Math.max(field.min ?? -Infinity, Math.min(field.max ?? Infinity, Number.isFinite(numeric) ? numeric : 0));
+  }
+  if (field.type === 'boolean') return typeof value === 'boolean' ? value : Boolean(field.default);
+  if (field.type === 'select') {
+    const stringValue = typeof value === 'string' ? value : String(field.default ?? '');
+    if (!field.options?.length || field.options.some((option) => option.value === stringValue)) return stringValue;
+    return field.options[0]?.value ?? String(field.default ?? '');
+  }
+  return typeof value === 'string' ? value : String(field.default ?? '');
+}
+
+function isSceneDefaultValue(value: unknown): value is SceneDefaultValue {
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 type DemoStageSlot = 'a' | 'b';
 
@@ -56,7 +131,11 @@ const LOGO_PARTICLES: Array<[number, string, string, string, number, number, num
 export function App() {
   const { isMobile, isLandscape } = useViewport();
   const [active, setActive] = useState<LabExperience | null>(null);
+  const [sceneDefaults, setSceneDefaults] = useState<SceneDefaultsMap>({});
+  const [sceneDefaultsVersion, setSceneDefaultsVersion] = useState(0);
   const [filter, setFilter] = useState<FilterKind>('all');
+  const galleryPreviewLimit = DEFAULT_GALLERY_PREVIEW_LIMIT;
+  const [galleryPage, setGalleryPage] = useState(0);
   const [dark, setDark] = useState(true);
   const [carouselOpen, setCarouselOpen] = useState(false);
   const [carouselFilter, setCarouselFilter] = useState<FilterKind>('all');
@@ -73,16 +152,21 @@ export function App() {
     a: false,
     b: false,
   });
+  const [appDemoAdvanceNonce, setAppDemoAdvanceNonce] = useState(0);
   const [maxPixels] = useState(() => {
     try { return parseInt(localStorage.getItem('pixi-lab:maxPixels') ?? '0') || undefined; } catch { return undefined; }
   });
+  const experiences = useMemo(
+    () => ALL_EXPERIENCES.map((experience) => applySceneDefaults(experience, sceneDefaults[experience.id])),
+    [sceneDefaults],
+  );
   const routeMode = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return {
-      experience: findQueryExperienceFromParams(params, ALL_EXPERIENCES),
+      experience: findQueryExperienceFromParams(params, experiences),
       queryParams: params,
     };
-  }, []);
+  }, [experiences]);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   const effectiveCarouselSide = isMobile && !isLandscape ? 'bottom' : carouselSide;
@@ -97,6 +181,39 @@ export function App() {
   }, [maxPixels]);
 
   useEffect(() => {
+    let mounted = true;
+    fetch(SCENE_DEFAULTS_ENDPOINT, { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() as Promise<unknown> : { scenes: {} })
+      .then((payload) => {
+        if (!mounted) return;
+        setSceneDefaults(normalizeSceneDefaults(payload));
+        setSceneDefaultsVersion((version) => version + 1);
+      })
+      .catch(() => {
+        if (mounted) setSceneDefaults({});
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setActive((current) => current ? experiences.find((experience) => experience.id === current.id) ?? current : null);
+  }, [experiences]);
+
+  const handleSaveSceneDefaults = useCallback(async (payload: SceneDefaultsSavePayload) => {
+    const response = await fetch(SCENE_DEFAULTS_ENDPOINT, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Unable to save scene defaults');
+    const nextPayload: unknown = await response.json();
+    setSceneDefaults(normalizeSceneDefaults(nextPayload));
+    setSceneDefaultsVersion((version) => version + 1);
+  }, []);
+
+  useEffect(() => {
     if (routeMode.experience) {
       setAppDemoActive(false);
       setCarouselOpen(false);
@@ -105,10 +222,14 @@ export function App() {
     }
   }, [routeMode]);
 
+  useEffect(() => {
+    setGalleryPage(0);
+  }, [filter]);
+
 
   const availableKinds = useMemo<FilterKind[]>(() => {
     const seen = new Set<LabExperience['kind']>();
-    for (const e of ALL_EXPERIENCES) seen.add(e.kind);
+    for (const e of experiences) seen.add(e.kind);
     const kinds: FilterKind[] = ['all'];
     let overlaysAdded = false;
     for (const kind of Array.from(seen)) {
@@ -119,32 +240,40 @@ export function App() {
       }
     }
     return kinds;
-  }, []);
+  }, [experiences]);
 
   const filtered = useMemo(
     () => {
       return filter === 'all'
-        ? ALL_EXPERIENCES
+        ? experiences
         : filter === 'overlays'
-          ? ALL_EXPERIENCES.filter((e) => e.kind === 'ambient' || e.kind === 'effect')
-          : ALL_EXPERIENCES.filter((e) => e.kind === filter);
+          ? experiences.filter((e) => e.kind === 'ambient' || e.kind === 'effect')
+          : experiences.filter((e) => e.kind === filter);
     },
-    [filter],
+    [experiences, filter],
   );
+  const galleryPageCount = Math.max(1, Math.ceil(filtered.length / GALLERY_PAGE_SIZE));
+  const galleryPageIndex = Math.min(galleryPage, galleryPageCount - 1);
+  const galleryPageStart = galleryPageIndex * GALLERY_PAGE_SIZE;
+  const galleryPageItems = filtered.slice(galleryPageStart, galleryPageStart + GALLERY_PAGE_SIZE);
+
+  useEffect(() => {
+    setGalleryPage((page) => Math.min(page, galleryPageCount - 1));
+  }, [galleryPageCount]);
 
   const carouselItems = useMemo(
     () =>
       carouselFilter === 'all'
-        ? ALL_EXPERIENCES
+        ? experiences
         : carouselFilter === 'overlays'
-          ? ALL_EXPERIENCES.filter((e) => e.kind === 'ambient' || e.kind === 'effect')
-          : ALL_EXPERIENCES.filter((e) => e.kind === carouselFilter),
-    [carouselFilter],
+          ? experiences.filter((e) => e.kind === 'ambient' || e.kind === 'effect')
+          : experiences.filter((e) => e.kind === carouselFilter),
+    [carouselFilter, experiences],
   );
 
   const appDemoItems = useMemo(
-    () => ALL_EXPERIENCES.filter((e) => e.capabilities.demo),
-    [],
+    () => experiences.filter((e) => e.capabilities.demo),
+    [experiences],
   );
 
   const appDemoPreloadMaxPixels = useMemo(
@@ -247,6 +376,7 @@ export function App() {
 
   const advanceAppDemo = useCallback(() => {
     if (appDemoItems.length === 0) return;
+    setAppDemoAdvanceNonce((nonce) => nonce + 1);
     setAppDemoIndex((idx) => (idx + 1) % appDemoItems.length);
   }, [appDemoItems.length]);
 
@@ -269,6 +399,7 @@ export function App() {
   }, [
     advanceAppDemo,
     appDemoActive,
+    appDemoAdvanceNonce,
     appDemoCrossfading,
     appDemoCurrentExperience,
     appDemoItems.length,
@@ -400,6 +531,7 @@ export function App() {
             onDemoAdvance={advanceAppDemo}
             onDemoExit={stopAppDemo}
             onRuntimeReady={() => handleAppDemoStageReady('a')}
+            defaultsRevision={sceneDefaultsVersion}
             onQuit={stopAppDemo}
           />
           <ExperienceSurface
@@ -427,6 +559,7 @@ export function App() {
             onDemoAdvance={advanceAppDemo}
             onDemoExit={stopAppDemo}
             onRuntimeReady={() => handleAppDemoStageReady('b')}
+            defaultsRevision={sceneDefaultsVersion}
             onQuit={stopAppDemo}
           />
         </div>
@@ -453,6 +586,8 @@ export function App() {
               initialRenderSelection={queryRenderSelectionForExperience(active, routeMode.queryParams)}
               experimentalRawEngine={queryExperimentalRawEngine(routeMode.queryParams)}
               autoDemo={false}
+              defaultsRevision={sceneDefaultsVersion}
+              onSaveDefaults={handleSaveSceneDefaults}
               onQuit={() => {
                 setActive(null);
                 setCarouselOpen(false);
@@ -772,8 +907,8 @@ export function App() {
           </div>
         </div>
 
-        {appDemoItems.length > 0 && (
-          <div className="mb-8 flex justify-center">
+        <div className="mb-8 flex flex-col items-center justify-center gap-3">
+          {appDemoItems.length > 0 && (
             <button
               type="button"
               onClick={startAppDemo}
@@ -782,20 +917,46 @@ export function App() {
               <Play size={14} />
               Demo mode
             </button>
-          </div>
+          )}
+        </div>
+
+        {galleryPageCount > 1 && (
+          <GalleryPagination
+            page={galleryPageIndex}
+            pageCount={galleryPageCount}
+            total={filtered.length}
+            pageStart={galleryPageStart}
+            pageSize={GALLERY_PAGE_SIZE}
+            onPrevious={() => setGalleryPage((page) => Math.max(0, page - 1))}
+            onNext={() => setGalleryPage((page) => Math.min(galleryPageCount - 1, page + 1))}
+          />
         )}
 
         {/* Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-10">
-          {filtered.map((experience, index) => (
+          {galleryPageItems.map((experience, index) => (
             <ExperienceCard
-              key={experience.id}
+              key={`${experience.id}:${sceneDefaultsVersion}`}
               experience={experience}
               index={index}
+              previewEnabled={index < galleryPreviewLimit}
+              hideKindBadge={filter === 'simulation'}
               onSelect={setActive}
             />
           ))}
         </div>
+
+        {galleryPageCount > 1 && (
+          <GalleryPagination
+            page={galleryPageIndex}
+            pageCount={galleryPageCount}
+            total={filtered.length}
+            pageStart={galleryPageStart}
+            pageSize={GALLERY_PAGE_SIZE}
+            onPrevious={() => setGalleryPage((page) => Math.max(0, page - 1))}
+            onNext={() => setGalleryPage((page) => Math.min(galleryPageCount - 1, page + 1))}
+          />
+        )}
 
         {filtered.length === 0 && (
           <div className="py-32 flex flex-col items-center gap-3 text-slate-400">
@@ -826,10 +987,57 @@ export function App() {
   );
 }
 
+interface GalleryPaginationProps {
+  page: number;
+  pageCount: number;
+  total: number;
+  pageStart: number;
+  pageSize: number;
+  onPrevious: () => void;
+  onNext: () => void;
+}
+
+function GalleryPagination({ page, pageCount, total, pageStart, pageSize, onPrevious, onNext }: GalleryPaginationProps) {
+  const first = total === 0 ? 0 : pageStart + 1;
+  const last = Math.min(total, pageStart + pageSize);
+  return (
+    <div className="my-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+      <button
+        type="button"
+        onClick={onPrevious}
+        disabled={page === 0}
+        className="inline-flex min-w-36 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-lg shadow-slate-900/5 transition-all hover:-translate-x-0.5 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-35 dark:border-white/10 dark:bg-white/[0.07] dark:text-white dark:hover:bg-white/[0.12]"
+      >
+        <ChevronLeft size={18} />
+        Previous
+      </button>
+      <div className="rounded-2xl border border-slate-200 bg-slate-950 px-5 py-3 text-center text-white shadow-lg shadow-slate-900/10 dark:border-white/10 dark:bg-white dark:text-slate-950">
+        <div className="text-sm font-black tabular-nums">
+          Page {page + 1} of {pageCount}
+        </div>
+        <div className="text-[10px] font-bold uppercase tracking-widest opacity-55">
+          Showing {first}-{last} of {total}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={page >= pageCount - 1}
+        className="inline-flex min-w-36 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-lg shadow-slate-900/5 transition-all hover:translate-x-0.5 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-35 dark:border-white/10 dark:bg-white/[0.07] dark:text-white dark:hover:bg-white/[0.12]"
+      >
+        Next
+        <ChevronRight size={18} />
+      </button>
+    </div>
+  );
+}
+
 interface ExperienceCardProps {
   experience: LabExperience;
   index: number;
   onSelect: (e: LabExperience) => void;
+  previewEnabled: boolean;
+  hideKindBadge?: boolean;
 }
 
 interface ExperienceSurfaceProps {
@@ -845,6 +1053,8 @@ interface ExperienceSurfaceProps {
   initialQuality?: RenderQuality;
   experimentalRawEngine?: boolean;
   onRenderSelectionChange?: (selection: RenderBackendProfileSelection) => void;
+  defaultsRevision?: number;
+  onSaveDefaults?: (payload: SceneDefaultsSavePayload) => Promise<void> | void;
   onDemoAdvance?: () => void;
   onDemoExit?: () => void;
   onRuntimeReady?: () => void;
@@ -865,6 +1075,8 @@ function ExperienceSurface({
   initialQuality,
   experimentalRawEngine = false,
   onRenderSelectionChange,
+  defaultsRevision = 0,
+  onSaveDefaults,
   onDemoAdvance,
   onDemoExit,
   onRuntimeReady,
@@ -879,6 +1091,7 @@ function ExperienceSurface({
     initialRenderSelection?.profile ?? '',
     initialQuality ?? '',
     experimentalRawEngine ? 'raw' : 'managed',
+    defaultsRevision,
   ].join(':');
 
   return (
@@ -910,6 +1123,7 @@ function ExperienceSurface({
           onDemoAdvance={onDemoAdvance}
           onDemoExit={onDemoExit}
           onRuntimeReady={onRuntimeReady}
+          onSaveDefaults={onSaveDefaults}
           onQuit={onQuit}
         />
       </div>
@@ -1004,9 +1218,8 @@ function OverlayBackdrop() {
   );
 }
 
-function ExperienceCard({ experience, index, onSelect }: ExperienceCardProps) {
+function ExperienceCard({ experience, index, onSelect, previewEnabled, hideKindBadge = false }: ExperienceCardProps) {
   const badgeCls = KIND_BADGE[experience.kind] ?? 'bg-slate-100 text-slate-500 dark:bg-slate-700/40 dark:text-slate-400';
-  const needsDemoQa = experience.capabilities.demo && !hasPassedDemoQa(experience.id);
   const previewRef = useRef<HTMLDivElement>(null);
   const [previewSize, setPreviewSize] = useState(240);
   const [previewActive, setPreviewActive] = useState(false);
@@ -1041,22 +1254,15 @@ function ExperienceCard({ experience, index, onSelect }: ExperienceCardProps) {
         ref={previewRef}
         className="relative w-full aspect-square rounded-2xl overflow-hidden pointer-events-none bg-slate-100 dark:bg-[#0d0d1e] transition-transform duration-200 group-hover:scale-[1.03]"
       >
-        <PreviewTile definition={experience} index={index} size={previewSize} active={previewActive} />
+        <PreviewTile definition={experience} index={index} size={previewSize} active={previewActive && previewEnabled} />
 
         {/* Kind badge — overlaid on the preview tile */}
-        <span className={`absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${badgeCls}`}>
-          {experience.kind}
-        </span>
-
-        {needsDemoQa && (
-          <span
-            className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-amber-300/95 px-1.5 py-1 text-[9px] font-bold uppercase leading-none text-amber-950"
-            title="Manual demo QA has not passed yet"
-          >
-            <AlertTriangle size={10} strokeWidth={2.5} />
-            Needs QA
+        {!hideKindBadge && (
+          <span className={`absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${badgeCls}`}>
+            {experience.kind}
           </span>
         )}
+
       </div>
 
       {/* Name — centered below canvas */}

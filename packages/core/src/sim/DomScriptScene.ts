@@ -51,6 +51,8 @@ export interface DomSceneOptions {
   name: string;
   /** HTML markup inserted into the root div before `mount` is called. */
   markup: string;
+  /** Optional scene-owned debug metrics surfaced to host debug panels. */
+  getDebugStats?: () => Record<string, string | number | boolean | null> | null;
   /**
    * Called with the root div and a typed context immediately after the root
    * is appended to the DOM. Register style/settings/reset/mode listeners here.
@@ -192,6 +194,10 @@ export class DomScriptScene extends Scene {
 
   shouldRender(): boolean {
     return true;
+  }
+
+  override getDebugStats(): Record<string, string | number | boolean | null> | null {
+    return this.options.getDebugStats?.() ?? null;
   }
 
   private buildContext(ctx: GameContext): DomMountContext {

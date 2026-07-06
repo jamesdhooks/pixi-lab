@@ -1,87 +1,2091 @@
-import { Scene, type GameContext, type Input } from '@hooksjam/pixi-lab-core';
+import {
+  RawGpuParticleState,
+  RawPingPongRenderTarget,
+  RawWebGL2Scene,
+  createRawGpuSimulationMetrics,
+  linkRawWebGL2Program,
+  rawGpuMetricsToDebugStats,
+  type GestureEvent,
+  type RawGpuSimulationMetrics,
+  type RawWebGL2RenderState,
+} from '@hooksjam/pixi-lab-core';
 
-const REFERENCE_ORBITAL_SHRAPNEL_HTML = "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n  <title>Orbital Shrapnel Field \u2014 Raw WebGL2</title>\n\n  <style>\n    :root {\n      --panel-bg: rgba(6, 10, 20, 0.76);\n      --panel-border: rgba(255, 255, 255, 0.12);\n      --text: rgba(255, 255, 255, 0.92);\n      --muted: rgba(255, 255, 255, 0.66);\n      --accent: #86edff;\n      --hot: #ffb86b;\n    }\n\n    html,\n    body {\n      margin: 0;\n      width: 100%;\n      height: 100%;\n      overflow: hidden;\n      background: #03040a;\n      color: var(--text);\n      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;\n      user-select: none;\n      touch-action: none;\n    }\n\n    canvas {\n      width: 100%;\n      height: 100%;\n      display: block;\n      cursor: crosshair;\n    }\n\n    #panel {\n      display: none !important;\n      position: fixed;\n      left: 14px;\n      top: 14px;\n      z-index: 5;\n      width: min(440px, calc(100vw - 28px));\n      max-height: calc(100vh - 28px);\n      box-sizing: border-box;\n      padding: 14px;\n      border-radius: 16px;\n      background: var(--panel-bg);\n      border: 1px solid var(--panel-border);\n      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);\n      backdrop-filter: blur(15px);\n      overflow: auto;\n      scrollbar-color: rgba(255,255,255,0.28) transparent;\n    }\n\n    #panel h1 {\n      margin: 0 0 5px;\n      font-size: 15px;\n      line-height: 1.2;\n      font-weight: 780;\n      letter-spacing: -0.01em;\n    }\n\n    #panel p {\n      margin: 0 0 12px;\n      color: var(--muted);\n      font-size: 12px;\n      line-height: 1.42;\n    }\n\n    .top-actions {\n      display: flex;\n      flex-wrap: wrap;\n      gap: 8px;\n      margin-bottom: 12px;\n    }\n\n    details {\n      border: 1px solid rgba(255, 255, 255, 0.105);\n      border-radius: 13px;\n      background: rgba(255, 255, 255, 0.035);\n      margin: 8px 0;\n      overflow: hidden;\n    }\n\n    summary {\n      cursor: pointer;\n      padding: 10px 11px;\n      color: rgba(255, 255, 255, 0.88);\n      font-size: 12px;\n      font-weight: 720;\n      letter-spacing: 0.01em;\n      list-style: none;\n    }\n\n    summary::-webkit-details-marker {\n      display: none;\n    }\n\n    summary::after {\n      content: \"\u25be\";\n      float: right;\n      color: rgba(255, 255, 255, 0.45);\n      transition: 120ms ease;\n    }\n\n    details:not([open]) summary::after {\n      transform: rotate(-90deg);\n    }\n\n    .section-body {\n      padding: 0 11px 11px;\n      display: grid;\n      gap: 9px;\n    }\n\n    .control {\n      display: grid;\n      grid-template-columns: 1fr auto;\n      gap: 6px 12px;\n      align-items: center;\n    }\n\n    .control label,\n    .select-row label {\n      color: rgba(255, 255, 255, 0.76);\n      font-size: 12px;\n    }\n\n    .control label,\n    .select-row label {\n      display: inline-flex;\n      align-items: center;\n      gap: 6px;\n      min-width: 0;\n    }\n\n    .info {\n      display: inline-flex;\n      align-items: center;\n      justify-content: center;\n      width: 16px;\n      height: 16px;\n      flex: 0 0 auto;\n      border-radius: 999px;\n      border: 1px solid rgba(134, 237, 255, 0.36);\n      background: rgba(134, 237, 255, 0.10);\n      color: rgba(210, 248, 255, 0.98);\n      font-size: 10px;\n      font-weight: 800;\n      line-height: 1;\n      cursor: help;\n      user-select: none;\n      box-shadow: 0 0 0 1px rgba(255,255,255,0.035) inset;\n    }\n\n    .info:hover,\n    .info:focus {\n      border-color: rgba(134, 237, 255, 0.82);\n      background: rgba(134, 237, 255, 0.20);\n      outline: none;\n    }\n\n    #tooltip {\n      position: fixed;\n      z-index: 100;\n      max-width: min(330px, calc(100vw - 28px));\n      padding: 9px 10px;\n      border-radius: 10px;\n      color: rgba(240, 252, 255, 0.96);\n      background: rgba(3, 8, 17, 0.94);\n      border: 1px solid rgba(134, 237, 255, 0.30);\n      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.50);\n      font: 12px/1.42 Inter, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;\n      pointer-events: none;\n      opacity: 0;\n      transform: translateY(4px);\n      transition: opacity 90ms ease, transform 90ms ease;\n      backdrop-filter: blur(12px);\n    }\n\n    #tooltip.visible {\n      opacity: 1;\n      transform: translateY(0);\n    }\n\n    .control output,\n    .select-row span {\n      color: rgba(190, 240, 255, 0.98);\n      font-size: 12px;\n      font-variant-numeric: tabular-nums;\n    }\n\n    input[type=\"range\"] {\n      grid-column: 1 / -1;\n      width: 100%;\n      accent-color: var(--accent);\n    }\n\n    .select-row {\n      display: grid;\n      grid-template-columns: 1fr auto;\n      gap: 8px;\n      align-items: center;\n      color: rgba(255,255,255,0.76);\n      font-size: 12px;\n    }\n\n    select {\n      color: rgba(235, 251, 255, 0.96);\n      background-color: rgba(8, 16, 31, 0.96);\n      background-image:\n        linear-gradient(45deg, transparent 50%, rgba(134, 237, 255, 0.95) 50%),\n        linear-gradient(135deg, rgba(134, 237, 255, 0.95) 50%, transparent 50%),\n        linear-gradient(to right, rgba(255,255,255,0.10), rgba(255,255,255,0.10));\n      background-position:\n        calc(100% - 17px) 50%,\n        calc(100% - 12px) 50%,\n        calc(100% - 34px) 50%;\n      background-size:\n        5px 5px,\n        5px 5px,\n        1px 60%;\n      background-repeat: no-repeat;\n      border: 1px solid rgba(134, 237, 255, 0.22);\n      border-radius: 999px;\n      padding: 7px 42px 7px 11px;\n      outline: none;\n      max-width: 230px;\n      appearance: none;\n      -webkit-appearance: none;\n      color-scheme: dark;\n      box-shadow: 0 0 0 1px rgba(255,255,255,0.035) inset;\n    }\n\n    select:hover {\n      background-color: rgba(10, 22, 42, 0.98);\n      border-color: rgba(134, 237, 255, 0.42);\n    }\n\n    select:focus {\n      border-color: rgba(134, 237, 255, 0.72);\n      box-shadow:\n        0 0 0 1px rgba(134, 237, 255, 0.20) inset,\n        0 0 0 3px rgba(134, 237, 255, 0.10);\n    }\n\n    select option {\n      color: rgba(238, 251, 255, 0.98);\n      background-color: #08101f;\n    }\n\n    select option:checked {\n      color: #ffffff;\n      background-color: #11304b;\n    }\n\n    .buttons {\n      display: flex;\n      flex-wrap: wrap;\n      gap: 8px;\n      margin-top: 10px;\n    }\n\n    button {\n      appearance: none;\n      border: 1px solid rgba(255, 255, 255, 0.12);\n      background: rgba(255, 255, 255, 0.055);\n      color: rgba(255, 255, 255, 0.9);\n      padding: 7px 10px;\n      border-radius: 999px;\n      cursor: pointer;\n      font-size: 12px;\n      transition: 120ms ease;\n    }\n\n    button:hover {\n      background: rgba(255, 255, 255, 0.095);\n      border-color: rgba(255, 255, 255, 0.24);\n    }\n\n    button.active {\n      background: rgba(126, 232, 255, 0.14);\n      border-color: rgba(126, 232, 255, 0.54);\n      color: #e0fbff;\n    }\n\n    button.warn {\n      border-color: rgba(255, 184, 107, 0.34);\n      color: #ffe0b9;\n    }\n\n    .note {\n      color: rgba(255, 255, 255, 0.56);\n      font-size: 11px;\n      line-height: 1.35;\n      margin-top: 2px;\n    }\n\n    #hud {\n      display: none !important;\n      position: fixed;\n      right: 14px;\n      top: 14px;\n      z-index: 5;\n      min-width: 215px;\n      padding: 10px 12px;\n      border-radius: 12px;\n      background: rgba(6, 10, 20, 0.58);\n      border: 1px solid rgba(255, 255, 255, 0.1);\n      color: rgba(255, 255, 255, 0.84);\n      font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;\n      backdrop-filter: blur(12px);\n    }\n\n    #hud .status-ok {\n      color: #9fffd6;\n    }\n\n    #hud .status-warn {\n      color: #ffcd8d;\n    }\n\n    #hint {\n      display: none !important;\n      position: fixed;\n      left: 50%;\n      bottom: 14px;\n      transform: translateX(-50%);\n      z-index: 5;\n      max-width: calc(100vw - 24px);\n      box-sizing: border-box;\n      padding: 9px 13px;\n      border-radius: 999px;\n      background: rgba(6, 10, 20, 0.54);\n      border: 1px solid rgba(255, 255, 255, 0.1);\n      color: rgba(255, 255, 255, 0.75);\n      font-size: 12px;\n      text-align: center;\n      white-space: nowrap;\n      backdrop-filter: blur(12px);\n    }\n\n    #showUi {\n      position: fixed;\n      left: 14px;\n      top: 14px;\n      z-index: 6;\n      display: none;\n      background: rgba(6, 10, 20, 0.68);\n      backdrop-filter: blur(12px);\n    }\n\n    body.ui-hidden #panel,\n    body.ui-hidden #hud,\n    body.ui-hidden #hint {\n      display: none;\n    }\n\n    body.ui-hidden #showUi {\n      display: block;\n    }\n\n    #fallback {\n      position: fixed;\n      inset: 0;\n      z-index: 30;\n      display: none;\n      align-items: center;\n      justify-content: center;\n      box-sizing: border-box;\n      padding: 28px;\n      background: #04060d;\n      color: white;\n      text-align: center;\n      font: 16px/1.45 system-ui, sans-serif;\n    }\n\n    #fallback div {\n      max-width: 640px;\n      padding: 24px;\n      border-radius: 16px;\n      border: 1px solid rgba(255, 255, 255, 0.14);\n      background: rgba(255, 255, 255, 0.06);\n    }\n  </style>\n</head>\n\n<body>\n  <canvas id=\"canvas\"></canvas>\n\n  <button id=\"showUi\">Show UI \u00b7 H</button>\n  <div id=\"tooltip\" aria-hidden=\"true\"></div>\n\n  <div id=\"panel\">\n    <h1>Orbital Shrapnel Field Fidelity Lab \u00b7 Fixed</h1>\n    <p>\n      Raw WebGL2 GPU particle fidelity lab. Push the GPU with real simulation/rendering quality:\n      more gravity bodies, motion-blur samples, richer trails, bloom quality, and higher particle counts.\n    </p>\n\n    <div class=\"top-actions\">\n      <button id=\"hideUiBtn\">Hide UI \u00b7 H</button>\n      <button id=\"pauseBtn\">Pause</button>\n      <button id=\"autoBtn\">Auto events</button>\n      <button id=\"resetGentleBtn\">Reset defaults</button>\n    </div>\n\n    <details open>\n      <summary>GPU / Fidelity Load</summary>\n      <div class=\"section-body\">\n        <div class=\"select-row\">\n          <label for=\"particleSize\"><span>Particle state texture</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Particle state texture: Controls the GPU state texture size. Particle count equals texture width \u00d7 height. Higher tiers can allocate gigabytes of GPU memory and may fail.\" data-tip=\"Controls the GPU state texture size. Particle count equals texture width \u00d7 height. Higher tiers can allocate gigabytes of GPU memory and may fail.\">i</span></label>\n          <select id=\"particleSize\">\n            <option value=\"64\">64\u00b2 = 4,096</option>\n            <option value=\"128\">128\u00b2 = 16,384</option>\n            <option value=\"192\" selected>192\u00b2 = 36,864</option>\n            <option value=\"256\">256\u00b2 = 65,536</option>\n            <option value=\"384\">384\u00b2 = 147,456</option>\n            <option value=\"512\">512\u00b2 = 262,144</option>\n            <option value=\"768\">768\u00b2 = 589,824</option>\n            <option value=\"1024\">1024\u00b2 = 1,048,576</option>\n            <option value=\"1536\">1536\u00b2 = 2,359,296 \u00b7 extreme</option>\n            <option value=\"2048\">2048\u00b2 = 4,194,304 \u00b7 brutal</option>\n            <option value=\"3072\">3072\u00b2 = 9,437,184 \u00b7 serious</option>\n            <option value=\"4096\">4096\u00b2 = 16,777,216 \u00b7 severe</option>\n            <option value=\"6144\">6144\u00b2 = 37,748,736 \u00b7 absurd</option>\n            <option value=\"8192\">8192\u00b2 = 67,108,864 \u00b7 danger</option>\n          </select>\n        </div>\n\n        <div class=\"select-row\">\n          <label for=\"precision\"><span>State precision</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"State precision: Chooses how particle position and velocity are stored on the GPU. RGBA32F is more stable; RGBA16F uses less memory and bandwidth.\" data-tip=\"Chooses how particle position and velocity are stored on the GPU. RGBA32F is more stable; RGBA16F uses less memory and bandwidth.\">i</span></label>\n          <select id=\"precision\">\n            <option value=\"32f\" selected>RGBA32F \u00b7 stable</option>\n            <option value=\"16f\">RGBA16F \u00b7 lower bandwidth</option>\n          </select>\n        </div>\n\n        <div class=\"control\">\n          <label for=\"renderFraction\"><span>Rendered particle fraction</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Rendered particle fraction: Draws only this fraction of simulated particles. Useful for stress-testing simulation cost separately from rendering/fill-rate cost.\" data-tip=\"Draws only this fraction of simulated particles. Useful for stress-testing simulation cost separately from rendering/fill-rate cost.\">i</span></label>\n          <output id=\"renderFractionOut\">1.00</output>\n          <input id=\"renderFraction\" type=\"range\" min=\"0\" max=\"1\" step=\"0.01\" value=\"1\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"simSubsteps\"><span>Simulation substeps / frame</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Simulation substeps / frame: Runs the physics update multiple times per frame. Higher values improve stability at high speeds but multiply simulation cost.\" data-tip=\"Runs the physics update multiple times per frame. Higher values improve stability at high speeds but multiply simulation cost.\">i</span></label>\n          <output id=\"simSubstepsOut\">1</output>\n          <input id=\"simSubsteps\" type=\"range\" min=\"1\" max=\"8\" step=\"1\" value=\"1\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"bodyCount\"><span>Extra gravity bodies</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Extra gravity bodies: Adds orbiting gravity wells/moonlets. This increases real orbital complexity and makes capture streams, braided rings, and disturbances more interesting.\" data-tip=\"Adds orbiting gravity wells/moonlets. This increases real orbital complexity and makes capture streams, braided rings, and disturbances more interesting.\">i</span></label>\n          <output id=\"bodyCountOut\">3</output>\n          <input id=\"bodyCount\" type=\"range\" min=\"0\" max=\"8\" step=\"1\" value=\"3\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"bodyStrength\"><span>Extra body strength</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Extra body strength: Controls the strength of the additional orbiting gravity bodies. Higher values make the debris field more chaotic and dynamically rich.\" data-tip=\"Controls the strength of the additional orbiting gravity bodies. Higher values make the debris field more chaotic and dynamically rich.\">i</span></label>\n          <output id=\"bodyStrengthOut\">0.35</output>\n          <input id=\"bodyStrength\" type=\"range\" min=\"0\" max=\"2.5\" step=\"0.01\" value=\"0.35\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"bodyRadius\"><span>Body orbit radius</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Body orbit radius: Distance of the extra gravity bodies from the center. Larger values perturb the outer ring; smaller values disturb the core.\" data-tip=\"Distance of the extra gravity bodies from the center. Larger values perturb the outer ring; smaller values disturb the core.\">i</span></label>\n          <output id=\"bodyRadiusOut\">0.72</output>\n          <input id=\"bodyRadius\" type=\"range\" min=\"0.10\" max=\"1.35\" step=\"0.01\" value=\"0.72\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"bodySpeed\"><span>Body orbit speed</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Body orbit speed: How fast the extra gravity bodies rotate around the center. Negative values reverse their direction.\" data-tip=\"How fast the extra gravity bodies rotate around the center. Negative values reverse their direction.\">i</span></label>\n          <output id=\"bodySpeedOut\">0.25</output>\n          <input id=\"bodySpeed\" type=\"range\" min=\"-2\" max=\"2\" step=\"0.01\" value=\"0.25\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"motionBlurSamples\"><span>Motion blur samples</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Motion blur samples: Draws each particle multiple times along its velocity path. This increases actual visual fidelity by creating velocity-aligned streaks.\" data-tip=\"Draws each particle multiple times along its velocity path. This increases actual visual fidelity by creating velocity-aligned streaks.\">i</span></label>\n          <output id=\"motionBlurSamplesOut\">1</output>\n          <input id=\"motionBlurSamples\" type=\"range\" min=\"1\" max=\"32\" step=\"1\" value=\"1\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"streakLength\"><span>Velocity streak length</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Velocity streak length: How far motion-blur samples are spread backward along particle velocity. Higher values create longer debris streaks.\" data-tip=\"How far motion-blur samples are spread backward along particle velocity. Higher values create longer debris streaks.\">i</span></label>\n          <output id=\"streakLengthOut\">0.90</output>\n          <input id=\"streakLength\" type=\"range\" min=\"0\" max=\"5\" step=\"0.01\" value=\"0.90\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"trailFadePasses\"><span>Trail diffusion passes</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Trail diffusion passes: Repeats the actual trail fade/diffusion pass. Higher values make smoother, wider, more physically dusty trails.\" data-tip=\"Repeats the actual trail fade/diffusion pass. Higher values make smoother, wider, more physically dusty trails.\">i</span></label>\n          <output id=\"trailFadePassesOut\">1</output>\n          <input id=\"trailFadePasses\" type=\"range\" min=\"0\" max=\"32\" step=\"1\" value=\"1\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"bloomSamples\"><span>Bloom samples</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Bloom samples: Number of real texture samples used for bloom in the final composite. Higher values make glow smoother but cost more bandwidth.\" data-tip=\"Number of real texture samples used for bloom in the final composite. Higher values make glow smoother but cost more bandwidth.\">i</span></label>\n          <output id=\"bloomSamplesOut\">8</output>\n          <input id=\"bloomSamples\" type=\"range\" min=\"0\" max=\"48\" step=\"1\" value=\"8\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"bloomRadius\"><span>Bloom radius</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Bloom radius: How far the final composite samples around bright trails. Larger radius creates wider halos and softer debris clouds.\" data-tip=\"How far the final composite samples around bright trails. Larger radius creates wider halos and softer debris clouds.\">i</span></label>\n          <output id=\"bloomRadiusOut\">5.0</output>\n          <input id=\"bloomRadius\" type=\"range\" min=\"1\" max=\"24\" step=\"0.1\" value=\"5.0\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"dprCap\"><span>Canvas DPR cap</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Canvas DPR cap: Limits canvas device-pixel-ratio. Lower values reduce screen rendering cost; higher values look sharper but use more fill-rate.\" data-tip=\"Limits canvas device-pixel-ratio. Lower values reduce screen rendering cost; higher values look sharper but use more fill-rate.\">i</span></label>\n          <output id=\"dprCapOut\">2.00</output>\n          <input id=\"dprCap\" type=\"range\" min=\"0.75\" max=\"3\" step=\"0.05\" value=\"2\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"trailScale\"><span>Trail buffer scale</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Trail buffer scale: Scales the offscreen trail buffer. Higher values make trails sharper but cost more memory and post-processing bandwidth.\" data-tip=\"Scales the offscreen trail buffer. Higher values make trails sharper but cost more memory and post-processing bandwidth.\">i</span></label>\n          <output id=\"trailScaleOut\">0.82</output>\n          <input id=\"trailScale\" type=\"range\" min=\"0.20\" max=\"1.50\" step=\"0.01\" value=\"0.82\" />\n        </div>\n\n        <div class=\"note\">\n          These controls increase actual simulation or rendering quality. If FPS stays locked, raise particle count, motion blur samples, bloom samples, trail scale, and trail diffusion passes.\n        </div>\n      </div>\n    </details>\n\n    <details open>\n      <summary>Physics</summary>\n      <div class=\"section-body\">\n        <div class=\"control\">\n          <label for=\"gravity\"><span>Central gravity</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Central gravity: Strength of the central gravity pull. Higher values create tighter, faster orbits around the core.\" data-tip=\"Strength of the central gravity pull. Higher values create tighter, faster orbits around the core.\">i</span></label>\n          <output id=\"gravityOut\">0.82</output>\n          <input id=\"gravity\" type=\"range\" min=\"0\" max=\"2.5\" step=\"0.01\" value=\"0.82\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"tangent\"><span>Orbital tangent bias</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Orbital tangent bias: Adds sideways orbital bias around the core. Positive values encourage ring-like motion; negative values fight the orbit.\" data-tip=\"Adds sideways orbital bias around the core. Positive values encourage ring-like motion; negative values fight the orbit.\">i</span></label>\n          <output id=\"tangentOut\">1.00</output>\n          <input id=\"tangent\" type=\"range\" min=\"-1\" max=\"2.5\" step=\"0.01\" value=\"1\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"damping\"><span>Velocity damping</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Velocity damping: Multiplies velocity over time. Values below 1 slowly calm particles; values above 1 can create runaway energy.\" data-tip=\"Multiplies velocity over time. Values below 1 slowly calm particles; values above 1 can create runaway energy.\">i</span></label>\n          <output id=\"dampingOut\">0.999</output>\n          <input id=\"damping\" type=\"range\" min=\"0.94\" max=\"1.01\" step=\"0.001\" value=\"0.999\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"maxSpeed\"><span>Max speed clamp</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Max speed clamp: Caps particle velocity after acceleration. Higher values allow violent shockwaves and fast slingshots.\" data-tip=\"Caps particle velocity after acceleration. Higher values allow violent shockwaves and fast slingshots.\">i</span></label>\n          <output id=\"maxSpeedOut\">2.30</output>\n          <input id=\"maxSpeed\" type=\"range\" min=\"0.25\" max=\"8\" step=\"0.05\" value=\"2.30\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"timeScale\"><span>Time modifier</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Time modifier: Scales simulation time. Use low values for slow motion, 0 to freeze physics, or high values to accelerate the system.\" data-tip=\"Scales simulation time. Use low values for slow motion, 0 to freeze physics, or high values to accelerate the system.\">i</span></label>\n          <output id=\"timeScaleOut\">1.00\u00d7</output>\n          <input id=\"timeScale\" type=\"range\" min=\"0\" max=\"2.5\" step=\"0.01\" value=\"1.00\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"boundaryPull\"><span>Outer boundary pull</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Outer boundary pull: Soft force that nudges particles back when they drift too far from the visible orbital field.\" data-tip=\"Soft force that nudges particles back when they drift too far from the visible orbital field.\">i</span></label>\n          <output id=\"boundaryPullOut\">0.11</output>\n          <input id=\"boundaryPull\" type=\"range\" min=\"0\" max=\"0.8\" step=\"0.01\" value=\"0.11\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"planetRadius\"><span>Planet collision radius</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Planet collision radius: Radius of the central body used for both rendering and collision response.\" data-tip=\"Radius of the central body used for both rendering and collision response.\">i</span></label>\n          <output id=\"planetRadiusOut\">0.145</output>\n          <input id=\"planetRadius\" type=\"range\" min=\"0\" max=\"0.38\" step=\"0.001\" value=\"0.145\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"planetBounce\"><span>Planet bounce</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Planet bounce: How strongly particles bounce when they hit the central body. Higher values produce more energetic ricochets.\" data-tip=\"How strongly particles bounce when they hit the central body. Higher values produce more energetic ricochets.\">i</span></label>\n          <output id=\"planetBounceOut\">0.62</output>\n          <input id=\"planetBounce\" type=\"range\" min=\"0\" max=\"1.6\" step=\"0.01\" value=\"0.62\" />\n        </div>\n      </div>\n    </details>\n\n    <details open>\n      <summary>Interaction / Events</summary>\n      <div class=\"section-body\">\n        <div class=\"control\">\n          <label for=\"swish\"><span>Pointer swish force</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Pointer swish force: Strength of the velocity impulse from dragging. Higher values let your pointer fling debris harder.\" data-tip=\"Strength of the velocity impulse from dragging. Higher values let your pointer fling debris harder.\">i</span></label>\n          <output id=\"swishOut\">0.72</output>\n          <input id=\"swish\" type=\"range\" min=\"0\" max=\"2.5\" step=\"0.01\" value=\"0.72\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"well\"><span>Hold gravity well</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Hold gravity well: Strength of the gravity well while holding the pointer. Positive attracts debris; negative repels debris.\" data-tip=\"Strength of the gravity well while holding the pointer. Positive attracts debris; negative repels debris.\">i</span></label>\n          <output id=\"wellOut\">0.95</output>\n          <input id=\"well\" type=\"range\" min=\"-2.4\" max=\"3.6\" step=\"0.01\" value=\"0.95\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"wellRadius\"><span>Well radius</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Well radius: Size of the pointer gravity well. Larger values influence a broader area around your cursor or finger.\" data-tip=\"Size of the pointer gravity well. Larger values influence a broader area around your cursor or finger.\">i</span></label>\n          <output id=\"wellRadiusOut\">0.224</output>\n          <input id=\"wellRadius\" type=\"range\" min=\"0.03\" max=\"0.75\" step=\"0.001\" value=\"0.224\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"pointerVortex\"><span>Pointer vortex</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Pointer vortex: Adds rotational swirl around the held pointer. Positive and negative values spin in opposite directions.\" data-tip=\"Adds rotational swirl around the held pointer. Positive and negative values spin in opposite directions.\">i</span></label>\n          <output id=\"pointerVortexOut\">0.14</output>\n          <input id=\"pointerVortex\" type=\"range\" min=\"-1.5\" max=\"1.5\" step=\"0.01\" value=\"0.14\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"shockStrength\"><span>Shockwave strength</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Shockwave strength: Impulse strength of shockwave events from clicks, pulses, and meteor showers.\" data-tip=\"Impulse strength of shockwave events from clicks, pulses, and meteor showers.\">i</span></label>\n          <output id=\"shockStrengthOut\">1.00</output>\n          <input id=\"shockStrength\" type=\"range\" min=\"0\" max=\"3\" step=\"0.01\" value=\"1\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"shockSpeed\"><span>Shockwave speed</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Shockwave speed: How quickly shockwave rings expand through the debris field.\" data-tip=\"How quickly shockwave rings expand through the debris field.\">i</span></label>\n          <output id=\"shockSpeedOut\">0.75</output>\n          <input id=\"shockSpeed\" type=\"range\" min=\"0.1\" max=\"2\" step=\"0.01\" value=\"0.75\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"meteorCount\"><span>Meteor shower bursts</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Meteor shower bursts: Number of shockwave bursts spawned by the Meteor Shower button or M key.\" data-tip=\"Number of shockwave bursts spawned by the Meteor Shower button or M key.\">i</span></label>\n          <output id=\"meteorCountOut\">6</output>\n          <input id=\"meteorCount\" type=\"range\" min=\"1\" max=\"32\" step=\"1\" value=\"6\" />\n        </div>\n\n        <div class=\"buttons\">\n          <button id=\"meteorBtn\">Meteor shower \u00b7 M</button>\n          <button id=\"pulseBtn\">Gravity pulse \u00b7 Space</button>\n          <button id=\"clearTrailsBtn\">Clear trails \u00b7 C</button>\n          <button id=\"resetBtn\" class=\"warn\">Reset particles \u00b7 R</button>\n        </div>\n      </div>\n    </details>\n\n    <details open>\n      <summary>Particles / Trails</summary>\n      <div class=\"section-body\">\n        <div class=\"select-row\">\n          <label for=\"shape\"><span>Particle shape</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Particle shape: Chooses the particle silhouette. Soft shapes glow; hard triangle/circle/square use crisp binary edges.\" data-tip=\"Chooses the particle silhouette. Soft shapes glow; hard triangle/circle/square use crisp binary edges.\">i</span></label>\n          <select id=\"shape\">\n            <option value=\"0\" selected>Soft triangular shards</option>\n            <option value=\"1\">Soft round dust</option>\n            <option value=\"2\">Soft spark crosses</option>\n            <option value=\"3\">Hard triangle</option>\n            <option value=\"4\">Hard circle</option>\n            <option value=\"5\">Hard square</option>\n          </select>\n        </div>\n\n        <div class=\"control\">\n          <label for=\"trail\"><span>Trail persistence</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Trail persistence: How long the trail buffer persists. Higher values preserve dust and light trails longer.\" data-tip=\"How long the trail buffer persists. Higher values preserve dust and light trails longer.\">i</span></label>\n          <output id=\"trailOut\">0.970</output>\n          <input id=\"trail\" type=\"range\" min=\"0.55\" max=\"0.997\" step=\"0.001\" value=\"0.970\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"blur\"><span>Trail diffusion</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Trail diffusion: How much the trail buffer diffuses each frame. Higher values make wider smoky trails; lower values keep trails sharp.\" data-tip=\"How much the trail buffer diffuses each frame. Higher values make wider smoky trails; lower values keep trails sharp.\">i</span></label>\n          <output id=\"blurOut\">0.18</output>\n          <input id=\"blur\" type=\"range\" min=\"0\" max=\"0.95\" step=\"0.01\" value=\"0.18\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"particleSizePx\"><span>Debris size</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Debris size: Base rendered particle size in pixels. Large values increase fill-rate cost quickly at high particle counts.\" data-tip=\"Base rendered particle size in pixels. Large values increase fill-rate cost quickly at high particle counts.\">i</span></label>\n          <output id=\"particleSizePxOut\">3.0 px</output>\n          <input id=\"particleSizePx\" type=\"range\" min=\"0.35\" max=\"12\" step=\"0.05\" value=\"3.0\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"speedSize\"><span>Velocity size boost</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Velocity size boost: Increases particle size based on velocity. Higher values make fast debris appear larger or streakier.\" data-tip=\"Increases particle size based on velocity. Higher values make fast debris appear larger or streakier.\">i</span></label>\n          <output id=\"speedSizeOut\">1.25</output>\n          <input id=\"speedSize\" type=\"range\" min=\"0\" max=\"5\" step=\"0.05\" value=\"1.25\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"trailAlpha\"><span>Trail deposit alpha</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Trail deposit alpha: Opacity/energy deposited into the trail buffer by particles. Set to 0 for no new trails.\" data-tip=\"Opacity/energy deposited into the trail buffer by particles. Set to 0 for no new trails.\">i</span></label>\n          <output id=\"trailAlphaOut\">1.00</output>\n          <input id=\"trailAlpha\" type=\"range\" min=\"0\" max=\"4\" step=\"0.01\" value=\"1\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"liveAlpha\"><span>Live particle opacity</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Live particle opacity: Opacity of the live particle layer drawn directly to the screen. Raise this for solid-looking hard silhouettes.\" data-tip=\"Opacity of the live particle layer drawn directly to the screen. Raise this for solid-looking hard silhouettes.\">i</span></label>\n          <output id=\"liveAlphaOut\">8.00</output>\n          <input id=\"liveAlpha\" type=\"range\" min=\"0\" max=\"30\" step=\"0.1\" value=\"8\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"particleBrightness\"><span>Particle brightness</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Particle brightness: Brightness multiplier for both live particles and trail deposits.\" data-tip=\"Brightness multiplier for both live particles and trail deposits.\">i</span></label>\n          <output id=\"particleBrightnessOut\">1.00</output>\n          <input id=\"particleBrightness\" type=\"range\" min=\"0\" max=\"4\" step=\"0.01\" value=\"1\" />\n        </div>\n\n        <div class=\"note\">\n          Soft shapes create glow-like edges. Hard triangle / circle / square give crisp silhouettes.\n          For hard triangles with no trail, use Hard triangle, Live particles ON, Deposit trails OFF,\n          and click Clear trails once.\n        </div>\n\n        <div class=\"buttons\">\n          <button id=\"liveParticlesToggle\" class=\"active\">Live particles</button>\n          <button id=\"depositToggle\" class=\"active\">Deposit trails</button>\n          <button id=\"trailsToggle\" class=\"active\">Trail buffer</button>\n        </div>\n      </div>\n    </details>\n\n    <details>\n      <summary>Composite / Scene</summary>\n      <div class=\"section-body\">\n        <div class=\"select-row\">\n          <label for=\"style\"><span>Style preset</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Style preset: Changes the color palette and scene styling: icy, solar, or black-hole-like.\" data-tip=\"Changes the color palette and scene styling: icy, solar, or black-hole-like.\">i</span></label>\n          <select id=\"style\">\n            <option value=\"0\" selected>Ice Ring</option>\n            <option value=\"1\">Solar Debris</option>\n            <option value=\"2\">Black Hole Lens</option>\n          </select>\n        </div>\n\n        <div class=\"control\">\n          <label for=\"glow\"><span>Bloom / glow</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Bloom / glow: Strength of the bloom-like trail glow in the final composite.\" data-tip=\"Strength of the bloom-like trail glow in the final composite.\">i</span></label>\n          <output id=\"glowOut\">0.72</output>\n          <input id=\"glow\" type=\"range\" min=\"0\" max=\"2.5\" step=\"0.01\" value=\"0.72\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"exposure\"><span>Exposure</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Exposure: Tone-mapping exposure. Higher values make the whole scene brighter and more saturated.\" data-tip=\"Tone-mapping exposure. Higher values make the whole scene brighter and more saturated.\">i</span></label>\n          <output id=\"exposureOut\">1.15</output>\n          <input id=\"exposure\" type=\"range\" min=\"0.15\" max=\"4\" step=\"0.01\" value=\"1.15\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"chroma\"><span>Chromatic split</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Chromatic split: Offsets red and blue trail samples for chromatic edge splitting.\" data-tip=\"Offsets red and blue trail samples for chromatic edge splitting.\">i</span></label>\n          <output id=\"chromaOut\">0.003</output>\n          <input id=\"chroma\" type=\"range\" min=\"0\" max=\"0.025\" step=\"0.001\" value=\"0.003\" />\n        </div>\n\n        <div class=\"control\">\n          <label for=\"stars\"><span>Star density</span><span class=\"info\" tabindex=\"0\" role=\"button\" aria-label=\"Star density: Density of procedural background stars in the final composite.\" data-tip=\"Density of procedural background stars in the final composite.\">i</span></label>\n          <output id=\"starsOut\">0.55</output>\n          <input id=\"stars\" type=\"range\" min=\"0\" max=\"1.5\" step=\"0.01\" value=\"0.55\" />\n        </div>\n\n        <div class=\"buttons\">\n          <button id=\"planetToggle\" class=\"active\">Planet / core</button>\n          <button id=\"ringToggle\" class=\"active\">Core ring</button>\n        </div>\n      </div>\n    </details>\n  </div>\n\n  <div id=\"hud\">\n    <div>FPS: <span id=\"fps\">0</span></div>\n    <div>GPU: <span id=\"gpuMs\">n/a</span></div>\n    <div>Particles: <span id=\"particleCount\">36,864</span></div>\n    <div>Drawn: <span id=\"drawCount\">36,864</span></div>\n    <div>State: <span id=\"stateSize\">192\u00b2 RGBA32F</span></div>\n    <div>Trail RT: <span id=\"trailSize\">0\u00d70</span></div>\n    <div>VRAM est: <span id=\"memoryEstimate\">0 MB</span></div>\n    <div>Caps: <span id=\"caps\">...</span></div>\n    <div>Status: <span id=\"status\" class=\"status-ok\">ready</span></div>\n  </div>\n\n  <div id=\"hint\">Drag to swish debris \u00b7 hold to create gravity well \u00b7 H hides UI \u00b7 R reset \u00b7 C clear trails \u00b7 M meteor \u00b7 Space pulse</div>\n\n  <div id=\"fallback\">\n    <div>\n      <h2>WebGL2 GPU simulation unavailable</h2>\n      <p>\n        This demo needs WebGL2 with floating-point render targets.\n        Try a recent browser with hardware acceleration enabled.\n      </p>\n    </div>\n  </div>\n\n  <script>\n    (() => {\n      const canvas = document.getElementById('canvas');\n      const fallback = document.getElementById('fallback');\n\n      const ui = {};\n      [\n        'particleSize', 'precision', 'renderFraction', 'simSubsteps', 'bodyCount', 'bodyStrength', 'bodyRadius', 'bodySpeed', 'motionBlurSamples', 'streakLength', 'trailFadePasses', 'bloomSamples', 'bloomRadius', 'dprCap', 'trailScale',\n        'gravity', 'tangent', 'damping', 'maxSpeed', 'timeScale', 'boundaryPull', 'planetRadius', 'planetBounce',\n        'swish', 'well', 'wellRadius', 'pointerVortex', 'shockStrength', 'shockSpeed', 'meteorCount',\n        'shape', 'trail', 'blur', 'particleSizePx', 'speedSize', 'trailAlpha', 'liveAlpha', 'particleBrightness',\n        'style', 'glow', 'exposure', 'chroma', 'stars',\n        'renderFractionOut', 'simSubstepsOut', 'bodyCountOut', 'bodyStrengthOut', 'bodyRadiusOut', 'bodySpeedOut', 'motionBlurSamplesOut', 'streakLengthOut', 'trailFadePassesOut', 'bloomSamplesOut', 'bloomRadiusOut', 'dprCapOut', 'trailScaleOut',\n        'gravityOut', 'tangentOut', 'dampingOut', 'maxSpeedOut', 'timeScaleOut', 'boundaryPullOut', 'planetRadiusOut', 'planetBounceOut',\n        'swishOut', 'wellOut', 'wellRadiusOut', 'pointerVortexOut', 'shockStrengthOut', 'shockSpeedOut', 'meteorCountOut',\n        'trailOut', 'blurOut', 'particleSizePxOut', 'speedSizeOut', 'trailAlphaOut', 'liveAlphaOut', 'particleBrightnessOut',\n        'glowOut', 'exposureOut', 'chromaOut', 'starsOut',\n        'fps', 'gpuMs', 'particleCount', 'drawCount', 'stateSize', 'trailSize', 'memoryEstimate', 'caps', 'status',\n        'meteorBtn', 'pulseBtn', 'clearTrailsBtn', 'resetBtn', 'resetGentleBtn',\n        'liveParticlesToggle', 'depositToggle', 'trailsToggle', 'planetToggle', 'ringToggle',\n        'hideUiBtn', 'showUi', 'pauseBtn', 'autoBtn'\n      ].forEach((id) => {\n        ui[id] = document.getElementById(id);\n      });\n\n      const gl = canvas.getContext('webgl2', {\n        alpha: false,\n        depth: false,\n        stencil: false,\n        antialias: false,\n        preserveDrawingBuffer: false,\n        powerPreference: 'high-performance'\n      });\n\n      if (!gl) {\n        fallback.style.display = 'flex';\n        return;\n      }\n\n      const colorBufferFloat = gl.getExtension('EXT_color_buffer_float');\n\n      if (!colorBufferFloat) {\n        fallback.style.display = 'flex';\n        return;\n      }\n\n      gl.disable(gl.DEPTH_TEST);\n      gl.disable(gl.CULL_FACE);\n\n      const CAPS = {\n        maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),\n        maxRenderbufferSize: gl.getParameter(gl.MAX_RENDERBUFFER_SIZE),\n        pointSizeRange: gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE),\n        maxVertexTextures: gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)\n      };\n\n      const timerExt = gl.getExtension('EXT_disjoint_timer_query_webgl2');\n      const gpuQueries = [];\n      let activeGpuQuery = null;\n\n      ui.caps.textContent = `tex ${CAPS.maxTextureSize}, point ${Math.round(CAPS.pointSizeRange[1])}`;\n      publishDebugStats();\n\n      function beginGpuTimer() {\n        if (!timerExt || activeGpuQuery) {\n          return;\n        }\n\n        const query = gl.createQuery();\n        gl.beginQuery(timerExt.TIME_ELAPSED_EXT, query);\n        activeGpuQuery = query;\n      }\n\n      function endGpuTimer() {\n        if (!timerExt || !activeGpuQuery) {\n          return;\n        }\n\n        gl.endQuery(timerExt.TIME_ELAPSED_EXT);\n        gpuQueries.push(activeGpuQuery);\n        activeGpuQuery = null;\n\n        while (gpuQueries.length > 8) {\n          gl.deleteQuery(gpuQueries.shift());\n        }\n      }\n\n      function pollGpuTimer() {\n        if (!timerExt) {\n          ui.gpuMs.textContent = 'n/a';\n          return;\n        }\n\n        if (!gpuQueries.length) {\n          return;\n        }\n\n        const query = gpuQueries[0];\n        const available = gl.getQueryParameter(query, gl.QUERY_RESULT_AVAILABLE);\n        const disjoint = gl.getParameter(timerExt.GPU_DISJOINT_EXT);\n\n        if (available && !disjoint) {\n          const ns = gl.getQueryParameter(query, gl.QUERY_RESULT);\n          ui.gpuMs.textContent = (ns / 1000000).toFixed(2) + ' ms';\n          gl.deleteQuery(query);\n          gpuQueries.shift();\n        } else if (available && disjoint) {\n          ui.gpuMs.textContent = 'disjoint';\n          gl.deleteQuery(query);\n          gpuQueries.shift();\n        }\n      }\n\n      const tooltip = document.getElementById('tooltip');\n      let tooltipTarget = null;\n\n      function positionTooltip(target) {\n        if (!target || !tooltip.classList.contains('visible')) {\n          return;\n        }\n\n        const rect = target.getBoundingClientRect();\n        const tooltipRect = tooltip.getBoundingClientRect();\n        const margin = 12;\n\n        let left = rect.right + 10;\n        let top = rect.top + rect.height / 2 - tooltipRect.height / 2;\n\n        if (left + tooltipRect.width + margin > window.innerWidth) {\n          left = rect.left - tooltipRect.width - 10;\n        }\n\n        if (left < margin) {\n          left = margin;\n        }\n\n        top = Math.max(margin, Math.min(top, window.innerHeight - tooltipRect.height - margin));\n\n        tooltip.style.left = left + 'px';\n        tooltip.style.top = top + 'px';\n      }\n\n      function showTooltip(target) {\n        const text = target.dataset.tip;\n\n        if (!text) {\n          return;\n        }\n\n        tooltipTarget = target;\n        tooltip.textContent = text;\n        tooltip.classList.add('visible');\n        tooltip.setAttribute('aria-hidden', 'false');\n        positionTooltip(target);\n      }\n\n      function hideTooltip() {\n        tooltipTarget = null;\n        tooltip.classList.remove('visible');\n        tooltip.setAttribute('aria-hidden', 'true');\n      }\n\n      document.addEventListener('mouseover', (event) => {\n        const target = event.target.closest?.('.info');\n        if (target) {\n          showTooltip(target);\n        }\n      });\n\n      document.addEventListener('mouseout', (event) => {\n        if (event.target.closest?.('.info')) {\n          hideTooltip();\n        }\n      });\n\n      document.addEventListener('focusin', (event) => {\n        if (event.target.classList?.contains('info')) {\n          showTooltip(event.target);\n        }\n      });\n\n      document.addEventListener('focusout', (event) => {\n        if (event.target.classList?.contains('info')) {\n          hideTooltip();\n        }\n      });\n\n      window.addEventListener('resize', () => positionTooltip(tooltipTarget));\n      document.getElementById('panel').addEventListener('scroll', () => positionTooltip(tooltipTarget));\n\n      const MAX_SHOCKS = 8;\n\n      const flags = {\n        liveParticles: true,\n        depositTrails: true,\n        trails: true,\n        planet: true,\n        ring: true,\n        paused: false,\n        auto: false\n      };\n\n      const quadVS = `#version 300 es\n        layout(location = 0) in vec2 aPosition;\n        out vec2 vUv;\n\n        void main() {\n          vUv = aPosition * 0.5 + 0.5;\n          gl_Position = vec4(aPosition, 0.0, 1.0);\n        }\n      `;\n\n      const initFS = `#version 300 es\n        precision highp float;\n\n        in vec2 vUv;\n        layout(location = 0) out vec4 outPosition;\n        layout(location = 1) out vec4 outVelocity;\n\n        uniform float uSeed;\n        uniform int uStyle;\n\n        float hash12(vec2 p) {\n          vec3 p3 = fract(vec3(p.xyx) * 0.1031);\n          p3 += dot(p3, p3.yzx + 33.33);\n          return fract((p3.x + p3.y) * p3.z);\n        }\n\n        mat2 rot(float a) {\n          float s = sin(a);\n          float c = cos(a);\n          return mat2(c, -s, s, c);\n        }\n\n        void main() {\n          vec2 coord = gl_FragCoord.xy;\n          float s0 = hash12(coord + uSeed);\n          float s1 = hash12(coord * 1.37 + uSeed * 2.11);\n          float s2 = hash12(coord * 2.17 - uSeed * 0.73);\n          float s3 = hash12(coord * 0.71 + uSeed * 4.91);\n          float s4 = hash12(coord * 3.13 + uSeed * 1.37);\n          float s5 = hash12(coord * 5.77 - uSeed * 2.29);\n\n          float family = s0;\n          float radius;\n\n          if (family < 0.72) {\n            radius = mix(0.26, 1.08, s1);\n          } else if (family < 0.92) {\n            radius = mix(0.10, 0.42, s1);\n          } else {\n            radius = mix(0.95, 1.36, s1);\n          }\n\n          float a = s2 * 6.28318530718;\n          float eccentric = mix(0.82, 1.18, s3);\n          float wobble = mix(-0.045, 0.045, s4);\n\n          vec2 pos = vec2(cos(a) * radius * eccentric, sin(a) * radius / eccentric);\n          pos += vec2(cos(a * 3.0), sin(a * 2.0)) * wobble;\n\n          vec2 tangent = vec2(-sin(a), cos(a));\n          float orbital = sqrt(0.34 / max(radius, 0.13)) * mix(0.70, 1.18, s5);\n          float radialKick = mix(-0.055, 0.055, hash12(coord * 9.4 + uSeed));\n\n          vec2 vel = tangent * orbital + normalize(pos + vec2(0.001)) * radialKick;\n\n          float type = pow(hash12(coord * 4.21 + uSeed), 2.2);\n          float hue = hash12(coord * 6.97 + uSeed);\n          float mass = mix(0.55, 1.55, hash12(coord * 8.01 + uSeed));\n\n          if (uStyle == 1) {\n            hue = mix(0.03, 0.14, hue);\n            vel *= 1.06;\n          } else if (uStyle == 2) {\n            hue = fract(hue * 0.44 + 0.58);\n            vel *= 0.96;\n          }\n\n          outPosition = vec4(pos, s0, type);\n          outVelocity = vec4(vel, hue, mass);\n        }\n      `;\n\n      const simFS = `#version 300 es\n        precision highp float;\n        precision highp sampler2D;\n\n        layout(location = 0) out vec4 outPosition;\n        layout(location = 1) out vec4 outVelocity;\n\n        uniform sampler2D uPosition;\n        uniform sampler2D uVelocity;\n\n        uniform int uBodyCount;\n        uniform float uBodyStrength;\n        uniform float uBodyRadius;\n        uniform float uBodySpeed;\n        uniform float uDt;\n        uniform float uAspect;\n        uniform float uTime;\n        uniform float uGravity;\n        uniform float uTangent;\n        uniform float uDamping;\n        uniform float uMaxSpeed;\n        uniform float uBoundaryPull;\n        uniform float uPlanetRadius;\n        uniform float uPlanetBounce;\n        uniform float uSwishForce;\n        uniform float uWellForce;\n        uniform float uWellRadius;\n        uniform float uPointerVortex;\n        uniform float uPointerActive;\n        uniform vec2 uPointer;\n        uniform vec2 uPointerVelocity;\n        uniform float uShockCount;\n        uniform vec4 uShockwaves[8];\n\n        float hash(float n) {\n          return fract(sin(n * 127.17) * 43758.5453123);\n        }\n\n        void main() {\n          ivec2 coord = ivec2(gl_FragCoord.xy);\n          vec4 pData = texelFetch(uPosition, coord, 0);\n          vec4 vData = texelFetch(uVelocity, coord, 0);\n\n          vec2 pos = pData.xy;\n          float seed = pData.z;\n          float type = pData.w;\n\n          vec2 vel = vData.xy;\n          float hue = vData.z;\n          float mass = max(vData.w, 0.35);\n\n          float r2 = dot(pos, pos);\n          float r = sqrt(r2 + 0.00001);\n\n          vec2 acc = vec2(0.0);\n\n          float soft = 0.026 + type * 0.012;\n          float pull = uGravity / (r2 + soft);\n          acc += -normalize(pos + vec2(0.0001, -0.0002)) * pull * 0.018 / mass;\n\n          vec2 tangent = normalize(vec2(-pos.y, pos.x) + vec2(0.0001));\n          acc += tangent * uTangent * 0.015 * uGravity / (0.18 + r);\n\n          if (uPointerActive > 0.5) {\n            vec2 d = pos - uPointer;\n            float d2 = dot(d, d);\n            float radius = max(uWellRadius, 0.001);\n            float influence = exp(-d2 / (radius * radius));\n            acc += uPointerVelocity * influence * uSwishForce * 1.9;\n            acc += -d * influence * uWellForce * 1.35;\n            acc += vec2(-d.y, d.x) * influence * uPointerVortex;\n          }\n\n          for (int i = 0; i < 8; i++) {\n            if (float(i) >= uShockCount) {\n              break;\n            }\n\n            vec4 s = uShockwaves[i];\n            vec2 d = pos - s.xy;\n            float dist = length(d) + 0.0001;\n            float band = exp(-pow((dist - s.z) / 0.055, 2.0));\n            acc += normalize(d) * band * s.w * 0.82;\n            acc += vec2(-d.y, d.x) / dist * band * s.w * 0.05;\n          }\n\n          for (int i = 0; i < 8; i++) {\n            if (i >= uBodyCount) {\n              break;\n            }\n\n            float fi = float(i);\n            float phase = fi * 6.28318530718 / max(float(uBodyCount), 1.0);\n            float wobble = sin(uTime * 0.19 + fi * 1.71) * 0.10;\n            float angle = phase + uTime * uBodySpeed * (0.22 + fi * 0.037);\n            float bodyRadius = uBodyRadius * (0.82 + wobble);\n            vec2 body = vec2(cos(angle), sin(angle)) * bodyRadius;\n\n            vec2 dBody = body - pos;\n            float bd2 = dot(dBody, dBody) + 0.012 + type * 0.010;\n            float bodyPull = uBodyStrength * (0.010 + type * 0.004) / bd2;\n\n            acc += dBody * bodyPull / mass;\n            acc += vec2(-dBody.y, dBody.x) * uBodyStrength * 0.0016 / (sqrt(bd2) + 0.02);\n          }\n\nvel += acc * uDt * 60.0;\n          vel *= pow(max(uDamping, 0.0), uDt * 60.0);\n\n          float speed = length(vel);\n\n          if (speed > uMaxSpeed) {\n            vel = vel / speed * uMaxSpeed;\n          }\n\n          pos += vel * uDt;\n\n          float planet = max(uPlanetRadius, 0.0);\n          float pr = length(pos);\n\n          if (planet > 0.0001 && pr < planet) {\n            vec2 n = normalize(pos + vec2(hash(seed) * 0.01, hash(seed + 7.0) * 0.01));\n            pos = n * (planet + 0.018 + hash(seed + 11.0) * 0.02);\n            vel = reflect(vel, n) * uPlanetBounce + vec2(-n.y, n.x) * (0.35 + hash(seed + 3.0) * 0.22);\n          }\n\n          float worldLimit = max(1.32, uAspect * 1.08);\n\n          if (length(pos) > worldLimit) {\n            vec2 n = normalize(pos);\n            vel += -n * uBoundaryPull * uDt * 60.0;\n            vel *= 0.992;\n          }\n\n          if (abs(pos.x) > uAspect * 1.22 || abs(pos.y) > 1.22) {\n            float a = 6.2831853 * hash(seed + floor(uTime * 0.07));\n            float rr = 0.35 + hash(seed + 19.0) * 0.8;\n            pos = vec2(cos(a), sin(a)) * rr;\n            vel = vec2(-sin(a), cos(a)) * (0.22 + hash(seed + 31.0) * 0.42);\n            hue = fract(hue + 0.07);\n          }\n\n          outPosition = vec4(pos, seed, type);\n          outVelocity = vec4(vel, hue, mass);\n        }\n      `;\n\n      const fadeFS = `#version 300 es\n        precision highp float;\n        precision highp sampler2D;\n\n        in vec2 vUv;\n        out vec4 outColor;\n\n        uniform sampler2D uTrail;\n        uniform vec2 uTexel;\n        uniform float uPersistence;\n        uniform float uBlur;\n        uniform float uTrailsEnabled;\n        uniform float uTime;\n\n        float hash(vec2 p) {\n          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);\n        }\n\n        void main() {\n          vec3 c = texture(uTrail, vUv).rgb;\n\n          vec3 blur = vec3(0.0);\n          blur += texture(uTrail, vUv + vec2( 1.0,  0.0) * uTexel).rgb;\n          blur += texture(uTrail, vUv + vec2(-1.0,  0.0) * uTexel).rgb;\n          blur += texture(uTrail, vUv + vec2( 0.0,  1.0) * uTexel).rgb;\n          blur += texture(uTrail, vUv + vec2( 0.0, -1.0) * uTexel).rgb;\n          blur += texture(uTrail, vUv + vec2( 2.0,  1.0) * uTexel).rgb;\n          blur += texture(uTrail, vUv + vec2(-2.0, -1.0) * uTexel).rgb;\n          blur /= 6.0;\n\n          c = mix(c, blur, uBlur);\n          c *= mix(0.02, uPersistence, uTrailsEnabled);\n\n          float grain = hash(vUv * vec2(900.0, 500.0) + uTime) - 0.5;\n          c += grain * 0.0025 * uTrailsEnabled;\n\n          outColor = vec4(max(c, vec3(0.0)), 1.0);\n        }\n      `;\n\n      const particleVS = `#version 300 es\n        precision highp float;\n        precision highp sampler2D;\n\n        uniform sampler2D uPosition;\n        uniform sampler2D uVelocity;\n        uniform int uTextureSize;\n        uniform float uAspect;\n        uniform float uPointSize;\n        uniform float uSpeedSize;\n        uniform int uMotionBlurPass;\n        uniform int uMotionBlurCount;\n        uniform float uStreakLength;\n        uniform float uParticleAlpha;\n        uniform float uParticleBrightness;\n        uniform float uTime;\n        uniform int uStyle;\n\n        out vec3 vColor;\n        out float vAlpha;\n        out float vSeed;\n        out float vSpeed;\n        out float vType;\n\n        vec3 palette(float h, int style) {\n          h = fract(h);\n\n          vec3 a;\n          vec3 b;\n          vec3 c;\n          vec3 d;\n\n          if (style == 1) {\n            a = vec3(1.00, 0.33, 0.05);\n            b = vec3(1.00, 0.76, 0.16);\n            c = vec3(1.00, 0.12, 0.02);\n            d = vec3(0.35, 0.06, 0.01);\n          } else if (style == 2) {\n            a = vec3(0.46, 0.36, 1.00);\n            b = vec3(0.08, 0.92, 1.00);\n            c = vec3(1.00, 0.18, 0.82);\n            d = vec3(0.05, 0.08, 0.16);\n          } else {\n            a = vec3(0.60, 0.92, 1.00);\n            b = vec3(0.34, 0.58, 1.00);\n            c = vec3(0.95, 0.98, 1.00);\n            d = vec3(0.18, 0.32, 0.65);\n          }\n\n          return a * (0.45 + 0.55 * cos(6.28318 * (h + 0.00)))\n               + b * (0.45 + 0.55 * cos(6.28318 * (h + 0.22)))\n               + c * (0.38 + 0.62 * cos(6.28318 * (h + 0.47)))\n               + d * 0.25;\n        }\n\n        void main() {\n          int id = gl_VertexID;\n          ivec2 coord = ivec2(id % uTextureSize, id / uTextureSize);\n\n          vec4 pData = texelFetch(uPosition, coord, 0);\n          vec4 vData = texelFetch(uVelocity, coord, 0);\n\n          vec2 pos = pData.xy;\n          vec2 vel = vData.xy;\n\n          if (uMotionBlurCount > 1) {\n            float shutter = float(uMotionBlurPass) / max(float(uMotionBlurCount - 1), 1.0);\n            pos -= vel * shutter * uStreakLength * 0.055;\n          }\n\n          float seed = pData.z;\n          float type = pData.w;\n          float hue = vData.z;\n          float speed = length(vel);\n\n          vec2 clip = vec2(pos.x / uAspect, pos.y);\n\n          gl_Position = vec4(clip, 0.0, 1.0);\n\n          float typeScale = mix(0.72, 1.75, type);\n          float speedScale = 1.0 + smoothstep(0.08, 1.2, speed) * uSpeedSize;\n\n          gl_PointSize = uPointSize * typeScale * speedScale;\n\n          vColor = clamp(palette(hue + speed * 0.08 + seed * 0.03, uStyle), vec3(0.0), vec3(2.2)) * uParticleBrightness;\n          float sampleNorm = 1.0 / sqrt(max(float(uMotionBlurCount), 1.0));\n          vAlpha = (0.045 + type * 0.045 + smoothstep(0.05, 1.2, speed) * 0.06) * uParticleAlpha * sampleNorm;\n          vSeed = seed;\n          vSpeed = speed;\n          vType = type;\n        }\n      `;\n\n      const particleFS = `#version 300 es\n        precision highp float;\n\n        in vec3 vColor;\n        in float vAlpha;\n        in float vSeed;\n        in float vSpeed;\n        in float vType;\n\n        out vec4 outColor;\n\n        uniform float uTime;\n        uniform int uShape;\n\n        mat2 rot(float a) {\n          float s = sin(a);\n          float c = cos(a);\n          return mat2(c, -s, s, c);\n        }\n\n        float hardTriangleMask(vec2 p) {\n          const float k = 1.7320508;\n          p.y -= 0.12;\n          float m = max(abs(p.x) * k + p.y, -2.0 * p.y);\n          return step(m, 0.58);\n        }\n\n        void main() {\n          vec2 p = gl_PointCoord * 2.0 - 1.0;\n          float angle = vSeed * 6.2831853 + uTime * (0.25 + vType * 0.32);\n          p = rot(angle) * p;\n\n          float radius = length(p);\n          float alpha = 0.0;\n\n          if (uShape == 1) {\n            alpha = smoothstep(1.0, 0.08, radius);\n            alpha *= exp(-radius * radius * 1.2);\n          } else if (uShape == 2) {\n            float cross = exp(-abs(p.x) * 9.0) + exp(-abs(p.y) * 9.0);\n            float core = smoothstep(1.0, 0.0, radius);\n            alpha = cross * core * 0.58;\n          } else if (uShape == 3) {\n            alpha = hardTriangleMask(p);\n          } else if (uShape == 4) {\n            alpha = step(radius, 0.82);\n          } else if (uShape == 5) {\n            alpha = step(max(abs(p.x), abs(p.y)), 0.78);\n          } else {\n            float a = atan(p.y, p.x);\n            float triBoundary = 0.54 + 0.22 * cos(a * 3.0);\n            float shard = smoothstep(triBoundary, triBoundary - 0.095, radius);\n            float core = smoothstep(0.86, 0.1, radius);\n            alpha = shard * core;\n          }\n\n          alpha *= vAlpha;\n\n          vec3 color = vColor * alpha * (1.0 + smoothstep(0.1, 1.4, vSpeed) * 1.7);\n          outColor = vec4(color, alpha);\n        }\n      `;\n\n      const displayFS = `#version 300 es\n        precision highp float;\n        precision highp sampler2D;\n\n        in vec2 vUv;\n        out vec4 outColor;\n\n        uniform sampler2D uTrail;\n        uniform vec2 uResolution;\n        uniform vec2 uTexel;\n        uniform float uAspect;\n        uniform float uTime;\n        uniform float uGlow;\n        uniform float uExposure;\n        uniform float uChroma;\n        uniform float uStars;\n        uniform int uBloomSamples;\n        uniform float uBloomRadius;\n        uniform int uBodyCount;\n        uniform float uBodyStrength;\n        uniform float uBodyRadius;\n        uniform float uBodySpeed;\n        uniform int uStyle;\n        uniform float uPlanetEnabled;\n        uniform float uRingEnabled;\n        uniform float uPlanetRadius;\n        uniform float uShockCount;\n        uniform vec4 uShockwaves[8];\n\n        float hash(vec2 p) {\n          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);\n        }\n\n        vec3 styleColor(float t) {\n          if (uStyle == 1) {\n            return mix(vec3(1.0, 0.26, 0.04), vec3(1.0, 0.78, 0.18), t);\n          } else if (uStyle == 2) {\n            return mix(vec3(0.16, 0.10, 0.50), vec3(0.05, 0.92, 1.0), t);\n          }\n\n          return mix(vec3(0.35, 0.68, 1.0), vec3(0.94, 0.99, 1.0), t);\n        }\n\n        void main() {\n          vec2 uv = vUv;\n          vec2 world = vec2((uv.x * 2.0 - 1.0) * uAspect, uv.y * 2.0 - 1.0);\n          float r = length(world);\n\n          vec2 chromaDir = normalize(uv - 0.5 + vec2(0.0001));\n          float chroma = uChroma;\n\n          vec3 trail;\n          trail.r = texture(uTrail, uv + chromaDir * chroma).r;\n          trail.g = texture(uTrail, uv).g;\n          trail.b = texture(uTrail, uv - chromaDir * chroma).b;\n\n          vec3 bloom = vec3(0.0);\n\n          for (int i = 0; i < 48; i++) {\n            if (i >= uBloomSamples) {\n              break;\n            }\n\n            float fi = float(i);\n            float a = fi * 2.39996323;\n            float radius = sqrt(fi + 1.0) * uBloomRadius;\n            vec2 off = vec2(cos(a), sin(a)) * uTexel * radius;\n            bloom += texture(uTrail, uv + off).rgb;\n          }\n\n          if (uBloomSamples > 0) {\n            bloom *= (0.80 * uGlow) / float(uBloomSamples);\n          }\n\n          vec3 bg = vec3(0.008, 0.012, 0.030);\n          bg += styleColor(0.1) * exp(-r * 2.8) * 0.05;\n\n          float starHash = hash(floor(uv * uResolution * 0.42));\n          float stars = 0.0;\n\n          if (uStars > 0.001) {\n            stars = smoothstep(1.0 - 0.0035 * uStars, 1.0, starHash);\n          }\n\n          bg += stars * vec3(0.35, 0.58, 0.9) * (0.25 + hash(uv * 77.0) * 0.75);\n\n          float disk = exp(-abs(world.y + sin(world.x * 2.0 + uTime * 0.08) * 0.018) * 17.0)\n                     * smoothstep(1.35, 0.18, abs(world.x));\n\n          bg += styleColor(0.65) * disk * 0.03;\n\n          vec3 color = bg + trail * (1.15 + uGlow * 0.55) + bloom;\n\n          for (int i = 0; i < 8; i++) {\n            if (i >= uBodyCount) {\n              break;\n            }\n\n            float fi = float(i);\n            float phase = fi * 6.28318530718 / max(float(uBodyCount), 1.0);\n            float wobble = sin(uTime * 0.19 + fi * 1.71) * 0.10;\n            float angle = phase + uTime * uBodySpeed * (0.22 + fi * 0.037);\n            vec2 body = vec2(cos(angle), sin(angle)) * uBodyRadius * (0.82 + wobble);\n            float d = length(world - body);\n            float halo = exp(-pow(d / 0.055, 2.0)) * uBodyStrength;\n            float core = smoothstep(0.018, 0.004, d);\n            color += styleColor(0.85) * halo * 0.12;\n            color = mix(color, styleColor(1.0), core * 0.45);\n          }\n\n          float planetR = uPlanetRadius;\n          if (uPlanetEnabled > 0.5 && planetR > 0.0001 && r < planetR) {\n            vec2 nxy = world / planetR;\n            float nz = sqrt(max(0.0, 1.0 - dot(nxy, nxy)));\n            vec3 n = normalize(vec3(nxy, nz));\n            vec3 light = normalize(vec3(-0.48, 0.38, 0.78));\n            float diff = max(dot(n, light), 0.0);\n            float rim = pow(1.0 - nz, 2.2);\n\n            vec3 planet;\n            if (uStyle == 1) {\n              planet = mix(vec3(0.16, 0.045, 0.012), vec3(1.0, 0.36, 0.06), diff);\n            } else if (uStyle == 2) {\n              planet = mix(vec3(0.004, 0.004, 0.010), vec3(0.14, 0.08, 0.28), diff);\n            } else {\n              planet = mix(vec3(0.035, 0.07, 0.13), vec3(0.58, 0.88, 1.0), diff);\n            }\n\n            planet += styleColor(1.0) * rim * 0.25;\n            color = mix(color, planet, smoothstep(planetR, planetR - 0.006, r));\n          }\n\n          if (uRingEnabled > 0.5) {\n            float ring = exp(-pow((r - (planetR + 0.06)) / 0.012, 2.0));\n            color += styleColor(0.75) * ring * 0.20;\n          }\n\n          for (int i = 0; i < 8; i++) {\n            if (float(i) >= uShockCount) {\n              break;\n            }\n\n            vec4 s = uShockwaves[i];\n            float d = length(world - s.xy);\n            float wave = exp(-pow((d - s.z) / 0.018, 2.0)) * s.w;\n            color += styleColor(0.9) * wave * 0.45;\n          }\n\n          color = 1.0 - exp(-color * uExposure);\n          color = pow(max(color, vec3(0.0)), vec3(0.88));\n\n          float vignette = smoothstep(1.18, 0.20, length(uv - 0.5));\n          color *= 0.58 + vignette * 0.42;\n\n          outColor = vec4(color, 1.0);\n        }\n      `;\n\n      function compileShader(type, source) {\n        const shader = gl.createShader(type);\n        gl.shaderSource(shader, source);\n        gl.compileShader(shader);\n\n        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {\n          const message = gl.getShaderInfoLog(shader);\n          gl.deleteShader(shader);\n          throw new Error(message);\n        }\n\n        return shader;\n      }\n\n      function createProgram(vertexSource, fragmentSource) {\n        const vs = compileShader(gl.VERTEX_SHADER, vertexSource);\n        const fs = compileShader(gl.FRAGMENT_SHADER, fragmentSource);\n        const program = gl.createProgram();\n\n        gl.attachShader(program, vs);\n        gl.attachShader(program, fs);\n        gl.linkProgram(program);\n\n        gl.deleteShader(vs);\n        gl.deleteShader(fs);\n\n        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {\n          const message = gl.getProgramInfoLog(program);\n          gl.deleteProgram(program);\n          throw new Error(message);\n        }\n\n        return {\n          program,\n          uniforms: getUniforms(program)\n        };\n      }\n\n      function getUniforms(program) {\n        const uniforms = {};\n        const count = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);\n\n        for (let i = 0; i < count; i++) {\n          const info = gl.getActiveUniform(program, i);\n          const name = info.name.replace(/\\[0\\]$/, '');\n          uniforms[name] = gl.getUniformLocation(program, name);\n        }\n\n        return uniforms;\n      }\n\n      const initProgram = createProgram(quadVS, initFS);\n      const simProgram = createProgram(quadVS, simFS);\n      const fadeProgram = createProgram(quadVS, fadeFS);\n      const displayProgram = createProgram(quadVS, displayFS);\n      const particleProgram = createProgram(particleVS, particleFS);\n\n      const quadVAO = gl.createVertexArray();\n      const quadBuffer = gl.createBuffer();\n\n      gl.bindVertexArray(quadVAO);\n      gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);\n      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([\n        -1, -1,\n         3, -1,\n        -1,  3\n      ]), gl.STATIC_DRAW);\n      gl.enableVertexAttribArray(0);\n      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);\n      gl.bindVertexArray(null);\n\n      const particleVAO = gl.createVertexArray();\n\n      let simSize = 192;\n      let particleCount = simSize * simSize;\n      let stateA = null;\n      let stateB = null;\n      let trailA = null;\n      let trailB = null;\n      let trailW = 0;\n      let trailH = 0;\n      let precisionMode = '32f';\n\n      let lastTime = performance.now();\n      let fpsFrames = 0;\n      let fpsTime = 0;\n      let time = 0;\n      let pointerDown = false;\n      let pointerWorld = [0, 0];\n      let pointerVelocity = [0, 0];\n      let pointerLastWorld = [0, 0];\n      let shocks = [];\n      let nextAutoEvent = 5.0;\n      let statusTimer = 0;\n\n      function random(min, max) {\n        return min + Math.random() * (max - min);\n      }\n\n      function clamp(v, min, max) {\n        return Math.max(min, Math.min(max, v));\n      }\n\n      function setStatus(text, warn = false) {\n        ui.status.textContent = text;\n        ui.status.className = warn ? 'status-warn' : 'status-ok';\n        statusTimer = 2.5;\n        publishDebugStats();\n      }\n\n      function publishDebugStats() {\n        try {\n          window.parent?.postMessage({\n            type: 'pixi-lab:raw-debug-stats',\n            source: 'orbital-shrapnel-reference',\n            stats: {\n              renderer: 'raw-webgl2-reference',\n              fps: ui.fps.textContent || '0',\n              gpu: ui.gpuMs.textContent || 'n/a',\n              particles: ui.particleCount.textContent || '36,864',\n              drawn: ui.drawCount.textContent || '36,864',\n              state: ui.stateSize.textContent || '192² RGBA32F',\n              trailRt: ui.trailSize.textContent || '0×0',\n              vram: ui.memoryEstimate.textContent || '0 MB',\n              caps: ui.caps.textContent || '...',\n              status: ui.status.textContent || 'ready'\n            }\n          }, '*');\n        } catch (_) {\n          // Parent debug panel bridge is best-effort; rendering must continue.\n        }\n      }\n\n      function createStateTexture(width, height) {\n        const texture = gl.createTexture();\n        const isHalf = precisionMode === '16f';\n\n        gl.bindTexture(gl.TEXTURE_2D, texture);\n        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);\n        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);\n        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);\n        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);\n        gl.texImage2D(\n          gl.TEXTURE_2D,\n          0,\n          isHalf ? gl.RGBA16F : gl.RGBA32F,\n          width,\n          height,\n          0,\n          gl.RGBA,\n          isHalf ? gl.HALF_FLOAT : gl.FLOAT,\n          null\n        );\n\n        return texture;\n      }\n\n      function createTrailTexture(width, height) {\n        const texture = gl.createTexture();\n\n        gl.bindTexture(gl.TEXTURE_2D, texture);\n        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);\n        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);\n        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);\n        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);\n        gl.texImage2D(\n          gl.TEXTURE_2D,\n          0,\n          gl.RGBA8,\n          width,\n          height,\n          0,\n          gl.RGBA,\n          gl.UNSIGNED_BYTE,\n          null\n        );\n\n        const fbo = gl.createFramebuffer();\n        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);\n        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);\n\n        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {\n          throw new Error('Trail framebuffer incomplete');\n        }\n\n        gl.bindFramebuffer(gl.FRAMEBUFFER, null);\n\n        return { texture, fbo, width, height };\n      }\n\n      function createState(size) {\n        const pos = createStateTexture(size, size);\n        const vel = createStateTexture(size, size);\n        const fbo = gl.createFramebuffer();\n\n        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);\n        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, pos, 0);\n        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, vel, 0);\n        gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);\n\n        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {\n          throw new Error('State framebuffer incomplete');\n        }\n\n        gl.bindFramebuffer(gl.FRAMEBUFFER, null);\n\n        return { pos, vel, fbo, size };\n      }\n\n      function destroyState(state) {\n        if (!state) return;\n        gl.deleteTexture(state.pos);\n        gl.deleteTexture(state.vel);\n        gl.deleteFramebuffer(state.fbo);\n      }\n\n      function destroyTrail(trail) {\n        if (!trail) return;\n        gl.deleteTexture(trail.texture);\n        gl.deleteFramebuffer(trail.fbo);\n      }\n\n      function initState(state, seed) {\n        gl.useProgram(initProgram.program);\n        gl.bindFramebuffer(gl.FRAMEBUFFER, state.fbo);\n        gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);\n        gl.viewport(0, 0, state.size, state.size);\n        gl.disable(gl.BLEND);\n\n        gl.uniform1f(initProgram.uniforms.uSeed, seed);\n        gl.uniform1i(initProgram.uniforms.uStyle, Number(ui.style.value));\n\n        gl.bindVertexArray(quadVAO);\n        gl.drawArrays(gl.TRIANGLES, 0, 3);\n        gl.bindVertexArray(null);\n        gl.bindFramebuffer(gl.FRAMEBUFFER, null);\n      }\n\n      function resetParticles() {\n        try {\n          const requested = Number(ui.particleSize.value);\n\n          if (requested > CAPS.maxTextureSize) {\n            setStatus(`texture cap ${CAPS.maxTextureSize}; choose lower`, true);\n            return;\n          }\n\n          const oldA = stateA;\n          const oldB = stateB;\n\n          precisionMode = ui.precision.value;\n          simSize = requested;\n          particleCount = simSize * simSize;\n\n          const newA = createState(simSize);\n          const newB = createState(simSize);\n          const seed = Math.random() * 1000;\n\n          initState(newA, seed);\n          initState(newB, seed);\n\n          stateA = newA;\n          stateB = newB;\n\n          destroyState(oldA);\n          destroyState(oldB);\n\n          clearTrails();\n\n          ui.particleCount.textContent = particleCount.toLocaleString();\n          ui.stateSize.textContent = `${simSize}\u00b2 ${precisionMode === '16f' ? 'RGBA16F' : 'RGBA32F'}`;\n          setStatus('particles reset');\n        } catch (error) {\n          console.error(error);\n          setStatus('reset failed: lower particle count', true);\n        }\n      }\n\n      function resize() {\n        const dprCap = Number(ui.dprCap.value);\n        const dpr = Math.min(window.devicePixelRatio || 1, dprCap);\n        const width = Math.max(2, Math.floor(window.innerWidth * dpr));\n        const height = Math.max(2, Math.floor(window.innerHeight * dpr));\n\n        if (canvas.width !== width || canvas.height !== height) {\n          canvas.width = width;\n          canvas.height = height;\n        }\n\n        const scale = Number(ui.trailScale.value);\n        const nextTrailW = Math.max(2, Math.floor(width * scale));\n        const nextTrailH = Math.max(2, Math.floor(height * scale));\n\n        if (nextTrailW !== trailW || nextTrailH !== trailH) {\n          trailW = nextTrailW;\n          trailH = nextTrailH;\n\n          destroyTrail(trailA);\n          destroyTrail(trailB);\n\n          trailA = createTrailTexture(trailW, trailH);\n          trailB = createTrailTexture(trailW, trailH);\n\n          clearTrails();\n        }\n\n        ui.trailSize.textContent = `${trailW}\u00d7${trailH}`;\n      }\n\n      function clearFBO(fbo, width, height, color = [0, 0, 0, 1]) {\n        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);\n        gl.viewport(0, 0, width, height);\n        gl.clearColor(color[0], color[1], color[2], color[3]);\n        gl.clear(gl.COLOR_BUFFER_BIT);\n        gl.bindFramebuffer(gl.FRAMEBUFFER, null);\n      }\n\n      function clearTrails() {\n        if (!trailA || !trailB) return;\n        clearFBO(trailA.fbo, trailA.width, trailA.height);\n        clearFBO(trailB.fbo, trailB.width, trailB.height);\n        setStatus('trails cleared');\n      }\n\n      function bindTexture(unit, texture) {\n        gl.activeTexture(gl.TEXTURE0 + unit);\n        gl.bindTexture(gl.TEXTURE_2D, texture);\n        return unit;\n      }\n\n      function updateOutputs() {\n        ui.renderFractionOut.textContent = Number(ui.renderFraction.value).toFixed(2);\n        ui.simSubstepsOut.textContent = Number(ui.simSubsteps.value).toFixed(0);\n        ui.bodyCountOut.textContent = Number(ui.bodyCount.value).toFixed(0);\n        ui.bodyStrengthOut.textContent = Number(ui.bodyStrength.value).toFixed(2);\n        ui.bodyRadiusOut.textContent = Number(ui.bodyRadius.value).toFixed(2);\n        ui.bodySpeedOut.textContent = Number(ui.bodySpeed.value).toFixed(2);\n        ui.motionBlurSamplesOut.textContent = Number(ui.motionBlurSamples.value).toFixed(0);\n        ui.streakLengthOut.textContent = Number(ui.streakLength.value).toFixed(2);\n        ui.trailFadePassesOut.textContent = Number(ui.trailFadePasses.value).toFixed(0);\n        ui.bloomSamplesOut.textContent = Number(ui.bloomSamples.value).toFixed(0);\n        ui.bloomRadiusOut.textContent = Number(ui.bloomRadius.value).toFixed(1);\n        ui.dprCapOut.textContent = Number(ui.dprCap.value).toFixed(2);\n        ui.trailScaleOut.textContent = Number(ui.trailScale.value).toFixed(2);\n\n        ui.gravityOut.textContent = Number(ui.gravity.value).toFixed(2);\n        ui.tangentOut.textContent = Number(ui.tangent.value).toFixed(2);\n        ui.dampingOut.textContent = Number(ui.damping.value).toFixed(3);\n        ui.maxSpeedOut.textContent = Number(ui.maxSpeed.value).toFixed(2);\n        ui.timeScaleOut.textContent = Number(ui.timeScale.value).toFixed(2) + '\u00d7';\n        ui.boundaryPullOut.textContent = Number(ui.boundaryPull.value).toFixed(2);\n        ui.planetRadiusOut.textContent = Number(ui.planetRadius.value).toFixed(3);\n        ui.planetBounceOut.textContent = Number(ui.planetBounce.value).toFixed(2);\n\n        ui.swishOut.textContent = Number(ui.swish.value).toFixed(2);\n        ui.wellOut.textContent = Number(ui.well.value).toFixed(2);\n        ui.wellRadiusOut.textContent = Number(ui.wellRadius.value).toFixed(3);\n        ui.pointerVortexOut.textContent = Number(ui.pointerVortex.value).toFixed(2);\n        ui.shockStrengthOut.textContent = Number(ui.shockStrength.value).toFixed(2);\n        ui.shockSpeedOut.textContent = Number(ui.shockSpeed.value).toFixed(2);\n        ui.meteorCountOut.textContent = Number(ui.meteorCount.value).toFixed(0);\n\n        ui.trailOut.textContent = Number(ui.trail.value).toFixed(3);\n        ui.blurOut.textContent = Number(ui.blur.value).toFixed(2);\n        ui.particleSizePxOut.textContent = Number(ui.particleSizePx.value).toFixed(1) + ' px';\n        ui.speedSizeOut.textContent = Number(ui.speedSize.value).toFixed(2);\n        ui.trailAlphaOut.textContent = Number(ui.trailAlpha.value).toFixed(2);\n        ui.liveAlphaOut.textContent = Number(ui.liveAlpha.value).toFixed(2);\n        ui.particleBrightnessOut.textContent = Number(ui.particleBrightness.value).toFixed(2);\n\n        ui.glowOut.textContent = Number(ui.glow.value).toFixed(2);\n        ui.exposureOut.textContent = Number(ui.exposure.value).toFixed(2);\n        ui.chromaOut.textContent = Number(ui.chroma.value).toFixed(3);\n        ui.starsOut.textContent = Number(ui.stars.value).toFixed(2);\n\n        const drawCount = Math.floor(particleCount * Number(ui.renderFraction.value));\n        ui.drawCount.textContent = drawCount.toLocaleString();\n\n        const stateBytesPerTexel = precisionMode === '16f' ? 8 : 16;\n        const stateBytes = particleCount * stateBytesPerTexel * 4;\n        const trailBytes = trailW * trailH * 4 * 2;\n        const mb = (stateBytes + trailBytes) / (1024 * 1024);\n        ui.memoryEstimate.textContent = `${mb.toFixed(mb > 999 ? 0 : 1)} MB`;\n      }\n\n      function worldFromEvent(event) {\n        const rect = canvas.getBoundingClientRect();\n        const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;\n        const y = 1 - ((event.clientY - rect.top) / rect.height) * 2;\n        const aspect = canvas.width / canvas.height;\n\n        return [x * aspect, y];\n      }\n\n      function addShock(x, y, strength = 1.0, speed = 0.62) {\n        shocks.push({\n          x,\n          y,\n          radius: 0.025,\n          strength,\n          speed,\n          life: 1.0\n        });\n\n        if (shocks.length > MAX_SHOCKS) {\n          shocks.shift();\n        }\n      }\n\n      function gravityPulse() {\n        addShock(0, 0, Number(ui.shockStrength.value) * 1.45, Number(ui.shockSpeed.value) * 1.2);\n      }\n\n      function meteorShower() {\n        const aspect = canvas.width / canvas.height;\n        const count = Number(ui.meteorCount.value);\n\n        for (let i = 0; i < count; i++) {\n          const side = Math.random() < 0.5 ? -1 : 1;\n          const x = side * aspect * random(0.75, 1.08);\n          const y = random(-0.85, 0.85);\n          addShock(\n            x,\n            y,\n            Number(ui.shockStrength.value) * random(0.85, 1.45),\n            Number(ui.shockSpeed.value) * random(0.72, 1.25)\n          );\n        }\n\n        setStatus('meteor shower');\n      }\n\n      function updateShocks(dt) {\n        for (let i = shocks.length - 1; i >= 0; i--) {\n          const s = shocks[i];\n\n          s.radius += s.speed * dt;\n          s.life -= dt * 0.72;\n          s.strength *= Math.exp(-dt * 0.42);\n\n          if (s.life <= 0 || s.radius > 2.5) {\n            shocks.splice(i, 1);\n          }\n        }\n      }\n\n      function shockUniformArray() {\n        const arr = new Float32Array(MAX_SHOCKS * 4);\n\n        for (let i = 0; i < Math.min(shocks.length, MAX_SHOCKS); i++) {\n          const s = shocks[i];\n          arr[i * 4] = s.x;\n          arr[i * 4 + 1] = s.y;\n          arr[i * 4 + 2] = s.radius;\n          arr[i * 4 + 3] = s.strength * s.life;\n        }\n\n        return arr;\n      }\n\n      function simulate(dt) {\n        const aspect = canvas.width / canvas.height;\n        const shockArr = shockUniformArray();\n\n        gl.useProgram(simProgram.program);\n        gl.bindFramebuffer(gl.FRAMEBUFFER, stateB.fbo);\n        gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);\n        gl.viewport(0, 0, simSize, simSize);\n        gl.disable(gl.BLEND);\n\n        gl.uniform1i(simProgram.uniforms.uPosition, bindTexture(0, stateA.pos));\n        gl.uniform1i(simProgram.uniforms.uVelocity, bindTexture(1, stateA.vel));\n        gl.uniform1i(simProgram.uniforms.uBodyCount, Number(ui.bodyCount.value));\n        gl.uniform1f(simProgram.uniforms.uBodyStrength, Number(ui.bodyStrength.value));\n        gl.uniform1f(simProgram.uniforms.uBodyRadius, Number(ui.bodyRadius.value));\n        gl.uniform1f(simProgram.uniforms.uBodySpeed, Number(ui.bodySpeed.value));\n        gl.uniform1f(simProgram.uniforms.uDt, dt);\n        gl.uniform1f(simProgram.uniforms.uAspect, aspect);\n        gl.uniform1f(simProgram.uniforms.uTime, time);\n        gl.uniform1f(simProgram.uniforms.uGravity, Number(ui.gravity.value));\n        gl.uniform1f(simProgram.uniforms.uTangent, Number(ui.tangent.value));\n        gl.uniform1f(simProgram.uniforms.uDamping, Number(ui.damping.value));\n        gl.uniform1f(simProgram.uniforms.uMaxSpeed, Number(ui.maxSpeed.value));\n        gl.uniform1f(simProgram.uniforms.uBoundaryPull, Number(ui.boundaryPull.value));\n        gl.uniform1f(simProgram.uniforms.uPlanetRadius, Number(ui.planetRadius.value));\n        gl.uniform1f(simProgram.uniforms.uPlanetBounce, Number(ui.planetBounce.value));\n        gl.uniform1f(simProgram.uniforms.uSwishForce, Number(ui.swish.value));\n        gl.uniform1f(simProgram.uniforms.uWellForce, Number(ui.well.value));\n        gl.uniform1f(simProgram.uniforms.uWellRadius, Number(ui.wellRadius.value));\n        gl.uniform1f(simProgram.uniforms.uPointerVortex, Number(ui.pointerVortex.value));\n        gl.uniform1f(simProgram.uniforms.uPointerActive, pointerDown ? 1 : 0);\n        gl.uniform2f(simProgram.uniforms.uPointer, pointerWorld[0], pointerWorld[1]);\n        gl.uniform2f(simProgram.uniforms.uPointerVelocity, pointerVelocity[0], pointerVelocity[1]);\n        gl.uniform1f(simProgram.uniforms.uShockCount, Math.min(shocks.length, MAX_SHOCKS));\n        gl.uniform4fv(simProgram.uniforms.uShockwaves, shockArr);\n\n        gl.bindVertexArray(quadVAO);\n        gl.drawArrays(gl.TRIANGLES, 0, 3);\n        gl.bindVertexArray(null);\n\n        const temp = stateA;\n        stateA = stateB;\n        stateB = temp;\n\n        pointerVelocity[0] *= Math.exp(-dt * 8.0);\n        pointerVelocity[1] *= Math.exp(-dt * 8.0);\n      }\n\n      function swapTrailBuffers() {\n        const temp = trailA;\n        trailA = trailB;\n        trailB = temp;\n      }\n\n      function fadeTrailOnce() {\n        gl.useProgram(fadeProgram.program);\n        gl.bindFramebuffer(gl.FRAMEBUFFER, trailB.fbo);\n        gl.viewport(0, 0, trailB.width, trailB.height);\n        gl.disable(gl.BLEND);\n\n        gl.uniform1i(fadeProgram.uniforms.uTrail, bindTexture(0, trailA.texture));\n        gl.uniform2f(fadeProgram.uniforms.uTexel, 1 / trailA.width, 1 / trailA.height);\n        gl.uniform1f(fadeProgram.uniforms.uPersistence, Number(ui.trail.value));\n        gl.uniform1f(fadeProgram.uniforms.uBlur, Number(ui.blur.value));\n        gl.uniform1f(fadeProgram.uniforms.uTrailsEnabled, flags.trails ? 1 : 0);\n        gl.uniform1f(fadeProgram.uniforms.uTime, time);\n\n        gl.bindVertexArray(quadVAO);\n        gl.drawArrays(gl.TRIANGLES, 0, 3);\n        gl.bindVertexArray(null);\n\n        swapTrailBuffers();\n      }\n\n      function applyTrailFades() {\n        const passes = Number(ui.trailFadePasses.value);\n\n        for (let i = 0; i < passes; i++) {\n          fadeTrailOnce();\n        }\n      }\n\n      function drawParticles(targetFbo, viewportWidth, viewportHeight, alpha, brightness, blendMode) {\n        const drawCount = Math.floor(particleCount * Number(ui.renderFraction.value));\n\n        if (drawCount <= 0 || alpha <= 0 || brightness <= 0) {\n          return;\n        }\n\n        const aspect = canvas.width / canvas.height;\n        const pointScale = viewportHeight / Math.max(window.innerHeight, 1);\n        const maxPointSize = CAPS.pointSizeRange[1];\n        const pointSize = clamp(Number(ui.particleSizePx.value) * pointScale, CAPS.pointSizeRange[0], maxPointSize);\n\n        gl.useProgram(particleProgram.program);\n        gl.bindFramebuffer(gl.FRAMEBUFFER, targetFbo);\n        gl.viewport(0, 0, viewportWidth, viewportHeight);\n\n        gl.enable(gl.BLEND);\n\n        if (blendMode === 'over') {\n          // Particle shader emits premultiplied color, so this gives true opaque-ish live silhouettes.\n          gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);\n        } else {\n          // Additive is better for persistent dust/trail energy.\n          gl.blendFunc(gl.ONE, gl.ONE);\n        }\n\n        gl.blendEquation(gl.FUNC_ADD);\n\n        gl.uniform1i(particleProgram.uniforms.uPosition, bindTexture(0, stateA.pos));\n        gl.uniform1i(particleProgram.uniforms.uVelocity, bindTexture(1, stateA.vel));\n        gl.uniform1i(particleProgram.uniforms.uTextureSize, simSize);\n        gl.uniform1f(particleProgram.uniforms.uAspect, aspect);\n        gl.uniform1f(particleProgram.uniforms.uPointSize, pointSize);\n        gl.uniform1f(particleProgram.uniforms.uSpeedSize, Number(ui.speedSize.value));\n        gl.uniform1f(particleProgram.uniforms.uParticleAlpha, alpha);\n        gl.uniform1f(particleProgram.uniforms.uParticleBrightness, brightness);\n        gl.uniform1f(particleProgram.uniforms.uTime, time);\n        gl.uniform1i(particleProgram.uniforms.uStyle, Number(ui.style.value));\n        gl.uniform1i(particleProgram.uniforms.uShape, Number(ui.shape.value));\n\n        const passes = Math.max(1, Number(ui.motionBlurSamples.value));\n        gl.uniform1i(particleProgram.uniforms.uMotionBlurCount, passes);\n        gl.uniform1f(particleProgram.uniforms.uStreakLength, Number(ui.streakLength.value));\n\n        gl.bindVertexArray(particleVAO);\n\n        for (let i = 0; i < passes; i++) {\n          gl.uniform1i(particleProgram.uniforms.uMotionBlurPass, i);\n          gl.drawArrays(gl.POINTS, 0, drawCount);\n        }\n\n        gl.bindVertexArray(null);\n\n        gl.disable(gl.BLEND);\n      }\n\n      function renderParticlesIntoTrail() {\n        if (flags.depositTrails) {\n          drawParticles(\n            trailA.fbo,\n            trailA.width,\n            trailA.height,\n            Number(ui.trailAlpha.value),\n            Number(ui.particleBrightness.value),\n            'add'\n          );\n        }\n      }\n\n      function renderLiveParticlesToScreen() {\n        if (!flags.liveParticles) {\n          return;\n        }\n\n        drawParticles(\n          null,\n          canvas.width,\n          canvas.height,\n          Number(ui.liveAlpha.value),\n          Number(ui.particleBrightness.value),\n          'over'\n        );\n      }\n\n      function display() {\n        const aspect = canvas.width / canvas.height;\n        const shockArr = shockUniformArray();\n\n        gl.useProgram(displayProgram.program);\n        gl.bindFramebuffer(gl.FRAMEBUFFER, null);\n        gl.viewport(0, 0, canvas.width, canvas.height);\n        gl.disable(gl.BLEND);\n\n        gl.uniform1i(displayProgram.uniforms.uTrail, bindTexture(0, trailA.texture));\n        gl.uniform2f(displayProgram.uniforms.uResolution, canvas.width, canvas.height);\n        gl.uniform2f(displayProgram.uniforms.uTexel, 1 / trailA.width, 1 / trailA.height);\n        gl.uniform1f(displayProgram.uniforms.uAspect, aspect);\n        gl.uniform1f(displayProgram.uniforms.uTime, time);\n        gl.uniform1f(displayProgram.uniforms.uGlow, Number(ui.glow.value));\n        gl.uniform1f(displayProgram.uniforms.uExposure, Number(ui.exposure.value));\n        gl.uniform1f(displayProgram.uniforms.uChroma, Number(ui.chroma.value));\n        gl.uniform1f(displayProgram.uniforms.uStars, Number(ui.stars.value));\n        gl.uniform1i(displayProgram.uniforms.uBloomSamples, Number(ui.bloomSamples.value));\n        gl.uniform1f(displayProgram.uniforms.uBloomRadius, Number(ui.bloomRadius.value));\n        gl.uniform1i(displayProgram.uniforms.uBodyCount, Number(ui.bodyCount.value));\n        gl.uniform1f(displayProgram.uniforms.uBodyStrength, Number(ui.bodyStrength.value));\n        gl.uniform1f(displayProgram.uniforms.uBodyRadius, Number(ui.bodyRadius.value));\n        gl.uniform1f(displayProgram.uniforms.uBodySpeed, Number(ui.bodySpeed.value));\n        gl.uniform1i(displayProgram.uniforms.uStyle, Number(ui.style.value));\n        gl.uniform1f(displayProgram.uniforms.uPlanetEnabled, flags.planet ? 1 : 0);\n        gl.uniform1f(displayProgram.uniforms.uRingEnabled, flags.ring ? 1 : 0);\n        gl.uniform1f(displayProgram.uniforms.uPlanetRadius, Number(ui.planetRadius.value));\n        gl.uniform1f(displayProgram.uniforms.uShockCount, Math.min(shocks.length, MAX_SHOCKS));\n        gl.uniform4fv(displayProgram.uniforms.uShockwaves, shockArr);\n\n        gl.bindVertexArray(quadVAO);\n        gl.drawArrays(gl.TRIANGLES, 0, 3);\n        gl.bindVertexArray(null);\n      }\n\n      function autoEvents(dt) {\n        if (!flags.auto) return;\n\n        nextAutoEvent -= dt;\n\n        if (nextAutoEvent <= 0) {\n          if (Math.random() < 0.55) {\n            gravityPulse();\n          } else {\n            meteorShower();\n          }\n\n          nextAutoEvent = random(2.6, 7.5);\n        }\n      }\n\n      function frame(now) {\n        const rawDt = Math.min((now - lastTime) / 1000, 0.04);\n        lastTime = now;\n\n        updateOutputs();\n        resize();\n\n        beginGpuTimer();\n\n        if (!flags.paused) {\n          const simTimeScale = Number(ui.timeScale.value);\n          const scaledDt = rawDt * simTimeScale;\n          time += scaledDt;\n          updateShocks(scaledDt);\n          autoEvents(scaledDt);\n\n          const substeps = Number(ui.simSubsteps.value);\n          const dt = scaledDt * 0.82 / substeps;\n\n          for (let i = 0; i < substeps; i++) {\n            simulate(dt);\n          }\n\n          applyTrailFades();\n          renderParticlesIntoTrail();\n        }\n\n        display();\n        renderLiveParticlesToScreen();\n        endGpuTimer();\n        pollGpuTimer();\n\n        fpsFrames += 1;\n        fpsTime += rawDt;\n\n        if (fpsTime > 0.3) {\n          ui.fps.textContent = Math.round(fpsFrames / fpsTime).toString();\n          publishDebugStats();\n          fpsFrames = 0;\n          fpsTime = 0;\n        }\n\n        if (statusTimer > 0) {\n          statusTimer -= rawDt;\n          if (statusTimer <= 0) {\n            setStatus('ready');\n            statusTimer = 0;\n          }\n        }\n\n        requestAnimationFrame(frame);\n      }\n\n      function toggleUi() {\n        document.body.classList.toggle('ui-hidden');\n      }\n\n      function setDefaults() {\n        ui.particleSize.value = '192';\n        ui.precision.value = '32f';\n        ui.renderFraction.value = '1';\n        ui.simSubsteps.value = '1';\n        ui.bodyCount.value = '3';\n        ui.bodyStrength.value = '0.35';\n        ui.bodyRadius.value = '0.72';\n        ui.bodySpeed.value = '0.25';\n        ui.motionBlurSamples.value = '1';\n        ui.streakLength.value = '0.90';\n        ui.trailFadePasses.value = '1';\n        ui.bloomSamples.value = '8';\n        ui.bloomRadius.value = '5.0';\n        ui.dprCap.value = '2';\n        ui.trailScale.value = '0.82';\n\n        ui.gravity.value = '0.82';\n        ui.tangent.value = '1';\n        ui.damping.value = '0.999';\n        ui.maxSpeed.value = '2.30';\n        ui.timeScale.value = '1.00';\n        ui.boundaryPull.value = '0.11';\n        ui.planetRadius.value = '0.145';\n        ui.planetBounce.value = '0.62';\n\n        ui.swish.value = '0.72';\n        ui.well.value = '0.95';\n        ui.wellRadius.value = '0.224';\n        ui.pointerVortex.value = '0.14';\n        ui.shockStrength.value = '1';\n        ui.shockSpeed.value = '0.75';\n        ui.meteorCount.value = '6';\n\n        ui.shape.value = '0';\n        ui.trail.value = '0.970';\n        ui.blur.value = '0.18';\n        ui.particleSizePx.value = '3.0';\n        ui.speedSize.value = '1.25';\n        ui.trailAlpha.value = '1';\n        ui.liveAlpha.value = '8';\n        ui.particleBrightness.value = '1';\n\n        ui.style.value = '0';\n        ui.glow.value = '0.72';\n        ui.exposure.value = '1.15';\n        ui.chroma.value = '0.003';\n        ui.stars.value = '0.55';\n\n        flags.liveParticles = true;\n        flags.depositTrails = true;\n        flags.trails = true;\n        flags.planet = true;\n        flags.ring = true;\n        flags.auto = false;\n        flags.paused = false;\n\n        syncButtons();\n        resetParticles();\n        setStatus('defaults restored');\n      }\n\n      function syncButtons() {\n        ui.liveParticlesToggle.classList.toggle('active', flags.liveParticles);\n        ui.depositToggle.classList.toggle('active', flags.depositTrails);\n        ui.trailsToggle.classList.toggle('active', flags.trails);\n        ui.planetToggle.classList.toggle('active', flags.planet);\n        ui.ringToggle.classList.toggle('active', flags.ring);\n        ui.pauseBtn.classList.toggle('active', flags.paused);\n        ui.pauseBtn.textContent = flags.paused ? 'Resume' : 'Pause';\n        ui.autoBtn.classList.toggle('active', flags.auto);\n      }\n\n      canvas.addEventListener('pointerdown', (event) => {\n        canvas.setPointerCapture?.(event.pointerId);\n        pointerDown = true;\n        pointerWorld = worldFromEvent(event);\n        pointerLastWorld = pointerWorld.slice();\n        pointerVelocity = [0, 0];\n        addShock(pointerWorld[0], pointerWorld[1], Number(ui.shockStrength.value) * 0.95, Number(ui.shockSpeed.value));\n      });\n\n      canvas.addEventListener('pointermove', (event) => {\n        const next = worldFromEvent(event);\n\n        if (pointerDown) {\n          pointerVelocity[0] += (next[0] - pointerLastWorld[0]) * 26.0;\n          pointerVelocity[1] += (next[1] - pointerLastWorld[1]) * 26.0;\n        }\n\n        pointerWorld = next;\n        pointerLastWorld = next;\n      });\n\n      function endPointer() {\n        pointerDown = false;\n        pointerVelocity[0] *= 0.35;\n        pointerVelocity[1] *= 0.35;\n      }\n\n      canvas.addEventListener('pointerup', endPointer);\n      canvas.addEventListener('pointercancel', endPointer);\n      canvas.addEventListener('pointerleave', endPointer);\n\n      ui.particleSize.addEventListener('change', resetParticles);\n      ui.precision.addEventListener('change', resetParticles);\n      ui.style.addEventListener('change', () => {\n        resetParticles();\n      });\n\n      ui.trailScale.addEventListener('input', () => {\n        resize();\n      });\n\n      ui.dprCap.addEventListener('input', () => {\n        resize();\n      });\n\n      ui.resetBtn.addEventListener('click', resetParticles);\n      ui.clearTrailsBtn.addEventListener('click', clearTrails);\n      ui.pulseBtn.addEventListener('click', gravityPulse);\n      ui.meteorBtn.addEventListener('click', meteorShower);\n      ui.hideUiBtn.addEventListener('click', toggleUi);\n      ui.showUi.addEventListener('click', toggleUi);\n      ui.resetGentleBtn.addEventListener('click', setDefaults);\n\n      ui.liveParticlesToggle.addEventListener('click', () => {\n        flags.liveParticles = !flags.liveParticles;\n        syncButtons();\n      });\n\n      ui.depositToggle.addEventListener('click', () => {\n        flags.depositTrails = !flags.depositTrails;\n        syncButtons();\n      });\n\n      ui.trailsToggle.addEventListener('click', () => {\n        flags.trails = !flags.trails;\n        syncButtons();\n      });\n\n      ui.planetToggle.addEventListener('click', () => {\n        flags.planet = !flags.planet;\n        syncButtons();\n      });\n\n      ui.ringToggle.addEventListener('click', () => {\n        flags.ring = !flags.ring;\n        syncButtons();\n      });\n\n      ui.pauseBtn.addEventListener('click', () => {\n        flags.paused = !flags.paused;\n        syncButtons();\n      });\n\n      ui.autoBtn.addEventListener('click', () => {\n        flags.auto = !flags.auto;\n        syncButtons();\n      });\n\n      window.addEventListener('keydown', (event) => {\n        if (event.key === 'h' || event.key === 'H') toggleUi();\n\n        if (event.key === 'r' || event.key === 'R') resetParticles();\n\n        if (event.key === 'c' || event.key === 'C') clearTrails();\n\n        if (event.key === 'm' || event.key === 'M') meteorShower();\n\n        if (event.key === 'p' || event.key === 'P' || event.key === ' ') {\n          event.preventDefault();\n          gravityPulse();\n        }\n\n        if (event.key === 'Escape') {\n          document.body.classList.remove('ui-hidden');\n        }\n      });\n\n      try {\n        syncButtons();\n        resize();\n        resetParticles();\n        clearTrails();\n        updateOutputs();\n\n        requestAnimationFrame((now) => {\n          lastTime = now;\n          requestAnimationFrame(frame);\n        });\n      } catch (error) {\n        console.error(error);\n        fallback.style.display = 'flex';\n      }\n    })();\n  </script>\n</body>\n</html>";
+const EARTH_TEXTURE_URL = new URL('./assets/earth-natural-1024.jpg', import.meta.url).href;
+const MOON_TEXTURE_URL = new URL('./assets/moon-natural-512.jpg', import.meta.url).href;
+const EARTH_PLACEHOLDER_PIXEL = new Uint8Array([38, 76, 112, 255]);
+const MOON_PLACEHOLDER_PIXEL = new Uint8Array([138, 138, 132, 255]);
 
-/**
- * Exact standalone WebGL2 reference mounted as the Orbital raw/high engine.
- * The Pixi host canvas is hidden while this scene is active; lifecycle, sizing,
- * routing, engine selection, and UI chrome still come through Pixi Lab.
- */
-export class RawOrbitalShrapnelReferenceScene extends Scene {
-  readonly name = 'RawOrbitalShrapnelReference';
+const MARKUP = `
+  <div class="relative h-full w-full overflow-hidden bg-[#03040a]">
+    <canvas class="h-full w-full touch-none" data-orbital-native-raw-canvas></canvas>
+  </div>
+`;
 
-  private iframe: HTMLIFrameElement | null = null;
-  private hostCanvas: HTMLCanvasElement | null = null;
-  private previousCanvasDisplay = '';
-  private previousCanvasPointerEvents = '';
-  private rawDebugStats: Record<string, string | number | boolean | null> | null = null;
+const QUAD_VERTEX_SHADER = `#version 300 es
+  precision highp float;
+  const vec2 POSITIONS[3] = vec2[3](
+    vec2(-1.0, -1.0),
+    vec2(3.0, -1.0),
+    vec2(-1.0, 3.0)
+  );
+  out vec2 vUv;
 
-  private readonly handleRawDebugMessage = (event: MessageEvent) => {
-    if (event.source !== this.iframe?.contentWindow) return;
-    const data = event.data as { type?: string; source?: string; stats?: Record<string, string | number | boolean | null> };
-    if (data?.type !== 'pixi-lab:raw-debug-stats' || data.source !== 'orbital-shrapnel-reference') return;
-    this.rawDebugStats = data.stats ?? null;
+  void main() {
+    vec2 position = POSITIONS[gl_VertexID];
+    vUv = position * 0.5 + 0.5;
+    gl_Position = vec4(position, 0.0, 1.0);
+  }
+`;
+
+const SIM_FRAGMENT_SHADER = `#version 300 es
+  precision highp float;
+
+  in vec2 vUv;
+  uniform sampler2D uPosition;
+  uniform sampler2D uVelocity;
+  uniform float uDt;
+  uniform float uTime;
+  uniform float uAspect;
+  uniform float uGravity;
+  uniform float uTangent;
+  uniform float uDamping;
+  uniform float uMaxSpeed;
+  uniform float uBoundaryPull;
+  uniform float uPlanetRadius;
+  uniform float uPlanetBounce;
+  uniform int uBodyCount;
+  uniform float uBodyStrength;
+  uniform float uBodyRadius;
+  uniform float uBodySpeed;
+  uniform int uAsteroidBodyCount;
+  uniform vec4 uAsteroidBodies[8];
+  uniform float uPointerActive;
+  uniform vec2 uPointer;
+  uniform vec2 uPointerVelocity;
+  uniform float uSpawnActive;
+  uniform vec2 uSpawnCenter;
+  uniform vec2 uSpawnVelocity;
+  uniform float uSpawnRadius;
+  uniform float uSpawnVelocityScale;
+  uniform float uSpawnJitter;
+  uniform float uSpawnAsteroid;
+  uniform float uInfluenceMode;
+  uniform float uInfluenceCapture;
+  uniform float uInfluenceRadius;
+  uniform float uInfluenceStrength;
+  uniform float uSwishForce;
+  uniform float uWellForce;
+  uniform float uWellRadius;
+  uniform float uWellMode;
+  uniform float uPointerVortex;
+  uniform float uShockCount;
+  uniform vec4 uShockwaves[8];
+
+  layout(location = 0) out vec4 outPosition;
+  layout(location = 1) out vec4 outVelocity;
+
+  float diskLength(vec2 p) {
+    return length(vec2(p.x / max(0.001, uAspect), p.y));
+  }
+
+  vec2 toDisk(vec2 p) {
+    return vec2(p.x / max(0.001, uAspect), p.y);
+  }
+
+  vec2 fromDisk(vec2 p) {
+    return vec2(p.x * uAspect, p.y);
+  }
+
+  vec2 diskNormalize(vec2 p) {
+    vec2 disk = toDisk(p);
+    float len = max(0.0001, length(disk));
+    return fromDisk(disk / len);
+  }
+
+  float hash(float n) {
+    return fract(sin(n * 127.1) * 43758.5453123);
+  }
+
+  float hash1(float n) {
+    return fract(sin(n * 127.1) * 43758.5453123);
+  }
+
+  void main() {
+    vec4 p4 = texture(uPosition, vUv);
+    vec4 v4 = texture(uVelocity, vUv);
+    vec2 position = p4.xy;
+    vec2 velocity = v4.xy;
+    float seed = p4.z;
+    float type = p4.w;
+    float hue = v4.z;
+    float captured = v4.w;
+
+    if (uSpawnActive > 0.0) {
+      float pick = hash(seed + uTime * 0.173);
+      if (pick < uSpawnActive) {
+        float a = hash(seed + 17.0) * 6.2831853;
+        float r = sqrt(hash(seed + 41.0)) * mix(uSpawnRadius, 0.018, uSpawnAsteroid);
+        vec2 burst = vec2(cos(a) * uAspect, sin(a)) * r;
+        position = uSpawnCenter + burst;
+        float spawnRadius = max(0.035, diskLength(position));
+        float planetDistance = length(position);
+        if (planetDistance < uPlanetRadius + 0.045) {
+          position = normalize(position + vec2(0.0001, 0.0)) * (uPlanetRadius + 0.045);
+          spawnRadius = max(0.035, diskLength(position));
+        }
+        if (uSpawnAsteroid > 0.5 && spawnRadius > 0.98) {
+          vec2 spawnDisk = toDisk(position);
+          float safeRadius = clamp(length(spawnDisk), uPlanetRadius + 0.045, 0.98);
+          position = fromDisk(normalize(spawnDisk + vec2(0.0001, 0.0)) * safeRadius);
+          spawnRadius = safeRadius;
+        }
+        if (uSpawnAsteroid > 0.5 && length(position) < uPlanetRadius + 0.025) {
+          position = normalize(position + vec2(0.0001, 0.0)) * (uPlanetRadius + 0.025);
+          spawnRadius = max(0.035, diskLength(position));
+        }
+        vec2 radial = diskNormalize(position);
+        vec2 orbital = vec2(-radial.y * uAspect, radial.x / max(0.001, uAspect));
+        if (length(uSpawnVelocity) > 0.001 && dot(uSpawnVelocity, orbital) < 0.0) {
+          orbital *= -1.0;
+        }
+        float orbitalSpeed = sqrt((uGravity / (spawnRadius * spawnRadius + 0.075)) * spawnRadius);
+        float spread = 0.05 + hash(seed + 79.0) * 0.16;
+        if (uSpawnAsteroid > 0.5) {
+          velocity = uSpawnVelocity + normalize(burst + vec2(0.0001)) * spread * 0.12;
+          type = 1.0;
+        } else {
+          vec2 inheritedVelocity = uSpawnVelocity;
+          float inheritedSpeed = length(inheritedVelocity);
+          float inheritedLimit = max(0.0, uSpawnVelocityScale);
+          if (inheritedSpeed > inheritedLimit && inheritedSpeed > 0.0001) {
+            inheritedVelocity *= inheritedLimit / inheritedSpeed;
+          }
+          velocity = orbital * orbitalSpeed
+            + inheritedVelocity * 0.04
+            + normalize(burst + vec2(0.0001)) * spread * max(0.002, min(0.045, uSpawnVelocityScale * 0.055))
+            + vec2(cos(seed * 371.17 + uTime * 0.13), sin(seed * 619.73 + uTime * 0.17)) * uSpawnJitter;
+          float spawnSpeed = length(velocity);
+          float stableLimit = orbitalSpeed * (1.0 + max(0.0, uSpawnVelocityScale) * 0.22);
+          float spawnLimit = max(orbitalSpeed * 1.02, min(max(uMaxSpeed, orbitalSpeed * 1.12), stableLimit));
+          if (spawnSpeed > spawnLimit && spawnSpeed > 0.0001) {
+            velocity *= spawnLimit / spawnSpeed;
+          }
+          type = mix(0.15, 0.9, hash(seed + 211.0));
+        }
+        hue = seed + hash(seed + 113.0) * 0.2;
+        captured = 0.0;
+      }
+    }
+
+    if (type < -0.5) {
+      outPosition = vec4(position, seed, type);
+      outVelocity = vec4(vec2(0.0), hue, 0.0);
+      return;
+    }
+
+    float radius = max(0.025, diskLength(position));
+    vec2 inward = -diskNormalize(position);
+    vec2 tangent = vec2(inward.y * uAspect, -inward.x / max(0.001, uAspect));
+    vec2 acceleration = inward * (uGravity / (radius * radius + 0.075));
+    acceleration += tangent * uTangent * 0.06 / (radius + 0.16);
+
+    for (int i = 0; i < 8; i++) {
+      if (i >= uBodyCount) break;
+      float bodySeed = float(i) + 1.0;
+      float xScale = 1.0 + hash(bodySeed * 31.7) * 0.28;
+      float yScale = 1.0 + hash(bodySeed * 47.3) * 0.36;
+      float maxScale = max(xScale, yScale);
+      float minOrbit = uPlanetRadius + 0.13;
+      float maxOrbit = max(minOrbit + 0.05, uBodyRadius);
+      float lane = min(mix(minOrbit, maxOrbit, hash(bodySeed * 19.17)), 1.0 / maxScale);
+      float direction = hash(bodySeed * 59.9) > 0.5 ? 1.0 : -1.0;
+      float phase = uTime * uBodySpeed * direction * (0.55 + hash(bodySeed * 71.1) * 0.85)
+        + float(i) * 2.39996323
+        + hash(bodySeed * 83.2) * 6.2831853;
+      vec2 body = fromDisk(vec2(cos(phase) * lane * xScale, sin(phase) * lane * yScale));
+      vec2 delta = body - position;
+      float bodyDistance = max(0.035, diskLength(delta));
+      acceleration += diskNormalize(delta) * (uBodyStrength / (bodyDistance * bodyDistance + 0.06));
+    }
+
+    for (int i = 0; i < 8; i++) {
+      if (i >= uAsteroidBodyCount) break;
+      vec4 asteroid = uAsteroidBodies[i];
+      vec2 delta = asteroid.xy - position;
+      float asteroidDistance = max(asteroid.w, diskLength(delta));
+      acceleration += diskNormalize(delta) * (asteroid.z / (asteroidDistance * asteroidDistance + 0.012));
+    }
+
+    if (uPointerActive <= 0.0) {
+      captured = 0.0;
+    }
+
+    if (uPointerActive > 0.0 && uInfluenceMode > 0.5) {
+      vec2 delta = uPointer - position;
+      float pointerDistance = diskLength(delta);
+      float falloff = smoothstep(uInfluenceRadius, 0.0, pointerDistance);
+      acceleration -= uPointerVelocity * uInfluenceStrength * falloff;
+    }
+
+    if (uPointerActive > 0.0 && uWellMode > 0.5) {
+      vec2 delta = uPointer - position;
+      float pointerDistance = max(0.02, diskLength(delta));
+      float falloff = smoothstep(uWellRadius, 0.0, pointerDistance);
+      acceleration += diskNormalize(delta) * uWellForce * falloff * uPointerActive;
+    }
+
+    for (int i = 0; i < 8; i++) {
+      if (float(i) >= uShockCount) break;
+      vec4 shock = uShockwaves[i];
+      vec2 delta = position - shock.xy;
+      float shockDistance = diskLength(delta);
+      float pulse = exp(-pow((shockDistance - shock.z) / 0.045, 2.0)) * shock.w;
+      acceleration += diskNormalize(delta) * pulse;
+    }
+
+    if (radius > 1.04) {
+      acceleration += inward * (radius - 1.04) * uBoundaryPull;
+    }
+
+    velocity += acceleration * uDt;
+    velocity *= pow(uDamping, uDt * 60.0);
+
+    float speed = length(velocity);
+    float localStableSpeed = sqrt((uGravity / (radius * radius + 0.075)) * radius);
+    float orbitalSpeedLimit = max(uMaxSpeed, localStableSpeed * (1.28 + max(0.0, type) * 0.22) + 0.05);
+    if (speed > orbitalSpeedLimit && speed > 0.0001) {
+      velocity *= orbitalSpeedLimit / speed;
+      speed = orbitalSpeedLimit;
+    }
+
+    position += velocity * uDt;
+    if (length(position) < uPlanetRadius) {
+      float planetDistance = max(0.0001, length(position));
+      position = position / planetDistance * max(0.0, uPlanetRadius - 0.004);
+      velocity = vec2(0.0);
+      type = -1.0;
+      captured = 0.0;
+    }
+    hue = mix(hue, hue + speed * 0.006, 0.18);
+
+    outPosition = vec4(position, seed, type);
+    outVelocity = vec4(velocity, hue, captured);
+  }
+`;
+
+const FADE_FRAGMENT_SHADER = `#version 300 es
+  precision highp float;
+
+  in vec2 vUv;
+  uniform sampler2D uTrail;
+  uniform vec2 uTexel;
+  uniform float uPersistence;
+  uniform float uBlur;
+  uniform float uTime;
+  out vec4 outColor;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+
+  float hash1(float n) {
+    return fract(sin(n * 127.1) * 43758.5453123);
+  }
+
+  void main() {
+    vec4 center = texture(uTrail, vUv);
+    vec4 n = texture(uTrail, vUv + vec2(0.0, uTexel.y));
+    vec4 s = texture(uTrail, vUv - vec2(0.0, uTexel.y));
+    vec4 e = texture(uTrail, vUv + vec2(uTexel.x, 0.0));
+    vec4 w = texture(uTrail, vUv - vec2(uTexel.x, 0.0));
+    vec4 blurred = (center * 4.0 + n + s + e + w) * 0.125;
+    vec4 color = mix(center, blurred, uBlur) * uPersistence;
+    color.rgb *= 0.996 + hash(vUv + uTime * 0.003) * 0.002;
+    outColor = color;
+  }
+`;
+
+const PARTICLE_VERTEX_SHADER = `#version 300 es
+  precision highp float;
+  precision highp sampler2D;
+
+  uniform sampler2D uPosition;
+  uniform sampler2D uVelocity;
+  uniform int uTextureSize;
+  uniform float uAspect;
+  uniform float uPointSize;
+  uniform float uSpeedSize;
+  uniform int uMotionBlurPass;
+  uniform int uMotionBlurCount;
+  uniform float uStreakLength;
+  uniform float uParticleAlpha;
+  uniform float uParticleBrightness;
+  uniform float uTime;
+  uniform int uStyle;
+  out vec3 vColor;
+  out float vAlpha;
+  out float vSeed;
+  out float vSpeed;
+  out float vType;
+
+  vec3 palette(float h, int style) {
+    h = fract(h);
+    vec3 a;
+    vec3 b;
+    vec3 c;
+    vec3 d;
+    if (style == 1) {
+      a = vec3(1.00, 0.33, 0.05);
+      b = vec3(1.00, 0.76, 0.16);
+      c = vec3(1.00, 0.12, 0.02);
+      d = vec3(0.35, 0.06, 0.01);
+    } else if (style == 2) {
+      a = vec3(0.46, 0.36, 1.00);
+      b = vec3(0.08, 0.92, 1.00);
+      c = vec3(1.00, 0.18, 0.82);
+      d = vec3(0.05, 0.08, 0.16);
+    } else if (style == 3) {
+      a = vec3(1.25, 1.18, 1.03);
+      b = vec3(0.92, 0.86, 0.76);
+      c = vec3(0.72, 0.66, 0.58);
+      d = vec3(0.18, 0.14, 0.10);
+    } else if (style == 4) {
+      a = vec3(0.08, 1.00, 0.36);
+      b = vec3(0.55, 1.00, 0.00);
+      c = vec3(0.02, 0.95, 1.00);
+      d = vec3(0.85, 1.00, 0.18);
+    } else if (style == 5) {
+      a = vec3(1.00, 0.08, 0.18);
+      b = vec3(1.00, 0.38, 0.16);
+      c = vec3(0.78, 0.02, 0.16);
+      d = vec3(0.22, 0.02, 0.05);
+    } else if (style == 6) {
+      a = vec3(0.26, 0.52, 0.82);
+      b = vec3(0.34, 0.70, 0.48);
+      c = vec3(0.78, 0.84, 0.88);
+      d = vec3(0.10, 0.16, 0.24);
+    } else {
+      a = vec3(0.60, 0.92, 1.00);
+      b = vec3(0.34, 0.58, 1.00);
+      c = vec3(0.95, 0.98, 1.00);
+      d = vec3(0.18, 0.32, 0.65);
+    }
+    return a * (0.45 + 0.55 * cos(6.28318 * (h + 0.00)))
+         + b * (0.45 + 0.55 * cos(6.28318 * (h + 0.22)))
+         + c * (0.38 + 0.62 * cos(6.28318 * (h + 0.47)))
+         + d * 0.25;
+  }
+
+  void main() {
+    int index = gl_VertexID;
+    int x = index - (index / uTextureSize) * uTextureSize;
+    int y = index / uTextureSize;
+    ivec2 coord = ivec2(x, y);
+    vec4 p4 = texelFetch(uPosition, coord, 0);
+    vec4 v4 = texelFetch(uVelocity, coord, 0);
+    vec2 position = p4.xy;
+    vec2 velocity = v4.xy;
+    if (uMotionBlurCount > 1) {
+      float shutter = float(uMotionBlurPass) / max(float(uMotionBlurCount - 1), 1.0);
+      position -= velocity * shutter * uStreakLength * 0.055;
+    }
+    float seed = p4.z;
+    float type = p4.w;
+    float hue = v4.z;
+    float speed = length(velocity);
+    if (type < -0.5) {
+      gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
+      gl_PointSize = 0.0;
+      vColor = vec3(0.0);
+      vAlpha = 0.0;
+      vSeed = seed;
+      vSpeed = 0.0;
+      vType = type;
+      return;
+    }
+    gl_Position = vec4(position.x / max(0.001, uAspect), position.y, 0.0, 1.0);
+    float typeScale = mix(0.72, 1.75, type);
+    float speedScale = 1.0 + smoothstep(0.08, 1.2, speed) * uSpeedSize;
+    gl_PointSize = uPointSize * typeScale * speedScale;
+    vColor = clamp(palette(hue + speed * 0.08 + seed * 0.03, uStyle), vec3(0.0), vec3(2.2)) * uParticleBrightness;
+    float sampleNorm = 1.0 / sqrt(max(float(uMotionBlurCount), 1.0));
+    vAlpha = (0.045 + type * 0.045 + smoothstep(0.05, 1.2, speed) * 0.06) * uParticleAlpha * sampleNorm;
+    vSeed = seed;
+    vSpeed = speed;
+    vType = type;
+  }
+`;
+
+const PARTICLE_FRAGMENT_SHADER = `#version 300 es
+  precision highp float;
+
+  in vec3 vColor;
+  in float vAlpha;
+  in float vSeed;
+  in float vSpeed;
+  in float vType;
+  out vec4 outColor;
+
+  uniform float uTime;
+  uniform int uShape;
+  uniform int uInkLive;
+
+  mat2 rot(float a) {
+    float s = sin(a);
+    float c = cos(a);
+    return mat2(c, -s, s, c);
+  }
+
+  float hardTriangleMask(vec2 p) {
+    const float k = 1.7320508;
+    p.y -= 0.12;
+    float m = max(abs(p.x) * k + p.y, -2.0 * p.y);
+    return step(m, 0.58);
+  }
+
+  void main() {
+    vec2 p = gl_PointCoord * 2.0 - 1.0;
+    float angle = vSeed * 6.2831853 + uTime * (0.25 + vType * 0.32);
+    p = rot(angle) * p;
+    float radius = length(p);
+    float alpha = 0.0;
+    if (uShape == 1) {
+      alpha = smoothstep(1.0, 0.08, radius);
+      alpha *= exp(-radius * radius * 1.2);
+    } else if (uShape == 2) {
+      float cross = exp(-abs(p.x) * 9.0) + exp(-abs(p.y) * 9.0);
+      float core = smoothstep(1.0, 0.0, radius);
+      alpha = cross * core * 0.58;
+    } else if (uShape == 3) {
+      alpha = hardTriangleMask(p);
+    } else {
+      float a = atan(p.y, p.x);
+      float triBoundary = 0.54 + 0.22 * cos(a * 3.0);
+      float shard = smoothstep(triBoundary, triBoundary - 0.095, radius);
+      float core = smoothstep(0.86, 0.1, radius);
+      alpha = shard * core;
+    }
+    alpha *= vAlpha;
+    vec3 inkColor = vec3(0.0);
+    vec3 color = (uInkLive == 1 ? inkColor : vColor) * alpha * (1.0 + smoothstep(0.1, 1.4, vSpeed) * 1.7);
+    outColor = vec4(color, alpha);
+  }
+`;
+
+const DISPLAY_FRAGMENT_SHADER = `#version 300 es
+  precision highp float;
+  precision highp sampler2D;
+
+  in vec2 vUv;
+  uniform sampler2D uTrail;
+  uniform sampler2D uEarthTexture;
+  uniform sampler2D uMoonTexture;
+  uniform vec2 uResolution;
+  uniform vec2 uTexel;
+  uniform float uAspect;
+  uniform float uTime;
+  uniform float uGlow;
+  uniform float uExposure;
+  uniform float uChroma;
+  uniform float uStars;
+  uniform float uStarFieldOpacity;
+  uniform int uBloomSamples;
+  uniform float uBloomRadius;
+  uniform int uStyle;
+  uniform int uBodyCount;
+  uniform float uBodyStrength;
+  uniform float uBodyRadius;
+  uniform float uBodySpeed;
+  uniform float uPlanetRadius;
+  uniform float uInfluenceVisual;
+  uniform vec2 uInfluencePointer;
+  uniform float uInfluenceRadius;
+  uniform float uWellVisual;
+  uniform vec2 uWellPointer;
+  uniform float uWellRadius;
+  uniform float uAsteroidAimVisual;
+  uniform vec2 uAsteroidAimStart;
+  uniform vec2 uAsteroidAimEnd;
+  uniform int uAsteroidBodyCount;
+  uniform vec4 uAsteroidBodies[8];
+  uniform float uShockCount;
+  uniform vec4 uShockwaves[8];
+  out vec4 outColor;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+
+  float hash1(float n) {
+    return fract(sin(n * 127.1) * 43758.5453123);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+      mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+      u.y
+    );
+  }
+
+  float fbm(vec2 p) {
+    float v = 0.0;
+    float a = 0.52;
+    mat2 m = mat2(1.62, 1.21, -1.21, 1.62);
+    for (int i = 0; i < 5; i++) {
+      v += noise(p) * a;
+      p = m * p + vec2(13.7, 4.2);
+      a *= 0.52;
+    }
+    return v;
+  }
+
+  float starPointLayer(vec2 uv, float scale, float threshold, float radiusScale) {
+    vec2 largeWarp = vec2(
+      fbm(uv * 2.9 + vec2(11.7, 4.2)),
+      fbm(uv * 3.4 + vec2(37.1, 19.8))
+    ) - 0.5;
+    vec2 fineWarp = vec2(
+      fbm(uv * 13.0 + vec2(5.4, 71.2)),
+      fbm(uv * 17.0 + vec2(43.8, 2.6))
+    ) - 0.5;
+    vec2 warpedUv = uv + largeWarp * 0.18 + fineWarp * 0.035;
+    vec2 p = warpedUv * uResolution * scale;
+    vec2 cell = floor(p);
+    float seed = hash(cell);
+    vec2 starOffset = vec2(hash(cell + 11.7), hash(cell + 41.3)) - 0.5;
+    vec2 local = fract(p) - 0.5 - starOffset * 0.96;
+    float clusterA = smoothstep(0.28, 0.88, fbm(warpedUv * 5.6 + vec2(2.1, 9.7)));
+    float clusterB = smoothstep(0.42, 0.94, fbm(warpedUv * 11.5 + largeWarp * 3.2 + vec2(22.4, 6.1)));
+    float voids = smoothstep(0.34, 0.78, fbm(warpedUv * 2.2 + vec2(31.4, 6.6)));
+    float filament = smoothstep(0.74, 0.18, abs(warpedUv.y - 0.5 + sin(warpedUv.x * 7.7 + largeWarp.x * 5.0) * 0.12));
+    float cellChaos = mix(0.36, 1.35, fbm(cell * 0.11 + vec2(7.8, 13.1)));
+    float density = clamp(clusterA * 0.78 + clusterB * 0.55 + filament * 0.52, 0.0, 1.55);
+    density = density * mix(0.035, 1.0, voids) * cellChaos;
+    float gateThreshold = clamp(threshold + 0.09 - density * 0.24, 0.52, 0.995);
+    float gate = smoothstep(gateThreshold, 1.0, seed);
+    float radius = radiusScale * mix(0.035, 0.21, pow(hash(cell + 17.31), 3.4));
+    float core = exp(-dot(local, local) / max(0.0009, radius * radius));
+    return core * gate;
+  }
+
+  vec3 proceduralStarField(vec2 uv) {
+    float fine = starPointLayer(uv + vec2(19.13, 4.71), 0.72, 0.965, 1.0);
+    float medium = starPointLayer(uv + vec2(5.37, 31.91), 0.42, 0.975, 1.35);
+    float bright = starPointLayer(uv + vec2(47.1, 2.9), 0.24, 0.989, 1.75);
+    float stars = fine * 0.95 + medium * 1.35 + bright * 2.4;
+    float colorSeed = fbm(uv * 15.0 + 4.0);
+    vec3 cool = vec3(0.82, 0.88, 1.0);
+    vec3 warm = vec3(1.0, 0.92, 0.78);
+    vec3 tint = mix(cool, warm, smoothstep(0.22, 0.92, colorSeed));
+    if (uStyle == 3) {
+      vec3 ink = mix(vec3(2.8, 2.35, 1.75), vec3(7.5, 6.8, 5.6), smoothstep(0.18, 0.9, colorSeed));
+      return -ink * pow(min(stars, 3.0), 0.72);
+    }
+    return tint * min(stars, 3.0);
+  }
+
+  vec3 styleColor(float t) {
+    if (uStyle == 1) {
+      return mix(vec3(1.0, 0.26, 0.04), vec3(1.0, 0.78, 0.18), t);
+    }
+    if (uStyle == 2) {
+      return mix(vec3(0.16, 0.10, 0.50), vec3(0.05, 0.92, 1.0), t);
+    }
+    if (uStyle == 3) {
+      return mix(vec3(0.08, 0.065, 0.045), vec3(0.58, 0.50, 0.40), t);
+    }
+    if (uStyle == 4) {
+      return mix(vec3(0.0, 0.42, 0.16), vec3(0.72, 1.0, 0.08), t);
+    }
+    if (uStyle == 5) {
+      return mix(vec3(0.42, 0.02, 0.08), vec3(1.0, 0.42, 0.22), t);
+    }
+    if (uStyle == 6) {
+      return mix(vec3(0.08, 0.18, 0.30), vec3(0.72, 0.88, 1.0), t);
+    }
+    return mix(vec3(0.35, 0.68, 1.0), vec3(0.94, 0.99, 1.0), t);
+  }
+
+  float diskRadius(vec2 p) {
+    return length(vec2(p.x / max(0.001, uAspect), p.y));
+  }
+
+  void main() {
+    vec2 uv = vUv;
+    vec2 screen = uv * 2.0 - 1.0;
+    vec2 world = vec2(screen.x * uAspect, screen.y);
+    float r = length(world);
+    vec2 chromaDir = normalize(uv - 0.5 + vec2(0.0001));
+    vec3 trail;
+    trail.r = texture(uTrail, uv + chromaDir * uChroma).r;
+    trail.g = texture(uTrail, uv).g;
+    trail.b = texture(uTrail, uv - chromaDir * uChroma).b;
+    vec3 bloom = vec3(0.0);
+    int samples = min(uBloomSamples, 48);
+    for (int i = 0; i < 48; i++) {
+      if (i >= samples) break;
+      float fi = float(i);
+      float a = fi * 2.39996323;
+      float radius = sqrt(fi + 1.0) * uBloomRadius;
+      vec2 offset = vec2(cos(a), sin(a)) * uTexel * radius;
+      bloom += texture(uTrail, uv + offset).rgb;
+    }
+    if (samples > 0) bloom *= (0.80 * uGlow) / float(samples);
+    vec3 bg = uStyle == 3 ? vec3(3.3, 3.15, 2.88) : vec3(0.008, 0.012, 0.030);
+    bg += styleColor(0.1) * exp(-r * 2.8) * (uStyle == 3 ? 0.015 : 0.05);
+    float starHash = hash(floor(uv * uResolution * 0.42));
+    float stars = smoothstep(1.0 - 0.0035 * uStars, 1.0, starHash);
+    bg += stars * (uStyle == 3 ? vec3(0.18, 0.14, 0.10) : vec3(0.35, 0.58, 0.9)) * (uStyle == 3 ? 0.045 : 0.25 + hash(uv * 77.0) * 0.75);
+    vec3 ambientStars = proceduralStarField(uv);
+    if (uStyle == 3) {
+      float inkStars = min(1.0, length(ambientStars) * 0.55);
+      bg = mix(bg, vec3(0.055, 0.042, 0.028), inkStars * uStarFieldOpacity);
+    } else {
+      vec3 starTint = mix(styleColor(0.95), vec3(1.0), 0.42);
+      bg += ambientStars * starTint * uStarFieldOpacity * 2.6;
+    }
+    float disk = exp(-abs(world.y + sin(world.x * 2.0 + uTime * 0.08) * 0.018) * 17.0)
+               * smoothstep(1.35, 0.18, abs(world.x));
+    bg += styleColor(0.65) * disk * (uStyle == 3 ? 0.012 : 0.03);
+    vec3 color = uStyle == 3
+      ? bg - trail * (2.2 + uGlow * 0.95) - bloom * 0.65
+      : bg + trail * (1.15 + uGlow * 0.55) + bloom;
+    vec3 light = normalize(vec3(-0.48, 0.38, 0.78));
+    for (int i = 0; i < 8; i++) {
+      if (i >= uBodyCount) break;
+      float bodySeed = float(i) + 1.0;
+      float xScale = 1.0 + hash1(bodySeed * 31.7) * 0.28;
+      float yScale = 1.0 + hash1(bodySeed * 47.3) * 0.36;
+      float maxScale = max(xScale, yScale);
+      float minOrbit = uPlanetRadius + 0.13;
+      float maxOrbit = max(minOrbit + 0.05, uBodyRadius);
+      float lane = min(mix(minOrbit, maxOrbit, hash1(bodySeed * 19.17)), 1.0 / maxScale);
+      float direction = hash1(bodySeed * 59.9) > 0.5 ? 1.0 : -1.0;
+      float phase = uTime * uBodySpeed * direction * (0.55 + hash1(bodySeed * 71.1) * 0.85)
+      + float(i) * 2.39996323
+        + hash1(bodySeed * 83.2) * 6.2831853;
+      vec2 body = vec2(cos(phase) * lane * xScale * uAspect, sin(phase) * lane * yScale);
+      vec2 delta = world - body;
+      float d = length(delta);
+      if (uStyle == 6) {
+        float moonRadius = 0.018 + hash1(bodySeed * 103.3) * 0.016;
+        vec2 moonLocal = delta / moonRadius;
+        float moonDistance = length(moonLocal);
+        float moonMask = smoothstep(1.0, 0.92, moonDistance);
+        if (moonMask > 0.0) {
+          float moonZ = sqrt(max(0.0, 1.0 - dot(moonLocal, moonLocal)));
+          vec3 moonN = normalize(vec3(moonLocal, moonZ));
+          float moonTilt = mix(-0.85, 0.85, hash1(bodySeed * 137.7));
+          float moonSpin = hash1(bodySeed * 151.9) * 6.2831853 + uTime * mix(-0.026, 0.026, hash1(bodySeed * 173.5));
+          vec3 tiltedMoon = normalize(vec3(
+            moonN.x,
+            moonN.y * cos(moonTilt) - moonN.z * sin(moonTilt),
+            moonN.y * sin(moonTilt) + moonN.z * cos(moonTilt)
+          ));
+          vec3 moonSphere = vec3(
+            tiltedMoon.x * cos(moonSpin) + tiltedMoon.z * sin(moonSpin),
+            tiltedMoon.y,
+            -tiltedMoon.x * sin(moonSpin) + tiltedMoon.z * cos(moonSpin)
+          );
+          vec2 moonUv = vec2(fract(atan(moonSphere.z, moonSphere.x) / 6.2831853 + 0.5), acos(clamp(moonSphere.y, -1.0, 1.0)) / 3.14159265);
+          vec3 moonTexture = texture(uMoonTexture, moonUv).rgb;
+          float moonDiff = max(dot(moonN, light), 0.0);
+          float moonShade = mix(0.08, 0.92, smoothstep(-0.08, 0.62, moonDiff));
+          float moonRim = pow(1.0 - moonZ, 2.0);
+          vec3 moonColor = moonTexture * moonShade + vec3(0.22, 0.30, 0.42) * moonRim * 0.035;
+          color = mix(color, moonColor, moonMask);
+        }
+      } else {
+        float halo = exp(-pow(d / 0.045, 2.0)) * uBodyStrength;
+        float core = smoothstep(0.014, 0.003, d);
+        color += styleColor(0.85) * halo * 0.18;
+        color = mix(color, styleColor(1.0), core * 0.62);
+      }
+    }
+    if (uStyle == 6 && uPlanetRadius > 0.0001) {
+      float outerAtmosphere = exp(-pow(max(0.0, r - uPlanetRadius) / 0.032, 2.0))
+        * smoothstep(uPlanetRadius - 0.004, uPlanetRadius + 0.028, r)
+        * smoothstep(uPlanetRadius + 0.092, uPlanetRadius + 0.018, r);
+      color += vec3(0.18, 0.42, 0.95) * outerAtmosphere * 0.24;
+    }
+    if (uPlanetRadius > 0.0001 && r < uPlanetRadius) {
+      vec2 nxy = world / uPlanetRadius;
+      float nz = sqrt(max(0.0, 1.0 - dot(nxy, nxy)));
+      vec3 n = normalize(vec3(nxy, nz));
+      float diff = max(dot(n, light), 0.0);
+      float rim = pow(1.0 - nz, 2.2);
+      vec3 planet;
+      if (uStyle == 6) {
+        float tilt = 0.19;
+        float spin = uTime * 0.055;
+        vec3 tilted = normalize(vec3(n.x, n.y * cos(tilt) - n.z * sin(tilt), n.y * sin(tilt) + n.z * cos(tilt)));
+        vec3 sphere = vec3(
+          tilted.x * cos(spin) + tilted.z * sin(spin),
+          tilted.y,
+          -tilted.x * sin(spin) + tilted.z * cos(spin)
+        );
+        vec2 earthUv = vec2(fract(atan(sphere.z, sphere.x) / 6.2831853 + 0.5), acos(clamp(sphere.y, -1.0, 1.0)) / 3.14159265);
+        vec3 earth = texture(uEarthTexture, earthUv).rgb;
+        float night = smoothstep(-0.06, 0.54, diff);
+        float shade = mix(0.055, 0.96, night);
+        float terminator = smoothstep(0.0, 0.32, diff);
+        planet = earth * shade * (0.78 + terminator * 0.30);
+        planet += vec3(0.32, 0.56, 0.92) * rim * 0.16;
+      } else {
+        planet = uStyle == 1
+          ? mix(vec3(0.16, 0.045, 0.012), vec3(1.0, 0.36, 0.06), diff)
+          : uStyle == 2
+            ? mix(vec3(0.004, 0.004, 0.010), vec3(0.14, 0.08, 0.28), diff)
+            : uStyle == 3
+              ? mix(vec3(0.84, 0.78, 0.66), vec3(0.20, 0.16, 0.12), diff)
+              : uStyle == 4
+                ? mix(vec3(0.0, 0.11, 0.055), vec3(0.35, 1.0, 0.18), diff)
+                : uStyle == 5
+                  ? mix(vec3(0.12, 0.004, 0.01), vec3(0.78, 0.05, 0.12), diff)
+                  : mix(vec3(0.035, 0.07, 0.13), vec3(0.58, 0.88, 1.0), diff);
+        planet += styleColor(1.0) * rim * 0.25;
+      }
+      color = mix(color, planet, smoothstep(uPlanetRadius, uPlanetRadius - 0.006, r));
+    }
+    if (uInfluenceVisual > 0.0) {
+      vec2 pointerDelta = world - uInfluencePointer;
+      float d = length(pointerDelta);
+      float feather = max(0.006, uInfluenceRadius * 0.055);
+      float disk = 1.0 - smoothstep(uInfluenceRadius - feather, uInfluenceRadius, d);
+      color = mix(color, vec3(0.78, 0.88, 1.0), disk * uInfluenceVisual * 0.22);
+    }
+    if (uWellVisual > 0.0) {
+      vec2 wellDelta = world - uWellPointer;
+      float d = length(wellDelta);
+      float angle = atan(wellDelta.y, wellDelta.x);
+      float ringWidth = max(0.0035, uWellRadius * 0.018);
+      float ring = exp(-pow((d - uWellRadius) / ringWidth, 2.0));
+      float dots = smoothstep(0.42, 0.9, sin(angle * 42.0 + uTime * 0.08) * 0.5 + 0.5);
+      float ticks = smoothstep(0.82, 1.0, sin(angle * 12.0) * 0.5 + 0.5);
+      float center = exp(-pow(d / max(0.006, uWellRadius * 0.045), 2.0));
+      vec3 wellColor = uStyle == 3 ? vec3(0.14, 0.11, 0.08) : vec3(1.0, 0.72, 0.32);
+      color += wellColor * ring * (dots * 0.18 + ticks * 0.08) * uWellVisual;
+      color += wellColor * center * 0.08 * uWellVisual;
+    }
+    if (uAsteroidAimVisual > 0.0) {
+      vec2 aim = uAsteroidAimEnd - uAsteroidAimStart;
+      float aimLen2 = max(0.0001, dot(aim, aim));
+      float h = clamp(dot(world - uAsteroidAimStart, aim) / aimLen2, 0.0, 1.0);
+      vec2 closest = uAsteroidAimStart + aim * h;
+      float lineDistance = length(world - closest);
+      float startDistance = length(world - uAsteroidAimStart);
+      float endDistance = length(world - uAsteroidAimEnd);
+      float line = exp(-pow(lineDistance / 0.012, 2.0));
+      float startRing = exp(-pow((startDistance - 0.028) / 0.009, 2.0));
+      float endRing = exp(-pow((endDistance - 0.044) / 0.011, 2.0));
+      color += styleColor(1.0) * uAsteroidAimVisual * (line * 0.55 + startRing * 0.35 + endRing * 0.7);
+    }
+    for (int i = 0; i < 8; i++) {
+      if (i >= uAsteroidBodyCount) break;
+      vec4 asteroid = uAsteroidBodies[i];
+      float d = length(world - asteroid.xy);
+      float body = 1.0 - smoothstep(asteroid.w - 0.0035, asteroid.w, d);
+      float shade = 1.0 - smoothstep(asteroid.w * 0.18, asteroid.w, d);
+      vec3 asteroidColor = mix(vec3(0.72, 0.36, 0.18), vec3(1.0, 0.74, 0.36), shade * 0.55);
+      color = mix(color, asteroidColor, body);
+    }
+    for (int i = 0; i < 8; i++) {
+      if (float(i) >= uShockCount) break;
+      vec4 s = uShockwaves[i];
+      float d = length(world - s.xy);
+      float wave = exp(-pow((d - s.z) / 0.018, 2.0)) * s.w;
+      color += styleColor(0.9) * wave * 0.45;
+    }
+    color = 1.0 - exp(-color * uExposure);
+    color = pow(max(color, vec3(0.0)), vec3(0.92));
+    outColor = vec4(color, 1.0);
+  }
+`;
+
+interface Shockwave {
+  x: number;
+  y: number;
+  strength: number;
+  radius: number;
+  speed: number;
+  life: number;
+}
+
+interface PointerState {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  ttl: number;
+  spawn: number;
+  capture: number;
+  asteroid: number;
+}
+
+interface AddEmitterState {
+  id: number;
+  active: boolean;
+  x: number;
+  y: number;
+  targetX: number;
+  targetY: number;
+  vx: number;
+  vy: number;
+}
+
+interface InteractionFieldState {
+  id: number;
+  active: boolean;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  lastTime: number;
+}
+
+type OrbitalInputMode = 'add' | 'interact' | 'well' | 'asteroid' | 'demo';
+
+function orbitalInputModeFromString(mode: string): OrbitalInputMode | null {
+  if (mode === 'influence') return 'interact';
+  if (mode === 'add' || mode === 'interact' || mode === 'well' || mode === 'asteroid' || mode === 'demo') return mode;
+  return null;
+}
+
+interface AsteroidAimState {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  ttl: number;
+  active: boolean;
+}
+
+interface AsteroidBody {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  strength: number;
+}
+
+interface PendingAsteroidRelease {
+  id: number;
+  x: number;
+  y: number;
+}
+
+interface NativeOrbitalRuntime {
+  simProgram: WebGLProgram;
+  fadeProgram: WebGLProgram;
+  particleProgram: WebGLProgram;
+  displayProgram: WebGLProgram;
+  earthTexture: WebGLTexture;
+  moonTexture: WebGLTexture;
+  quadVao: WebGLVertexArrayObject;
+  particleVao: WebGLVertexArrayObject;
+  particleState: RawGpuParticleState;
+  trail: RawPingPongRenderTarget;
+  simSize: number;
+  particleCount: number;
+  trailWidth: number;
+  trailHeight: number;
+  width: number;
+  height: number;
+  inputWidth: number;
+  inputHeight: number;
+  settingsKey: string;
+  styleId: string;
+  mode: OrbitalInputMode;
+  pointer: PointerState;
+  addEmitter: AddEmitterState | null;
+  interactionField: InteractionFieldState | null;
+  lastAddPoint: { x: number; y: number } | null;
+  asteroidAim: AsteroidAimState | null;
+  asteroidDrag: { id: number; startX: number; startY: number } | null;
+  wellPointerId: number | null;
+  pendingAsteroidReleases: PendingAsteroidRelease[];
+  asteroids: AsteroidBody[];
+  shocks: Shockwave[];
+  asteroidUniformData: Float32Array;
+  shockUniformData: Float32Array;
+  uniformLocations: Map<WebGLProgram, Map<string, WebGLUniformLocation | null>>;
+  cleanup: Array<() => void>;
+  gpuMetrics: RawGpuSimulationMetrics;
+  frame: number;
+  timeSeconds: number;
+}
+
+interface NativeOrbitalSettings {
+  particleCount: number;
+  simSize: number;
+  trailWidth: number;
+  gravity: number;
+  tangent: number;
+  damping: number;
+  maxSpeed: number;
+  boundaryPull: number;
+  planetRadius: number;
+  planetBounce: number;
+  trailPersistence: number;
+  trailBlur: number;
+  pointSize: number;
+  speedSize: number;
+  trailAlpha: number;
+  liveAlpha: number;
+  particleBrightness: number;
+  debrisOpacity: number;
+  glow: number;
+  exposure: number;
+  chroma: number;
+  stars: number;
+  starFieldOpacity: number;
+  bloomSamples: number;
+  bloomRadius: number;
+  bodyCount: number;
+  bodyStrength: number;
+  bodyRadius: number;
+  bodySpeed: number;
+  swish: number;
+  well: number;
+  wellRadius: number;
+  pointerVortex: number;
+  shockStrength: number;
+  addDebrisVolume: number;
+  addRadius: number;
+  addDebrisVelocity: number;
+  addJitter: number;
+  interactionRadius: number;
+  interactionStrength: number;
+  motionBlurSamples: number;
+  streakLength: number;
+}
+
+function numeric(settings: Record<string, unknown>, key: string, fallback: number): number {
+  const value = settings[key];
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+function boolSetting(settings: Record<string, unknown>, key: string, fallback: boolean): boolean {
+  const value = settings[key];
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function styleIndex(styleId: string): number {
+  if (styleId === 'solar-debris') return 1;
+  if (styleId === 'black-hole-lens') return 2;
+  if (styleId === 'ink-paper') return 3;
+  if (styleId === 'radioactive-aurora') return 4;
+  if (styleId === 'blood-moon') return 5;
+  if (styleId === 'realistic') return 6;
+  return 0;
+}
+
+function chooseSimSize(settings: Record<string, unknown>): number {
+  const explicit = numeric(settings, 'rawParticleTextureSize', 0);
+  if (explicit > 0) return Math.max(32, Math.min(4096, Math.round(explicit)));
+  const particleCount = numeric(settings, 'particleCount', 720);
+  if (particleCount <= 180) return 64;
+  if (particleCount <= 360) return 96;
+  if (particleCount <= 760) return 128;
+  return 192;
+}
+
+function readNativeSettings(settings: Record<string, unknown>, width: number, height: number): NativeOrbitalSettings {
+  const simSize = chooseSimSize(settings);
+  const trailWidth = Math.max(2, Math.min(2048, Math.floor(width * 0.82)));
+  const gravity = numeric(settings, 'gravity', 1850) / 2250;
+  const planetRadius = Math.max(0.035, numeric(settings, 'planetRadius', 46) / 317);
+  const requestedBodyRadius = numeric(settings, 'secondaryBodyRadius', 0.72);
+  const bodyRadius = Math.max(planetRadius + 0.085, requestedBodyRadius);
+  const bodySpeedMultiplier = numeric(settings, 'secondaryBodySpeed', 0.25);
+  const stableBodySpeed = Math.sqrt(gravity / Math.max(0.001, (bodyRadius * bodyRadius + 0.075) * bodyRadius));
+  return {
+    particleCount: simSize * simSize,
+    simSize,
+    trailWidth,
+    gravity,
+    tangent: 0.0,
+    damping: 1.0,
+    maxSpeed: numeric(settings, 'rawMaxSpeed', 2.3),
+    boundaryPull: 0.16,
+    planetRadius,
+    planetBounce: 0.62,
+    trailPersistence: Math.max(0, numeric(settings, 'trailFade', 0.972)),
+    trailBlur: 0.18,
+    pointSize: Math.max(0.6, numeric(settings, 'debrisSize', 0.72) * 4.2),
+    speedSize: 1.25,
+    trailAlpha: numeric(settings, 'trailFade', 0.972) <= 0.001 ? 0 : 1,
+    liveAlpha: 8,
+    particleBrightness: 1.0,
+    debrisOpacity: numeric(settings, 'debrisOpacity', 1),
+    glow: numeric(settings, 'bloomStrength', 1.25) * 0.58,
+    exposure: 1.15,
+    chroma: 0.003,
+    stars: 0.55,
+    starFieldOpacity: boolSetting(settings, 'starField', true) ? numeric(settings, 'starFieldOpacity', 0.18) : 0,
+    bloomSamples: 8,
+    bloomRadius: 5.0,
+    bodyCount: Math.max(0, Math.min(8, Math.round(numeric(settings, 'secondaryBodyCount', 3)))),
+    bodyStrength: numeric(settings, 'secondaryBodyStrength', 0.35) * 0.18,
+    bodyRadius,
+    bodySpeed: stableBodySpeed * bodySpeedMultiplier,
+    swish: 0.72,
+    well: numeric(settings, 'wellStrength', 5.5),
+    wellRadius: numeric(settings, 'wellRadius', 72) / Math.max(1, Math.min(width, height)) * 2,
+    pointerVortex: 0.14,
+    shockStrength: 1.0,
+    addDebrisVolume: numeric(settings, 'addDebrisVolume', 0.035),
+    addRadius: Math.max(0.004, (numeric(settings, 'addRadius', 32) / Math.max(1, Math.min(width, height))) * 2),
+    addDebrisVelocity: numeric(settings, 'addDebrisVelocity', 0.35),
+    addJitter: numeric(settings, 'addJitter', 0.12),
+    interactionRadius: numeric(settings, 'interactionRadius', numeric(settings, 'influenceRadius', 56)),
+    interactionStrength: numeric(settings, 'interactionStrength', numeric(settings, 'influenceStrength', 3.2)),
+    motionBlurSamples: 1,
+    streakLength: Math.max(0, numeric(settings, 'streakStrength', 0.75) * 1.2),
   };
+}
 
-  onEnter(ctx: GameContext, input: Input): void {
-    this.ctx = ctx;
-    this.input = input;
+function settingsKey(settings: Record<string, unknown>, width: number, height: number): string {
+  const s = readNativeSettings(settings, width, height);
+  return [
+    s.simSize,
+    s.trailWidth,
+    Math.round(s.planetRadius * 10000),
+    Math.round(width),
+    Math.round(height),
+  ].join(':');
+}
 
-    const hostCanvas = ctx.systems.pixi.canvas;
-    const parent = hostCanvas.parentElement;
-    if (!parent) return;
+function createEarthTexture(gl: WebGL2RenderingContext): { texture: WebGLTexture; dispose: () => void } {
+  const texture = gl.createTexture();
+  if (!texture) throw new Error('Unable to allocate orbital Earth texture');
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, EARTH_PLACEHOLDER_PIXEL);
+  gl.bindTexture(gl.TEXTURE_2D, null);
 
-    this.hostCanvas = hostCanvas;
-    this.previousCanvasDisplay = hostCanvas.style.display;
-    this.previousCanvasPointerEvents = hostCanvas.style.pointerEvents;
-    hostCanvas.style.display = 'none';
-    hostCanvas.style.pointerEvents = 'none';
+  let disposed = false;
+  const image = new Image();
+  image.addEventListener('load', () => {
+    if (disposed) return;
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  });
+  image.src = EARTH_TEXTURE_URL;
 
-    const iframe = document.createElement('iframe');
-    iframe.title = 'Orbital Shrapnel Raw WebGL2 Reference Engine';
-    iframe.dataset.pixiLabOrbitalRendererHost = 'raw-webgl2-reference';
-    iframe.setAttribute('aria-label', 'Orbital Shrapnel raw WebGL2 simulation');
-    iframe.setAttribute('sandbox', 'allow-scripts');
-    Object.assign(iframe.style, {
-      position: 'absolute',
-      inset: '0',
-      width: '100%',
-      height: '100%',
-      border: '0',
-      display: 'block',
-      background: '#03040a',
-      zIndex: '1',
-    } satisfies Partial<CSSStyleDeclaration>);
-    iframe.srcdoc = REFERENCE_ORBITAL_SHRAPNEL_HTML;
-    window.addEventListener('message', this.handleRawDebugMessage);
-    parent.appendChild(iframe);
-    this.iframe = iframe;
+  return {
+    texture,
+    dispose: () => {
+      disposed = true;
+      image.src = '';
+    },
+  };
+}
+
+function createMoonTexture(gl: WebGL2RenderingContext): { texture: WebGLTexture; dispose: () => void } {
+  const texture = gl.createTexture();
+  if (!texture) throw new Error('Unable to allocate orbital Moon texture');
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, MOON_PLACEHOLDER_PIXEL);
+  gl.bindTexture(gl.TEXTURE_2D, null);
+
+  let disposed = false;
+  const image = new Image();
+  image.addEventListener('load', () => {
+    if (disposed) return;
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  });
+  image.src = MOON_TEXTURE_URL;
+
+  return {
+    texture,
+    dispose: () => {
+      disposed = true;
+      image.src = '';
+    },
+  };
+}
+
+function seeded(seed: number): number {
+  const x = Math.sin(seed * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function createInitialState(simSize: number, aspect: number, settings: NativeOrbitalSettings): { positions: Float32Array; velocities: Float32Array } {
+  const count = simSize * simSize;
+  const positions = new Float32Array(count * 4);
+  const velocities = new Float32Array(count * 4);
+  for (let i = 0; i < count; i += 1) {
+    const a = i * 2.39996323 + seeded(i + 17) * 0.08;
+    const band = seeded(i + 91);
+    const r = 0.18 + Math.sqrt(band) * 0.78;
+    const wobble = 0.92 + seeded(i + 211) * 0.16;
+    const x = Math.cos(a) * r * aspect * wobble;
+    const y = Math.sin(a) * r;
+    const radialAcceleration = settings.gravity / (r * r + 0.075);
+    const speed = Math.sqrt(radialAcceleration * r);
+    const tangentX = -Math.sin(a) * speed * aspect;
+    const tangentY = Math.cos(a) * speed;
+    const k = i * 4;
+    positions[k] = x;
+    positions[k + 1] = y;
+    positions[k + 2] = seeded(i + 307);
+    positions[k + 3] = smoothstepLike(seeded(i + 419));
+    velocities[k] = tangentX;
+    velocities[k + 1] = tangentY;
+    velocities[k + 2] = (a / 6.2831853) + seeded(i + 587) * 0.18;
+    velocities[k + 3] = 0;
   }
+  return { positions, velocities };
+}
 
-  onExit(): void {
-    window.removeEventListener('message', this.handleRawDebugMessage);
-    this.rawDebugStats = null;
-    this.iframe?.remove();
-    this.iframe = null;
-    if (this.hostCanvas) {
-      this.hostCanvas.style.display = this.previousCanvasDisplay;
-      this.hostCanvas.style.pointerEvents = this.previousCanvasPointerEvents;
+function smoothstepLike(value: number): number {
+  const t = Math.max(0, Math.min(1, value));
+  return t * t * (3 - 2 * t);
+}
+
+function destroyRuntime(gl: WebGL2RenderingContext, runtime: NativeOrbitalRuntime | null): void {
+  if (!runtime) return;
+  for (const cleanup of runtime.cleanup) cleanup();
+  runtime.particleState.destroy();
+  runtime.trail.destroy();
+  gl.deleteProgram(runtime.simProgram);
+  gl.deleteProgram(runtime.fadeProgram);
+  gl.deleteProgram(runtime.particleProgram);
+  gl.deleteProgram(runtime.displayProgram);
+  gl.deleteTexture(runtime.earthTexture);
+  gl.deleteTexture(runtime.moonTexture);
+  gl.deleteVertexArray(runtime.quadVao);
+  gl.deleteVertexArray(runtime.particleVao);
+}
+
+function createRuntime(state: RawWebGL2RenderState, mode: OrbitalInputMode, styleId: string): NativeOrbitalRuntime {
+  const { gl, width, height, settings } = state;
+  const aspect = width / Math.max(1, height);
+  const nativeSettings = readNativeSettings(settings, width, height);
+  const maxStateTextureSize = Math.max(32, Math.min(4096, gl.getParameter(gl.MAX_TEXTURE_SIZE) as number));
+  nativeSettings.simSize = Math.min(nativeSettings.simSize, maxStateTextureSize);
+  nativeSettings.particleCount = nativeSettings.simSize * nativeSettings.simSize;
+  const trailHeight = Math.max(96, Math.round(nativeSettings.trailWidth * height / Math.max(1, width)));
+  const initial = createInitialState(nativeSettings.simSize, aspect, nativeSettings);
+  const particleState = new RawGpuParticleState(state.resources, {
+    capacity: nativeSettings.particleCount,
+    width: nativeSettings.simSize,
+    height: nativeSettings.simSize,
+    precision: 'float',
+  });
+  particleState.uploadSeed({ ...initial, uploadWriteTargets: false });
+  const trail = new RawPingPongRenderTarget(state.resources, {
+    width: nativeSettings.trailWidth,
+    height: trailHeight,
+    precision: 'half-float',
+    filter: 'linear',
+  });
+  const quadVao = gl.createVertexArray();
+  const particleVao = gl.createVertexArray();
+  if (!quadVao || !particleVao) throw new Error('Unable to allocate orbital raw VAOs');
+  const earthTexture = createEarthTexture(gl);
+  const moonTexture = createMoonTexture(gl);
+  const runtime: NativeOrbitalRuntime = {
+    simProgram: linkRawWebGL2Program(gl, { vertex: QUAD_VERTEX_SHADER, fragment: SIM_FRAGMENT_SHADER }),
+    fadeProgram: linkRawWebGL2Program(gl, { vertex: QUAD_VERTEX_SHADER, fragment: FADE_FRAGMENT_SHADER }),
+    particleProgram: linkRawWebGL2Program(gl, { vertex: PARTICLE_VERTEX_SHADER, fragment: PARTICLE_FRAGMENT_SHADER }),
+    displayProgram: linkRawWebGL2Program(gl, { vertex: QUAD_VERTEX_SHADER, fragment: DISPLAY_FRAGMENT_SHADER }),
+    earthTexture: earthTexture.texture,
+    moonTexture: moonTexture.texture,
+    quadVao,
+    particleVao,
+    particleState,
+    trail,
+    simSize: nativeSettings.simSize,
+    particleCount: nativeSettings.particleCount,
+    trailWidth: nativeSettings.trailWidth,
+    trailHeight,
+    width,
+    height,
+    inputWidth: state.canvas.clientWidth || width,
+    inputHeight: state.canvas.clientHeight || height,
+    settingsKey: settingsKey(settings, width, height),
+    styleId,
+    mode,
+    pointer: { x: 0, y: 0, vx: 0, vy: 0, ttl: 0, spawn: 0, capture: 0, asteroid: 0 },
+    addEmitter: null,
+    interactionField: null,
+    lastAddPoint: null,
+    asteroidAim: null,
+    asteroidDrag: null,
+    wellPointerId: null,
+    pendingAsteroidReleases: [],
+    asteroids: [],
+    shocks: [],
+    asteroidUniformData: new Float32Array(8 * 4),
+    shockUniformData: new Float32Array(8 * 4),
+    uniformLocations: new Map<WebGLProgram, Map<string, WebGLUniformLocation | null>>(),
+    cleanup: [earthTexture.dispose, moonTexture.dispose],
+    gpuMetrics: createRawGpuSimulationMetrics({
+      engine: 'space-debris-gpu-particles',
+      stateWidth: nativeSettings.simSize,
+      stateHeight: nativeSettings.simSize,
+      stateTextures: 4,
+      precision: 'float',
+      passesPerFrame: 4,
+      capabilities: state.resources.capabilities,
+    }),
+    frame: 0,
+    timeSeconds: 0,
+  };
+  const startAddFromPointer = (event: PointerEvent): void => {
+    if (runtime.mode !== 'add') return;
+    const [x, y] = worldFromPointerEvent(runtime, state.canvas, event);
+    startAddEmitter(runtime, x, y, event.pointerId);
+    try {
+      state.canvas.setPointerCapture(event.pointerId);
+    } catch {
+      // Some browser/device combinations do not allow capture after delegated input; normal move/up listeners still work.
     }
-    this.hostCanvas = null;
-  }
-
-  shouldRender(): boolean {
-    // The embedded raw WebGL2 reference owns its own requestAnimationFrame loop.
-    return false;
-  }
-
-  getDebugStats(): Record<string, string | number | boolean | null> | null {
-    return this.rawDebugStats;
-  }
-
-  reset(): void {
-    if (this.iframe) {
-      this.iframe.srcdoc = REFERENCE_ORBITAL_SHRAPNEL_HTML;
+  };
+  const moveAddFromPointer = (event: PointerEvent): void => {
+    if (runtime.mode !== 'add' || !runtime.addEmitter?.active || runtime.addEmitter.id !== event.pointerId) return;
+    const [x, y] = worldFromPointerEvent(runtime, state.canvas, event);
+    moveAddEmitter(runtime, x, y, event.pointerId);
+  };
+  const stopAddFromPointer = (event: PointerEvent): void => {
+    stopAddEmitter(runtime, event.pointerId);
+  };
+  state.canvas.addEventListener('pointerdown', startAddFromPointer);
+  state.canvas.addEventListener('pointermove', moveAddFromPointer);
+  state.canvas.addEventListener('pointerup', stopAddFromPointer);
+  state.canvas.addEventListener('pointercancel', stopAddFromPointer);
+  window.addEventListener('pointermove', moveAddFromPointer);
+  window.addEventListener('pointerup', stopAddFromPointer);
+  window.addEventListener('pointercancel', stopAddFromPointer);
+  runtime.cleanup.push(() => {
+    state.canvas.removeEventListener('pointerdown', startAddFromPointer);
+    state.canvas.removeEventListener('pointermove', moveAddFromPointer);
+    state.canvas.removeEventListener('pointerup', stopAddFromPointer);
+    state.canvas.removeEventListener('pointercancel', stopAddFromPointer);
+    window.removeEventListener('pointermove', moveAddFromPointer);
+    window.removeEventListener('pointerup', stopAddFromPointer);
+    window.removeEventListener('pointercancel', stopAddFromPointer);
+  });
+  const startInteractFromPointer = (event: PointerEvent): void => {
+    if (runtime.mode !== 'interact') return;
+    const [x, y] = worldFromPointerEvent(runtime, state.canvas, event);
+    startInteractionField(runtime, x, y, event.pointerId, event.timeStamp);
+    try {
+      state.canvas.setPointerCapture(event.pointerId);
+    } catch {
+      // Capture is optional; global move/up listeners below keep the interaction usable.
     }
+  };
+  const moveInteractFromPointer = (event: PointerEvent): void => {
+    if (runtime.mode !== 'interact' || !runtime.interactionField?.active || runtime.interactionField.id !== event.pointerId) return;
+    const [x, y] = worldFromPointerEvent(runtime, state.canvas, event);
+    moveInteractionField(runtime, x, y, event.pointerId, event.timeStamp);
+  };
+  const stopInteractFromPointer = (event: PointerEvent): void => {
+    stopInteractionField(runtime, event.pointerId);
+  };
+  state.canvas.addEventListener('pointerdown', startInteractFromPointer);
+  state.canvas.addEventListener('pointermove', moveInteractFromPointer);
+  state.canvas.addEventListener('pointerup', stopInteractFromPointer);
+  state.canvas.addEventListener('pointercancel', stopInteractFromPointer);
+  window.addEventListener('pointermove', moveInteractFromPointer);
+  window.addEventListener('pointerup', stopInteractFromPointer);
+  window.addEventListener('pointercancel', stopInteractFromPointer);
+  runtime.cleanup.push(() => {
+    state.canvas.removeEventListener('pointerdown', startInteractFromPointer);
+    state.canvas.removeEventListener('pointermove', moveInteractFromPointer);
+    state.canvas.removeEventListener('pointerup', stopInteractFromPointer);
+    state.canvas.removeEventListener('pointercancel', stopInteractFromPointer);
+    window.removeEventListener('pointermove', moveInteractFromPointer);
+    window.removeEventListener('pointerup', stopInteractFromPointer);
+    window.removeEventListener('pointercancel', stopInteractFromPointer);
+  });
+  const startWellFromPointer = (event: PointerEvent): void => {
+    if (runtime.mode !== 'well') return;
+    const [x, y] = worldFromPointerEvent(runtime, state.canvas, event);
+    runtime.wellPointerId = event.pointerId;
+    runtime.pointer = { x, y, vx: 0, vy: 0, ttl: 0.24, spawn: 0, capture: 0, asteroid: 0 };
+    try {
+      state.canvas.setPointerCapture(event.pointerId);
+    } catch {
+      // Capture is optional; global move/up listeners below keep the well usable.
+    }
+    event.preventDefault();
+  };
+  const moveWellFromPointer = (event: PointerEvent): void => {
+    if (runtime.mode !== 'well' || runtime.wellPointerId !== event.pointerId) return;
+    const [x, y] = worldFromPointerEvent(runtime, state.canvas, event);
+    runtime.pointer = { x, y, vx: 0, vy: 0, ttl: 0.24, spawn: 0, capture: 0, asteroid: 0 };
+    event.preventDefault();
+  };
+  const stopWellFromPointer = (event: PointerEvent): void => {
+    if (runtime.wellPointerId !== event.pointerId) return;
+    runtime.wellPointerId = null;
+    runtime.pointer.ttl = 0;
+    event.preventDefault();
+  };
+  state.canvas.addEventListener('pointerdown', startWellFromPointer);
+  state.canvas.addEventListener('pointermove', moveWellFromPointer);
+  state.canvas.addEventListener('pointerup', stopWellFromPointer);
+  state.canvas.addEventListener('pointercancel', stopWellFromPointer);
+  window.addEventListener('pointermove', moveWellFromPointer);
+  window.addEventListener('pointerup', stopWellFromPointer);
+  window.addEventListener('pointercancel', stopWellFromPointer);
+  runtime.cleanup.push(() => {
+    state.canvas.removeEventListener('pointerdown', startWellFromPointer);
+    state.canvas.removeEventListener('pointermove', moveWellFromPointer);
+    state.canvas.removeEventListener('pointerup', stopWellFromPointer);
+    state.canvas.removeEventListener('pointercancel', stopWellFromPointer);
+    window.removeEventListener('pointermove', moveWellFromPointer);
+    window.removeEventListener('pointerup', stopWellFromPointer);
+    window.removeEventListener('pointercancel', stopWellFromPointer);
+  });
+  const startAsteroidFromPointer = (event: PointerEvent): void => {
+    if (runtime.mode !== 'asteroid') return;
+    const [x, y] = worldFromPointerEvent(runtime, state.canvas, event);
+    runtime.asteroidDrag = { id: event.pointerId, startX: x, startY: y };
+    runtime.asteroidAim = { startX: x, startY: y, endX: x, endY: y, ttl: 0.5, active: true };
+    try {
+      state.canvas.setPointerCapture(event.pointerId);
+    } catch {
+      // Capture is optional; global move/up listeners below keep the slingshot usable.
+    }
+    event.preventDefault();
+  };
+  const moveAsteroidFromPointer = (event: PointerEvent): void => {
+    if (runtime.mode !== 'asteroid' || !runtime.asteroidDrag || runtime.asteroidDrag.id !== event.pointerId) return;
+    const [x, y] = worldFromPointerEvent(runtime, state.canvas, event);
+    runtime.asteroidAim = {
+      startX: runtime.asteroidDrag.startX,
+      startY: runtime.asteroidDrag.startY,
+      endX: x,
+      endY: y,
+      ttl: 0.5,
+      active: true,
+    };
+    event.preventDefault();
+  };
+  const queueAsteroidRelease = (event: PointerEvent): void => {
+    if (runtime.mode !== 'asteroid') return;
+    const [x, y] = worldFromPointerEvent(runtime, state.canvas, event);
+    runtime.pendingAsteroidReleases.push({
+      id: event.pointerId,
+      x,
+      y,
+    });
+    event.preventDefault();
+  };
+  state.canvas.addEventListener('pointerdown', startAsteroidFromPointer);
+  state.canvas.addEventListener('pointermove', moveAsteroidFromPointer);
+  state.canvas.addEventListener('pointerup', queueAsteroidRelease);
+  state.canvas.addEventListener('pointercancel', queueAsteroidRelease);
+  window.addEventListener('pointermove', moveAsteroidFromPointer);
+  window.addEventListener('pointerup', queueAsteroidRelease);
+  window.addEventListener('pointercancel', queueAsteroidRelease);
+  runtime.cleanup.push(() => {
+    state.canvas.removeEventListener('pointerdown', startAsteroidFromPointer);
+    state.canvas.removeEventListener('pointermove', moveAsteroidFromPointer);
+    state.canvas.removeEventListener('pointerup', queueAsteroidRelease);
+    state.canvas.removeEventListener('pointercancel', queueAsteroidRelease);
+    window.removeEventListener('pointermove', moveAsteroidFromPointer);
+    window.removeEventListener('pointerup', queueAsteroidRelease);
+    window.removeEventListener('pointercancel', queueAsteroidRelease);
+  });
+  gl.bindFramebuffer(gl.FRAMEBUFFER, runtime.trail.read.framebuffer);
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, runtime.trail.write.framebuffer);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return runtime;
+}
+
+function worldFromPixels(x: number, y: number, width: number, height: number): [number, number] {
+  const aspect = width / Math.max(1, height);
+  return [
+    (x / Math.max(1, width) * 2 - 1) * aspect,
+    1 - y / Math.max(1, height) * 2,
+  ];
+}
+
+function worldFromPointerEvent(runtime: NativeOrbitalRuntime, canvas: HTMLCanvasElement, event: PointerEvent): [number, number] {
+  const rect = canvas.getBoundingClientRect();
+  const x = ((event.clientX - rect.left) / Math.max(1, rect.width)) * runtime.inputWidth;
+  const y = ((event.clientY - rect.top) / Math.max(1, rect.height)) * runtime.inputHeight;
+  return worldFromPixels(x, y, runtime.inputWidth, runtime.inputHeight);
+}
+
+function startAddEmitter(runtime: NativeOrbitalRuntime, x: number, y: number, id: number): void {
+  runtime.addEmitter = {
+    id,
+    active: true,
+    x,
+    y,
+    targetX: x,
+    targetY: y,
+    vx: 0,
+    vy: 0,
+  };
+  runtime.pointer = { x, y, vx: 0, vy: 0, ttl: 0.2, spawn: 0, capture: 0, asteroid: 0 };
+}
+
+function moveAddEmitter(runtime: NativeOrbitalRuntime, x: number, y: number, id: number): void {
+  if (!runtime.addEmitter || runtime.addEmitter.id !== id) {
+    startAddEmitter(runtime, x, y, id);
+    return;
+  }
+  runtime.addEmitter.targetX = x;
+  runtime.addEmitter.targetY = y;
+}
+
+function stopAddEmitter(runtime: NativeOrbitalRuntime, id: number): void {
+  if (runtime.addEmitter && runtime.addEmitter.id === id) runtime.addEmitter.active = false;
+}
+
+function startInteractionField(runtime: NativeOrbitalRuntime, x: number, y: number, id: number, time: number): void {
+  runtime.interactionField = {
+    id,
+    active: true,
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    lastTime: time,
+  };
+  runtime.pointer = { x, y, vx: 0, vy: 0, ttl: 0.2, spawn: 0, capture: 0, asteroid: 0 };
+}
+
+function moveInteractionField(runtime: NativeOrbitalRuntime, x: number, y: number, id: number, time: number): void {
+  if (!runtime.interactionField || runtime.interactionField.id !== id) {
+    startInteractionField(runtime, x, y, id, time);
+    return;
+  }
+  const field = runtime.interactionField;
+  const dt = Math.max(1 / 240, (time - field.lastTime) / 1000);
+  field.vx = (x - field.x) / dt;
+  field.vy = (y - field.y) / dt;
+  field.x = x;
+  field.y = y;
+  field.lastTime = time;
+}
+
+function stopInteractionField(runtime: NativeOrbitalRuntime, id: number): void {
+  if (runtime.interactionField && runtime.interactionField.id === id) runtime.interactionField.active = false;
+}
+
+function updateInteractionField(runtime: NativeOrbitalRuntime, dt: number): void {
+  const field = runtime.interactionField;
+  if (!field?.active || runtime.mode !== 'interact') {
+    if (runtime.mode !== 'interact') runtime.interactionField = null;
+    return;
+  }
+  field.vx *= Math.exp(-dt * 5.5);
+  field.vy *= Math.exp(-dt * 5.5);
+  runtime.pointer = {
+    x: field.x,
+    y: field.y,
+    vx: field.vx,
+    vy: field.vy,
+    ttl: 0.2,
+    spawn: 0,
+    capture: 0,
+    asteroid: 0,
+  };
+}
+
+function updateAddEmitter(runtime: NativeOrbitalRuntime, settings: NativeOrbitalSettings, dt: number): void {
+  const emitter = runtime.addEmitter;
+  if (!emitter?.active || runtime.mode !== 'add') {
+    if (runtime.mode !== 'add') runtime.addEmitter = null;
+    return;
+  }
+  const previousX = emitter.x;
+  const previousY = emitter.y;
+  const follow = 1 - Math.exp(-dt * 16);
+  emitter.x += (emitter.targetX - emitter.x) * follow;
+  emitter.y += (emitter.targetY - emitter.y) * follow;
+  emitter.vx = (emitter.x - previousX) / Math.max(dt, 1 / 240);
+  emitter.vy = (emitter.y - previousY) / Math.max(dt, 1 / 240);
+  runtime.pointer = {
+    x: emitter.x,
+    y: emitter.y,
+    vx: emitter.vx,
+    vy: emitter.vy,
+    ttl: 0.18,
+    spawn: settings.addDebrisVolume,
+    capture: 0,
+    asteroid: 0,
+  };
+}
+
+function interactionRadiusWorld(runtime: NativeOrbitalRuntime, settings: NativeOrbitalSettings): number {
+  return settings.interactionRadius / Math.max(1, Math.min(runtime.inputWidth, runtime.inputHeight)) * 2;
+}
+
+function refreshGravityWell(runtime: NativeOrbitalRuntime): void {
+  if (runtime.mode === 'well' && runtime.wellPointerId !== null) runtime.pointer.ttl = 0.24;
+}
+
+function stableOrbitalVelocityAt(
+  x: number,
+  y: number,
+  settings: NativeOrbitalSettings,
+): [number, number, number] {
+  const radius = Math.max(settings.planetRadius + 0.055, Math.hypot(x, y));
+  const unitX = x / Math.max(0.0001, radius);
+  const unitY = y / Math.max(0.0001, radius);
+  const speed = Math.sqrt((settings.gravity / (radius * radius + 0.075)) * radius);
+  return [-unitY * speed, unitX * speed, speed];
+}
+
+function asteroidLaunchVelocityWorld(
+  x: number,
+  y: number,
+  dx: number,
+  dy: number,
+  settings: NativeOrbitalSettings,
+): [number, number] {
+  const [, , orbitSpeed] = stableOrbitalVelocityAt(x, y, settings);
+  const dragDistance = Math.min(1.25, Math.hypot(dx, dy));
+  if (dragDistance <= 0.0001) return [0, 0];
+  const dragUnitX = dx / dragDistance;
+  const dragUnitY = dy / dragDistance;
+  const limit = Math.max(0.05, settings.maxSpeed * 0.96);
+  const launchSpeed = Math.min(limit, orbitSpeed * (0.3 + dragDistance * 3.2));
+  return [dragUnitX * launchSpeed, dragUnitY * launchSpeed];
+}
+
+function addAsteroidBody(
+  runtime: NativeOrbitalRuntime,
+  x: number,
+  y: number,
+  vx: number,
+  vy: number,
+  settings: NativeOrbitalSettings,
+): void {
+  const distance = Math.max(0.0001, Math.hypot(x, y));
+  const safeDistance = Math.max(distance, settings.planetRadius + 0.065);
+  const safeX = x / distance * safeDistance;
+  const safeY = y / distance * safeDistance;
+  runtime.asteroids.unshift({
+    x: safeX,
+    y: safeY,
+    vx,
+    vy,
+    radius: 0.042,
+    strength: Math.max(0.08, settings.bodyStrength * 2.4),
+  });
+  runtime.asteroids = runtime.asteroids.slice(0, 8);
+}
+
+function launchAsteroidFromDrag(
+  runtime: NativeOrbitalRuntime,
+  x: number,
+  y: number,
+  settings: NativeOrbitalSettings,
+): void {
+  if (!runtime.asteroidDrag) return;
+  const startX = runtime.asteroidDrag.startX;
+  const startY = runtime.asteroidDrag.startY;
+  const launchDx = x - startX;
+  const launchDy = y - startY;
+  const [vx, vy] = asteroidLaunchVelocityWorld(x, y, launchDx, launchDy, settings);
+  addAsteroidBody(runtime, x, y, vx, vy, settings);
+  runtime.pointer = {
+    x,
+    y,
+    vx,
+    vy,
+    ttl: 0.09,
+    spawn: 0.00012,
+    capture: 0,
+    asteroid: 1,
+  };
+  runtime.asteroidAim = { startX, startY, endX: x, endY: y, ttl: 0.42, active: false };
+  runtime.asteroidDrag = null;
+}
+
+function flushPendingAsteroidReleases(runtime: NativeOrbitalRuntime, settings: NativeOrbitalSettings): void {
+  if (runtime.mode !== 'asteroid' || runtime.pendingAsteroidReleases.length === 0) {
+    runtime.pendingAsteroidReleases = [];
+    return;
+  }
+  const releases = runtime.pendingAsteroidReleases.splice(0);
+  for (const release of releases) {
+    if (!runtime.asteroidDrag) return;
+    if (runtime.asteroidDrag.id !== release.id && releases.length > 1) continue;
+    launchAsteroidFromDrag(runtime, release.x, release.y, settings);
+    return;
+  }
+}
+
+function updateAsteroidBodies(runtime: NativeOrbitalRuntime, settings: NativeOrbitalSettings, dt: number): void {
+  let writeIndex = 0;
+  for (const asteroid of runtime.asteroids) {
+    const radius = Math.max(0.0001, Math.hypot(asteroid.x, asteroid.y));
+    if (radius <= settings.planetRadius + asteroid.radius * 0.35) continue;
+    const inwardX = -asteroid.x / radius;
+    const inwardY = -asteroid.y / radius;
+    const acceleration = settings.gravity / (radius * radius + 0.075);
+    asteroid.vx += inwardX * acceleration * dt;
+    asteroid.vy += inwardY * acceleration * dt;
+    const speed = Math.hypot(asteroid.vx, asteroid.vy);
+    const stableSpeed = Math.sqrt((settings.gravity / (radius * radius + 0.075)) * radius);
+    const limit = Math.max(0.08, settings.maxSpeed, stableSpeed * 1.35);
+    if (speed > limit) {
+      asteroid.vx *= limit / speed;
+      asteroid.vy *= limit / speed;
+    }
+    asteroid.x += asteroid.vx * dt;
+    asteroid.y += asteroid.vy * dt;
+    if (Math.hypot(asteroid.x, asteroid.y) > 1.45) continue;
+    runtime.asteroids[writeIndex] = asteroid;
+    writeIndex += 1;
+  }
+  runtime.asteroids.length = writeIndex;
+}
+
+function addShock(runtime: NativeOrbitalRuntime, x: number, y: number, strength: number, speed = 0.75): void {
+  runtime.shocks.unshift({ x, y, strength, radius: 0, speed, life: 1 });
+  if (runtime.shocks.length > 8) runtime.shocks.length = 8;
+}
+
+function uniform(gl: WebGL2RenderingContext, runtime: NativeOrbitalRuntime, program: WebGLProgram, name: string): WebGLUniformLocation | null {
+  let programUniforms = runtime.uniformLocations.get(program);
+  if (!programUniforms) {
+    programUniforms = new Map<string, WebGLUniformLocation | null>();
+    runtime.uniformLocations.set(program, programUniforms);
+  }
+  if (!programUniforms.has(name)) {
+    programUniforms.set(name, gl.getUniformLocation(program, name));
+  }
+  return programUniforms.get(name) ?? null;
+}
+
+function applyGestures(runtime: NativeOrbitalRuntime, gestures: GestureEvent[]): void {
+  for (const gesture of gestures) {
+    if (gesture.kind !== 'tap' && gesture.kind !== 'drag' && gesture.kind !== 'hold' && gesture.kind !== 'release' && gesture.kind !== 'fast_swipe') continue;
+    const [x, y] = worldFromPixels(gesture.x, gesture.y, runtime.inputWidth, runtime.inputHeight);
+    const dx = gesture.dx ?? 0;
+    const dy = gesture.dy ?? 0;
+    if (runtime.mode === 'add') {
+      if (gesture.kind === 'drag' || gesture.kind === 'hold') moveAddEmitter(runtime, x, y, gesture.id ?? 0);
+      continue;
+    }
+    runtime.lastAddPoint = null;
+    if (runtime.mode === 'asteroid') {
+      continue;
+    }
+    if (runtime.mode === 'interact') {
+      if (gesture.kind === 'drag') moveInteractionField(runtime, x, y, gesture.id ?? 0, gesture.timestamp);
+      if (gesture.kind === 'hold') startInteractionField(runtime, x, y, gesture.id ?? 0, gesture.timestamp);
+      continue;
+    }
+    if (gesture.kind === 'tap') {
+      addShock(runtime, x, y, 0.95, 0.75);
+      continue;
+    }
+    if (gesture.kind === 'fast_swipe') {
+      runtime.pointer = { x, y, vx: dx * 0.16, vy: -dy * 0.16, ttl: 0.28, spawn: 0, capture: 0, asteroid: 0 };
+      addShock(runtime, x, y, 1.45, 0.9);
+      continue;
+    }
+    runtime.pointer = {
+      x,
+      y,
+      vx: dx * 0.12,
+      vy: -dy * 0.12,
+      ttl: 0.32,
+      spawn: 0,
+      capture: 0,
+      asteroid: 0,
+    };
+    addShock(runtime, x, y, gesture.kind === 'hold' ? 0.72 : 0.38, 0.75);
+  }
+}
+
+function setShockUniforms(gl: WebGL2RenderingContext, program: WebGLProgram, runtime: NativeOrbitalRuntime): void {
+  const shocks = runtime.shocks;
+  const data = runtime.shockUniformData;
+  data.fill(0);
+  const count = Math.min(8, shocks.length);
+  for (let i = 0; i < count; i += 1) {
+    const shock = shocks[i];
+    const k = i * 4;
+    data[k] = shock.x;
+    data[k + 1] = shock.y;
+    data[k + 2] = shock.radius;
+    data[k + 3] = shock.strength * shock.life;
+  }
+  gl.uniform1f(uniform(gl, runtime, program, 'uShockCount'), count);
+  gl.uniform4fv(uniform(gl, runtime, program, 'uShockwaves'), data);
+}
+
+function setAsteroidUniforms(gl: WebGL2RenderingContext, program: WebGLProgram, runtime: NativeOrbitalRuntime): void {
+  const asteroids = runtime.asteroids;
+  const data = runtime.asteroidUniformData;
+  data.fill(0);
+  const count = Math.min(8, asteroids.length);
+  for (let i = 0; i < count; i += 1) {
+    const asteroid = asteroids[i];
+    const k = i * 4;
+    data[k] = asteroid.x;
+    data[k + 1] = asteroid.y;
+    data[k + 2] = asteroid.strength;
+    data[k + 3] = asteroid.radius;
+  }
+  gl.uniform1i(uniform(gl, runtime, program, 'uAsteroidBodyCount'), count);
+  gl.uniform4fv(uniform(gl, runtime, program, 'uAsteroidBodies'), data);
+}
+
+function simulate(state: RawWebGL2RenderState, runtime: NativeOrbitalRuntime, settings: NativeOrbitalSettings, dt: number): void {
+  const gl = state.gl;
+  const program = runtime.simProgram;
+  const aspect = state.width / Math.max(1, state.height);
+  gl.useProgram(program);
+  runtime.particleState.bindWriteFramebuffer();
+  gl.viewport(0, 0, runtime.simSize, runtime.simSize);
+  gl.disable(gl.BLEND);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, runtime.particleState.positions.read.texture.texture);
+  gl.uniform1i(uniform(gl, runtime, program, 'uPosition'), 0);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, runtime.particleState.velocities.read.texture.texture);
+  gl.uniform1i(uniform(gl, runtime, program, 'uVelocity'), 1);
+  gl.uniform1f(uniform(gl, runtime, program, 'uDt'), dt);
+  gl.uniform1f(uniform(gl, runtime, program, 'uTime'), runtime.timeSeconds);
+  gl.uniform1f(uniform(gl, runtime, program, 'uAspect'), aspect);
+  gl.uniform1f(uniform(gl, runtime, program, 'uGravity'), settings.gravity);
+  gl.uniform1f(uniform(gl, runtime, program, 'uTangent'), settings.tangent);
+  gl.uniform1f(uniform(gl, runtime, program, 'uDamping'), settings.damping);
+  gl.uniform1f(uniform(gl, runtime, program, 'uMaxSpeed'), settings.maxSpeed);
+  gl.uniform1f(uniform(gl, runtime, program, 'uBoundaryPull'), settings.boundaryPull);
+  gl.uniform1f(uniform(gl, runtime, program, 'uPlanetRadius'), settings.planetRadius);
+  gl.uniform1f(uniform(gl, runtime, program, 'uPlanetBounce'), settings.planetBounce);
+  gl.uniform1i(uniform(gl, runtime, program, 'uBodyCount'), settings.bodyCount);
+  gl.uniform1f(uniform(gl, runtime, program, 'uBodyStrength'), settings.bodyStrength);
+  gl.uniform1f(uniform(gl, runtime, program, 'uBodyRadius'), settings.bodyRadius);
+  gl.uniform1f(uniform(gl, runtime, program, 'uBodySpeed'), settings.bodySpeed);
+  setAsteroidUniforms(gl, program, runtime);
+  gl.uniform1f(uniform(gl, runtime, program, 'uPointerActive'), runtime.pointer.ttl > 0 ? 1 : 0);
+  gl.uniform2f(uniform(gl, runtime, program, 'uPointer'), runtime.pointer.x, runtime.pointer.y);
+  gl.uniform2f(uniform(gl, runtime, program, 'uPointerVelocity'), runtime.pointer.vx, runtime.pointer.vy);
+  gl.uniform1f(
+    uniform(gl, runtime, program, 'uSpawnActive'),
+    (runtime.mode === 'add' || runtime.mode === 'asteroid') && runtime.pointer.ttl > 0 ? runtime.pointer.spawn : 0,
+  );
+  gl.uniform2f(uniform(gl, runtime, program, 'uSpawnCenter'), runtime.pointer.x, runtime.pointer.y);
+  gl.uniform2f(uniform(gl, runtime, program, 'uSpawnVelocity'), runtime.pointer.vx, runtime.pointer.vy);
+  gl.uniform1f(uniform(gl, runtime, program, 'uSpawnRadius'), settings.addRadius);
+  gl.uniform1f(uniform(gl, runtime, program, 'uSpawnVelocityScale'), settings.addDebrisVelocity);
+  gl.uniform1f(uniform(gl, runtime, program, 'uSpawnJitter'), settings.addJitter);
+  gl.uniform1f(uniform(gl, runtime, program, 'uSpawnAsteroid'), runtime.pointer.asteroid);
+  gl.uniform1f(uniform(gl, runtime, program, 'uInfluenceMode'), runtime.mode === 'interact' ? 1 : 0);
+  gl.uniform1f(uniform(gl, runtime, program, 'uInfluenceCapture'), runtime.pointer.capture);
+  gl.uniform1f(uniform(gl, runtime, program, 'uInfluenceRadius'), interactionRadiusWorld(runtime, settings));
+  gl.uniform1f(uniform(gl, runtime, program, 'uInfluenceStrength'), settings.interactionStrength);
+  gl.uniform1f(uniform(gl, runtime, program, 'uSwishForce'), settings.swish);
+  gl.uniform1f(uniform(gl, runtime, program, 'uWellForce'), settings.well);
+  gl.uniform1f(uniform(gl, runtime, program, 'uWellRadius'), settings.wellRadius);
+  gl.uniform1f(uniform(gl, runtime, program, 'uWellMode'), runtime.mode === 'well' ? 1 : 0);
+  gl.uniform1f(uniform(gl, runtime, program, 'uPointerVortex'), settings.pointerVortex);
+  setShockUniforms(gl, program, runtime);
+  gl.bindVertexArray(runtime.quadVao);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindVertexArray(null);
+  runtime.particleState.unbindWriteFramebuffer();
+  runtime.particleState.swap();
+}
+
+function fadeTrail(state: RawWebGL2RenderState, runtime: NativeOrbitalRuntime, settings: NativeOrbitalSettings): void {
+  const gl = state.gl;
+  const program = runtime.fadeProgram;
+  gl.useProgram(program);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, runtime.trail.write.framebuffer);
+  gl.viewport(0, 0, runtime.trail.width, runtime.trail.height);
+  gl.disable(gl.BLEND);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, runtime.trail.read.texture.texture);
+  gl.uniform1i(uniform(gl, runtime, program, 'uTrail'), 0);
+  gl.uniform2f(uniform(gl, runtime, program, 'uTexel'), 1 / runtime.trail.width, 1 / runtime.trail.height);
+  gl.uniform1f(uniform(gl, runtime, program, 'uPersistence'), settings.trailPersistence);
+  gl.uniform1f(uniform(gl, runtime, program, 'uBlur'), settings.trailBlur);
+  gl.uniform1f(uniform(gl, runtime, program, 'uTime'), runtime.timeSeconds);
+  gl.bindVertexArray(runtime.quadVao);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindVertexArray(null);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  runtime.trail.swap();
+}
+
+function drawParticles(
+  state: RawWebGL2RenderState,
+  runtime: NativeOrbitalRuntime,
+  settings: NativeOrbitalSettings,
+  target: WebGLFramebuffer | null,
+  width: number,
+  height: number,
+  alpha: number,
+  additive: boolean,
+): void {
+  const gl = state.gl;
+  const program = runtime.particleProgram;
+  gl.useProgram(program);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, target);
+  gl.viewport(0, 0, width, height);
+  gl.enable(gl.BLEND);
+  if (additive) gl.blendFunc(gl.ONE, gl.ONE);
+  else gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, runtime.particleState.positions.read.texture.texture);
+  gl.uniform1i(uniform(gl, runtime, program, 'uPosition'), 0);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, runtime.particleState.velocities.read.texture.texture);
+  gl.uniform1i(uniform(gl, runtime, program, 'uVelocity'), 1);
+  gl.uniform1i(uniform(gl, runtime, program, 'uTextureSize'), runtime.simSize);
+  gl.uniform1f(uniform(gl, runtime, program, 'uAspect'), state.width / Math.max(1, state.height));
+  gl.uniform1f(uniform(gl, runtime, program, 'uPointSize'), settings.pointSize * (height / Math.max(1, state.height)));
+  gl.uniform1f(uniform(gl, runtime, program, 'uSpeedSize'), settings.speedSize);
+  gl.uniform1f(uniform(gl, runtime, program, 'uStreakLength'), settings.streakLength);
+  gl.uniform1i(uniform(gl, runtime, program, 'uMotionBlurCount'), settings.motionBlurSamples);
+  gl.uniform1i(uniform(gl, runtime, program, 'uStyle'), styleIndex(runtime.styleId));
+  const liveOpacity = target === null ? settings.debrisOpacity : 1;
+  gl.uniform1f(uniform(gl, runtime, program, 'uParticleAlpha'), alpha * liveOpacity);
+  gl.uniform1f(uniform(gl, runtime, program, 'uParticleBrightness'), settings.particleBrightness);
+  gl.uniform1f(uniform(gl, runtime, program, 'uTime'), runtime.timeSeconds);
+  gl.uniform1i(uniform(gl, runtime, program, 'uShape'), 0);
+  gl.uniform1i(uniform(gl, runtime, program, 'uInkLive'), target === null && styleIndex(runtime.styleId) === 3 ? 1 : 0);
+  gl.bindVertexArray(runtime.particleVao);
+  const passes = Math.max(1, settings.motionBlurSamples);
+  for (let pass = 0; pass < passes; pass += 1) {
+    gl.uniform1i(uniform(gl, runtime, program, 'uMotionBlurPass'), pass);
+    gl.drawArrays(gl.POINTS, 0, runtime.particleCount);
+  }
+  gl.bindVertexArray(null);
+  gl.disable(gl.BLEND);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+
+function display(state: RawWebGL2RenderState, runtime: NativeOrbitalRuntime, settings: NativeOrbitalSettings): void {
+  const gl = state.gl;
+  const program = runtime.displayProgram;
+  gl.useProgram(program);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, state.width, state.height);
+  gl.disable(gl.BLEND);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, runtime.trail.read.texture.texture);
+  gl.uniform1i(uniform(gl, runtime, program, 'uTrail'), 0);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, runtime.earthTexture);
+  gl.uniform1i(uniform(gl, runtime, program, 'uEarthTexture'), 1);
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, runtime.moonTexture);
+  gl.uniform1i(uniform(gl, runtime, program, 'uMoonTexture'), 2);
+  gl.uniform2f(uniform(gl, runtime, program, 'uResolution'), state.width, state.height);
+  gl.uniform2f(uniform(gl, runtime, program, 'uTexel'), 1 / runtime.trail.width, 1 / runtime.trail.height);
+  gl.uniform1f(uniform(gl, runtime, program, 'uAspect'), state.width / Math.max(1, state.height));
+  gl.uniform1f(uniform(gl, runtime, program, 'uTime'), runtime.timeSeconds);
+  gl.uniform1f(uniform(gl, runtime, program, 'uGlow'), settings.glow);
+  gl.uniform1f(uniform(gl, runtime, program, 'uExposure'), settings.exposure);
+  gl.uniform1f(uniform(gl, runtime, program, 'uChroma'), settings.chroma);
+  gl.uniform1f(uniform(gl, runtime, program, 'uStars'), settings.stars);
+  gl.uniform1f(uniform(gl, runtime, program, 'uStarFieldOpacity'), settings.starFieldOpacity);
+  gl.uniform1i(uniform(gl, runtime, program, 'uBloomSamples'), settings.bloomSamples);
+  gl.uniform1f(uniform(gl, runtime, program, 'uBloomRadius'), settings.bloomRadius);
+  gl.uniform1i(uniform(gl, runtime, program, 'uStyle'), styleIndex(runtime.styleId));
+  gl.uniform1i(uniform(gl, runtime, program, 'uBodyCount'), settings.bodyCount);
+  gl.uniform1f(uniform(gl, runtime, program, 'uBodyStrength'), settings.bodyStrength);
+  gl.uniform1f(uniform(gl, runtime, program, 'uBodyRadius'), settings.bodyRadius);
+  gl.uniform1f(uniform(gl, runtime, program, 'uBodySpeed'), settings.bodySpeed);
+  gl.uniform1f(uniform(gl, runtime, program, 'uPlanetRadius'), settings.planetRadius);
+  setAsteroidUniforms(gl, program, runtime);
+  gl.uniform1f(uniform(gl, runtime, program, 'uInfluenceVisual'), runtime.mode === 'interact' && runtime.pointer.ttl > 0 ? 1 : 0);
+  gl.uniform2f(uniform(gl, runtime, program, 'uInfluencePointer'), runtime.pointer.x, runtime.pointer.y);
+  gl.uniform1f(uniform(gl, runtime, program, 'uInfluenceRadius'), interactionRadiusWorld(runtime, settings));
+  gl.uniform1f(uniform(gl, runtime, program, 'uWellVisual'), runtime.mode === 'well' && runtime.pointer.ttl > 0 ? 1 : 0);
+  gl.uniform2f(uniform(gl, runtime, program, 'uWellPointer'), runtime.pointer.x, runtime.pointer.y);
+  gl.uniform1f(uniform(gl, runtime, program, 'uWellRadius'), settings.wellRadius);
+  gl.uniform1f(uniform(gl, runtime, program, 'uAsteroidAimVisual'), runtime.mode === 'asteroid' && runtime.asteroidAim ? Math.min(1, runtime.asteroidAim.ttl * 7) : 0);
+  gl.uniform2f(uniform(gl, runtime, program, 'uAsteroidAimStart'), runtime.asteroidAim?.startX ?? 0, runtime.asteroidAim?.startY ?? 0);
+  gl.uniform2f(uniform(gl, runtime, program, 'uAsteroidAimEnd'), runtime.asteroidAim?.endX ?? 0, runtime.asteroidAim?.endY ?? 0);
+  setShockUniforms(gl, program, runtime);
+  gl.bindVertexArray(runtime.quadVao);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindVertexArray(null);
+}
+
+export class RawOrbitalShrapnelReferenceScene extends RawWebGL2Scene {
+  private runtime: NativeOrbitalRuntime | null = null;
+  private pendingGestures: GestureEvent[] = [];
+  private mode: OrbitalInputMode = 'add';
+  private styleId = 'ice-ring';
+  private resetRequested = false;
+
+  constructor() {
+    super({
+      name: 'Space Debris Native Raw',
+      markup: MARKUP,
+      canvasSelector: '[data-orbital-native-raw-canvas]',
+      maxDevicePixelRatio: 2,
+      renderScale: () => 1,
+      onInit: (state) => {
+        this.runtime = createRuntime(state, this.mode, this.styleId);
+      },
+      onReset: () => {
+        this.resetRequested = true;
+      },
+      onStyleChange: (state) => {
+        this.styleId = state.style?.id ?? this.styleId;
+        if (this.runtime) this.runtime.styleId = this.styleId;
+      },
+      onModeChange: (_state, mode) => {
+        const nextMode = orbitalInputModeFromString(mode);
+        if (nextMode) {
+          this.mode = nextMode;
+          if (this.runtime) this.runtime.mode = nextMode;
+        }
+      },
+      render: (state) => this.renderNative(state),
+      onDestroy: (state) => {
+        destroyRuntime(state.gl, this.runtime);
+        this.runtime = null;
+      },
+    });
+  }
+
+  pushGestures(gestures: GestureEvent[]): void {
+    this.pendingGestures.push(...gestures);
+  }
+
+  override setMode(mode: string): void {
+    super.setMode(mode);
+    const nextMode = orbitalInputModeFromString(mode);
+    if (nextMode) {
+      this.mode = nextMode;
+      if (this.runtime) this.runtime.mode = nextMode;
+    }
+  }
+
+  override setStyle(styleId: string): void {
+    super.setStyle(styleId);
+    this.styleId = styleId;
+    if (this.runtime) this.runtime.styleId = styleId;
+  }
+
+  override reset(): void {
+    this.resetRequested = true;
+    super.reset();
+  }
+
+  override getDebugStats(): Record<string, string | number | boolean | null> | null {
+    if (!this.runtime) {
+      return {
+        renderer: 'native-raw-webgl2-orbital',
+        simulation: 'gpu-texture-ping-pong',
+        rendering: 'gpu-particle-field-and-trails',
+        gpuSimulated: true,
+        gpuRendered: true,
+        cpuTopology: false,
+        cpuUpload: false,
+        particles: 0,
+        state: 'initializing',
+      };
+    }
+    return {
+      ...rawGpuMetricsToDebugStats(this.runtime.gpuMetrics),
+      renderer: 'native-raw-webgl2-orbital',
+      rendering: 'gpu-particle-field-and-trails',
+      particles: this.runtime.particleCount,
+      state: `${this.runtime.simSize}x${this.runtime.simSize} RGBA32F ping-pong`,
+      trailRt: `${this.runtime.trail.width}x${this.runtime.trail.height}`,
+      style: this.runtime.styleId,
+      mode: this.runtime.mode,
+      shockwaves: this.runtime.shocks.length,
+      asteroids: this.runtime.asteroids.length,
+      seedUploadFloats: this.runtime.particleState.seedUploadFloats(),
+    };
+  }
+
+  private renderNative(state: RawWebGL2RenderState): void {
+    const key = settingsKey(state.settings, state.width, state.height);
+    if (!this.runtime || this.resetRequested || this.runtime.settingsKey !== key) {
+      destroyRuntime(state.gl, this.runtime);
+      this.runtime = createRuntime(state, this.mode, state.style?.id ?? this.styleId);
+      this.resetRequested = false;
+    }
+    const runtime = this.runtime;
+    const settings = readNativeSettings(state.settings, state.width, state.height);
+    runtime.width = state.width;
+    runtime.height = state.height;
+    runtime.inputWidth = state.canvas.clientWidth || state.width;
+    runtime.inputHeight = state.canvas.clientHeight || state.height;
+    runtime.mode = this.mode;
+    runtime.styleId = state.style?.id ?? this.styleId;
+    applyGestures(runtime, this.pendingGestures);
+    this.pendingGestures = [];
+    flushPendingAsteroidReleases(runtime, settings);
+
+    const dt = Math.min(0.04, Math.max(0, state.deltaSeconds || 0));
+    runtime.timeSeconds += dt;
+    updateAddEmitter(runtime, settings, dt);
+    updateInteractionField(runtime, dt);
+    refreshGravityWell(runtime);
+    runtime.pointer.ttl = Math.max(0, runtime.pointer.ttl - dt);
+    runtime.pointer.spawn = Math.max(0, runtime.pointer.spawn - dt * 0.18);
+    runtime.pointer.capture = Math.max(0, runtime.pointer.capture - dt * 12);
+    runtime.pointer.vx *= Math.exp(-dt * 8);
+    runtime.pointer.vy *= Math.exp(-dt * 8);
+    if (runtime.pointer.ttl <= 0) runtime.pointer.asteroid = 0;
+    if (runtime.asteroidAim) {
+      if (!runtime.asteroidAim.active) runtime.asteroidAim.ttl -= dt;
+      if (runtime.asteroidAim.ttl <= 0) runtime.asteroidAim = null;
+    }
+    updateAsteroidBodies(runtime, settings, dt);
+    let shockWriteIndex = 0;
+    for (const shock of runtime.shocks) {
+      shock.radius += shock.speed * dt;
+      shock.life -= dt * 0.72;
+      shock.strength *= Math.exp(-dt * 0.42);
+      if (shock.life > 0 && shock.radius <= 2.5) {
+        runtime.shocks[shockWriteIndex] = shock;
+        shockWriteIndex += 1;
+      }
+    }
+    runtime.shocks.length = shockWriteIndex;
+
+    const substeps = 1;
+    for (let i = 0; i < substeps; i += 1) simulate(state, runtime, settings, dt * 0.82 / substeps);
+    fadeTrail(state, runtime, settings);
+    drawParticles(state, runtime, settings, runtime.trail.read.framebuffer, runtime.trail.width, runtime.trail.height, settings.trailAlpha, true);
+    display(state, runtime, settings);
+    drawParticles(state, runtime, settings, null, state.width, state.height, settings.liveAlpha, false);
+    runtime.frame += 1;
   }
 }

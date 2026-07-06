@@ -48,6 +48,7 @@ import { DirectorMode } from './director/DirectorMode.js';
 import { StagnationRecovery } from './stagnation/StagnationRecovery.js';
 import { DebugOverlay } from './debug/DebugOverlay.js';
 import { SimulationScene } from './sim/SimulationScene.js';
+import { simulationTimeScaleFromSettings, withCommonSimulationSettings } from './sim/SimulationSettings.js';
 import { BurstEmitterSystem } from './fx/BurstEmitterSystem.js';
 import { AmbientDataManager } from './ambient/AmbientDataManager.js';
 
@@ -130,6 +131,7 @@ export class GameApp {
   private renderInvalidated = true;
   private resizeCount = 0;
   private screensaverUsingAi = false;
+  private simulationDemoAiActivated = false;
 
   // Track if any human input happened this frame
   private hasHumanInputThisFrame = false;
@@ -143,7 +145,7 @@ export class GameApp {
 
     this.input = new Input();
     this.audio = new Audio();
-    this._settings = new Settings(opts.definition.id, opts.definition.settingsFields ?? []);
+    this._settings = new Settings(opts.definition.id, withCommonSimulationSettings(opts.definition));
     this.telemetry = new Telemetry();
 
     this.screensaverManager = new ScreensaverManager({
@@ -163,6 +165,8 @@ export class GameApp {
   /** Async init — creates Pixi renderer. Call once before using. */
   async init() {
     const { container, definition, palette } = this.opts;
+    container.dataset.pixiLabMaxPixels = String(this.opts.maxPixels ?? '');
+    container.dataset.pixiLabContextLabel ??= definition.name;
 
     // Measure the container. getBoundingClientRect() forces a synchronous
     // layout flush. clientWidth/offsetWidth are fallbacks. window.inner* is
@@ -234,6 +238,7 @@ export class GameApp {
       mode: this._mode,
       seed: this.opts.seed ?? definition.defaultSeed ?? 1,
       quality: this.quality,
+      isPreview: definition.id.endsWith(':preview'),
       experimentalRawEngine: this.opts.experimentalRawEngine,
       width: this.pixi.width,
       height: this.pixi.height,
@@ -318,6 +323,10 @@ export class GameApp {
     this.renderInvalidated = true;
     // Propagate current interaction mode to the incoming scene
     if (this._interactionMode) scene.setMode(this._interactionMode);
+    this.simulationDemoAiActivated = false;
+    if (this._mode === 'demo') {
+      this.activateSimulationDemoAi();
+    }
   }
 
   setMode(mode: GameMode) {
@@ -325,8 +334,12 @@ export class GameApp {
     const prev = this._mode;
     this._mode = mode;
     this.ctx.mode = mode;
-    if (mode === 'demo' && prev !== 'demo' && this.simulationAi?.onActivate) {
-      this.simulationAi.onActivate(this.buildSimAIContext(0));
+    if (mode !== 'demo') {
+      this.simulationDemoAiActivated = false;
+      return;
+    }
+    if (prev !== 'demo' || !this.simulationDemoAiActivated) {
+      this.activateSimulationDemoAi();
     }
   }
 
@@ -376,12 +389,18 @@ export class GameApp {
       height: this.ctx.height,
       dt,
       elapsedTime: this.elapsedTime,
+      isPreview: this.ctx.isPreview,
       styleIds,
       applyStyle: (id) => this.setStyle(id),
+      applySetting: (key, val) => {
+        this._settings.set(key, val);
+        this.onEvent({ kind: 'setting_change', payload: { key, value: val } });
+      },
       applyNumericSetting: (key, val) => {
         this._settings.set(key, val);
         this.onEvent({ kind: 'setting_change', payload: { key, value: val } });
       },
+      pushGestures: (gestures) => this.pushSceneGestures(gestures),
       resetScene: () => this.resetScene(),
       clearEmittersOnly: () => this.currentScene?.clearEmitters(),
     };
@@ -411,6 +430,32 @@ export class GameApp {
    */
   demoShuffle() {
     this.simulationAi?.reset();
+    this.simulationDemoAiActivated = false;
+    if (this._mode === 'demo') {
+      this.activateSimulationDemoAi();
+    }
+  }
+
+  /**
+   * Applies the simulation demo AI's randomization pass without entering demo mode.
+   * This lets hosts expose a "dice" action for tuned settings/style presets while
+   * preserving the user's current input mode and play/demo state.
+   */
+  randomizeFromDemoAi() {
+    if (!this.simulationAi?.onActivate || !this.currentScene) return;
+    this.simulationAi.reset();
+    this.simulationAi.onActivate(this.buildSimAIContext(0));
+    this.simulationDemoAiActivated = this._mode === 'demo';
+    this.renderInvalidated = true;
+  }
+
+  private activateSimulationDemoAi(): void {
+    if (!this.simulationAi?.onActivate || this.simulationDemoAiActivated || !this.currentScene) {
+      return;
+    }
+    this.simulationAi.onActivate(this.buildSimAIContext(0));
+    this.simulationDemoAiActivated = true;
+    this.renderInvalidated = true;
   }
 
   /** Change the active interaction mode. Forwarded to the current scene via setMode(). */
@@ -419,6 +464,11 @@ export class GameApp {
   setInteractionMode(id: string) {
     this._interactionMode = id;
     this.currentScene?.setMode(id);
+  }
+
+  private scaledSceneDelta(dt: number): number {
+    if (this.definition.kind !== 'simulation') return dt;
+    return dt * simulationTimeScaleFromSettings(this._settings.getAll());
   }
 
   /** Live debug stats for the React debug panel. */
@@ -471,7 +521,12 @@ export class GameApp {
   }
 
   setMaxPixels(maxPixels: number | undefined) {
+    this.opts.container.dataset.pixiLabMaxPixels = String(maxPixels ?? '');
     this.pixi.setMaxPixels(maxPixels);
+    if (this.ready && this.ctx) {
+      this.pixi.resize(this.ctx.width, this.ctx.height);
+      this.currentScene?.resize(this.ctx.width, this.ctx.height);
+    }
     this.renderInvalidated = true;
   }
 
@@ -567,14 +622,16 @@ export class GameApp {
 
   private onFixedUpdate = (dt: number) => {
     if (this._mode === 'paused') return;
+    const sceneDt = this.scaledSceneDelta(dt);
     if (this.physicsWorld.hasAwakeDynamicBodies()) {
-      this.physicsWorld.step(dt);
+      this.physicsWorld.step(sceneDt);
     }
-    this.currentScene?.fixedUpdate(dt);
+    this.currentScene?.fixedUpdate(sceneDt);
   };
 
   private onUpdate = (dt: number, _physicsSteps: number) => {
     if (this._mode === 'paused') return;
+    const sceneDt = this.scaledSceneDelta(dt);
 
     // Flush input — captures justDown/justUp this frame
     this.input.flush();
@@ -588,19 +645,15 @@ export class GameApp {
     }
 
     // Simulation demo AI — inject synthetic gestures when in demo mode
-    if (
-      this._mode === 'demo' &&
-      this.simulationAi &&
-      this.canPushSceneGestures(this.currentScene)
-    ) {
-      const aiCtx = this.buildSimAIContext(dt);
+    if (this._mode === 'demo' && this.simulationAi) {
+      const aiCtx = this.buildSimAIContext(sceneDt);
       const aiGestures = this.simulationAi.think(aiCtx);
-      if (aiGestures.length > 0) {
+      if (aiGestures.length > 0 && this.canPushSceneGestures(this.currentScene)) {
         this.pushSceneGestures(aiGestures);
       }
     }
 
-    this.elapsedTime += dt;
+    this.elapsedTime += sceneDt;
 
     // AI tick — inject intents before scene update so scene sees them
     if (
@@ -610,7 +663,7 @@ export class GameApp {
       const intents = this.aiController.think({
         width: this.ctx.width,
         height: this.ctx.height,
-        dt,
+        dt: sceneDt,
         state: {},
       });
       for (const intent of intents) {
@@ -620,20 +673,20 @@ export class GameApp {
 
     // Screensaver manager
     this.screensaverManager.tick(dt, this.hasHumanInputThisFrame);
-    const directorEvent = this.director.update(dt, !this.hasHumanInputThisFrame);
+    const directorEvent = this.director.update(sceneDt, !this.hasHumanInputThisFrame);
     if (directorEvent) {
       this.onEvent({ kind: 'director_event', payload: { id: directorEvent.id } });
     }
 
     const hasSceneWork = this.shouldRunSceneUpdate(snap);
     if (hasSceneWork) {
-      this.currentScene?.update(dt);
+      this.currentScene?.update(sceneDt);
     }
     if (this.particleSystem.count > 0) {
-      this.particleSystem.update(dt);
+      this.particleSystem.update(sceneDt);
     }
     if (this.burstEmitters.count > 0) {
-      this.burstEmitters.update(dt);
+      this.burstEmitters.update(sceneDt);
     }
 
     const newQuality = hasSceneWork ? this.governor.update(dt) : null;
@@ -642,7 +695,7 @@ export class GameApp {
     }
 
     if (this.currentScene instanceof SimulationScene) {
-      const report = this.stagnation.update(dt, this.currentScene);
+      const report = this.stagnation.update(sceneDt, this.currentScene);
       if (report) {
         this.onEvent({ kind: 'stagnation_recovery', payload: { reason: report.reason } });
       }
