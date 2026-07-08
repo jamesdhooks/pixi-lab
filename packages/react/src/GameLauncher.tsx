@@ -220,6 +220,7 @@ function GameLauncherInner({
   const [infoAutoDismiss, setInfoAutoDismiss] = useState(true);
   const [playKey, setPlayKey] = useState(0);
   const [score, setScore] = useState(0);
+  const [gameStats, setGameStats] = useState<{ dropsRemaining?: number; phase?: string; combo?: number }>({});
   const [lives, setLives] = useState<number | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [imageUrlEditorOpen, setImageUrlEditorOpen] = useState(false);
@@ -300,6 +301,14 @@ function GameLauncherInner({
     switch (event.kind) {
       case 'score_update':
         if (typeof event.value === 'number') setScore(event.value);
+        if (event.payload) {
+          setGameStats((current) => ({
+            ...current,
+            ...(typeof event.payload?.dropsRemaining === 'number' ? { dropsRemaining: event.payload.dropsRemaining as number } : {}),
+            ...(typeof event.payload?.combo === 'number' ? { combo: event.payload.combo as number } : {}),
+            ...(typeof event.payload?.phase === 'string' ? { phase: event.payload.phase as string } : {}),
+          }));
+        }
         break;
       case 'lives_update':
         if (typeof event.value === 'number') setLives(event.value);
@@ -347,6 +356,7 @@ function GameLauncherInner({
 
   const handleRestart = useCallback(() => {
     setScore(0);
+    setGameStats({});
     setLives(undefined);
     setModeId(definition.modes?.[0]?.id ?? '');
     setInfoCardVisible(true);
@@ -775,6 +785,7 @@ function GameLauncherInner({
           {/* HUD: quit + score/controls · score badge when controls present */}
           <HUD
             score={definition.capabilities.score ? score : undefined}
+            gameStats={definition.capabilities.score ? gameStats : undefined}
             lives={lives}
             onQuit={handleQuit}
             controls={

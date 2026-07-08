@@ -20,6 +20,7 @@ export interface PegboardBin {
   width: number;
   multiplier: number;
   score: number;
+  label: string;
   color: number;
 }
 
@@ -245,10 +246,11 @@ export class PegboardModel {
   }
 
   private createBoardBounds(): PegboardBoardBounds {
-    const left = this.options.width * 0.14;
-    const right = this.options.width * 0.86;
-    const top = this.options.height * 0.18;
-    const bottom = this.options.height * 0.82;
+    const horizontalMargin = clamp(this.options.width * 0.06, 28, 88);
+    const top = clamp(this.options.height * 0.12, 72, 128);
+    const bottom = this.options.height - clamp(this.options.height * 0.08, 44, 82);
+    const left = horizontalMargin;
+    const right = this.options.width - horizontalMargin;
     return {
       left,
       top,
@@ -261,12 +263,13 @@ export class PegboardModel {
 
   private createPegs(): PegboardPeg[] {
     const pegs: PegboardPeg[] = [];
-    const rows = 8;
-    const columns = 8;
-    const top = this.board.top + this.board.height * 0.13;
-    const rowGap = this.board.height * 0.085;
-    const radius = Math.max(5, Math.min(8, this.options.width * 0.0075));
-    const usableWidth = this.board.width * 0.72;
+    const rows = clamp(Math.floor(this.board.height / 48), 7, 14);
+    const columns = clamp(Math.floor(this.board.width / 68), 8, 18);
+    const top = this.board.top + this.board.height * 0.12;
+    const bottom = this.board.top + this.board.height * 0.68;
+    const rowGap = rows <= 1 ? 0 : (bottom - top) / (rows - 1);
+    const radius = clamp(Math.min(this.board.width / columns, rowGap || 48) * 0.13, 5, 10);
+    const usableWidth = this.board.width * 0.84;
     const center = (this.board.left + this.board.right) / 2;
     const spacing = usableWidth / columns;
     for (let row = 0; row < rows; row += 1) {
@@ -294,6 +297,7 @@ export class PegboardModel {
       width,
       multiplier,
       score: 0,
+      label: `${multiplier}×`,
       color: BIN_COLORS[index % BIN_COLORS.length],
     }));
   }

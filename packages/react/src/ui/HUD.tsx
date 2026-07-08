@@ -12,6 +12,7 @@ interface HUDProps {
   score?: number;
   lives?: number;
   timeRemaining?: number;
+  gameStats?: { dropsRemaining?: number; phase?: string; combo?: number };
   /** Replaces the center score slot with arbitrary content (e.g. sim controls) */
   controls?: React.ReactNode;
   onQuit?: () => void;
@@ -19,7 +20,7 @@ interface HUDProps {
   onTutorial?: () => void;
 }
 
-export function HUD({ score, lives, timeRemaining, controls, onQuit, onSettings, onTutorial }: HUDProps) {
+export function HUD({ score, lives, timeRemaining, gameStats, controls, onQuit, onSettings, onTutorial }: HUDProps) {
   const { safeArea } = useViewportContext();
 
   return (
@@ -49,8 +50,20 @@ export function HUD({ score, lives, timeRemaining, controls, onQuit, onSettings,
         <div className="pointer-events-auto">
           {controls ?? (
             score !== undefined ? (
-              <div className="rounded-xl bg-black/30 px-4 py-1.5 backdrop-blur-md">
-                <span className="text-sm font-bold tabular-nums text-white">{score.toLocaleString()}</span>
+              <div className="flex items-center gap-2 rounded-2xl bg-black/40 px-4 py-2 shadow-lg shadow-black/25 backdrop-blur-md">
+                <div className="text-center leading-none">
+                  <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/45">Score</div>
+                  <div className="text-lg font-black tabular-nums text-white sm:text-xl">{score.toLocaleString()}</div>
+                </div>
+                {gameStats?.dropsRemaining !== undefined ? (
+                  <div className="h-8 w-px bg-white/15" />
+                ) : null}
+                {gameStats?.dropsRemaining !== undefined ? (
+                  <div className="text-center leading-none">
+                    <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/45">Balls</div>
+                    <div className="text-lg font-black tabular-nums text-cyan-200 sm:text-xl">{gameStats.dropsRemaining}</div>
+                  </div>
+                ) : null}
               </div>
             ) : null
           )}
@@ -62,8 +75,20 @@ export function HUD({ score, lives, timeRemaining, controls, onQuit, onSettings,
       {/* Right: score (when controls are in center) / lives / timer / tutorial / pause */}
       <div className="flex shrink-0 items-center gap-1.5">
         {controls !== undefined && score !== undefined && (
-          <div className="rounded-xl bg-black/30 px-3 py-1.5 backdrop-blur-md">
-            <span className="text-sm font-bold tabular-nums text-white">{score.toLocaleString()}</span>
+          <div className="flex items-center gap-2 rounded-2xl bg-black/40 px-3 py-2 shadow-lg shadow-black/25 backdrop-blur-md">
+            <div className="text-center leading-none">
+              <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/45">Score</div>
+              <div className="text-base font-black tabular-nums text-white">{score.toLocaleString()}</div>
+            </div>
+            {gameStats?.dropsRemaining !== undefined ? (
+              <>
+                <div className="h-7 w-px bg-white/15" />
+                <div className="text-center leading-none">
+                  <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/45">Balls</div>
+                  <div className="text-base font-black tabular-nums text-cyan-200">{gameStats.dropsRemaining}</div>
+                </div>
+              </>
+            ) : null}
           </div>
         )}
         {lives !== undefined && lives > 0 && (

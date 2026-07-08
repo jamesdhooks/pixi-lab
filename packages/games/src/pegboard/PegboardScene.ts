@@ -19,6 +19,10 @@ interface Spark {
   maxLife: number;
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 export class PegboardScene extends Scene {
   readonly name: string = 'PegboardPachinko';
   private root = new Container();
@@ -27,6 +31,7 @@ export class PegboardScene extends Scene {
   private trailLayer = new Graphics();
   private ballLayer = new Graphics();
   private overlayLayer = new Graphics();
+  private bucketLabelLayer = new Container();
   private model: PegboardModel | null = null;
   private state: PegboardState | null = null;
   private floatingTexts: FloatingText[] = [];
@@ -43,7 +48,7 @@ export class PegboardScene extends Scene {
     this.input = input;
     this.quality = ctx.quality;
     ctx.systems.pixi.stage.addChild(this.root);
-    this.root.addChild(this.glowLayer, this.boardLayer, this.trailLayer, this.ballLayer, this.overlayLayer);
+    this.root.addChild(this.glowLayer, this.boardLayer, this.trailLayer, this.ballLayer, this.overlayLayer, this.bucketLabelLayer);
     this.createModel(ctx.width, ctx.height);
   }
 
@@ -200,6 +205,7 @@ export class PegboardScene extends Scene {
     const { width, height, board } = state;
     this.boardLayer.clear();
     this.glowLayer.clear();
+    this.bucketLabelLayer.removeChildren().forEach((child) => child.destroy());
     this.boardLayer.rect(0, 0, width, height);
     this.boardLayer.fill({ color: 0x050816 });
     for (let i = 0; i < 18; i += 1) {
@@ -223,6 +229,19 @@ export class PegboardScene extends Scene {
       this.boardLayer.stroke({ color: bin.color, width: 2, alpha: 0.75 });
       this.boardLayer.rect(bin.x + 1, y + (state.height - y - state.height * 0.05) * 0.72, bin.width - 2, (state.height - y - state.height * 0.05) * 0.28);
       this.boardLayer.fill({ color: bin.color, alpha: 0.36 });
+      const label = new Text({
+        text: bin.label,
+        style: {
+          fill: 0xffffff,
+          fontFamily: 'Inter, system-ui, sans-serif',
+          fontSize: clamp(bin.width * 0.18, 16, 28),
+          fontWeight: '900',
+          stroke: { color: 0x020617, width: 4 },
+        },
+      });
+      label.anchor.set(0.5);
+      label.position.set(bin.x + bin.width / 2, y + Math.max(26, (state.height - y - state.height * 0.05) * 0.38));
+      this.bucketLabelLayer.addChild(label);
     }
   }
 

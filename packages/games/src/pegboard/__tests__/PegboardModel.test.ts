@@ -10,9 +10,7 @@ function binScore(state: PegboardState, binId: string): number {
 }
 
 function boardSpan(state: PegboardState) {
-  const left = state.width * 0.14;
-  const right = state.width * 0.86;
-  return { left, right, width: right - left };
+  return { left: state.board.left, right: state.board.right, width: state.board.width };
 }
 
 describe('PegboardModel', () => {
@@ -23,8 +21,9 @@ describe('PegboardModel', () => {
     expect(first.phase).toBe('start');
     expect(first.pegs).toEqual(second.pegs);
     expect(first.bins).toEqual(second.bins);
-    expect(first.pegs).toHaveLength(64);
+    expect(first.pegs).toHaveLength(100);
     expect(first.bins.map((bin) => bin.multiplier)).toEqual([1, 2, 4, 8, 4, 2, 1]);
+    expect(first.bins.map((bin) => bin.label)).toEqual(['1×', '2×', '4×', '8×', '4×', '2×', '1×']);
   });
 
   it('aligns pegs and bins to one centered board span', () => {
@@ -40,6 +39,16 @@ describe('PegboardModel', () => {
     expect(Math.max(...pegXs)).toBeLessThan(span.right - span.width * 0.08);
   });
 
+  it('scales board footprint and peg density with the viewport', () => {
+    const compact = createPegboardModel({ seed: 42, width: 640, height: 480 }).getState();
+    const wide = createPegboardModel({ seed: 42, width: 1440, height: 900 }).getState();
+
+    expect(compact.board.width / compact.width).toBeGreaterThan(0.8);
+    expect(wide.board.width / wide.width).toBeGreaterThan(0.8);
+    expect(wide.pegs.length).toBeGreaterThan(compact.pegs.length);
+    expect(wide.pegs.length).toBeGreaterThanOrEqual(140);
+  });
+
   it('staggers every peg row so no vertical lanes remain clear', () => {
     const state = createPegboardModel({ seed: 42, width: 1000, height: 700 }).getState();
     const rows = new Map<number, number[]>();
@@ -49,7 +58,7 @@ describe('PegboardModel', () => {
     }
     const sortedRows = [...rows.values()].map((row) => row.sort((a, b) => a - b));
 
-    expect(sortedRows).toHaveLength(8);
+    expect(sortedRows.length).toBeGreaterThanOrEqual(8);
     for (let row = 1; row < sortedRows.length; row += 1) {
       const previous = sortedRows[row - 1];
       const current = sortedRows[row];
