@@ -1,7 +1,7 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { Scene, type GameContext, type Input, type RenderQuality } from '@hooksjam/pixi-lab-core';
 import { PEGBOARD_DEFAULTS } from './pegboard.config';
-import { createPegboardModel, type PegboardModel, type PegboardState, type PegboardVisualEvent } from './PegboardModel';
+import { createPegboardModel, type PegboardModel, type PegboardSettings, type PegboardState, type PegboardVisualEvent } from './PegboardModel';
 
 interface FloatingText {
   text: Text;
@@ -38,6 +38,7 @@ export class PegboardScene extends Scene {
   private sparks: Spark[] = [];
   private dirty = true;
   private quality: RenderQuality = 'basic';
+  private appliedSettings: PegboardSettings = { maxDrops: PEGBOARD_DEFAULTS.maxDrops, gravity: PEGBOARD_DEFAULTS.gravity, bounce: PEGBOARD_DEFAULTS.bounce };
 
   constructor(private readonly preview = false) {
     super();
@@ -78,6 +79,7 @@ export class PegboardScene extends Scene {
 
   override fixedUpdate(dt: number): void {
     if (!this.model || !this.state) return;
+    this.applyLiveSettings();
     for (const id of this.input.snapshot.justDown) {
       const pointer = this.input.snapshot.pointers.get(id);
       if (pointer) {
@@ -142,18 +144,37 @@ export class PegboardScene extends Scene {
     };
   }
 
-  private createModel(width: number, height: number): void {
+  private readRuleSettings() {
     const settings = this.ctx.systems.settings;
-    const maxDrops = this.preview ? 5 : Number(settings.get('maxDrops') ?? PEGBOARD_DEFAULTS.maxDrops);
-    const gravity = Number(settings.get('gravity') ?? PEGBOARD_DEFAULTS.gravity);
-    const bounce = Number(settings.get('bounce') ?? PEGBOARD_DEFAULTS.bounce);
-    this.model = createPegboardModel({ seed: this.ctx.seed, width, height, maxDrops, gravity, bounce });
+    return {
+      maxDrops: this.preview ? 5 : Number(settings.get('maxDrops') ?? PEGBOARD_DEFAULTS.maxDrops),
+      gravity: Number(settings.get('gravity') ?? PEGBOARD_DEFAULTS.gravity),
+      bounce: Number(settings.get('bounce') ?? PEGBOARD_DEFAULTS.bounce),
+    };
+  }
+
+  private createModel(width: number, height: number): void {
+    this.appliedSettings = this.readRuleSettings();
+    this.model = createPegboardModel({ seed: this.ctx.seed, width, height, ...this.appliedSettings });
     if (this.preview) {
       this.model.dropBall(0.5);
       this.model.dropBall(0.33);
       this.model.dropBall(0.67);
     }
     this.handleEvents();
+    this.refreshState();
+  }
+
+  private applyLiveSettings(): void {
+    if (!this.model) return;
+    const next = this.readRuleSettings();
+    if (
+      next.maxDrops === this.appliedSettings.maxDrops
+      && next.gravity === this.appliedSettings.gravity
+      && next.bounce === this.appliedSettings.bounce
+    ) return;
+    this.model.updateSettings(next);
+    this.appliedSettings = next;
     this.refreshState();
   }
 
@@ -224,10 +245,11 @@ export class PegboardScene extends Scene {
     }
     for (const bin of state.bins) {
       const y = state.board.bottom;
-      this.boardLayer.roundRect(bin.x + 1, y, bin.width - 2, state.height - y - state.height * 0.05, 10);
+      const bucketHeight = state.bucketHeight;
+      this.boardLayer.roundRect(bin.x + 1, y, bin.width - 2, bucketHeight, 10);
       this.boardLayer.fill({ color: bin.color, alpha: 0.2 });
       this.boardLayer.stroke({ color: bin.color, width: 2, alpha: 0.75 });
-      this.boardLayer.rect(bin.x + 1, y + (state.height - y - state.height * 0.05) * 0.72, bin.width - 2, (state.height - y - state.height * 0.05) * 0.28);
+      this.boardLayer.rect(bin.x + 1, y + bucketHeight * 0.72, bin.width - 2, bucketHeight * 0.28);
       this.boardLayer.fill({ color: bin.color, alpha: 0.36 });
       const label = new Text({
         text: bin.label,
@@ -240,7 +262,7 @@ export class PegboardScene extends Scene {
         },
       });
       label.anchor.set(0.5);
-      label.position.set(bin.x + bin.width / 2, y + Math.max(26, (state.height - y - state.height * 0.05) * 0.38));
+      label.position.set(bin.x + bin.width / 2, y + Math.max(34, bucketHeight * 0.4));
       this.bucketLabelLayer.addChild(label);
     }
   }
@@ -272,12 +294,6 @@ export class PegboardScene extends Scene {
 
   private drawOverlay(state: PegboardState): void {
     this.overlayLayer.clear();
-    if (state.phase === 'start') {
-      const dropY = state.board.top;
-      this.overlayLayer.roundRect(state.board.left + state.board.width * 0.2, dropY - 18, state.board.width * 0.6, 36, 18);
-      this.overlayLayer.stroke({ color: 0x22d3ee, width: 2, alpha: 0.75 });
-      this.overlayLayer.fill({ color: 0x0ea5e9, alpha: 0.08 });
-    }
     if (state.phase === 'result') {
       this.overlayLayer.roundRect(state.board.left + state.board.width * 0.18, state.board.top + state.board.height * 0.28, state.board.width * 0.64, state.board.height * 0.22, 24);
       this.overlayLayer.fill({ color: 0x020617, alpha: 0.58 });

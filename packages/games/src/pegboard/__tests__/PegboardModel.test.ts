@@ -35,8 +35,33 @@ describe('PegboardModel', () => {
 
     expect(firstBin.x).toBeCloseTo(span.left, 6);
     expect(lastBin.x + lastBin.width).toBeCloseTo(span.right, 6);
-    expect(Math.min(...pegXs)).toBeGreaterThan(span.left + span.width * 0.08);
-    expect(Math.max(...pegXs)).toBeLessThan(span.right - span.width * 0.08);
+    expect(Math.min(...pegXs)).toBeLessThan(span.left + span.width * 0.04);
+    expect(Math.max(...pegXs)).toBeGreaterThan(span.right - span.width * 0.04);
+    expect(state.bucketHeight / state.height).toBeGreaterThan(0.16);
+    expect(state.board.bottom + state.bucketHeight).toBeLessThanOrEqual(state.height - 28);
+  });
+
+  it('applies physics settings live without rebuilding the board', () => {
+    const model = createPegboardModel({ seed: 42, width: 800, height: 600, gravity: 420, bounce: 0.6 });
+    const before = model.getState();
+
+    model.updateSettings({ gravity: 1080, bounce: 1.1 });
+    const after = model.getState();
+
+    expect(after.settings.gravity).toBe(1080);
+    expect(after.settings.bounce).toBe(1.1);
+    expect(after.pegs).toEqual(before.pegs);
+    expect(after.bins).toEqual(before.bins);
+  });
+
+  it('updates drops per round immediately before play starts', () => {
+    const model = createPegboardModel({ seed: 42, width: 800, height: 600, maxDrops: 8 });
+
+    model.updateSettings({ maxDrops: 16 });
+
+    const state = model.getState();
+    expect(state.settings.maxDrops).toBe(16);
+    expect(state.dropsRemaining).toBe(16);
   });
 
   it('scales board footprint and peg density with the viewport', () => {

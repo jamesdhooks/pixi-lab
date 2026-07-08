@@ -358,11 +358,16 @@ function GameLauncherInner({
     setScore(0);
     setGameStats({});
     setLives(undefined);
-    setModeId(definition.modes?.[0]?.id ?? '');
-    setInfoCardVisible(true);
+    const initialMode = definition.modes?.[0]?.id ?? '';
+    setModeId(initialMode);
+    setInfoCardVisible(false);
     setInfoAutoDismiss(true);
     setPlayKey((k) => k + 1);
     setShell('playing');
+    if (initialMode) {
+      appRef.current?.setInteractionMode(initialMode);
+    }
+    appRef.current?.resetScene();
   }, [definition.modes]);
 
   const handleModeChange = useCallback((id: string) => {
