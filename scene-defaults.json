@@ -1,4 +1,47 @@
 {
   "version": 1,
-  "scenes": {}
+  "scenes": {
+    "lava-lamp": {
+      "renderStyle": "glow",
+      "maxParticles": 280,
+      "initialBlobs": 170,
+      "blobRadius": 22,
+      "gravity": 72,
+      "buoyancy": 560,
+      "heatRate": 0.11,
+      "coolRate": 0.07,
+      "waxViscosity": 0.58,
+      "thermalContrast": 1.25,
+      "surfaceTension": 0.44,
+      "clumping": 0.62,
+      "inputRadius": 92,
+      "inputLift": 240,
+      "inputThermalRate": 0.09,
+      "metaballBlend": 0.94,
+      "opacity": 0.46,
+      "substeps": 1
+    },
+    "water-tank": {
+      "renderStyle": "glass",
+      "maxParticles": 6500,
+      "particleRadius": 4.8,
+      "gravity": 1450,
+      "viscosity": 0.18,
+      "obstacleRamps": 4,
+      "obstaclePegs": 3,
+      "pourRate": 360,
+      "pourRadius": 22,
+      "buildRadius": 18,
+      "interactionRadius": 76,
+      "interactionStrength": 18,
+      "metaballBlend": 0.76,
+      "opacity": 0.34,
+      "substeps": 2
+    },
+    "particle-fluid": {
+      "style": "haxiomic-cyan",
+      "renderStyle": "dye",
+      "maxParticles": 262144
+    }
+  }
 }

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { DomScriptScene } from '../sim/DomScriptScene.js';
 import { RawWebGL2Scene, colorNumberToRgb, finiteNumberSetting } from '../render/raw/RawWebGL2Scene.js';
 
-const rawSceneSource = readFileSync(join(process.cwd(), 'packages/core/src/render/raw/RawWebGL2Scene.ts'), 'utf8');
+const rawSceneSource = readFileSync(join(process.cwd(), 'packages/core/src/render/raw/RawWebGL2Scene.ts'), 'utf8').replace(/\r\n/g, '\n');
 
 const passthroughVertex = `#version 300 es
 precision highp float;

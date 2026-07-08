@@ -105,6 +105,7 @@ export class DomScriptScene extends Scene {
   onEnter(ctx: GameContext, input: Input): void {
     this.ctx = ctx;
     this.input = input;
+    this.setQuality(ctx.quality);
 
     const hostCanvas = ctx.systems.pixi.canvas;
     const host = hostCanvas.parentElement;

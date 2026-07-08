@@ -137,6 +137,13 @@ export function App() {
   const galleryPreviewLimit = DEFAULT_GALLERY_PREVIEW_LIMIT;
   const [galleryPage, setGalleryPage] = useState(0);
   const [dark, setDark] = useState(true);
+  const [previewFpsVisible, setPreviewFpsVisible] = useState(() => {
+    try {
+      return localStorage.getItem('pixi-lab:preview-fps') !== '0';
+    } catch {
+      return true;
+    }
+  });
   const [carouselOpen, setCarouselOpen] = useState(false);
   const [carouselFilter, setCarouselFilter] = useState<FilterKind>('all');
   const [carouselSide, setCarouselSide] = useState<'bottom' | 'left' | 'right'>('bottom');
@@ -225,6 +232,14 @@ export function App() {
   useEffect(() => {
     setGalleryPage(0);
   }, [filter]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('pixi-lab:preview-fps', previewFpsVisible ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [previewFpsVisible]);
 
 
   const availableKinds = useMemo<FilterKind[]>(() => {
@@ -726,6 +741,7 @@ export function App() {
                               index={i}
                               isActive={active?.id === exp.id}
                               size={88}
+                              showPreviewFps={previewFpsVisible}
                               onClick={() => selectExperience(exp, i)}
                             />
                           </div>
@@ -772,6 +788,7 @@ export function App() {
                             index={i}
                             isActive={active?.id === exp.id}
                             size={80}
+                            showPreviewFps={previewFpsVisible}
                             onClick={() => selectExperience(exp, i)}
                           />
                         ))}
@@ -830,6 +847,7 @@ export function App() {
                           index={i}
                           isActive={active?.id === exp.id}
                           size={74}
+                          showPreviewFps={previewFpsVisible}
                           onClick={() => selectExperience(exp, i)}
                           labelRight
                         />
@@ -918,6 +936,18 @@ export function App() {
               Demo mode
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setPreviewFpsVisible((visible) => !visible)}
+            className={[
+              'rounded-xl px-3 py-1.5 text-xs font-black uppercase tracking-widest transition-colors',
+              previewFpsVisible
+                ? 'bg-cyan-200 text-slate-950 shadow-md shadow-cyan-400/20'
+                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-white/[0.07] dark:text-white/45 dark:hover:bg-white/[0.12]',
+            ].join(' ')}
+          >
+            Preview FPS {previewFpsVisible ? 'On' : 'Off'}
+          </button>
         </div>
 
         {galleryPageCount > 1 && (
@@ -940,6 +970,7 @@ export function App() {
               experience={experience}
               index={index}
               previewEnabled={index < galleryPreviewLimit}
+              showPreviewFps={previewFpsVisible}
               hideKindBadge={filter === 'simulation'}
               onSelect={setActive}
             />
@@ -1037,6 +1068,7 @@ interface ExperienceCardProps {
   index: number;
   onSelect: (e: LabExperience) => void;
   previewEnabled: boolean;
+  showPreviewFps: boolean;
   hideKindBadge?: boolean;
 }
 
@@ -1218,7 +1250,7 @@ function OverlayBackdrop() {
   );
 }
 
-function ExperienceCard({ experience, index, onSelect, previewEnabled, hideKindBadge = false }: ExperienceCardProps) {
+function ExperienceCard({ experience, index, onSelect, previewEnabled, showPreviewFps, hideKindBadge = false }: ExperienceCardProps) {
   const badgeCls = KIND_BADGE[experience.kind] ?? 'bg-slate-100 text-slate-500 dark:bg-slate-700/40 dark:text-slate-400';
   const previewRef = useRef<HTMLDivElement>(null);
   const [previewSize, setPreviewSize] = useState(240);
@@ -1254,7 +1286,7 @@ function ExperienceCard({ experience, index, onSelect, previewEnabled, hideKindB
         ref={previewRef}
         className="relative w-full aspect-square rounded-2xl overflow-hidden pointer-events-none bg-slate-100 dark:bg-[#0d0d1e] transition-transform duration-200 group-hover:scale-[1.03]"
       >
-        <PreviewTile definition={experience} index={index} size={previewSize} active={previewActive && previewEnabled} />
+        <PreviewTile definition={experience} index={index} size={previewSize} active={previewActive && previewEnabled} showFps={showPreviewFps} />
 
         {/* Kind badge — overlaid on the preview tile */}
         {!hideKindBadge && (
@@ -1281,9 +1313,10 @@ interface CarouselTileProps {
   size: number;
   onClick: () => void;
   labelRight?: boolean;
+  showPreviewFps?: boolean;
 }
 
-function CarouselTile({ exp, index, isActive, size, onClick, labelRight }: CarouselTileProps) {
+function CarouselTile({ exp, index, isActive, size, onClick, labelRight, showPreviewFps = false }: CarouselTileProps) {
   const tileRef = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
 
@@ -1308,7 +1341,7 @@ function CarouselTile({ exp, index, isActive, size, onClick, labelRight }: Carou
     >
       {/* Ring wrapper — rounded-2xl matches GameTile's own rounded-2xl; flex removes inline baseline gap; no overflow-hidden so ring isn't clipped */}
       <div className={['shrink-0 flex rounded-2xl', isActive ? 'ring-2 ring-white/65' : ''].join(' ')}>
-        <PreviewTile definition={exp} index={index} size={size} onPress={onClick} active={inView} />
+        <PreviewTile definition={exp} index={index} size={size} onPress={onClick} active={inView} showFps={showPreviewFps} />
       </div>
       <span
         className={[

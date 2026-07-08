@@ -7,7 +7,9 @@ import { harmonicSandDefinition } from './harmonic-sand/harmonic-sand.definition
 import { lavaLampDefinition } from './lava-lamp/lava-lamp.definition.js';
 import { myceliumDefinition } from './mycelium/mycelium.definition.js';
 import { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.definition.js';
+import { particleFluidDefinition } from './particle-fluid/particle-fluid.definition.js';
 import { softBodyBlobDefinition } from './soft-body-blob/soft-body-blob.definition.js';
+import { splashMpmDefinition } from './splash-mpm/splash-mpm.definition.js';
 import { turingSkinDefinition } from './turing-skin/turing-skin.definition.js';
 import { waterTankDefinition } from './water-tank/water-tank.definition.js';
 
@@ -34,7 +36,13 @@ export { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.d
 export { RawOrbitalShrapnelReferenceScene } from './orbital-shrapnel/RawOrbitalShrapnelReferenceScene.js';
 export { orbitalShrapnelStyleManifest } from './orbital-shrapnel/orbitalShrapnelStyleManifest.js';
 export { OrbitalShrapnelPreviewScene } from './orbital-shrapnel/OrbitalShrapnelPreviewScene.js';
+export { particleFluidDefinition, particleFluidStyleManifest } from './particle-fluid/particle-fluid.definition.js';
+export { RawParticleFluidScene } from './particle-fluid/RawParticleFluidScene.js';
+export { ParticleFluidPreviewScene } from './particle-fluid/ParticleFluidPreviewScene.js';
 export { softBodyBlobDefinition } from './soft-body-blob/soft-body-blob.definition.js';
+export { splashMpmDefinition, splashMpmStyleManifest } from './splash-mpm/splash-mpm.definition.js';
+export { RawSplashMpmScene } from './splash-mpm/RawSplashMpmScene.js';
+export { SplashMpmPreviewScene } from './splash-mpm/SplashMpmPreviewScene.js';
 export { AdvancedConstraintParticlesRawScene } from './advanced-physics/AdvancedConstraintParticlesRawScene.js';
 export { turingSkinDefinition, turingSkinStyleManifest } from './turing-skin/turing-skin.definition.js';
 export { GpuTuringSkinScene } from './turing-skin/GpuTuringSkinScene.js';
@@ -50,6 +58,8 @@ export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
   softBodyBlobDefinition,
   lavaLampDefinition,
   waterTankDefinition,
+  particleFluidDefinition,
+  splashMpmDefinition,
   myceliumDefinition,
   turingSkinDefinition,
   alienVascularTreeDefinition,

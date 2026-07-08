@@ -48,6 +48,7 @@ export const ORBITAL_SHRAPNEL_SETTINGS_FIELDS: SettingsField[] = [
     type: 'select',
     default: '192',
     advanced: true,
+    visibleEngineConfigurations: ['raw'],
     options: [
       { label: '64² = 4k · preview', value: '64' },
       { label: '128² = 16k · light', value: '128' },
@@ -69,6 +70,7 @@ export const ORBITAL_SHRAPNEL_SETTINGS_FIELDS: SettingsField[] = [
     step: 0.05,
     default: 2.3,
     advanced: true,
+    visibleEngineConfigurations: ['raw'],
   },
   {
     key: 'bloomStrength',
@@ -81,6 +83,7 @@ export const ORBITAL_SHRAPNEL_SETTINGS_FIELDS: SettingsField[] = [
     step: 0.05,
     default: 1.25,
     advanced: true,
+    visibleEngineConfigurations: ['raw'],
   },
   {
     key: 'streakStrength',
@@ -93,6 +96,7 @@ export const ORBITAL_SHRAPNEL_SETTINGS_FIELDS: SettingsField[] = [
     step: 0.05,
     default: 0.75,
     advanced: true,
+    visibleEngineConfigurations: ['raw'],
   },
 ];
 

@@ -3,7 +3,7 @@ import type { SettingsField } from '@hooksjam/pixi-lab-core';
 export const TURING_SKIN_SETTINGS_FIELDS: SettingsField[] = [
   { key: 'renderStyle', label: 'Pattern', section: 'Rendering', type: 'select', default: 'spots', options: [{ label: 'Animal Spots', value: 'spots' }, { label: 'Zebra Bands', value: 'bands' }] },
   { key: 'timeScale', label: 'Timescale', section: 'Simulation', type: 'number', min: 0, max: 2, step: 0.05, default: 1 },
-  { key: 'resolution', label: 'Resolution', section: 'Simulation', type: 'number', min: 48, max: 4096, step: 16, default: 144 },
+  { key: 'resolution', label: 'Resolution', section: 'Simulation', type: 'number', min: 64, max: 4096, step: 1, numericScale: 'powerOfTwo', default: 128 },
   { key: 'feedRate', label: 'Pattern Growth', section: 'Chemistry', type: 'number', min: 0.018, max: 0.082, step: 0.001, default: 0.044 },
   { key: 'killRate', label: 'Pattern Breakup', section: 'Chemistry', type: 'number', min: 0.042, max: 0.074, step: 0.001, default: 0.06 },
   { key: 'diffusionA', label: 'Background Spread', section: 'Chemistry', type: 'number', min: 0.55, max: 1.25, step: 0.01, default: 1 },
@@ -14,7 +14,7 @@ export const TURING_SKIN_SETTINGS_FIELDS: SettingsField[] = [
 export const TURING_SKIN_DEFAULTS: Record<string, unknown> = {
   renderStyle: 'spots',
   timeScale: 1,
-  resolution: 144,
+  resolution: 128,
   feedRate: 0.044,
   killRate: 0.06,
   diffusionA: 1,

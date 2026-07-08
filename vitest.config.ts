@@ -9,6 +9,7 @@ export default defineConfig({
       // Stub it so tests that exercise pure-TS logic can import files that
       // transitively depend on pixi.js without a browser rendering context.
       'pixi.js': resolve(__dirname, 'vitest/mocks/pixi.ts'),
+      '@hooksjam/pixi-lab-core': resolve(__dirname, 'packages/core/src/index.ts'),
     },
   },
   test: {

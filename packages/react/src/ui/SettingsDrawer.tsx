@@ -56,7 +56,7 @@ export function SettingsDrawer({
 
   const apply = (key: string, value: unknown) => {
     settings.set(key, value as string | number | boolean);
-    setVals((prev) => ({ ...prev, [key]: value }));
+    setVals((prev) => ({ ...prev, [key]: settings.get(key) }));
   };
 
   const resetVisibleSettings = () => {
@@ -359,20 +359,73 @@ function NumberSlider({
   onChange: (v: unknown) => void;
 }) {
   const num = typeof value === 'number' ? value : (field.min ?? 0);
+  const powerOfTwo = field.numericScale === 'powerOfTwo';
+  const minExponent = Math.ceil(Math.log2(Math.max(1, field.min ?? 1)));
+  const maxExponent = Math.floor(Math.log2(Math.max(1, field.max ?? 1)));
+  const sliderValue = powerOfTwo ? snapExponent(Math.log2(Math.max(1, num)), minExponent, maxExponent) : num;
+  const valueLabel = powerOfTwo ? formatPowerOfTwoSetting(num) : formatNumberSetting(num);
+  const tickExponents = powerOfTwo ? powerOfTwoExponents(minExponent, maxExponent) : [];
   return (
     <div className="flex items-center gap-2">
-      <input
-        type="range"
-        min={field.min}
-        max={field.max}
-        step={field.step ?? 1}
-        value={num}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 w-32 cursor-pointer appearance-none rounded-full bg-white/20 accent-white"
-      />
-      <span className="w-8 text-right text-xs tabular-nums text-white/60">{num}</span>
+      <div className="relative w-32 pb-2">
+        <input
+          type="range"
+          min={powerOfTwo ? minExponent : field.min}
+          max={powerOfTwo ? maxExponent : field.max}
+          step={powerOfTwo ? 1 : field.step ?? 1}
+          value={sliderValue}
+          aria-valuetext={powerOfTwo ? valueLabel : undefined}
+          data-numeric-scale={field.numericScale}
+          onChange={(e) => {
+            if (powerOfTwo) {
+              onChange(2 ** snapExponent(Number(e.target.value), minExponent, maxExponent));
+            } else {
+              onChange(Number(e.target.value));
+            }
+          }}
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/20 accent-white"
+        />
+        {powerOfTwo && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between px-0.5">
+            {tickExponents.map((exponent) => (
+              <span key={exponent} className="h-1.5 w-px rounded-full bg-white/35" />
+            ))}
+          </div>
+        )}
+      </div>
+      <span className="w-20 text-right text-xs tabular-nums text-white/60" title={powerOfTwo ? formatIntegerSetting(num) : undefined}>
+        {valueLabel}
+      </span>
     </div>
   );
+}
+
+function formatNumberSetting(value: number): string {
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function formatPowerOfTwoSetting(value: number): string {
+  const safeValue = Math.max(1, Math.round(value));
+  const exponent = Math.round(Math.log2(safeValue));
+  return `2^${exponent}`;
+}
+
+function formatIntegerSetting(value: number): string {
+  return Math.round(value).toLocaleString('en-US');
+}
+
+function snapExponent(value: number, minExponent: number, maxExponent: number): number {
+  const rounded = Number.isFinite(value) ? Math.round(value) : minExponent;
+  return Math.max(minExponent, Math.min(maxExponent, rounded));
+}
+
+function powerOfTwoExponents(minExponent: number, maxExponent: number): number[] {
+  const ticks: number[] = [];
+  for (let exponent = minExponent; exponent <= maxExponent; exponent += 1) {
+    ticks.push(exponent);
+  }
+  return ticks;
 }
 
 // ── String input ──────────────────────────────────────────────────────────────

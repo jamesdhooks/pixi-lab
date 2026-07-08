@@ -91,6 +91,26 @@ function writeStoredStyleId(definition: LabExperience, styleId: string): void {
 }
 
 const RENDER_STYLE_FIELD_KEY = 'renderStyle';
+const FLUID_BASIC_STYLE_ID = 'bounded-cyan';
+const FLUID_ENHANCED_STYLE_ID = 'webgl-fluid-glow';
+const FLUID_VISUAL_STYLE_MODES = [
+  { id: FLUID_BASIC_STYLE_ID, label: 'Basic', description: 'Default fluid rendering' },
+  { id: FLUID_ENHANCED_STYLE_ID, label: 'Enhanced', description: 'Bloom, sun rays, and stronger surface shading' },
+];
+const FLUID_VISUAL_PRESETS: Record<string, Record<string, number>> = {
+  [FLUID_BASIC_STYLE_ID]: {
+    shadingStrength: 0.42,
+    bloomStrength: 0.22,
+    bloomThreshold: 0.72,
+    sunraysStrength: 0,
+  },
+  [FLUID_ENHANCED_STYLE_ID]: {
+    shadingStrength: 0.68,
+    bloomStrength: 1.22,
+    bloomThreshold: 0.34,
+    sunraysStrength: 0.94,
+  },
+};
 
 function getRenderStyleField(definition: LabExperience): NonNullable<LabExperience['settingsFields']>[number] | undefined {
   return definition.settingsFields?.find((field) => field.key === RENDER_STYLE_FIELD_KEY && field.type === 'select');
@@ -358,6 +378,15 @@ function GameLauncherInner({
     setStyleId(resolvedStyleId);
     writeStoredStyleId(definition, resolvedStyleId);
     appRef.current?.setStyle(resolvedStyleId);
+    if (definition.id === 'fluid-tank') {
+      const preset = FLUID_VISUAL_PRESETS[resolvedStyleId];
+      if (preset) {
+        for (const [key, value] of Object.entries(preset)) {
+          appRef.current?.settings.set(key, value);
+        }
+        setSettingsVersion((v) => v + 1);
+      }
+    }
     if (definition.kind !== 'simulation') appRef.current?.settings.set('style', resolvedStyleId);
     if (definition.id === 'fluid-tank') appRef.current?.resetScene();
   }, [definition]);
@@ -580,9 +609,16 @@ function GameLauncherInner({
   );
   const colorSchemeControl = definition.styleManifest ? (
     <TopbarSelect
-      label="Color"
+      label={definition.id === 'fluid-tank' ? 'Palette' : 'Color'}
       value={styleId}
       options={colorSchemeOptions}
+      onChange={handleStyleChange}
+    />
+  ) : null;
+  const fluidVisualStyleControl = definition.id === 'fluid-tank' ? (
+    <ModeToggle
+      modes={FLUID_VISUAL_STYLE_MODES}
+      value={styleId === FLUID_ENHANCED_STYLE_ID ? FLUID_ENHANCED_STYLE_ID : FLUID_BASIC_STYLE_ID}
       onChange={handleStyleChange}
     />
   ) : null;
@@ -631,7 +667,7 @@ function GameLauncherInner({
   const renderStyleControl = hasRenderStylePicker ? (
     definition.id === 'fluid-tank' ? (
       <TopbarSelect
-        label="Style"
+        label="Texture"
         value={renderStyleId}
         options={renderStyleModes}
         onChange={handleRenderStyleChange}
@@ -655,6 +691,7 @@ function GameLauncherInner({
   const controlsHeaderSlot =
     mobilePortrait && (definition.styleManifest || hasRenderStylePicker || hasModes) ? (
       <>
+        {fluidVisualStyleControl}
         {colorSchemeControl}
         {renderStyleControl}
         {imageSourceButton}
@@ -742,6 +779,7 @@ function GameLauncherInner({
                 name={definition.name}
                 short={definition.short}
                 hints={introHints}
+                attributions={definition.attributions}
                 autoDismiss={infoAutoDismiss}
                 onDismiss={() => setInfoCardVisible(false)}
               />
@@ -756,6 +794,7 @@ function GameLauncherInner({
             controls={
               (definition.styleManifest && !mobilePortrait) || (hasRenderStylePicker && !mobilePortrait) || (hasModes && !mobilePortrait) ? (
                 <div className="flex items-center gap-1.5">
+                  {fluidVisualStyleControl}
                   {definition.styleManifest && !mobilePortrait && colorSchemeControl}
                   {hasRenderStylePicker && !mobilePortrait && renderStyleControl}
                   {imageSourceButton}

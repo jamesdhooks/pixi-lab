@@ -8,6 +8,9 @@ export type AdvancedPhysicsEngineKind =
   | 'gpu-instanced-vascular-graph'
   | 'gpu-ping-pong-field'
   | 'gpu-stable-fluid'
+  | '2d-pic-flip-particle-water'
+  | '2d-sph-double-density-relaxation-water'
+  | 'raymarched-lava-lamp'
   | 'viscous-amoeba-particles';
 export type AdvancedPhysicsShapeKind =
   | 'circle'

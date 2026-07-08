@@ -216,9 +216,7 @@ export class GameApp {
         this.quality = quality;
         this.ctx.quality = quality;
         this.styleManager.setQuality(quality);
-        if (this.currentScene instanceof SimulationScene) {
-          this.currentScene.setQuality(quality);
-        }
+        this.currentScene?.setQuality(quality);
         this.onEvent({ kind: 'quality_change', payload: { quality } });
       },
     });
@@ -350,9 +348,7 @@ export class GameApp {
     this.governor.setQuality(quality);
     this.styleManager.setQuality(quality);
     this.burstEmitters.setQuality(quality);
-    if (this.currentScene instanceof SimulationScene) {
-      this.currentScene.setQuality(quality);
-    }
+    this.currentScene?.setQuality(quality);
     this.renderInvalidated = true;
   }
 

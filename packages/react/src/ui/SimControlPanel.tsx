@@ -18,9 +18,28 @@ export interface SimControlPanelProps {
 }
 
 function formatValue(value: number, field: SettingsField): string {
+  if (field.numericScale === 'powerOfTwo') return formatPowerOfTwoValue(value);
   const step = field.step ?? 1;
-  const decimals = step < 1 ? String(step).split('.')[1]?.length ?? 1 : 0;
+  const decimals = step < 1 ? Math.min(2, String(step).split('.')[1]?.length ?? 1) : 0;
   return value.toFixed(decimals);
+}
+
+function formatPowerOfTwoValue(value: number): string {
+  const safeValue = Math.max(1, Math.round(value));
+  return `2^${Math.round(Math.log2(safeValue))}`;
+}
+
+function snapExponent(value: number, minExponent: number, maxExponent: number): number {
+  const rounded = Number.isFinite(value) ? Math.round(value) : minExponent;
+  return Math.max(minExponent, Math.min(maxExponent, rounded));
+}
+
+function powerOfTwoExponents(minExponent: number, maxExponent: number): number[] {
+  const ticks: number[] = [];
+  for (let exponent = minExponent; exponent <= maxExponent; exponent += 1) {
+    ticks.push(exponent);
+  }
+  return ticks;
 }
 
 export function SimControlPanel({ app, fields, settingsVersion, headerSlot }: SimControlPanelProps) {
@@ -50,8 +69,9 @@ export function SimControlPanel({ app, fields, settingsVersion, headerSlot }: Si
 
   const handleChange = useCallback(
     (key: string, value: number) => {
-      setValues((prev) => ({ ...prev, [key]: value }));
       app?.settings.set(key, value);
+      const next = app?.settings.get(key);
+      setValues((prev) => ({ ...prev, [key]: typeof next === 'number' ? next : value }));
     },
     [app],
   );
@@ -105,6 +125,11 @@ export function SimControlPanel({ app, fields, settingsVersion, headerSlot }: Si
         <AnimatePresence initial={false}>
           {!collapsed && numericFields.map((field) => {
             const val = values[field.key] ?? (field.default as number);
+            const powerOfTwo = field.numericScale === 'powerOfTwo';
+            const minExponent = Math.ceil(Math.log2(Math.max(1, field.min ?? 1)));
+            const maxExponent = Math.floor(Math.log2(Math.max(1, field.max ?? 1)));
+            const sliderValue = powerOfTwo ? snapExponent(Math.log2(Math.max(1, val)), minExponent, maxExponent) : val;
+            const tickExponents = powerOfTwo ? powerOfTwoExponents(minExponent, maxExponent) : [];
             return (
               <motion.div
                 key={field.key}
@@ -119,25 +144,42 @@ export function SimControlPanel({ app, fields, settingsVersion, headerSlot }: Si
                   {field.label}
                 </span>
                 {/* Slider */}
-                <input
-                  type="range"
-                  min={field.min}
-                  max={field.max}
-                  step={field.step}
-                  value={val}
-                  onChange={(e) => handleChange(field.key, parseFloat(e.target.value))}
-                  className={[
-                    'h-1 flex-1 cursor-pointer appearance-none rounded-full bg-white/35',
-                    '[&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5',
-                    '[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full',
-                    '[&::-webkit-slider-thumb]:bg-white/90',
-                    '[&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5',
-                    '[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0',
-                    '[&::-moz-range-thumb]:bg-white/90',
-                  ].join(' ')}
-                />
+                <div className="relative flex-1 pb-2">
+                  <input
+                    type="range"
+                    min={powerOfTwo ? minExponent : field.min}
+                    max={powerOfTwo ? maxExponent : field.max}
+                    step={powerOfTwo ? 1 : field.step}
+                    value={sliderValue}
+                    aria-valuetext={powerOfTwo ? formatPowerOfTwoValue(val) : undefined}
+                    data-numeric-scale={field.numericScale}
+                    onChange={(e) => {
+                      if (powerOfTwo) {
+                        handleChange(field.key, 2 ** snapExponent(Number(e.target.value), minExponent, maxExponent));
+                      } else {
+                        handleChange(field.key, parseFloat(e.target.value));
+                      }
+                    }}
+                    className={[
+                      'h-1 w-full cursor-pointer appearance-none rounded-full bg-white/35',
+                      '[&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5',
+                      '[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full',
+                      '[&::-webkit-slider-thumb]:bg-white/90',
+                      '[&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5',
+                      '[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0',
+                      '[&::-moz-range-thumb]:bg-white/90',
+                    ].join(' ')}
+                  />
+                  {powerOfTwo && (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between px-0.5">
+                      {tickExponents.map((exponent) => (
+                        <span key={exponent} className="h-1.5 w-px rounded-full bg-white/35" />
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {/* Value */}
-                <span className="w-8 text-left font-mono text-[11px] font-semibold text-white/80">
+                <span className="w-12 text-left font-mono text-[11px] font-semibold text-white/80" title={powerOfTwo ? Math.round(val).toLocaleString('en-US') : undefined}>
                   {formatValue(val, field)}
                 </span>
               </motion.div>

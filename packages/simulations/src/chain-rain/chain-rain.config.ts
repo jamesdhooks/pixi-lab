@@ -12,7 +12,7 @@ export const CHAIN_RAIN_SETTINGS_FIELDS: SettingsField[] = [
     ],
     default: 'enhanced',
   },
-  { key: 'maxNodes', label: 'Max Nodes', section: 'Physics', type: 'number', min: 2_000, max: 80_000, step: 1_000, default: 28_000, visibleQualities: ['raw'], advanced: true },
+  { key: 'maxNodes', label: 'Max Nodes', section: 'Physics', type: 'number', min: 2048, max: 131072, step: 1, numericScale: 'powerOfTwo', default: 32768, visibleQualities: ['raw'], advanced: true },
   { key: 'nodeRadius', label: 'Node Radius', section: 'Physics', type: 'number', min: 2, max: 12, step: 0.25, default: 5, visibleQualities: ['raw'] },
   { key: 'chainLength', label: 'Chain Length', section: 'Input Mode', type: 'number', min: 3, max: 96, step: 1, default: 16, visibleQualities: ['raw'], visibleModes: ['draw'] },
   { key: 'interactionRadius', label: 'Interaction Radius', section: 'Input Mode', type: 'number', min: 16, max: 240, step: 2, default: 56, visibleQualities: ['raw'], visibleModes: ['interact'] },
@@ -27,7 +27,7 @@ export const CHAIN_RAIN_SETTINGS_FIELDS: SettingsField[] = [
 
 export const CHAIN_RAIN_DEFAULTS: Record<string, unknown> = {
   renderStyle: 'enhanced',
-  maxNodes: 28_000,
+  maxNodes: 32768,
   nodeRadius: 5,
   chainLength: 16,
   interactionRadius: 56,

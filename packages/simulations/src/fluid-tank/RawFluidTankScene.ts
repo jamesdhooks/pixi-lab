@@ -99,6 +99,11 @@ class RawFluidTankController {
       palette: next.palette,
       paletteStrength: next.paletteStrength,
       edgeDarkening: next.edgeDarkening,
+      shadingStrength: next.shadingStrength,
+      bloomStrength: next.bloomStrength,
+      bloomThreshold: next.bloomThreshold,
+      sunraysStrength: next.sunraysStrength,
+      visualPipeline: next.visualPipeline,
     });
     this.renderer.randomizeDye(this.seed, this.options.initMode !== 'blank');
   }
@@ -248,6 +253,11 @@ class RawFluidTankController {
       palette,
       paletteStrength: typeof uniforms.paletteStrength === 'number' ? uniforms.paletteStrength : Number(boundedCyanStyle.uniforms?.paletteStrength ?? 0.76),
       edgeDarkening: typeof uniforms.edgeDarkening === 'number' ? uniforms.edgeDarkening : Number(boundedCyanStyle.uniforms?.edgeDarkening ?? 0.18),
+      shadingStrength: finiteNumberSetting(settings, 'shadingStrength', typeof uniforms.shadingStrength === 'number' ? uniforms.shadingStrength : 0.72),
+      bloomStrength: finiteNumberSetting(settings, 'bloomStrength', typeof uniforms.bloomStrength === 'number' ? uniforms.bloomStrength : 0.55),
+      bloomThreshold: finiteNumberSetting(settings, 'bloomThreshold', typeof uniforms.bloomThreshold === 'number' ? uniforms.bloomThreshold : 0.62),
+      sunraysStrength: finiteNumberSetting(settings, 'sunraysStrength', typeof uniforms.sunraysStrength === 'number' ? uniforms.sunraysStrength : 0.46),
+      visualPipeline: style?.id === 'webgl-fluid-glow' ? 'reference' : 'standard',
       seed,
       displayMode: 'dye',
       initMode: initModeSetting(settings.renderStyle, FLUID_TANK_DEFAULTS.renderStyle),

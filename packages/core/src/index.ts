@@ -18,6 +18,7 @@ export type {
   GameDefinition,
   GameExperience,
   LabExperience,
+  LabExperienceAttribution,
   LabExperienceBase,
   AmbientDefinition,
   AmbientExperience,

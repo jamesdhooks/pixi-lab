@@ -11,10 +11,11 @@ export const BALLPIT_SETTINGS_FIELDS: SettingsField[] = [
     label: 'Max Particles',
     section: 'Physics',
     type: 'number',
-    min: 1_000,
-    max: 220_000,
-    step: 1_000,
-    default: 50_000,
+    min: 1_024,
+    max: 262_144,
+    step: 1,
+    numericScale: 'powerOfTwo',
+    default: 65_536,
   },
   {
     key: 'radius',
@@ -189,7 +190,7 @@ export const BALLPIT_SETTINGS_FIELDS: SettingsField[] = [
 
 export const BALLPIT_DEFAULTS: Record<string, unknown> = {
   screensaverMs: 60_000,
-  maxParticles: 50_000,
+  maxParticles: 65_536,
   radius: 12,
   radiusVariation: 0.15,
   spawnRate: 1200,

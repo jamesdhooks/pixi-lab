@@ -24,8 +24,21 @@ export const lavaLampDefinition: SimulationDefinition = {
   kind: 'simulation',
   name: 'Lava Lamp',
   short: 'Thermal metaball wax blobs rise, cool, fall, and clump.',
-  long: 'A raw WebGL lava-lamp simulation with thermal buoyancy, hot/cold pointer tools, surface-tension clumping, and GPU-rendered metaball particles.',
+  long: 'A raw WebGL lava-lamp simulation with a source-faithful raymarched wax shader, thermal controls, and shared-scene preview/debug support.',
   tags: ['simulation', 'metaball', 'thermal', 'raw-webgl'],
+  attributions: [
+    {
+      label: 'WebGL Lava Lamp',
+      href: 'https://github.com/brybrant/lava-lamp',
+      author: 'Matt Bryant',
+      license: 'GPL-3.0',
+    },
+    {
+      label: 'Raymarch lava lamp shader',
+      href: 'https://www.shadertoy.com/view/fsKXDm',
+      author: '@Arrangemonk',
+    },
+  ],
   icon: '◖',
   paletteHint: 'plasma',
   capabilities: {
@@ -41,23 +54,28 @@ export const lavaLampDefinition: SimulationDefinition = {
   settingsFields: LAVA_LAMP_SETTINGS_FIELDS,
   configDefaults: LAVA_LAMP_DEFAULTS,
   modes: [
-    { id: 'heat', label: 'Raise', icon: '▲', description: 'Heat nearby wax and lift it upward.' },
-    { id: 'cool', label: 'Lower', icon: '▼', description: 'Cool nearby wax and pull it downward.' },
+    { id: 'heat', label: 'Raise', icon: '▲', description: 'Add or heat nearby wax and lift it upward.' },
+    { id: 'cool', label: 'Lower', icon: '▼', description: 'Add or cool nearby wax and pull it downward.' },
   ],
   styleManifest: lavaLampStyleManifest,
   directorEvents: [],
   advancedPhysics: {
     renderer: 'raw-webgl2',
-    engine: 'thermal-metaball-particles',
+    engine: 'raymarched-lava-lamp',
     portability: 'reusable-core',
     supportedShapes: ['circle', 'soft-body'],
-    reusableFor: ['metaball soups', 'thermal buoyancy toys', 'clumping particle fields'],
-    caveats: ['Current simulation topology is CPU-integrated with GPU point/metaball rendering; a future texture-state path can move integration to GPU.'],
+    reusableFor: ['raymarched lava lamps', 'smooth-union blob shaders', 'thermal buoyancy toys'],
+    caveats: ['The visible lava surface is a fullscreen WebGL2 raymarch adaptation fed by a capped set of smoothed clusters extracted from the live CPU particle/metaball field, so the shader is a render layer rather than the simulation source of truth.'],
   },
   factory: () => new RawParticleMetaballScene('lava-lamp'),
   previewFactory: () => new RawParticleMetaballScene('lava-lamp', true),
   demoAiFactory: (ctx) => new LavaLampDemoAI(ctx.isPreview),
 };
+
+const PRIMARY_THERMAL_BRUSH_ID = -8101;
+const SECONDARY_THERMAL_BRUSH_ID = -8102;
+const PRIMARY_THERMAL_STRENGTH = 1;
+const SECONDARY_THERMAL_STRENGTH = 0.45;
 
 class LavaLampDemoAI implements SimulationAI {
   private elapsed = 0;
@@ -75,16 +93,27 @@ class LavaLampDemoAI implements SimulationAI {
     this.elapsed += ctx.dt;
     this.angle += ctx.dt * 0.9;
     if (this.elapsed >= this.nextShuffleIn) this.randomize(ctx);
-    const x = ctx.width * (0.5 + Math.sin(this.angle * 0.7) * 0.26);
-    const y = ctx.height * (this.cooling ? 0.28 + Math.cos(this.angle * 1.1) * 0.1 : 0.72 + Math.cos(this.angle * 1.1) * 0.12);
+    const primaryX = ctx.width * (0.5 + Math.sin(this.angle * 0.7) * 0.26);
+    const secondaryX = ctx.width * (0.5 - Math.sin(this.angle * 0.53) * 0.22);
+    const primaryY = ctx.height * (this.cooling ? 0.28 + Math.cos(this.angle * 1.1) * 0.1 : 0.72 + Math.cos(this.angle * 1.1) * 0.12);
+    const secondaryY = ctx.height * (this.cooling ? 0.74 + Math.sin(this.angle * 0.8) * 0.08 : 0.24 + Math.sin(this.angle * 0.8) * 0.08);
     return [{
       kind: 'drag',
-      id: -8101,
-      x,
-      y,
+      id: PRIMARY_THERMAL_BRUSH_ID,
+      x: primaryX,
+      y: primaryY,
       dx: Math.cos(this.angle) * 8,
       dy: this.cooling ? Math.abs(Math.sin(this.angle)) * 8 : -Math.abs(Math.sin(this.angle)) * 8,
-      strength: this.cooling ? -1 : 1,
+      strength: this.cooling ? -PRIMARY_THERMAL_STRENGTH : PRIMARY_THERMAL_STRENGTH,
+      timestamp: performance.now(),
+    }, {
+      kind: 'drag',
+      id: SECONDARY_THERMAL_BRUSH_ID,
+      x: secondaryX,
+      y: secondaryY,
+      dx: -Math.cos(this.angle * 0.8) * 5,
+      dy: this.cooling ? -Math.abs(Math.sin(this.angle * 0.9)) * 5 : Math.abs(Math.sin(this.angle * 0.9)) * 5,
+      strength: this.cooling ? SECONDARY_THERMAL_STRENGTH : -SECONDARY_THERMAL_STRENGTH,
       timestamp: performance.now(),
     }];
   }
@@ -107,6 +136,8 @@ class LavaLampDemoAI implements SimulationAI {
     ctx.applyNumericSetting('buoyancy', 380 + Math.random() * 480);
     ctx.applyNumericSetting('clumping', 0.38 + Math.random() * 0.75);
     ctx.applyNumericSetting('surfaceTension', 0.24 + Math.random() * 0.52);
+    ctx.applyNumericSetting('thermalContrast', 0.7 + Math.random() * 1.5);
+    ctx.applyNumericSetting('waxViscosity', 0.42 + Math.random() * 0.42);
     ctx.applyNumericSetting('heatRate', 0.06 + Math.random() * 0.14);
     ctx.applyNumericSetting('coolRate', 0.035 + Math.random() * 0.11);
     ctx.applyNumericSetting('inputLift', 160 + Math.random() * 360);

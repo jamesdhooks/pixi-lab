@@ -5,13 +5,14 @@ import {
 } from '../orbital-shrapnel.config.js';
 
 describe('orbital shrapnel promoted settings', () => {
-  it('keeps the Pixi defaults in the enhanced-feeling orbital range', () => {
-    expect(ORBITAL_SHRAPNEL_DEFAULTS.particleCount).toBeGreaterThanOrEqual(700);
-    expect(ORBITAL_SHRAPNEL_DEFAULTS.resolution).toBeGreaterThanOrEqual(96);
+  it('keeps the defaults in the enhanced-feeling orbital range', () => {
+    expect(ORBITAL_SHRAPNEL_DEFAULTS.rawParticleTextureSize).toBe('192');
+    expect(ORBITAL_SHRAPNEL_DEFAULTS.rawMaxSpeed).toBeGreaterThanOrEqual(2);
     expect(ORBITAL_SHRAPNEL_DEFAULTS.gravity).toBeGreaterThanOrEqual(1800);
     expect(ORBITAL_SHRAPNEL_DEFAULTS.trailFade).toBeGreaterThanOrEqual(0.97);
     expect(ORBITAL_SHRAPNEL_DEFAULTS.debrisSize).toBeGreaterThanOrEqual(0.7);
-    expect(ORBITAL_SHRAPNEL_DEFAULTS.trailGamma).toBeLessThanOrEqual(0.32);
+    expect(ORBITAL_SHRAPNEL_DEFAULTS.bloomStrength).toBeGreaterThanOrEqual(1);
+    expect(ORBITAL_SHRAPNEL_DEFAULTS.streakStrength).toBeGreaterThanOrEqual(0.7);
   });
 
   it('matches visible field defaults with runtime config defaults', () => {
@@ -28,7 +29,6 @@ describe('orbital shrapnel promoted settings', () => {
 
     expect(rawFields.map((field) => field.key)).toEqual([
       'rawParticleTextureSize',
-      'rawTrailTextureWidth',
       'rawMaxSpeed',
       'bloomStrength',
       'streakStrength',

@@ -20,9 +20,8 @@ import {
   Settings,
   withCommonSimulationSettings,
 } from '@hooksjam/pixi-lab-core';
-import type { GameContext, LabExperience, SimAIContext, SimulationAI, SimulationExperience } from '@hooksjam/pixi-lab-core';
+import type { GameContext, LabExperience, SettingsField, SimAIContext, SimulationAI, SimulationExperience } from '@hooksjam/pixi-lab-core';
 
-const PERF_WINDOW_S = 4; // measure preview health without destroying live scenes on low FPS
 /** Cap each preview tile's tick rate so many simultaneous tiles don't saturate
  *  the JS thread and tank the browser's own rAF rate below FPS_THRESHOLD. */
 const PREVIEW_FPS_CAP = 30;
@@ -36,6 +35,69 @@ const INIT_STAGGER_MS = 420;
  * 450 px tile.  Set to `undefined` to disable.
  */
 const PREVIEW_MAX_PIXELS: number | undefined = 90_000;
+
+const PREVIEW_NUMERIC_LIMITS: Record<string, { min?: number; max: number; default: number }> = {
+  resolution: { min: 32, max: 128, default: 128 },
+  maxParticles: { min: 1, max: 1600, default: 1200 },
+  maxNodes: { min: 512, max: 2048, default: 1024 },
+  rawParticleCount: { min: 1000, max: 100_000, default: 60_000 },
+  burstParticles: { min: 16, max: 512, default: 256 },
+  fluidGridResolution: { min: 32, max: 128, default: 64 },
+  pressureIterations: { min: 4, max: 24, default: 18 },
+  solverIterations: { min: 1, max: 3, default: 2 },
+  substeps: { min: 1, max: 2, default: 1 },
+  rawParticleDensity: { min: 0.1, max: 1.4, default: 0.8 },
+  fieldSpread: { min: 0.4, max: 2.8, default: 1.4 },
+};
+
+function previewDefinitionId(definition: LabExperience): string {
+  return definition.id.endsWith(':preview') ? definition.id : `${definition.id}:preview`;
+}
+
+function clampPreviewNumber(value: number, min: number | undefined, max: number): number {
+  return Math.max(min ?? -Infinity, Math.min(max, value));
+}
+
+function createPreviewField(field: SettingsField): SettingsField {
+  if (field.type === 'select' && field.key === 'rawParticleTextureSize') {
+    const options = (field.options ?? []).filter((option) => {
+      const edge = Number(option.value);
+      return Number.isFinite(edge) ? edge <= 256 : true;
+    });
+    const fallback = options.find((option) => option.value === '128')?.value ?? options[0]?.value ?? field.default;
+    return { ...field, options: options.length > 0 ? options : field.options, default: fallback };
+  }
+  if (field.type !== 'number') return { ...field };
+  const limit = PREVIEW_NUMERIC_LIMITS[field.key];
+  if (!limit) return { ...field };
+  const min = Math.max(field.min ?? -Infinity, limit.min ?? -Infinity);
+  const max = Math.max(min, Math.min(field.max ?? limit.max, limit.max));
+  return {
+    ...field,
+    min,
+    max,
+    default: clampPreviewNumber(limit.default, min, max),
+  };
+}
+
+function createPreviewDefinition(definition: LabExperience): LabExperience {
+  const settingsFields = definition.settingsFields?.map(createPreviewField);
+  const configDefaults = { ...(definition.configDefaults ?? {}) };
+  for (const field of settingsFields ?? []) {
+    configDefaults[field.key] = field.default;
+  }
+  if (configDefaults.timeScale !== undefined) configDefaults.timeScale = 1;
+  return {
+    ...definition,
+    id: previewDefinitionId(definition),
+    settingsFields,
+    configDefaults,
+  } as LabExperience;
+}
+
+function resetPreviewSettings(settings: Settings): void {
+  settings.reset(settings.getFields().map((field) => field.key));
+}
 
 function failureKey(gameId: string) {
   return `fao:game:tile-perf-fail:${gameId}`;
@@ -59,11 +121,13 @@ export interface GameTileProps {
    * Defaults to true. Pass false for off-screen carousel tiles to save GPU.
    */
   active?: boolean;
+  /** Shows a tiny bottom-right FPS readout for diagnosing preview performance. */
+  showFps?: boolean;
 }
 
 export type PreviewTileProps = GameTileProps;
 
-export function GameTile({ definition, onPress, size = 180, index = 0, active = true }: GameTileProps) {
+export function GameTile({ definition, onPress, size = 180, index = 0, active = true, showFps = false }: GameTileProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<GameApp | null>(null);
   const domPreviewCleanupRef = useRef<(() => void) | null>(null);
@@ -77,6 +141,7 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
   const rafRef = useRef(0);
   const readyRafRef = useRef(0);
   const [previewReady, setPreviewReady] = useState(useFallback);
+  const [previewFps, setPreviewFps] = useState(0);
 
   const startPreview = useCallback(() => {
     const container = containerRef.current;
@@ -84,6 +149,7 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
     setPreviewReady(false);
 
     if (!definition.previewFactory) return false;
+    const previewDefinition = createPreviewDefinition(definition);
     const hostCanvas = document.createElement('canvas');
     hostCanvas.style.position = 'absolute';
     hostCanvas.style.inset = '0';
@@ -91,13 +157,14 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
     hostCanvas.style.height = '100%';
     hostCanvas.style.opacity = '0';
     hostCanvas.style.pointerEvents = 'none';
-    const settings = new Settings(`${definition.id}:preview`, withCommonSimulationSettings(definition));
+    const settings = new Settings(previewDefinition.id, withCommonSimulationSettings(previewDefinition));
+    resetPreviewSettings(settings);
     const styleManager = new RenderStyleManager();
-    if (definition.styleManifest) styleManager.setManifest(definition.styleManifest);
+    if (previewDefinition.styleManifest) styleManager.setManifest(previewDefinition.styleManifest);
     const input = new Input();
     const width = Math.max(1, container.clientWidth || size);
     const height = Math.max(1, container.clientHeight || size);
-    const simDefinition = definition.kind === 'simulation' ? definition as SimulationExperience : null;
+    const simDefinition = previewDefinition.kind === 'simulation' ? previewDefinition as SimulationExperience : null;
     const ctx: GameContext = {
       mode: 'demo',
       seed: 0,
@@ -112,7 +179,7 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
       } as unknown as GameContext['systems'],
       emit: () => undefined,
     };
-    const directPreviewScene = definition.previewFactory(ctx);
+    const directPreviewScene = previewDefinition.previewFactory(ctx);
     if (directPreviewScene instanceof DomScriptScene) {
       try {
         container.appendChild(hostCanvas);
@@ -182,8 +249,7 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
       }
     } else {
       const overrideDef = {
-        ...definition,
-        id: `${definition.id}:preview`,
+        ...previewDefinition,
         factory: definition.previewFactory,
         // Preview scenes get an isolated settings store and may use the same demo
         // AI randomization path as the full scene without mutating user settings.
@@ -206,6 +272,7 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
         // Guard: cleanup may have fired while init was in-flight (React StrictMode
         // double-invoke). appRef is nulled by cleanup, so this catches that case.
         if (appRef.current !== app) return;
+        resetPreviewSettings(app.settings);
         app.start();
         app.setInteractionMode('demo');
         app.setMode('demo');
@@ -235,10 +302,11 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
           elapsedRef.current += dt;
           frameCountRef.current++;
 
-          if (elapsedRef.current >= PERF_WINDOW_S) {
-            measuringRef.current = false;
-            setPreviewReady(true);
-            return;
+          if (elapsedRef.current > 0.75) {
+            const stats = appRef.current?.getDebugStats();
+            setPreviewFps(stats ? (stats.renderFps || stats.fps) : Math.round(frameCountRef.current / elapsedRef.current));
+            elapsedRef.current = 0;
+            frameCountRef.current = 0;
           }
         }
         lastTimeRef.current = now;
@@ -264,6 +332,7 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
         elapsedRef.current = 0;
         lastTimeRef.current = null;
       }
+      setPreviewFps(0);
       return;
     }
     // Stagger tile start-up so all tiles don't init WebGL contexts simultaneously.
@@ -282,6 +351,7 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
         elapsedRef.current = 0;
         lastTimeRef.current = null;
       }
+      setPreviewFps(0);
     };
   }, [active, startPreview, index]);
 
@@ -330,6 +400,11 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
             'inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.2), inset 1px 0 rgba(255,255,255,0.13), inset -1px 0 rgba(0,0,0,0.08)',
         }}
       />
+      {showFps && (
+        <div className="pointer-events-none absolute bottom-1.5 right-1.5 z-30 rounded-md bg-black/45 px-1.5 py-0.5 font-mono text-[9px] font-semibold tabular-nums text-white/65">
+          {previewFps > 0 ? `${previewFps} fps` : '-- fps'}
+        </div>
+      )}
     </motion.button>
   );
 }

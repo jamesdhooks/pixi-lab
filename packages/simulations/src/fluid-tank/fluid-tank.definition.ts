@@ -12,6 +12,14 @@ export const fluidTankDefinition: SimulationDefinition = {
   short: 'A bounded raw WebGL fluid tank with dye advection and finger-driven swirls.',
   long: 'A WebGL2 stable-fluid simulation with velocity, pressure, curl, dye advection, palette remapping, contextual input tools, and demo automation adapted into the rebuilt raw simulation framework.',
   tags: ['simulation', 'fluid', 'webgl', 'shader', 'ambient'],
+  attributions: [
+    {
+      label: 'WebGL Fluid Simulation',
+      href: 'https://github.com/PavelDoGreat/WebGL-Fluid-Simulation',
+      author: 'Pavel Dobryakov',
+      license: 'MIT',
+    },
+  ],
   icon: '~',
   paletteHint: 'plasma',
   transparentBackground: false,

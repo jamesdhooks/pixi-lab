@@ -105,7 +105,8 @@ export class Settings<T extends SettingsMap = SettingsMap> {
       case 'number': {
         const numeric = typeof value === 'number' && Number.isFinite(value) ? value : Number(field.default);
         const fallback = Number.isFinite(numeric) ? numeric : 0;
-        return Math.max(field.min ?? -Infinity, Math.min(field.max ?? Infinity, fallback));
+        const clamped = Math.max(field.min ?? -Infinity, Math.min(field.max ?? Infinity, fallback));
+        return field.numericScale === 'powerOfTwo' ? snapPowerOfTwoSetting(clamped, field.min, field.max) : roundNumberSetting(clamped);
       }
       case 'boolean':
         return typeof value === 'boolean' ? value : Boolean(field.default);
@@ -144,4 +145,18 @@ export class Settings<T extends SettingsMap = SettingsMap> {
       return {};
     }
   }
+}
+
+function roundNumberSetting(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value * 100) / 100;
+}
+
+function snapPowerOfTwoSetting(value: number, min?: number, max?: number): number {
+  if (!Number.isFinite(value) || value <= 0) return Math.max(1, min ?? 1);
+  const lower = Math.max(1, min ?? 1);
+  const upper = Math.max(lower, max ?? Number.MAX_SAFE_INTEGER);
+  const exponent = Math.round(Math.log2(value));
+  const snapped = 2 ** exponent;
+  return Math.max(lower, Math.min(upper, snapped));
 }

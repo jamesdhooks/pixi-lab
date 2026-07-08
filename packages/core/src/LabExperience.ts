@@ -31,6 +31,13 @@ export interface TutorialPage {
   body: string;
 }
 
+export interface LabExperienceAttribution {
+  label: string;
+  href: string;
+  author?: string;
+  license?: string;
+}
+
 export interface LabExperienceBase {
   /** Stable slug — used as route param, score gameId, settings key, PNG fallback path */
   id: string;
@@ -46,6 +53,8 @@ export interface LabExperienceBase {
   long: string;
   /** Tags for search / filtering */
   tags: string[];
+  /** Optional third-party inspiration, source, or asset attributions shown in the intro card. */
+  attributions?: LabExperienceAttribution[];
   /** Single emoji for fallback icon */
   icon: string;
   /** Preferred palette name (from Styles registry) */

@@ -276,9 +276,9 @@ void main() {
       } else if (kind == 33.0) {
         float jitter = hash(spawnSeed + 41.0);
         vec2 side = directionFromAngle(hash(spawnSeed + 17.0) * PI * 2.0);
-        life = mix(0.34, 0.82, jitter);
-        position.xy = uSpawnPosition + side * mix(0.5, 3.2, hash(spawnSeed + 5.0));
-        velocity.xy = uSpawnVelocity + side * mix(9.0, 34.0, hash(spawnSeed + 9.0));
+        life = mix(0.24, 0.58, jitter);
+        position.xy = uSpawnPosition + side * mix(0.4, 2.4, hash(spawnSeed + 5.0));
+        velocity.xy = uSpawnVelocity + side * mix(7.0, 24.0, hash(spawnSeed + 9.0));
       } else {
         vec2 dir = burstDirection(slot, uSpawnCount, kind, spawnSeed);
         float speed = burstSpeed(slot, uSpawnCount, kind, spawnSeed, uSpawnPower);
@@ -446,12 +446,13 @@ void main() {
   vec3 endColor = paletteColor(vSeed, vKind * 11.7 + uColorShift * 19.0);
   vec3 color = mix(startColor, endColor, smoothstep(0.18, 0.92, vLifeT));
   if (vKind == 0.0) color = vec3(0.09, 0.066, 0.035) + paletteColor(vSeed, 23.0) * 0.16;
-  if (vKind == 33.0) color = mix(vec3(1.0, 0.72, 0.36), paletteColor(vSeed, 29.0), 0.48);
+  if (vKind == 33.0) color = mix(vec3(0.9, 0.56, 0.24), paletteColor(vSeed, 29.0), 0.34);
   float particleSeed = particleSeedFromPacked(vSeed);
   float sparkle = step(0.72, hash(particleSeed + floor(uTime * (18.0 + vKind)) + vKind * 29.0));
   float crackle = (vKind == 8.0 || vKind == 10.0 || vKind == 16.0 || vKind == 22.0 || vKind == 26.0 || vKind == 32.0) ? sparkle * uCrackle : 0.0;
   color += vec3(crackle);
   float alpha = vAlpha * (core + halo) * (uGlowBias + crackle * 0.65);
+  if (vKind == 33.0) alpha *= 0.52;
   outColor = vec4(color * alpha, alpha);
 }`;
 
@@ -878,7 +879,7 @@ function shellPosition(runtime: FireworksRuntime, actor: ShellActor, age: number
 
 function queueShellWake(runtime: FireworksRuntime, actor: ShellActor, x: number, y: number, dt: number): void {
   const speed = Math.hypot(actor.vx, actor.vy);
-  const generationRate = actor.generation === 0 ? 34 : 22;
+  const generationRate = actor.generation === 0 ? 26 : 16;
   const speedRate = clamp(speed / 900, 0.65, 1.7);
   actor.wakeAccumulator += dt * generationRate * speedRate;
   const emissions = Math.min(2, Math.floor(actor.wakeAccumulator));
@@ -897,7 +898,7 @@ function queueShellWake(runtime: FireworksRuntime, actor: ShellActor, x: number,
       y: y + backY * offset + signedRandom(runtime) * 2.6,
       vx: backX * (18 + nextRandom(runtime) * 34) + signedRandom(runtime) * 12,
       vy: backY * (18 + nextRandom(runtime) * 34) + signedRandom(runtime) * 12,
-      count: actor.generation === 0 ? 5 : 3,
+      count: actor.generation === 0 ? 4 : 2,
       kind: SHELL_WAKE_KIND,
       seed,
       paletteSeed: actor.paletteSeed,

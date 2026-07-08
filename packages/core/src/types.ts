@@ -400,6 +400,8 @@ export interface SettingsField {
   min?: number;
   max?: number;
   step?: number;
+  /** Numeric slider/value scaling. Use powerOfTwo for texture sizes, particle budgets, and other binary capacities. */
+  numericScale?: 'linear' | 'powerOfTwo';
   options?: { label: string; value: string }[];
   default: SettingsValue;
   /** If set, the field is only shown when the active interaction mode is in this list. */

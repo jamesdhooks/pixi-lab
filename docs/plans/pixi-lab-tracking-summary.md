@@ -145,6 +145,44 @@ Tracking notes:
 - Includes 32 shader-level explosion templates plus probabilistic secondary shell actors for recursive smaller bursts.
 - Remaining work is James' manual demo QA, visual tuning across styles/densities, and performance capture for high-density finale settings.
 
+### Particle Fluid
+
+Status: implemented and registered; awaiting manual demo QA.
+
+Evidence:
+
+- Registered in `SIMULATION_REGISTRY`.
+- Definition id: `particle-fluid`.
+- Kind: `simulation`.
+- Exposes raw WebGL2 scene, preview scene, demo AI, tutorial pages, modes, settings/defaults, style manifest, gesture map, director events, stagnation policy, and raw engine configuration.
+- Advertises interactive, ambient, gestures, reset, debug overlay, style export, demo, and settings capabilities.
+- Covered by `packages/simulations/src/particle-fluid/__tests__/particle-fluid.definition.test.ts`.
+
+Tracking notes:
+
+- Serves as a particle-fluid companion to Fluid Tank: it uses CPU spatial-grid particle integration with GPU point-density rendering for a Haxiomic-inspired dye-fluid look.
+- Attribution is carried in the definition/tutorial/advanced physics notes: visual reference is Haxiomic GPU Fluid Experiments, https://github.com/haxiomic/GPU-Fluid-Experiments.
+- Remaining work is James' manual demo QA, visual tuning across palettes/render styles, and performance capture for high-count particle settings.
+
+### Splash MPM
+
+Status: implemented and registered; awaiting manual demo QA.
+
+Evidence:
+
+- Registered in `SIMULATION_REGISTRY`.
+- Definition id: `splash-mpm`.
+- Kind: `simulation`.
+- Exposes raw WebGL2 scene, preview scene, demo AI, tutorial pages, modes, settings/defaults, style manifest, gesture map, director events, stagnation policy, and raw engine configuration.
+- Advertises interactive, ambient, gestures, reset, debug overlay, style export, demo, and settings capabilities.
+- Covered by `packages/simulations/src/splash-mpm/__tests__/splash-mpm.definition.test.ts`.
+
+Tracking notes:
+
+- Serves as an independent 2D APIC/MLS-MPM-inspired water scene: particles transfer mass and momentum to a grid, grid pressure/viscosity/boundaries update the velocity field, and FLIP/PIC blending returns motion to particles before density-surface rendering.
+- Attribution is carried in the definition/tutorial/advanced physics notes: technique reference is Splash by matsuoka-601, https://github.com/matsuoka-601/Splash.
+- Remaining work is James' manual demo QA, visual tuning across the glass/foam/depth render styles, and performance capture at high particle/grid settings.
+
 ## Legacy material disposition
 
 The old `main` branch contained a broad catalog and many plan fragments. Those files are not the active implementation target for the clean rebuild.
@@ -191,6 +229,8 @@ Disposition policy:
 - [ ] Launch Harmonic Sand Plate from the deployed app and verify touch gestures, settings, style presets, demo mode, debug overlay, and render profile behavior.
 - [ ] Launch Space Debris from the deployed app and verify add/influence modes, raw controls where available, style presets, demo mode, and render profile behavior.
 - [ ] Launch Fireworks from the deployed app and verify launch/fan/finale modes, secondary bursts, style presets, demo mode, debug overlay, and raw density behavior.
+- [ ] Launch Particle Fluid from the deployed app and verify vortex/inject/repel modes, attribution text, palette presets, settings, demo mode, and raw particle density performance.
+- [ ] Launch Splash MPM from the deployed app and verify splash/jet/repel modes, attribution text, palette presets, settings, demo mode, and raw particle-grid performance.
 - [ ] Decide whether to address Vite large-bundle warning before or after main promotion.
 - [ ] Decide whether to merge/squash/promote `agent/pixi-lab-core-rebuild-clean` onto `main` as the new baseline.
 
