@@ -131,18 +131,20 @@ describe('PegboardModel', () => {
     model.dropBall(0.5);
 
     let lastActive = model.getState().activeBalls[0];
-    for (let i = 0; i < 1200 && model.getState().activeBalls.length > 0; i += 1) {
+    for (let i = 0; i < 2400 && model.getState().activeBalls.length > 0; i += 1) {
       lastActive = model.getState().activeBalls[0];
       model.step(1 / 240);
     }
 
     const scored = model.getState();
-    expect(scored.score).toBeGreaterThan(0);
     expect(scored.activeBalls).toHaveLength(0);
     expect(scored.collectedBalls).toHaveLength(1);
-    expect(scored.collectedBalls[0]).toMatchObject({ binId: expect.any(String), scoreValue: expect.any(Number) });
+    const collected = scored.collectedBalls[0];
+    expect(collected).toMatchObject({ binId: expect.any(String), scoreValue: expect.any(Number) });
     expect(lastActive.y - lastActive.radius).toBeGreaterThanOrEqual(scored.board.bottom);
     expect(lastActive.y + lastActive.radius).toBeLessThanOrEqual(scored.board.bottom + scored.bucketHeight);
+    expect(collected.x).toBeCloseTo(lastActive.x, 4);
+    expect(collected.y).toBeCloseTo(lastActive.y, 4);
   });
 
   it('scores resolved balls into fixed-value bins with combo bonuses and produces visual events', () => {

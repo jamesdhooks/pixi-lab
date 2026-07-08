@@ -88,6 +88,7 @@ export interface PegboardModelOptions {
 
 interface MutableBall extends Omit<PegboardBall, 'trail'> {
   trail: { x: number; y: number }[];
+  restingFrames: number;
 }
 
 const PEG_COLORS = [0x22d3ee, 0xa78bfa, 0xf472b6, 0xfbbf24, 0x34d399, 0x60a5fa];
@@ -194,6 +195,7 @@ export class PegboardModel {
       radius,
       color: BALL_COLORS[(this.nextBall + Math.floor(this.rng() * BALL_COLORS.length)) % BALL_COLORS.length],
       trail: [],
+      restingFrames: 0,
     };
     this.balls.set(ball.id, ball);
     this.dropsRemaining -= 1;
@@ -212,7 +214,7 @@ export class PegboardModel {
       this.collideWalls(ball);
       this.collidePegs(ball);
       this.collideBuckets(ball);
-      const scoringBin = this.findContainingBin(ball);
+      const scoringBin = this.findSettledScoringBin(ball);
       if (scoringBin) {
         this.resolveBall(ball.id, scoringBin.id);
       }
@@ -235,13 +237,8 @@ export class PegboardModel {
     this.score += points;
     this.bins[binIndex] = { ...bin, score: bin.score + points };
     this.balls.delete(ballId);
-    const existingInBin = this.collectedBalls.filter((candidate) => candidate.binId === binId).length;
-    const columns = Math.max(1, Math.floor(bin.width / (ball.radius * 2.3)));
-    const column = existingInBin % columns;
-    const row = Math.floor(existingInBin / columns);
-    const spacingX = bin.width / columns;
-    const collectedX = clamp(bin.x + spacingX * (column + 0.5), bin.x + ball.radius, bin.x + bin.width - ball.radius);
-    const collectedY = clamp(this.board.bottom + this.bucketHeight - ball.radius - row * ball.radius * 1.65, this.board.bottom + ball.radius, this.board.bottom + this.bucketHeight - ball.radius);
+    const collectedX = clamp(ball.x, bin.x + ball.radius, bin.x + bin.width - ball.radius);
+    const collectedY = clamp(ball.y, this.board.bottom + ball.radius, this.board.bottom + this.bucketHeight - ball.radius);
     this.collectedBalls.push({
       ...cloneBall(ball),
       x: collectedX,
@@ -358,25 +355,37 @@ export class PegboardModel {
     return this.bins.find((bin) => x >= bin.x && x < bin.x + bin.width) ?? this.bins[this.bins.length - 1];
   }
 
-  private findContainingBin(ball: MutableBall): PegboardBin | null {
+  private findSettledScoringBin(ball: MutableBall): PegboardBin | null {
     const bucketTop = this.board.bottom;
-    const bucketBottom = bucketTop + this.bucketHeight;
-    return this.bins.find((bin) => (
-      ball.x - ball.radius >= bin.x
-      && ball.x + ball.radius <= bin.x + bin.width
-      && ball.y - ball.radius >= bucketTop + Math.min(8, ball.radius * 0.4)
-      && ball.y + ball.radius <= bucketBottom
-    )) ?? null;
+    const floorY = bucketTop + this.bucketHeight - ball.radius;
+    const insideBucketVertically = ball.y - ball.radius >= bucketTop && ball.y <= floorY + 0.75;
+    if (!insideBucketVertically) {
+      ball.restingFrames = 0;
+      return null;
+    }
+
+    const bin = this.findBin(ball.x);
+    const onBucketFloor = Math.abs(ball.y - floorY) <= 0.75;
+    const almostStill = Math.abs(ball.vx) < 18 && Math.abs(ball.vy) < 18;
+    if (onBucketFloor && almostStill) {
+      ball.restingFrames += 1;
+    } else {
+      ball.restingFrames = 0;
+    }
+
+    return ball.restingFrames >= 8 ? bin : null;
   }
 
   private collideWalls(ball: MutableBall): void {
     if (ball.x < this.board.left + ball.radius) {
       ball.x = this.board.left + ball.radius;
       ball.vx = Math.abs(ball.vx) * this.settings.bounce;
+      ball.restingFrames = 0;
     }
     if (ball.x > this.board.right - ball.radius) {
       ball.x = this.board.right - ball.radius;
       ball.vx = -Math.abs(ball.vx) * this.settings.bounce;
+      ball.restingFrames = 0;
     }
   }
 
@@ -390,15 +399,20 @@ export class PegboardModel {
     if (ball.x - ball.radius < bin.x) {
       ball.x = bin.x + ball.radius;
       ball.vx = Math.abs(ball.vx) * wallBounce;
+      ball.restingFrames = 0;
     }
     if (ball.x + ball.radius > bin.x + bin.width) {
       ball.x = bin.x + bin.width - ball.radius;
       ball.vx = -Math.abs(ball.vx) * wallBounce;
+      ball.restingFrames = 0;
     }
     if (ball.y + ball.radius > bucketBottom) {
       ball.y = bucketBottom - ball.radius;
-      ball.vy = -Math.abs(ball.vy) * wallBounce;
-      ball.vx *= 0.72;
+      ball.vy = 0;
+      ball.vx *= 0.52;
+      if (Math.abs(ball.vx) < 12) {
+        ball.vx = 0;
+      }
     }
   }
 
@@ -422,6 +436,7 @@ export class PegboardModel {
       }
       ball.x = peg.x + nx * min;
       ball.y = peg.y + ny * min;
+      ball.restingFrames = 0;
       ball.vx = reflectedVx * this.settings.bounce + (this.rng() - 0.5) * 38;
       ball.vy = clamp(reflectedVy * this.settings.bounce + 24, -speed * 0.45, speed * 1.25);
       this.events.push({ kind: 'burst', x: peg.x, y: peg.y, color: peg.color, strength: 0.5 });
