@@ -38,6 +38,7 @@ export class PegboardScene extends Scene {
   private sparks: Spark[] = [];
   private dirty = true;
   private quality: RenderQuality = 'basic';
+  private previewElapsed = 0;
   private appliedSettings: PegboardSettings = { maxDrops: PEGBOARD_DEFAULTS.maxDrops, gravity: PEGBOARD_DEFAULTS.gravity, bounce: PEGBOARD_DEFAULTS.bounce };
 
   constructor(private readonly preview = false) {
@@ -68,6 +69,8 @@ export class PegboardScene extends Scene {
 
   override reset(): void {
     this.model?.restart();
+    if (this.preview) this.seedPreviewDrops();
+    this.previewElapsed = 0;
     this.handleEvents();
     this.refreshState();
   }
@@ -79,6 +82,13 @@ export class PegboardScene extends Scene {
 
   override fixedUpdate(dt: number): void {
     if (!this.model || !this.state) return;
+    if (this.preview) {
+      this.previewElapsed += dt;
+      if (this.previewElapsed >= 8) {
+        this.reset();
+        return;
+      }
+    }
     this.applyLiveSettings();
     for (const id of this.input.snapshot.justDown) {
       const pointer = this.input.snapshot.pointers.get(id);
@@ -148,21 +158,29 @@ export class PegboardScene extends Scene {
     const settings = this.ctx.systems.settings;
     return {
       maxDrops: this.preview ? 5 : Number(settings.get('maxDrops') ?? PEGBOARD_DEFAULTS.maxDrops),
-      gravity: Number(settings.get('gravity') ?? PEGBOARD_DEFAULTS.gravity),
-      bounce: Number(settings.get('bounce') ?? PEGBOARD_DEFAULTS.bounce),
+      gravity: this.preview ? 390 : Number(settings.get('gravity') ?? PEGBOARD_DEFAULTS.gravity),
+      bounce: this.preview ? 0.48 : Number(settings.get('bounce') ?? PEGBOARD_DEFAULTS.bounce),
     };
   }
 
   private createModel(width: number, height: number): void {
     this.appliedSettings = this.readRuleSettings();
     this.model = createPegboardModel({ seed: this.ctx.seed, width, height, preview: this.preview, ...this.appliedSettings });
-    if (this.preview) {
-      this.model.dropBall(0.5);
-      this.model.dropBall(0.33);
-      this.model.dropBall(0.67);
-    }
+    this.previewElapsed = 0;
+    if (this.preview) this.seedPreviewDrops();
     this.handleEvents();
     this.refreshState();
+  }
+
+  private seedPreviewDrops(): void {
+    if (!this.model) return;
+    for (const x of [0.5, 0.36]) {
+      try {
+        this.model.dropBall(x);
+      } catch {
+        break;
+      }
+    }
   }
 
   private applyLiveSettings(): void {

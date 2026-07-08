@@ -96,6 +96,8 @@ interface MutableBall extends Omit<PegboardBall, 'trail'> {
 const PEG_COLORS = [0x22d3ee, 0xa78bfa, 0xf472b6, 0xfbbf24, 0x34d399, 0x60a5fa];
 const BIN_COLORS = [0x38bdf8, 0x818cf8, 0xc084fc, 0xf472b6, 0xf97316, 0xfacc15, 0x4ade80];
 const BALL_COLORS = [0xff4d8d, 0x3ddcff, 0xc8ff3d, 0xff8a2a, 0xd8b4fe, 0xffffff];
+const PREVIEW_GRAVITY = 390;
+const PREVIEW_BOUNCE = 0.48;
 
 function mulberry32(seed: number): () => number {
   let state = seed >>> 0;
@@ -186,7 +188,7 @@ export class PegboardModel {
     if (this.phase === 'result' || this.dropsRemaining <= 0) {
       throw new Error('No pegboard drops remaining');
     }
-    const radius = Math.max(10, Math.min(18, this.options.width * 0.018));
+    const radius = this.options.preview ? clamp(this.options.width * 0.026, 4, 7) : Math.max(10, Math.min(18, this.options.width * 0.018));
     const x = clamp(normalizedX, 0, 1) * this.options.width;
     const ball: MutableBall = {
       id: `ball-${this.nextBall++}`,
@@ -294,9 +296,9 @@ export class PegboardModel {
   }
 
   private createBoardBounds(): PegboardBoardBounds {
-    const horizontalMargin = this.options.preview ? clamp(this.options.width * 0.012, 2, 8) : clamp(this.options.width * 0.06, 28, 88);
-    const top = this.options.preview ? clamp(this.options.height * 0.035, 6, 16) : clamp(this.options.height * 0.16, 112, 144);
-    const bottomMargin = this.options.preview ? clamp(this.options.height * 0.035, 6, 14) : clamp(this.options.height * 0.055, 28, 56);
+    const horizontalMargin = this.options.preview ? 0 : clamp(this.options.width * 0.06, 28, 88);
+    const top = this.options.preview ? clamp(this.options.height * 0.02, 3, 10) : clamp(this.options.height * 0.16, 112, 144);
+    const bottomMargin = this.options.preview ? 0 : clamp(this.options.height * 0.055, 28, 56);
     const bottom = this.options.height - bottomMargin - this.bucketHeight;
     const left = horizontalMargin;
     const right = this.options.width - horizontalMargin;
@@ -490,9 +492,9 @@ export function createPegboardModel(options: PegboardModelOptions): PegboardMode
     seed: options.seed,
     width: options.width,
     height: options.height,
-    maxDrops: options.maxDrops ?? 30,
-    gravity: options.gravity ?? 720,
-    bounce: options.bounce ?? 0.86,
+    maxDrops: options.maxDrops ?? (options.preview ? 5 : 30),
+    gravity: options.gravity ?? (options.preview ? PREVIEW_GRAVITY : 720),
+    bounce: options.bounce ?? (options.preview ? PREVIEW_BOUNCE : 0.86),
     preview: options.preview ?? false,
   });
 }

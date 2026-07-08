@@ -663,6 +663,11 @@ export class GameApp {
         state: {},
       });
       for (const intent of intents) {
+        if (intent.meta?.resetScene === true) {
+          this.currentScene?.reset();
+          this.renderInvalidated = true;
+          continue;
+        }
         this.input.injectIntent(intent);
       }
     }

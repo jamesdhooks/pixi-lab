@@ -38,8 +38,20 @@ describe('PegboardModel', () => {
     expect(preview.bins).toHaveLength(5);
     expect(preview.bins.map((bin) => bin.label)).toEqual(['0', '25', '100', '25', '0']);
     expect(preview.pegs.length).toBeLessThan(40);
-    expect(preview.board.left).toBeLessThanOrEqual(4);
-    expect(preview.board.width / preview.width).toBeGreaterThan(0.95);
+    expect(preview.board.left).toBe(0);
+    expect(preview.board.right).toBe(preview.width);
+    expect(preview.board.bottom + preview.bucketHeight).toBe(preview.height);
+    expect(preview.board.width / preview.width).toBe(1);
+  });
+
+  it('uses calmer preview physics and smaller preview balls', () => {
+    const model = createPegboardModel({ seed: 42, width: 180, height: 180, preview: true });
+    const ball = model.dropBall(0.5);
+    const state = model.getState();
+
+    expect(state.settings.gravity).toBeLessThan(720);
+    expect(state.settings.bounce).toBeLessThan(0.86);
+    expect(ball.radius).toBeLessThan(8);
   });
 
   it('leaves a top catchment lane before the lowered peg field', () => {

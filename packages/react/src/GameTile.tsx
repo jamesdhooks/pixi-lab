@@ -20,7 +20,7 @@ import {
   Settings,
   withCommonSimulationSettings,
 } from '@hooksjam/pixi-lab-core';
-import type { GameContext, LabExperience, SettingsField, SimAIContext, SimulationAI, SimulationExperience } from '@hooksjam/pixi-lab-core';
+import type { GameContext, GameExperience, LabExperience, SettingsField, SimAIContext, SimulationAI, SimulationExperience } from '@hooksjam/pixi-lab-core';
 
 /** Cap each preview tile's tick rate so many simultaneous tiles don't saturate
  *  the JS thread and tank the browser's own rAF rate below FPS_THRESHOLD. */
@@ -52,6 +52,10 @@ const PREVIEW_NUMERIC_LIMITS: Record<string, { min?: number; max: number; defaul
 
 function previewDefinitionId(definition: LabExperience): string {
   return definition.id.endsWith(':preview') ? definition.id : `${definition.id}:preview`;
+}
+
+function gameExperience(definition: LabExperience): GameExperience | null {
+  return definition.kind === 'game' ? definition : null;
 }
 
 function clampPreviewNumber(value: number, min: number | undefined, max: number): number {
@@ -248,12 +252,13 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
         return false;
       }
     } else {
+      const gameDefinition = gameExperience(definition);
       const overrideDef = {
         ...previewDefinition,
         factory: definition.previewFactory,
-        // Preview scenes get an isolated settings store and may use the same demo
-        // AI randomization path as the full scene without mutating user settings.
-        aiFactory: undefined,
+        // Preview scenes get an isolated settings store and can use the same
+        // demo AI path as the full scene without mutating user settings.
+        aiFactory: gameDefinition?.aiFactory,
         capabilities: { ...definition.capabilities, screensaver: false, aiAutoplay: false, demo: true },
       };
 
@@ -276,6 +281,7 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
         app.start();
         app.setInteractionMode('demo');
         app.setMode('demo');
+        if (gameDefinition?.aiFactory) app.setAIEnabled(true);
         readyRafRef.current = requestAnimationFrame(() => {
           readyRafRef.current = requestAnimationFrame(() => {
             if (appRef.current === app) setPreviewReady(true);
