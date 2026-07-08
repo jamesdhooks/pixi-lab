@@ -9,6 +9,12 @@ function binScore(state: PegboardState, binId: string): number {
   return bin.score;
 }
 
+function boardSpan(state: PegboardState) {
+  const left = state.width * 0.14;
+  const right = state.width * 0.86;
+  return { left, right, width: right - left };
+}
+
 describe('PegboardModel', () => {
   it('creates a deterministic peg and bin layout from the seed', () => {
     const first = createPegboardModel({ seed: 42, width: 800, height: 600 }).getState();
@@ -17,19 +23,51 @@ describe('PegboardModel', () => {
     expect(first.phase).toBe('start');
     expect(first.pegs).toEqual(second.pegs);
     expect(first.bins).toEqual(second.bins);
-    expect(first.pegs).toHaveLength(48);
+    expect(first.pegs).toHaveLength(64);
     expect(first.bins.map((bin) => bin.multiplier)).toEqual([1, 2, 4, 8, 4, 2, 1]);
   });
 
-  it('moves from start to play when the first ball is dropped and tracks active balls', () => {
+  it('aligns pegs and bins to one centered board span', () => {
+    const state = createPegboardModel({ seed: 42, width: 1000, height: 700 }).getState();
+    const span = boardSpan(state);
+    const firstBin = state.bins[0];
+    const lastBin = state.bins[state.bins.length - 1];
+    const pegXs = state.pegs.map((peg) => peg.x);
+
+    expect(firstBin.x).toBeCloseTo(span.left, 6);
+    expect(lastBin.x + lastBin.width).toBeCloseTo(span.right, 6);
+    expect(Math.min(...pegXs)).toBeGreaterThan(span.left + span.width * 0.08);
+    expect(Math.max(...pegXs)).toBeLessThan(span.right - span.width * 0.08);
+  });
+
+  it('staggers every peg row so no vertical lanes remain clear', () => {
+    const state = createPegboardModel({ seed: 42, width: 1000, height: 700 }).getState();
+    const rows = new Map<number, number[]>();
+    for (const peg of state.pegs) {
+      const rowKey = Math.round(peg.y);
+      rows.set(rowKey, [...(rows.get(rowKey) ?? []), peg.x]);
+    }
+    const sortedRows = [...rows.values()].map((row) => row.sort((a, b) => a - b));
+
+    expect(sortedRows).toHaveLength(8);
+    for (let row = 1; row < sortedRows.length; row += 1) {
+      const previous = sortedRows[row - 1];
+      const current = sortedRows[row];
+      const minNearestColumnDelta = Math.min(
+        ...current.map((x) => Math.min(...previous.map((previousX) => Math.abs(previousX - x)))),
+      );
+      expect(minNearestColumnDelta).toBeGreaterThan(20);
+    }
+  });
+
+  it('drops balls directly under the requested input x without seeded jitter', () => {
     const model = createPegboardModel({ seed: 7, width: 800, height: 600 });
 
     const ball = model.dropBall(0.2);
     const state = model.getState();
 
     expect(state.phase).toBe('play');
-    expect(ball.x).toBeGreaterThanOrEqual(64);
-    expect(ball.x).toBeLessThanOrEqual(736);
+    expect(ball.x).toBeCloseTo(160, 6);
     expect(state.activeBalls).toHaveLength(1);
     expect(state.dropsRemaining).toBe(state.settings.maxDrops - 1);
   });

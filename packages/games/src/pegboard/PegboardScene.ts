@@ -27,10 +27,6 @@ export class PegboardScene extends Scene {
   private trailLayer = new Graphics();
   private ballLayer = new Graphics();
   private overlayLayer = new Graphics();
-  private titleText = new Text({ text: '', style: { fill: 0xffffff, fontFamily: 'Inter, system-ui, sans-serif', fontSize: 34, fontWeight: '800', align: 'center' } });
-  private subtitleText = new Text({ text: '', style: { fill: 0xa5b4fc, fontFamily: 'Inter, system-ui, sans-serif', fontSize: 17, align: 'center' } });
-  private scoreText = new Text({ text: '', style: { fill: 0xffffff, fontFamily: 'Inter, system-ui, sans-serif', fontSize: 22, fontWeight: '700' } });
-  private stateText = new Text({ text: '', style: { fill: 0xfde68a, fontFamily: 'Inter, system-ui, sans-serif', fontSize: 16, fontWeight: '700', align: 'right' } });
   private model: PegboardModel | null = null;
   private state: PegboardState | null = null;
   private floatingTexts: FloatingText[] = [];
@@ -47,8 +43,7 @@ export class PegboardScene extends Scene {
     this.input = input;
     this.quality = ctx.quality;
     ctx.systems.pixi.stage.addChild(this.root);
-    this.root.addChild(this.glowLayer, this.boardLayer, this.trailLayer, this.ballLayer, this.overlayLayer, this.titleText, this.subtitleText, this.scoreText, this.stateText);
-    this.configureText(ctx.width, ctx.height);
+    this.root.addChild(this.glowLayer, this.boardLayer, this.trailLayer, this.ballLayer, this.overlayLayer);
     this.createModel(ctx.width, ctx.height);
   }
 
@@ -62,7 +57,6 @@ export class PegboardScene extends Scene {
   }
 
   override resize(width: number, height: number): void {
-    this.configureText(width, height);
     this.createModel(width, height);
   }
 
@@ -202,18 +196,8 @@ export class PegboardScene extends Scene {
     this.dirty = true;
   }
 
-  private configureText(width: number, height: number): void {
-    this.titleText.anchor.set(0.5);
-    this.titleText.position.set(width / 2, height * 0.1);
-    this.subtitleText.anchor.set(0.5);
-    this.subtitleText.position.set(width / 2, height * 0.145);
-    this.scoreText.position.set(24, 20);
-    this.stateText.anchor.set(1, 0);
-    this.stateText.position.set(width - 24, 22);
-  }
-
   private drawBoard(state: PegboardState): void {
-    const { width, height } = state;
+    const { width, height, board } = state;
     this.boardLayer.clear();
     this.glowLayer.clear();
     this.boardLayer.rect(0, 0, width, height);
@@ -223,7 +207,7 @@ export class PegboardScene extends Scene {
       this.glowLayer.circle(width * ((i * 73) % 100) / 100, height * ((i * 41) % 100) / 100, 80 + (i % 5) * 30);
       this.glowLayer.fill({ color: [0x22d3ee, 0xa78bfa, 0xf472b6][i % 3], alpha });
     }
-    this.boardLayer.roundRect(width * 0.06, height * 0.16, width * 0.88, height * 0.72, 28);
+    this.boardLayer.roundRect(board.left, board.top, board.width, board.height, 24);
     this.boardLayer.stroke({ color: 0x334155, width: 4, alpha: 0.8 });
     this.boardLayer.fill({ color: 0x0f172a, alpha: 0.35 });
     for (const peg of state.pegs) {
@@ -233,11 +217,11 @@ export class PegboardScene extends Scene {
       this.boardLayer.fill({ color: peg.color, alpha: 0.95 });
     }
     for (const bin of state.bins) {
-      const y = height * 0.84;
-      this.boardLayer.roundRect(bin.x + 3, y, bin.width - 6, height * 0.1, 12);
+      const y = state.board.bottom;
+      this.boardLayer.roundRect(bin.x + 1, y, bin.width - 2, state.height - y - state.height * 0.05, 10);
       this.boardLayer.fill({ color: bin.color, alpha: 0.2 });
       this.boardLayer.stroke({ color: bin.color, width: 2, alpha: 0.75 });
-      this.boardLayer.rect(bin.x + 3, y + height * 0.075, bin.width - 6, height * 0.025);
+      this.boardLayer.rect(bin.x + 1, y + (state.height - y - state.height * 0.05) * 0.72, bin.width - 2, (state.height - y - state.height * 0.05) * 0.28);
       this.boardLayer.fill({ color: bin.color, alpha: 0.36 });
     }
   }
@@ -269,22 +253,15 @@ export class PegboardScene extends Scene {
 
   private drawOverlay(state: PegboardState): void {
     this.overlayLayer.clear();
-    this.titleText.text = state.phase === 'result' ? (state.result?.label ?? 'Round Complete') : 'Pegboard Pachinko';
-    this.subtitleText.text = state.phase === 'start'
-      ? 'Tap the glowing drop zone to start. Chase the 8× jackpot bin.'
-      : state.phase === 'play'
-        ? 'Drop balls, stack combos, and light up the bins.'
-        : 'Result locked. Use Reset to restart the board.';
-    this.scoreText.text = `Score ${state.score}  ·  Combo ${state.combo}×`;
-    this.stateText.text = state.phase === 'start' ? 'START' : state.phase === 'play' ? `${state.dropsRemaining} DROPS LEFT` : 'RESULT · RESET TO RESTART';
     if (state.phase === 'start') {
-      this.overlayLayer.roundRect(state.width * 0.35, state.height * 0.055, state.width * 0.3, state.height * 0.05, 18);
+      const dropY = state.board.top;
+      this.overlayLayer.roundRect(state.board.left + state.board.width * 0.2, dropY - 18, state.board.width * 0.6, 36, 18);
       this.overlayLayer.stroke({ color: 0x22d3ee, width: 2, alpha: 0.75 });
       this.overlayLayer.fill({ color: 0x0ea5e9, alpha: 0.08 });
     }
     if (state.phase === 'result') {
-      this.overlayLayer.roundRect(state.width * 0.24, state.height * 0.28, state.width * 0.52, state.height * 0.21, 26);
-      this.overlayLayer.fill({ color: 0x020617, alpha: 0.72 });
+      this.overlayLayer.roundRect(state.board.left + state.board.width * 0.18, state.board.top + state.board.height * 0.28, state.board.width * 0.64, state.board.height * 0.22, 24);
+      this.overlayLayer.fill({ color: 0x020617, alpha: 0.58 });
       this.overlayLayer.stroke({ color: 0xf472b6, width: 3, alpha: 0.8 });
     }
   }

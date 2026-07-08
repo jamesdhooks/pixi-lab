@@ -1,4 +1,4 @@
-import { createEngineConfigurations, type GameDefinition } from '@hooksjam/pixi-lab-core';
+import type { GameDefinition } from '@hooksjam/pixi-lab-core';
 import { PEGBOARD_DEFAULTS, PEGBOARD_SETTINGS_FIELDS } from './pegboard.config';
 import { PegboardAI } from './PegboardAI';
 import { PegboardPreviewScene } from './PegboardPreviewScene';
@@ -42,8 +42,6 @@ export const pegboardDefinition: GameDefinition = {
     tutorial: true,
     aiAutoplay: true,
     settings: true,
-    qualityModes: ['basic', 'enhanced'],
-    engineConfigurations: createEngineConfigurations(['basic', 'enhanced']),
   },
   settingsFields: PEGBOARD_SETTINGS_FIELDS,
   configDefaults: PEGBOARD_DEFAULTS,

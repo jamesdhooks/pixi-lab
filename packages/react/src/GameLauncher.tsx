@@ -13,7 +13,6 @@ import { GameOverModal } from './ui/GameOverModal.js';
 import { HUD } from './ui/HUD.js';
 import { ModeToggle } from './ui/ModeToggle.js';
 import { SettingsDrawer, type SettingsDefaultsSaveRequest } from './ui/SettingsDrawer.js';
-import { EngineConfigurationSelector } from './ui/EngineConfigurationSelector.js';
 import { DebugPanel } from './ui/DebugPanel.js';
 import { SimControlPanel } from './ui/SimControlPanel.js';
 import { TopbarSelect } from './ui/TopbarSelect.js';
@@ -258,7 +257,7 @@ function GameLauncherInner({
     } catch { return maxPixels; }
   });
   /** Tracks the legacy quality tier actually being rendered (may differ from `sceneLegacyQuality` on fallback). */
-  const [renderedLegacyQuality, setRenderedLegacyQuality] = useState<RenderQuality | undefined>(undefined);
+  const [, setRenderedLegacyQuality] = useState<RenderQuality | undefined>(undefined);
   const [modeId, setModeId] = useState(() => definition.modes?.[0]?.id ?? '');
   const appRef = useRef<GameApp | null>(null);
   /** State mirror of appRef — triggers a re-render when the engine is ready so
@@ -431,18 +430,6 @@ function GameLauncherInner({
     try { localStorage.setItem('pixi-lab:maxPixels', String(v ?? '')); } catch { /* ignore */ }
   }, []);
 
-  const handleEngineConfigurationChange = useCallback(
-    (nextLegacyQuality: RenderQuality) => {
-      const nextSelection = resolveRenderSelection(nextLegacyQuality, definition.capabilities);
-      setRenderSelection(nextSelection);
-      setRenderedLegacyQuality(undefined); // user picked explicitly; clear any fallback indicator
-      appRef.current = null;
-      setAppInstance(null);
-      writeStoredRenderSelection(nextSelection);
-    },
-    [definition.capabilities],
-  );
-
   const enterDemoMode = useCallback((app: GameApp | null = appRef.current) => {
     if (!app || !definition.capabilities.demo) return;
     setShell('playing');
@@ -596,7 +583,6 @@ function GameLauncherInner({
     [definition.id, settingsFields],
   );
   const hasRenderStylePicker = renderStyleModes.length > 1;
-  const hasEngineConfigurations = (definition.capabilities.engineConfigurations?.length ?? 0) > 1;
   const isSimulation = definition.kind === 'simulation';
   const hasDemoRandomizer = isSimulation && Boolean((definition as SimulationExperience).demoAiFactory);
   const colorSchemeOptions = useMemo(
@@ -845,15 +831,8 @@ function GameLauncherInner({
               {
                 key: 'engine-configuration',
                 label: 'Engine configuration',
-                hidden: !hasEngineConfigurations,
-                node: (
-                  <EngineConfigurationSelector
-                    value={sceneLegacyQuality}
-                    renderedValue={renderedLegacyQuality}
-                    configurations={definition.capabilities.engineConfigurations}
-                    onChange={handleEngineConfigurationChange}
-                  />
-                ),
+                hidden: true,
+                node: null,
               },
               {
                 key: 'reset',

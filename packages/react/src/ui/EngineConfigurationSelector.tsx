@@ -9,13 +9,12 @@ import {
 export interface EngineConfigurationSelectorProps {
   value: RenderQuality;
   /**
-   * The engine configuration actually being rendered. May differ from `value`
-   * when the performance governor falls back to a lower tier. When provided and
-   * different from `value`, the rendered engine/profile is shown as a fallback
-   * note.
+   * The style/profile actually being rendered. May differ from `value` when the
+   * performance governor falls back to a lower tier. When provided and different
+   * from `value`, the rendered style/profile is shown as a fallback note.
    */
   renderedValue?: RenderQuality;
-  /** Preferred backend/profile engine configurations. */
+  /** Preferred backend/profile configurations. Kept for compatibility; do not surface as an Engine dropdown. */
   configurations?: readonly EngineConfiguration[];
   onChange: (quality: RenderQuality) => void;
 }
@@ -37,13 +36,13 @@ export function EngineConfigurationSelector({ value, renderedValue, configuratio
       className="flex h-8 items-center gap-2 rounded-xl bg-black/30 px-2 backdrop-blur-md"
     >
       <span className="hidden text-[10px] font-semibold uppercase tracking-[0.22em] text-white/35 sm:inline">
-        Engine
+        Style
       </span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as RenderQuality)}
-        aria-label="Engine configuration"
-        title={hasFallback && renderedLabel ? `Performance fallback to ${renderedLabel}` : 'Engine configuration'}
+        aria-label="Style"
+        title={hasFallback && renderedLabel ? `Performance fallback to ${renderedLabel}` : 'Style'}
         className="h-6 min-w-36 rounded-lg border border-white/10 bg-black/40 px-2 text-xs font-semibold text-white outline-none transition-colors hover:bg-black/55 focus:border-white/35 focus:ring-1 focus:ring-white/20"
       >
         {engineConfigurations.map((configuration) => (

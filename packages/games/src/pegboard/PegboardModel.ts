@@ -40,10 +40,20 @@ export interface PegboardResult {
   label: string;
 }
 
+export interface PegboardBoardBounds {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
 export interface PegboardState {
   phase: PegboardPhase;
   width: number;
   height: number;
+  board: PegboardBoardBounds;
   score: number;
   combo: number;
   dropsRemaining: number;
@@ -100,6 +110,7 @@ export class PegboardModel {
   private readonly pegs: PegboardPeg[];
   private readonly bins: PegboardBin[];
   private readonly settings: PegboardSettings;
+  private readonly board: PegboardBoardBounds;
   private readonly balls = new Map<string, MutableBall>();
   private readonly events: PegboardVisualEvent[] = [];
   private phase: PegboardPhase = 'start';
@@ -117,6 +128,7 @@ export class PegboardModel {
       bounce: options.bounce,
     };
     this.dropsRemaining = options.maxDrops;
+    this.board = this.createBoardBounds();
     this.pegs = this.createPegs();
     this.bins = this.createBins();
   }
@@ -126,6 +138,7 @@ export class PegboardModel {
       phase: this.phase,
       width: this.options.width,
       height: this.options.height,
+      board: { ...this.board },
       score: this.score,
       combo: this.combo,
       dropsRemaining: this.dropsRemaining,
@@ -142,12 +155,11 @@ export class PegboardModel {
       throw new Error('No pegboard drops remaining');
     }
     const radius = Math.max(10, Math.min(18, this.options.width * 0.018));
-    const jitter = (this.rng() - 0.5) * radius * 2;
-    const x = clamp(normalizedX, 0.08, 0.92) * this.options.width + jitter;
+    const x = clamp(normalizedX, 0, 1) * this.options.width;
     const ball: MutableBall = {
       id: `ball-${this.nextBall++}`,
-      x: clamp(x, radius * 2, this.options.width - radius * 2),
-      y: this.options.height * 0.09,
+      x: clamp(x, this.board.left + radius, this.board.right - radius),
+      y: this.board.top + radius,
       vx: (this.rng() - 0.5) * 80,
       vy: 40 + this.rng() * 40,
       radius,
@@ -170,7 +182,7 @@ export class PegboardModel {
       ball.trail = [...ball.trail, { x: ball.x, y: ball.y }].slice(-12);
       this.collideWalls(ball);
       this.collidePegs(ball);
-      if (ball.y >= this.options.height * 0.84) {
+      if (ball.y >= this.board.bottom) {
         const bin = this.findBin(ball.x);
         this.resolveBall(ball.id, bin.id);
       }
@@ -232,22 +244,38 @@ export class PegboardModel {
     this.setPhase('result');
   }
 
+  private createBoardBounds(): PegboardBoardBounds {
+    const left = this.options.width * 0.14;
+    const right = this.options.width * 0.86;
+    const top = this.options.height * 0.18;
+    const bottom = this.options.height * 0.82;
+    return {
+      left,
+      top,
+      right,
+      bottom,
+      width: right - left,
+      height: bottom - top,
+    };
+  }
+
   private createPegs(): PegboardPeg[] {
     const pegs: PegboardPeg[] = [];
     const rows = 8;
-    const top = this.options.height * 0.19;
-    const rowGap = this.options.height * 0.07;
-    const radius = Math.max(5, Math.min(9, this.options.width * 0.009));
+    const columns = 8;
+    const top = this.board.top + this.board.height * 0.13;
+    const rowGap = this.board.height * 0.085;
+    const radius = Math.max(5, Math.min(8, this.options.width * 0.0075));
+    const usableWidth = this.board.width * 0.72;
+    const center = (this.board.left + this.board.right) / 2;
+    const spacing = usableWidth / columns;
     for (let row = 0; row < rows; row += 1) {
-      const count = row % 2 === 0 ? 6 : 6;
-      const span = this.options.width * 0.72;
-      const left = (this.options.width - span) / 2;
-      const offset = row % 2 === 0 ? 0 : span / (count * 2);
-      for (let col = 0; col < count; col += 1) {
-        const wiggle = (this.rng() - 0.5) * 5;
+      const rowShift = row % 2 === 0 ? -spacing * 0.25 : spacing * 0.25;
+      const rowLeft = center - ((columns - 1) * spacing) / 2 + rowShift;
+      for (let col = 0; col < columns; col += 1) {
         pegs.push({
           id: `peg-${row}-${col}`,
-          x: left + ((col + 0.5) / count) * span + offset + wiggle,
+          x: rowLeft + col * spacing,
           y: top + row * rowGap,
           radius,
           color: PEG_COLORS[(row + col) % PEG_COLORS.length],
@@ -259,11 +287,10 @@ export class PegboardModel {
 
   private createBins(): PegboardBin[] {
     const multipliers = [1, 2, 4, 8, 4, 2, 1];
-    const gutter = this.options.width * 0.08;
-    const width = (this.options.width - gutter * 2) / multipliers.length;
+    const width = this.board.width / multipliers.length;
     return multipliers.map((multiplier, index) => ({
       id: `bin-${index}`,
-      x: gutter + width * index,
+      x: this.board.left + width * index,
       width,
       multiplier,
       score: 0,
@@ -276,12 +303,12 @@ export class PegboardModel {
   }
 
   private collideWalls(ball: MutableBall): void {
-    if (ball.x < ball.radius) {
-      ball.x = ball.radius;
+    if (ball.x < this.board.left + ball.radius) {
+      ball.x = this.board.left + ball.radius;
       ball.vx = Math.abs(ball.vx) * this.settings.bounce;
     }
-    if (ball.x > this.options.width - ball.radius) {
-      ball.x = this.options.width - ball.radius;
+    if (ball.x > this.board.right - ball.radius) {
+      ball.x = this.board.right - ball.radius;
       ball.vx = -Math.abs(ball.vx) * this.settings.bounce;
     }
   }

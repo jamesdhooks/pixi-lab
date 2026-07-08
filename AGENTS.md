@@ -34,7 +34,10 @@
 9. Rendering is idle-by-default. Plain `Scene` subclasses must not force continuous rendering or per-frame simulation when there are no active pointers, particles, awake physics bodies, or custom visual animations. Override `shouldRender()` only for visual work the engine cannot infer, and prefer dirty/active flags over unconditional buffer uploads.
 10. `aiAutoplay` means the game supports AI; it must not run in normal play unless explicitly enabled by the host/runtime. AI drags must use stable negative pointer ids and must always release them.
 11. Settings fields must be grouped with `section`; input-tool-specific controls belong under `section: 'Input Mode'` and must use `visibleModes` so the drawer only shows controls relevant to the active input mode. See `docs/architecture/settings-fields.md`.
-12. Conventional Commits: `type(scope): subject` — scopes: `core` `react` `games` `sims` `demo` `ci` `deps` `config`
+12. The runtime UI must not expose an “Engine” / “Engine configuration” dropdown. User-facing render differences must be expressed as style/mode controls, preferably through `styleManifest` or `renderStyle` settings. Games must not advertise `qualityModes` or `engineConfigurations`.
+13. Game scenes must avoid the shared top-row UI safe area. Do not put score, titles, instructions, or state labels in the top row.
+14. Game scenes must not render their own title or explainer copy; use the IntroCard/tutorial metadata for those. In-scene UI should be gameplay-critical and visual-first.
+15. Conventional Commits: `type(scope): subject` — scopes: `core` `react` `games` `sims` `demo` `ci` `deps` `config`
 
 ## Adding a New Experience
 

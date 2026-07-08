@@ -16,8 +16,8 @@ describe('pegboardDefinition', () => {
         settings: true,
       },
     });
-    expect(pegboardDefinition.capabilities.qualityModes).toEqual(['basic', 'enhanced']);
-    expect(pegboardDefinition.capabilities.engineConfigurations?.map((config) => config.id)).toEqual(['basic', 'enhanced']);
+    expect(pegboardDefinition.capabilities.qualityModes ?? []).toEqual([]);
+    expect(pegboardDefinition.capabilities.engineConfigurations ?? []).toEqual([]);
     expect(pegboardDefinition.tutorialPages?.map((page) => page.title)).toEqual(['Start', 'Play', 'Result', 'Restart']);
     expect(pegboardDefinition.settingsFields?.every((field) => Boolean(field.section))).toBe(true);
     expect(pegboardDefinition.aiFactory).toBeDefined();
@@ -26,5 +26,13 @@ describe('pegboardDefinition', () => {
   it('is discoverable from the games registry and lookup helper', () => {
     expect(GAME_REGISTRY.some((entry) => entry.id === 'pegboard')).toBe(true);
     expect(getGame('pegboard')).toBe(pegboardDefinition);
+  });
+
+  it('keeps all games on style/settings controls rather than engine configuration dropdowns', () => {
+    for (const game of GAME_REGISTRY) {
+      if (game.kind !== 'game') continue;
+      expect(game.capabilities.engineConfigurations ?? [], `${game.id} must not advertise engine configurations`).toEqual([]);
+      expect(game.capabilities.qualityModes ?? [], `${game.id} must not advertise legacy quality modes`).toEqual([]);
+    }
   });
 });

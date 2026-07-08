@@ -37,8 +37,8 @@ describe('EngineConfigurationSelector', () => {
     const options = collectByType(element, 'option');
 
     expect(selects).toHaveLength(1);
-    expect(selects[0].props['aria-label']).toBe('Engine configuration');
-    expect(selects[0].props.title).toBe('Engine configuration');
+    expect(selects[0].props['aria-label']).toBe('Style');
+    expect(selects[0].props.title).toBe('Style');
     expect(options.map((option) => option.props.value)).toEqual(['basic', 'enhanced']);
     expect(options.map((option) => option.props.children)).toEqual([
       'PixiJS / Standard · Basic',
@@ -90,6 +90,6 @@ describe('EngineConfigurationSelector', () => {
     });
 
     const selects = collectByType(element, 'select');
-    expect(selects[0].props['aria-label']).toBe('Engine configuration');
+    expect(selects[0].props['aria-label']).toBe('Style');
   });
 });
