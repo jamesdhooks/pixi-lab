@@ -310,7 +310,7 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
 
           if (elapsedRef.current > 0.75) {
             const stats = appRef.current?.getDebugStats();
-            setPreviewFps(stats ? (stats.renderFps || stats.fps) : Math.round(frameCountRef.current / elapsedRef.current));
+            setPreviewFps(stats ? stats.fps : Math.round(frameCountRef.current / elapsedRef.current));
             elapsedRef.current = 0;
             frameCountRef.current = 0;
           }

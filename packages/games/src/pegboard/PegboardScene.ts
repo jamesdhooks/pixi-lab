@@ -108,7 +108,7 @@ export class PegboardScene extends Scene {
   }
 
   override update(dt: number): void {
-    const sparkle = Number(this.ctx.systems.settings.get('sparkleIntensity') ?? PEGBOARD_DEFAULTS.sparkleIntensity);
+    const hadEffects = this.sparks.length > 0 || this.floatingTexts.length > 0;
     for (const spark of this.sparks) {
       spark.life -= dt;
       spark.vy += 180 * dt;
@@ -126,7 +126,7 @@ export class PegboardScene extends Scene {
       floating.text.destroy();
     }
     this.floatingTexts = this.floatingTexts.filter((entry) => entry.life > 0);
-    if (this.sparks.length > 0 || this.floatingTexts.length > 0 || sparkle !== 0) {
+    if (hadEffects || this.sparks.length > 0 || this.floatingTexts.length > 0) {
       this.dirty = true;
     }
   }
@@ -222,6 +222,11 @@ export class PegboardScene extends Scene {
 
   private applyVisualEvent(event: PegboardVisualEvent): void {
     if (event.kind === 'score') {
+      if (this.preview) {
+        this.ctx.emit({ kind: 'score_update', value: this.state?.score, payload: { binId: event.binId, bucketValue: event.points, scoreDelta: event.scoreDelta, combo: event.combo } });
+        this.dirty = true;
+        return;
+      }
       const text = new Text({ text: `+${event.points}`, style: { fill: event.color, fontFamily: 'Inter, system-ui, sans-serif', fontSize: 24, fontWeight: '900', stroke: { color: 0x020617, width: 4 } } });
       text.anchor.set(0.5);
       text.position.set(event.x, event.y - 18);
@@ -230,6 +235,10 @@ export class PegboardScene extends Scene {
       this.ctx.emit({ kind: 'score_update', value: this.state?.score, payload: { binId: event.binId, bucketValue: event.points, scoreDelta: event.scoreDelta, combo: event.combo } });
     }
     if (event.kind === 'burst') {
+      if (this.preview) {
+        this.dirty = true;
+        return;
+      }
       const count = Math.round((this.preview ? 4 : 10) * Number(this.ctx.systems.settings.get('sparkleIntensity') ?? PEGBOARD_DEFAULTS.sparkleIntensity));
       for (let i = 0; i < count; i += 1) {
         const angle = (Math.PI * 2 * i) / Math.max(1, count);
@@ -252,7 +261,7 @@ export class PegboardScene extends Scene {
       this.glowLayer.circle(width * ((i * 73) % 100) / 100, height * ((i * 41) % 100) / 100, 80 + (i % 5) * 30);
       this.glowLayer.fill({ color: [0x22d3ee, 0xa78bfa, 0xf472b6][i % 3], alpha });
     }
-    const arenaRadius = this.preview ? 12 : 28;
+    const arenaRadius = this.preview ? 0 : 28;
     this.boardLayer.moveTo(board.left, board.bottom);
     this.boardLayer.lineTo(board.left, board.top + arenaRadius);
     this.boardLayer.quadraticCurveTo(board.left, board.top, board.left + arenaRadius, board.top);

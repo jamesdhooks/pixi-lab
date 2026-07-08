@@ -39,6 +39,7 @@ describe('PegboardModel', () => {
     expect(preview.bins.map((bin) => bin.label)).toEqual(['0', '25', '100', '25', '0']);
     expect(preview.pegs.length).toBeLessThan(40);
     expect(preview.board.left).toBe(0);
+    expect(preview.board.top).toBe(0);
     expect(preview.board.right).toBe(preview.width);
     expect(preview.board.bottom + preview.bucketHeight).toBe(preview.height);
     expect(preview.board.width / preview.width).toBe(1);
