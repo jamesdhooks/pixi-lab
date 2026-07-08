@@ -73,7 +73,7 @@ export interface PegboardState {
 }
 
 export type PegboardVisualEvent =
-  | { kind: 'score'; ballId: string; binId: string; points: number; combo: number; x: number; y: number; color: number }
+  | { kind: 'score'; ballId: string; binId: string; points: number; scoreDelta: number; combo: number; x: number; y: number; color: number }
   | { kind: 'burst'; x: number; y: number; color: number; strength: number }
   | { kind: 'state'; phase: PegboardPhase };
 
@@ -234,9 +234,9 @@ export class PegboardModel {
     }
     const bin = this.bins[binIndex];
     this.combo += 1;
-    const points = bin.value * this.combo;
-    this.score += points;
-    this.bins[binIndex] = { ...bin, score: bin.score + points };
+    const scoreDelta = bin.value * this.combo;
+    this.score += scoreDelta;
+    this.bins[binIndex] = { ...bin, score: bin.score + scoreDelta };
     this.balls.delete(ballId);
     const collectedX = clamp(ball.x, bin.x + ball.radius, bin.x + bin.width - ball.radius);
     const collectedY = clamp(ball.y, this.board.bottom + ball.radius, this.board.bottom + this.bucketHeight - ball.radius);
@@ -248,12 +248,12 @@ export class PegboardModel {
       vy: 0,
       trail: [],
       binId,
-      scoreValue: points,
+      scoreValue: scoreDelta,
     });
-    this.events.push({ kind: 'score', ballId, binId, points, combo: this.combo, x: collectedX, y: collectedY, color: bin.color });
+    this.events.push({ kind: 'score', ballId, binId, points: bin.value, scoreDelta, combo: this.combo, x: collectedX, y: collectedY, color: bin.color });
     this.events.push({ kind: 'burst', x: collectedX, y: collectedY, color: ball.color, strength: Math.max(1, bin.value / 25) });
     this.maybeFinish();
-    return { points, totalScore: this.score, combo: this.combo };
+    return { points: scoreDelta, totalScore: this.score, combo: this.combo };
   }
 
   restart(): void {

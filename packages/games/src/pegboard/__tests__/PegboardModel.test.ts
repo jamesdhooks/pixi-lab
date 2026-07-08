@@ -167,24 +167,37 @@ describe('PegboardModel', () => {
     expect(distance).toBeGreaterThan(first.radius * 1.1);
   });
 
-  it('scores resolved balls into fixed-value bins with combo bonuses and produces visual events', () => {
+  it('scores resolved balls with combo bonuses while score popups match bucket labels', () => {
     const model = createPegboardModel({ seed: 9, width: 800, height: 600 });
-    const ball = model.dropBall(0.5);
+    const firstBall = model.dropBall(0.5);
 
-    const scored = model.resolveBall(ball.id, 'bin-5');
-    const state = model.getState();
+    const firstScore = model.resolveBall(firstBall.id, 'bin-5');
+    const firstState = model.getState();
+    const firstEvents = model.drainEvents();
 
-    expect(scored).toMatchObject({ points: 100, totalScore: 100, combo: 1 });
-    expect(state.score).toBe(100);
-    expect(state.combo).toBe(1);
-    expect(binScore(state, 'bin-5')).toBe(100);
-    expect(state.activeBalls).toHaveLength(0);
-    expect(state.collectedBalls).toHaveLength(1);
-    expect(state.collectedBalls[0]).toMatchObject({ id: ball.id, binId: 'bin-5', scoreValue: 100 });
+    expect(firstScore).toMatchObject({ points: 100, totalScore: 100, combo: 1 });
+    expect(firstState.score).toBe(100);
+    expect(firstState.combo).toBe(1);
+    expect(binScore(firstState, 'bin-5')).toBe(100);
+    expect(firstState.activeBalls).toHaveLength(0);
+    expect(firstState.collectedBalls).toHaveLength(1);
+    expect(firstState.collectedBalls[0]).toMatchObject({ id: firstBall.id, binId: 'bin-5', scoreValue: 100 });
+    expect(firstEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'score', points: 100, scoreDelta: 100, binId: 'bin-5' }),
+        expect.objectContaining({ kind: 'burst', x: expect.any(Number), y: expect.any(Number) }),
+      ]),
+    );
+
+    const secondBall = model.dropBall(0.5);
+    const secondScore = model.resolveBall(secondBall.id, 'bin-5');
+    const secondState = model.getState();
+
+    expect(secondScore).toMatchObject({ points: 200, totalScore: 300, combo: 2 });
+    expect(binScore(secondState, 'bin-5')).toBe(300);
     expect(model.drainEvents()).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ kind: 'score', points: 100, binId: 'bin-5' }),
-        expect.objectContaining({ kind: 'burst', x: expect.any(Number), y: expect.any(Number) }),
+        expect.objectContaining({ kind: 'score', points: 100, scoreDelta: 200, binId: 'bin-5' }),
       ]),
     );
   });

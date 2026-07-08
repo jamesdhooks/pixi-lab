@@ -209,7 +209,7 @@ export class PegboardScene extends Scene {
       text.position.set(event.x, event.y - 18);
       this.root.addChild(text);
       this.floatingTexts.push({ text, life: 1.1, vy: -42 });
-      this.ctx.emit({ kind: 'score_update', value: event.points, payload: { binId: event.binId, combo: event.combo } });
+      this.ctx.emit({ kind: 'score_update', value: this.state?.score, payload: { binId: event.binId, bucketValue: event.points, scoreDelta: event.scoreDelta, combo: event.combo } });
     }
     if (event.kind === 'burst') {
       const count = Math.round((this.preview ? 4 : 10) * Number(this.ctx.systems.settings.get('sparkleIntensity') ?? PEGBOARD_DEFAULTS.sparkleIntensity));
