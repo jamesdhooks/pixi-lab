@@ -22,8 +22,8 @@ describe('PegboardModel', () => {
     expect(first.pegs).toEqual(second.pegs);
     expect(first.bins).toEqual(second.bins);
     expect(first.pegs).toHaveLength(100);
-    expect(first.bins.map((bin) => bin.multiplier)).toEqual([1, 2, 4, 8, 4, 2, 1]);
-    expect(first.bins.map((bin) => bin.label)).toEqual(['1×', '2×', '4×', '8×', '4×', '2×', '1×']);
+    expect(first.bins.map((bin) => bin.value)).toEqual([10, 25, 50, 100, 50, 25, 10]);
+    expect(first.bins.map((bin) => bin.label)).toEqual(['10', '25', '50', '100', '50', '25', '10']);
   });
 
   it('leaves a top catchment lane before the lowered peg field', () => {
@@ -131,21 +131,21 @@ describe('PegboardModel', () => {
     expect(lastActive.y + lastActive.radius).toBeLessThanOrEqual(scored.board.bottom + scored.bucketHeight);
   });
 
-  it('scores resolved balls into bins with combo bonuses and produces visual events', () => {
+  it('scores resolved balls into fixed-value bins with combo bonuses and produces visual events', () => {
     const model = createPegboardModel({ seed: 9, width: 800, height: 600 });
     const ball = model.dropBall(0.5);
 
     const scored = model.resolveBall(ball.id, 'bin-3');
     const state = model.getState();
 
-    expect(scored).toMatchObject({ points: 80, totalScore: 80, combo: 1 });
-    expect(state.score).toBe(80);
+    expect(scored).toMatchObject({ points: 100, totalScore: 100, combo: 1 });
+    expect(state.score).toBe(100);
     expect(state.combo).toBe(1);
-    expect(binScore(state, 'bin-3')).toBe(80);
+    expect(binScore(state, 'bin-3')).toBe(100);
     expect(state.activeBalls).toHaveLength(0);
     expect(model.drainEvents()).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ kind: 'score', points: 80, binId: 'bin-3' }),
+        expect.objectContaining({ kind: 'score', points: 100, binId: 'bin-3' }),
         expect.objectContaining({ kind: 'burst', x: expect.any(Number), y: expect.any(Number) }),
       ]),
     );

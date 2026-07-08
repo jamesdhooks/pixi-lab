@@ -13,7 +13,7 @@ export const pegboardTutorialPages = [
   {
     icon: '🎯',
     title: 'Play',
-    body: 'Drop balls through the neon pegs. Center bins score higher, and consecutive scores build the combo multiplier.',
+    body: 'Drop balls through the neon pegs. Each bucket has a fixed point value, with the center bucket worth the most. Consecutive catches still build a combo bonus.',
   },
   {
     icon: '🏁',

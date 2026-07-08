@@ -18,7 +18,7 @@ export interface PegboardBin {
   id: string;
   x: number;
   width: number;
-  multiplier: number;
+  value: number;
   score: number;
   label: string;
   color: number;
@@ -223,12 +223,12 @@ export class PegboardModel {
     }
     const bin = this.bins[binIndex];
     this.combo += 1;
-    const points = bin.multiplier * 10 * this.combo;
+    const points = bin.value * this.combo;
     this.score += points;
     this.bins[binIndex] = { ...bin, score: bin.score + points };
     this.balls.delete(ballId);
     this.events.push({ kind: 'score', ballId, binId, points, combo: this.combo, x: ball.x, y: ball.y, color: bin.color });
-    this.events.push({ kind: 'burst', x: ball.x, y: ball.y, color: ball.color, strength: bin.multiplier });
+    this.events.push({ kind: 'burst', x: ball.x, y: ball.y, color: ball.color, strength: Math.max(1, bin.value / 25) });
     this.maybeFinish();
     return { points, totalScore: this.score, combo: this.combo };
   }
@@ -315,15 +315,15 @@ export class PegboardModel {
   }
 
   private createBins(): PegboardBin[] {
-    const multipliers = [1, 2, 4, 8, 4, 2, 1];
-    const width = this.board.width / multipliers.length;
-    return multipliers.map((multiplier, index) => ({
+    const values = [10, 25, 50, 100, 50, 25, 10];
+    const width = this.board.width / values.length;
+    return values.map((value, index) => ({
       id: `bin-${index}`,
       x: this.board.left + width * index,
       width,
-      multiplier,
+      value,
       score: 0,
-      label: `${multiplier}×`,
+      label: `${value}`,
       color: BIN_COLORS[index % BIN_COLORS.length],
     }));
   }
