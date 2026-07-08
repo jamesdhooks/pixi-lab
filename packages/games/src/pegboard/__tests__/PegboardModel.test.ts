@@ -147,6 +147,42 @@ describe('PegboardModel', () => {
     expect(collected.y).toBeCloseTo(lastActive.y, 4);
   });
 
+  it('captures balls after one second inside a bucket without requiring floor settle', () => {
+    const model = createPegboardModel({ seed: 17, width: 800, height: 600, maxDrops: 1, gravity: 900, bounce: 0.2 });
+    model.dropBall(0.5);
+
+    let bucketEntry: { binId: string; frame: number } | null = null;
+    let collectedFrame = 0;
+    for (let i = 0; i < 2400 && model.getState().collectedBalls.length === 0; i += 1) {
+      model.step(1 / 240);
+      collectedFrame = i + 1;
+      const state = model.getState();
+      const active = state.activeBalls[0];
+      if (!bucketEntry && active && active.y - active.radius >= state.board.bottom) {
+        const bin = state.bins.find((candidate) => active.x >= candidate.x && active.x < candidate.x + candidate.width);
+        if (bin) {
+          bucketEntry = { binId: bin.id, frame: i + 1 };
+        }
+      }
+      if (bucketEntry && i % 20 === 0) {
+        const active = state.activeBalls[0];
+        if (active) {
+          const entryBin = state.bins.find((candidate) => candidate.id === bucketEntry?.binId);
+          expect(entryBin).toBeDefined();
+          expect(active.x).toBeGreaterThanOrEqual((entryBin?.x ?? 0) + active.radius);
+          expect(active.x).toBeLessThanOrEqual((entryBin?.x ?? 0) + (entryBin?.width ?? 0) - active.radius);
+        }
+      }
+    }
+
+    expect(bucketEntry).not.toBeNull();
+    const state = model.getState();
+    expect(collectedFrame - (bucketEntry?.frame ?? 0)).toBeGreaterThanOrEqual(240);
+    expect(state.activeBalls).toHaveLength(0);
+    expect(state.collectedBalls).toHaveLength(1);
+    expect(state.collectedBalls[0].binId).toBe(bucketEntry?.binId);
+  });
+
   it('lets later bucket balls jostle against already collected balls', () => {
     const model = createPegboardModel({ seed: 21, width: 800, height: 600, maxDrops: 2, gravity: 900, bounce: 0.28 });
 

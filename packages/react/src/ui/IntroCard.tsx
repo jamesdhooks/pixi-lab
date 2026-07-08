@@ -5,7 +5,7 @@
  * Shows icon, name, short description, and a compact gesture → action cheat-sheet.
  * Auto-dismisses after 6 s or on tap.
  */
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 export interface IntroHint {
@@ -32,11 +32,28 @@ interface IntroCardProps {
 }
 
 export function IntroCard({ icon, name, short, hints = [], attributions = [], autoDismiss = true, onDismiss }: IntroCardProps) {
+  const dismissed = useRef(false);
+  const dismissOnce = useCallback(() => {
+    if (dismissed.current) return;
+    dismissed.current = true;
+    onDismiss();
+  }, [onDismiss]);
+
   useEffect(() => {
     if (!autoDismiss) return;
-    const id = setTimeout(onDismiss, 6000);
+    const id = setTimeout(dismissOnce, 6000);
     return () => clearTimeout(id);
-  }, [onDismiss, autoDismiss]);
+  }, [dismissOnce, autoDismiss]);
+
+  useEffect(() => {
+    const options = { passive: true } as const;
+    window.addEventListener('pointerdown', dismissOnce, options);
+    window.addEventListener('keydown', dismissOnce);
+    return () => {
+      window.removeEventListener('pointerdown', dismissOnce);
+      window.removeEventListener('keydown', dismissOnce);
+    };
+  }, [dismissOnce]);
 
   return (
     <motion.div
@@ -45,7 +62,7 @@ export function IntroCard({ icon, name, short, hints = [], attributions = [], au
       exit={{ opacity: 0, scale: 0.94, x: '-50%', y: 'calc(-50% + 6px)' }}
       transition={{ type: 'spring', stiffness: 240, damping: 26 }}
       className="fixed left-1/2 top-1/2 z-[9999] w-max min-w-[260px] max-w-[min(460px,calc(100vw-32px))] cursor-pointer pointer-events-auto"
-      onClick={onDismiss}
+      onClick={dismissOnce}
     >
       <div className="rounded-2xl bg-black/75 px-7 py-6 shadow-2xl backdrop-blur-xl">
         {/* Header row */}
