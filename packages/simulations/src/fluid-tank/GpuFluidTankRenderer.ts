@@ -16,6 +16,9 @@ export interface GpuFluidTankOptions {
   curl: number;
   eddyAssist: number;
   dyePersistence: number;
+  velocityPersistence: number;
+  injectAmount: number;
+  injectTurbulence: number;
   pressureIterations: number;
   exposure: number;
   palette: readonly number[];
@@ -72,7 +75,6 @@ type FluidDoubleTarget = RawGpuDoubleTarget;
 
 const BASE_SIM_RESOLUTION = 220;
 const BASE_DYE_RESOLUTION = 950;
-const VELOCITY_DISSIPATION = 0.986;
 const MAX_VELOCITY_CELLS = 8.5;
 const FULLSCREEN_TRIANGLE = new Float32Array([-1, -1, 3, -1, -1, 3]);
 
@@ -484,29 +486,11 @@ void main() {
   glow += texture(uTexture, vUv + vec2( 0.0, -2.0) * texelSize).rgb;
   glow *= 0.075;
 
-  c += glow * (visualPipeline == 1 ? 0.55 : 1.0);
-  if (visualPipeline == 1) {
-    c *= 1.0 + dyeMask * 0.22;
-    c = 1.0 - exp(-c * exposure * (1.16 + sourceEnergy * 0.22));
-    c = pow(max(c, 0.0), vec3(0.82));
-  } else {
-    c = 1.0 - exp(-c * exposure);
-    c = pow(c, vec3(0.9));
-  }
+  c += glow * (visualPipeline == 1 ? 0.55 : 0.0);
+  c *= 1.0 + dyeMask * 0.22;
+  c = 1.0 - exp(-c * exposure * (1.16 + sourceEnergy * 0.22));
+  c = pow(max(c, 0.0), vec3(0.82));
 
-  float luminance = dot(c, vec3(0.299, 0.587, 0.114));
-  float energy = max(max(c.r, c.g), c.b);
-  float chroma = energy - min(min(c.r, c.g), c.b);
-  vec3 styled = paletteColor(fract(luminance * 0.72 + c.r * 0.17 + c.b * 0.11));
-  // Palette remapping should change hue, not crush the display into the source
-  // luminance. Keep a bright value floor and preserve energetic highlights so
-  // high palette strength remains vivid instead of turning muddy/dark.
-  float styledValue = clamp(0.28 + energy * 0.74 + luminance * 0.18, 0.20, 1.12);
-  vec3 vibrant = styled * styledValue;
-  float sourceHuePreserve = 1.0 - smoothstep(0.16, 0.44, chroma);
-  if (visualPipeline == 0 && initMode != 3) {
-    c = mix(c, vibrant, clamp(paletteStrength, 0.0, 1.0) * sourceHuePreserve);
-  }
   c *= blankReveal;
 
   float edge = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
@@ -517,7 +501,7 @@ void main() {
   c *= 0.82 + 0.18 * vignette;
 
   float grain = hash(vUv * resolution + time) - 0.5;
-  c += grain * mix(0.012, 0.005 * dyeMask, float(visualPipeline));
+  c += grain * (visualPipeline == 1 ? 0.005 * dyeMask : 0.0);
 
   outColor = vec4(max(c, 0.0), 1.0);
 }
@@ -566,11 +550,10 @@ in vec2 vUv;
 out vec4 outColor;
 uniform sampler2D uTexture;
 void main() {
-  vec3 c = texture(uTexture, vUv).rgb;
-  float brightness = max(max(c.r, c.g), c.b);
-  float opacity = smoothstep(0.02, 0.62, brightness);
-  float mask = 1.0 - clamp(opacity, 0.0, 0.95);
-  outColor = vec4(vec3(mask), 1.0);
+  vec4 c = texture(uTexture, vUv);
+  float brightness = max(c.r, max(c.g, c.b));
+  c.a = 1.0 - min(max(brightness * 20.0, 0.0), 0.8);
+  outColor = c;
 }`;
 
 const SUNRAYS_SHADER = `#version 300 es
@@ -582,18 +565,21 @@ uniform sampler2D uTexture;
 uniform float weight;
 const int ITERATIONS = 16;
 void main() {
+  float density = 0.3;
+  float decay = 0.95;
+  float exposure = 0.7;
   vec2 coord = vUv;
-  vec2 delta = (vUv - vec2(0.5)) * (0.30 / float(ITERATIONS));
+  vec2 dir = vUv - vec2(0.5);
+  dir *= 1.0 / float(ITERATIONS) * density;
   float illuminationDecay = 1.0;
-  float color = 0.0;
+  float color = texture(uTexture, vUv).a;
   for (int i = 0; i < ITERATIONS; i++) {
-    coord -= delta;
-    float sampleValue = texture(uTexture, coord).r;
+    coord -= dir;
+    float sampleValue = texture(uTexture, coord).a;
     color += sampleValue * illuminationDecay * weight;
-    illuminationDecay *= 0.95;
+    illuminationDecay *= decay;
   }
-  color *= 0.04375;
-  outColor = vec4(vec3(color), 1.0);
+  outColor = vec4(color * exposure, 0.0, 0.0, 1.0);
 }`;
 
 const COMPOSITE_SHADER = `#version 300 es
@@ -621,10 +607,11 @@ void main() {
   float drivenBloom = visualPipeline == 1
     ? bloomStrength * (0.46 + intensityMask * 1.04)
     : bloomStrength;
-  float drivenRays = visualPipeline == 1 ? sunraysStrength * intensityMask : sunraysStrength;
+  if (visualPipeline == 1) {
+    c *= rays;
+    bloom *= rays;
+  }
   c += bloom * drivenBloom;
-  c += c * rays * drivenRays;
-  c += vec3(1.0, 0.92, 0.72) * rays * drivenRays * (visualPipeline == 1 ? 0.07 : 0.12);
   if (visualPipeline == 1) {
     c = c / (1.0 + c * 0.16);
     c = pow(max(c, 0.0), vec3(0.96));
@@ -817,21 +804,29 @@ export class GpuFluidTankRenderer {
     if (!this.supported || !this.velocity || !this.dye) return;
     const clampedX = clamp01(x);
     const clampedY = clamp01(1 - y);
-    const radius = this.options.fingerRadius * (0.72 + intensity * 0.52);
-    const spread = this.options.fingerForce * (0.55 + intensity * 0.5);
+    const turbulence = clamp(this.options.injectTurbulence, 0, 2);
+    const radius = this.options.fingerRadius * (0.82 + intensity * 0.28);
+    const motionSpeed = Math.hypot(dx, dy);
+    const motionBoost = clamp(motionSpeed / 3, 0, 1.4);
+    const spread = this.options.fingerForce * (0.72 + motionBoost * 0.34);
     const vx = dx * spread;
-    const vy = -dy * spread - this.options.fingerForce * (0.65 + intensity * 0.35);
+    const vy = -dy * spread;
     const speed = Math.hypot(vx, vy);
-    const segments = clamp(Math.ceil(speed / 2.1), 2, 4);
+    const segments = Math.round(clamp(Math.ceil(speed / 2.1 + turbulence * 2.5), 2, 7));
     const invLen = speed > 0.0001 ? 1 / speed : 0;
     const ux = vx * invLen;
     const uy = vy * invLen;
-    const spacing = radius * (0.7 + intensity * 0.16);
+    const pxAxis = speed > 0.0001 ? -uy : Math.cos(this.elapsed * 2.1);
+    const pyAxis = speed > 0.0001 ? ux : Math.sin(this.elapsed * 2.1);
+    const spacing = radius * (0.72 + turbulence * 0.45);
     for (let i = 0; i < segments; i++) {
       const t = segments <= 1 ? 0 : i / (segments - 1);
-      const px = clamp01(clampedX + ux * (t - 0.5) * spacing);
-      const py = clamp01(clampedY + uy * (t - 0.5) * spacing);
-      this.applySplatTarget(this.velocity, px, py, vx, vy, 0, radius * (0.92 + t * 0.2));
+      const side = i % 2 === 0 ? 1 : -1;
+      const wobble = Math.sin(this.elapsed * 11.0 + t * 13.0) * radius * turbulence * 0.42;
+      const px = clamp01(clampedX + ux * (t - 0.5) * spacing + pxAxis * wobble);
+      const py = clamp01(clampedY + uy * (t - 0.5) * spacing + pyAxis * wobble);
+      const swirl = this.options.fingerForce * turbulence * (0.14 + motionBoost * 0.08) * side;
+      this.applySplatTarget(this.velocity, px, py, vx + pxAxis * swirl, vy + pyAxis * swirl, 0, radius * (0.88 + t * 0.16));
     }
     if (this.options.eddyAssist > 0) {
       this.applySplatTarget(
@@ -845,11 +840,12 @@ export class GpuFluidTankRenderer {
       );
     }
     const dyeColor = this.nextInjectColor(clampedX, clampedY, intensity);
-    const colorRadiusBoost = this.options.injectColorMode === 'style' ? 1 : 1.75;
+    const colorRadiusBoost = this.options.injectColorMode === 'style' ? 1 : 1.18;
     for (let i = 0; i < segments; i++) {
       const t = segments <= 1 ? 0 : i / (segments - 1);
-      const px = clamp01(clampedX + ux * (t - 0.5) * spacing);
-      const py = clamp01(clampedY + uy * (t - 0.5) * spacing);
+      const wobble = Math.sin(this.elapsed * 11.0 + t * 13.0) * radius * turbulence * 0.22;
+      const px = clamp01(clampedX + ux * (t - 0.5) * spacing + pxAxis * wobble);
+      const py = clamp01(clampedY + uy * (t - 0.5) * spacing + pyAxis * wobble);
       this.applySplatTarget(
         this.dye,
         px,
@@ -857,7 +853,7 @@ export class GpuFluidTankRenderer {
         dyeColor[0],
         dyeColor[1],
         dyeColor[2],
-        radius * colorRadiusBoost * (0.78 + t * 0.22),
+        radius * colorRadiusBoost * (0.72 + t * 0.18 + turbulence * 0.12),
       );
     }
     this.splatCount += 1;
@@ -880,14 +876,6 @@ export class GpuFluidTankRenderer {
         radius * 1.35,
       );
     }
-
-    // Demo/ambient startup splats used to be velocity-only, which meant a blank
-    // dye target could remain visually black even though the solver was moving.
-    // Keep the raw scene self-recovering by depositing style-colored dye for
-    // every motion splat, matching pointer inject visibility semantics.
-    const intensity = clamp((splat.radiusScale ?? 1) * 0.38 + Math.hypot(splat.dx, splat.dy) * 0.18, 0.45, 1.45);
-    const dyeColor = this.nextInjectColor(x, y, intensity);
-    this.applySplatTarget(this.dye, x, y, dyeColor[0], dyeColor[1], dyeColor[2], radius * 0.86);
     this.splatCount += 1;
   }
 
@@ -941,6 +929,14 @@ export class GpuFluidTankRenderer {
       this.renderDisplayPass(source, null);
       return;
     }
+    const needsPostProcessing =
+      this.options.visualPipeline === 'reference' ||
+      this.options.bloomStrength > 0.0001 ||
+      this.options.sunraysStrength > 0.0001;
+    if (!needsPostProcessing) {
+      this.renderDisplayPass(source, null);
+      return;
+    }
     if (!this.displayTarget || !this.bloomTarget || !this.bloomScratchTarget || !this.sunraysMaskTarget || !this.sunraysTarget) {
       this.renderDisplayPass(source, null);
       return;
@@ -948,7 +944,7 @@ export class GpuFluidTankRenderer {
 
     this.renderDisplayPass(source, this.displayTarget);
     this.applyBloom(this.displayTarget);
-    this.applySunrays(this.displayTarget);
+    this.applySunrays(source);
 
     const program = this.requireProgram('composite');
     this.bind(program);
@@ -1011,21 +1007,34 @@ export class GpuFluidTankRenderer {
   }
 
   private applySunrays(source: FluidTarget): void {
-    if (!this.gl || !this.sunraysMaskTarget || !this.sunraysTarget) return;
+    if (!this.gl || !this.dye || !this.sunraysMaskTarget || !this.sunraysTarget) return;
     if (this.options.sunraysStrength <= 0.0001) {
       this.clearTarget(this.sunraysTarget, 0);
       return;
     }
+    const maskTarget = this.dye.write;
 
     let program = this.requireProgram('sunraysMask');
     this.bind(program);
     this.gl.uniform1i(program.uniforms.uTexture, source.attach(0));
-    this.blit(this.sunraysMaskTarget);
+    this.blit(maskTarget);
 
     program = this.requireProgram('sunrays');
     this.bind(program);
-    this.gl.uniform1i(program.uniforms.uTexture, this.sunraysMaskTarget.attach(0));
+    this.gl.uniform1i(program.uniforms.uTexture, maskTarget.attach(0));
     this.gl.uniform1f(program.uniforms.weight, Math.max(0, this.options.sunraysStrength));
+    this.blit(this.sunraysTarget);
+
+    program = this.requireProgram('blur');
+    this.bind(program);
+    this.gl.uniform1i(program.uniforms.uTexture, this.sunraysTarget.attach(0));
+    this.gl.uniform2f(program.uniforms.texelSize, 1 / this.sunraysTarget.width, 1 / this.sunraysTarget.height);
+    this.gl.uniform2f(program.uniforms.direction, 1, 0);
+    this.blit(this.sunraysMaskTarget);
+
+    this.gl.uniform1i(program.uniforms.uTexture, this.sunraysMaskTarget.attach(0));
+    this.gl.uniform2f(program.uniforms.texelSize, 1 / this.sunraysMaskTarget.width, 1 / this.sunraysMaskTarget.height);
+    this.gl.uniform2f(program.uniforms.direction, 0, 1);
     this.blit(this.sunraysTarget);
   }
 
@@ -1056,11 +1065,13 @@ export class GpuFluidTankRenderer {
       (this.sunraysMaskTarget?.width ?? 0) * (this.sunraysMaskTarget?.height ?? 0) +
       (this.sunraysTarget?.width ?? 0) * (this.sunraysTarget?.height ?? 0);
     const gpuTargetTextures = this.supported ? 8 + postProcessTextures : 0;
-    const postProcessPasses = this.supported ? (this.options.visualPipeline === 'reference' ? 14 : 12) : 0;
+    const postProcessPasses = this.supported && (this.options.visualPipeline === 'reference' || this.options.bloomStrength > 0.0001 || this.options.sunraysStrength > 0.0001)
+      ? (this.options.visualPipeline === 'reference' ? 14 : 12)
+      : 1;
     return {
       supported: this.supported,
       simulation: 'gpu-fluid-solver',
-      rendering: this.options.visualPipeline === 'reference' ? 'gpu-display-reference-bloom-sunrays' : 'gpu-display-bloom-sunrays',
+      rendering: this.options.visualPipeline === 'reference' ? 'gpu-display-reference-bloom-sunrays' : 'gpu-display-basic',
       gpuSimulated: true,
       gpuRendered: true,
       cpuTopology: false,
@@ -1233,7 +1244,7 @@ export class GpuFluidTankRenderer {
     this.gl.uniform1i(program.uniforms.uVelocity, this.velocity.read.attach(0));
     this.gl.uniform1i(program.uniforms.uSource, this.velocity.read.attach(1));
     this.gl.uniform1f(program.uniforms.dt, dt);
-    this.gl.uniform1f(program.uniforms.dissipation, VELOCITY_DISSIPATION);
+    this.gl.uniform1f(program.uniforms.dissipation, clamp(this.options.velocityPersistence, 0.9, 1));
     this.blit(this.velocity.write);
     this.velocity.swap();
     this.enforceVelocityBoundary();
@@ -1322,9 +1333,10 @@ export class GpuFluidTankRenderer {
     }
 
     const fixedColorBoost = mode === 'style' ? 0.0 : 0.18;
-    const amount = this.options.visualPipeline === 'reference'
+    const amount = (this.options.visualPipeline === 'reference'
       ? 0.48 + fixedColorBoost + this.options.paletteStrength * 0.1 + intensity * 0.28
-      : 0.34 + fixedColorBoost + this.options.paletteStrength * 0.08 + intensity * 0.18;
+      : 0.34 + fixedColorBoost + this.options.paletteStrength * 0.08 + intensity * 0.18)
+      * clamp(this.options.injectAmount, 0, 3);
     return [base[0] * amount, base[1] * amount, base[2] * amount];
   }
 

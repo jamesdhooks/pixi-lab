@@ -30,7 +30,7 @@ export const fluidTankStyleManifest: SimStyleManifest = {
         shadingStrength: 0.68,
         bloomStrength: 1.22,
         bloomThreshold: 0.34,
-        sunraysStrength: 0.94,
+        sunraysStrength: 1,
       },
       uniformSchema: [
         { key: 'exposure', label: 'Exposure', min: 0.72, max: 1.55, step: 0.01, default: 1.16 },
@@ -39,7 +39,7 @@ export const fluidTankStyleManifest: SimStyleManifest = {
         { key: 'shadingStrength', label: 'Surface Shading', min: 0, max: 1, step: 0.01, default: 0.68 },
         { key: 'bloomStrength', label: 'Bloom', min: 0, max: 1.8, step: 0.01, default: 1.22 },
         { key: 'bloomThreshold', label: 'Bloom Threshold', min: 0.08, max: 1.4, step: 0.01, default: 0.34 },
-        { key: 'sunraysStrength', label: 'Sun Rays', min: 0, max: 1.4, step: 0.01, default: 0.94 },
+        { key: 'sunraysStrength', label: 'Sun Rays', min: 0, max: 1, step: 0.01, default: 1 },
       ],
     },
     nebulaOilStyle,

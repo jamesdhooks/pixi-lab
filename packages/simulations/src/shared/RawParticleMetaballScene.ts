@@ -528,7 +528,7 @@ function smoothstep(edge0: number, edge1: number, value: number): number {
 }
 
 function modeForPreset(preset: ParticleMetaballPreset): string {
-  return preset === 'water-tank' ? 'pour' : 'heat';
+  return preset === 'water-tank' ? 'pour' : 'add';
 }
 
 function maxParticles(state: ParticleMetaballState, preset: ParticleMetaballPreset): number {
@@ -570,16 +570,44 @@ function seedLava(state: ParticleMetaballState, width: number, height: number, l
   state.count = 0;
   state.lavaRaymarchBlobCount = 0;
   const radius = particleRadius(state, 'lava-lamp');
-  for (let i = 0; i < target; i += 1) {
+  const clusterCount = Math.max(4, Math.min(lite ? 7 : 12, Math.round(Math.sqrt(target) * 0.9)));
+  const clusterX = new Float32Array(clusterCount);
+  const clusterY = new Float32Array(clusterCount);
+  const clusterHeat = new Float32Array(clusterCount);
+  const clusterDrift = new Float32Array(clusterCount);
+  for (let cluster = 0; cluster < clusterCount; cluster += 1) {
     let r = 0;
-    [r, state.seed] = random(state.seed + i * 17);
+    [r, state.seed] = random(state.seed + cluster * 97 + 17);
     const lane = r - 0.5;
-    [r, state.seed] = random(state.seed + 31);
+    [r, state.seed] = random(state.seed + cluster * 101 + 31);
     const y = height * (0.58 + r * 0.34);
     const halfWidth = lavaLampHalfWidth(width, height, y);
-    const x = width * 0.5 + lane * halfWidth * 1.52;
-    [r, state.seed] = random(state.seed + 79);
-    addParticle(state, x, y, radius * (0.88 + r * 0.62), lane * 28, -160 * r, 0.58 + r * 0.42);
+    clusterX[cluster] = width * 0.5 + lane * halfWidth * 1.25;
+    clusterY[cluster] = y;
+    [r, state.seed] = random(state.seed + cluster * 109 + 43);
+    clusterHeat[cluster] = clamp(0.18 + ((y / Math.max(1, height) - 0.58) / 0.34) * 0.3 + r * 0.13, 0.14, 0.64);
+    clusterDrift[cluster] = lane * 18;
+  }
+  for (let i = 0; i < target; i += 1) {
+    let r = 0;
+    const cluster = i % clusterCount;
+    [r, state.seed] = random(state.seed + i * 17);
+    const angle = r * Math.PI * 2;
+    [r, state.seed] = random(state.seed + i * 31);
+    const spread = Math.sqrt(r) * radius * 1.55;
+    [r, state.seed] = random(state.seed + i * 79);
+    const x = clusterX[cluster] + Math.cos(angle) * spread;
+    const y = clusterY[cluster] + Math.sin(angle) * spread * 0.82;
+    const jitter = (r - 0.5) * radius * 1.25;
+    addParticle(
+      state,
+      x,
+      y,
+      radius * (0.82 + r * 0.42),
+      clusterDrift[cluster] + Math.cos(angle) * jitter,
+      -35 * clusterHeat[cluster] + Math.sin(angle) * jitter,
+      clusterHeat[cluster],
+    );
   }
   projectLavaParticlesToRaymarchBlobs(state, 1);
   state.needsSeed = false;
@@ -636,7 +664,7 @@ function projectLavaParticlesToRaymarchBlobs(state: ParticleMetaballState, dt: n
   }
 
   const targetRadius = particleRadius(state, 'lava-lamp');
-  const assignRadius = lavaRaymarchRadiusFromPixels(state, targetRadius * 3.2) * 2.4;
+  const assignRadius = lavaRaymarchRadiusFromPixels(state, targetRadius * 2.35) * 1.55;
   for (let i = 0; i < count; i += 1) {
     const particleIndex = i * 6;
     const temperature = particleData[particleIndex + 5];
@@ -694,7 +722,7 @@ function projectLavaParticlesToRaymarchBlobs(state: ParticleMetaballState, dt: n
     const sourceIndex = cluster * LAVA_RAYMARCH_STATE_STRIDE;
     const targetIndex = writeCount * LAVA_RAYMARCH_STATE_STRIDE;
     const spread = clusterSpread[cluster] / Math.max(1, count);
-    const radius = clamp(0.1 + Math.sqrt(weight) * 0.09 + spread * 0.46, 0.14, 0.9);
+    const radius = clamp(0.08 + Math.sqrt(weight) * 0.072 + spread * 0.34, 0.12, 0.68);
     const hasPrevious = cluster < previousCount;
     const currentRadius = hasPrevious ? blobState[sourceIndex + 3] : 0.035;
     blobState[targetIndex] = hasPrevious ? blobState[sourceIndex] + (clusterX[cluster] - blobState[sourceIndex]) * follow : clusterX[cluster];
@@ -713,8 +741,8 @@ function projectLavaParticlesToRaymarchBlobs(state: ParticleMetaballState, dt: n
 
 function addLavaMetaballSeed(state: ParticleMetaballState, x: number, y: number, dx: number, dy: number, heat: number, intensity: number): void {
   const radius = particleRadius(state, 'lava-lamp');
-  const seedCount = state.capacity <= 160 ? 5 : 12;
-  const spreadRadius = finiteNumberSetting(state.settings, 'inputRadius', 90) * 0.24;
+  const seedCount = state.capacity <= 160 ? 6 : 14;
+  const spreadRadius = finiteNumberSetting(state.settings, 'inputRadius', 90) * 0.36;
   for (let i = 0; i < seedCount; i += 1) {
     let r = 0;
     [r, state.seed] = random(state.seed + 4307 + i * 31);
@@ -722,17 +750,51 @@ function addLavaMetaballSeed(state: ParticleMetaballState, x: number, y: number,
     [r, state.seed] = random(state.seed + 4339 + i * 37);
     const spread = Math.sqrt(r) * spreadRadius;
     [r, state.seed] = random(state.seed + 4373 + i * 41);
-    const jitter = (r - 0.5) * radius * 2.4;
+    const jitter = (r - 0.5) * radius * 3.2;
     addParticle(
       state,
       x + Math.cos(angle) * spread,
       y + Math.sin(angle) * spread,
-      radius * (0.74 + r * 0.42),
+      radius * (0.82 + r * 0.34),
       dx * 2 + Math.cos(angle) * jitter,
-      dy * 2 - heat * 130 * intensity + Math.sin(angle) * jitter,
-      heat > 0 ? 1 : 0.1,
+      dy * 2 - heat * 55 * intensity + Math.sin(angle) * jitter,
+      heat > 0 ? 0.72 : 0.1,
     );
   }
+}
+
+function removeLavaWax(state: ParticleMetaballState, x: number, y: number, radius: number, intensity: number): void {
+  const data = state.particleData;
+  let writeIndex = 0;
+  for (let i = 0; i < state.count; i += 1) {
+    const sourceIndex = i * 6;
+    const distance = Math.hypot(data[sourceIndex] - x, data[sourceIndex + 1] - y);
+    let keep = true;
+    if (distance < radius) {
+      const falloff = 1 - distance / Math.max(1, radius);
+      const removal = falloff * intensity;
+      keep = removal < 0.48;
+      if (keep) {
+        data[sourceIndex + 2] *= 1 - removal * 0.42;
+        data[sourceIndex + 3] *= 1 - removal * 0.42;
+        data[sourceIndex + 4] *= 1 - removal * 0.28;
+        data[sourceIndex + 5] = clamp(data[sourceIndex + 5] - removal * 0.16, 0, 1);
+      }
+    }
+    if (!keep) continue;
+    if (writeIndex !== i) {
+      const targetIndex = writeIndex * 6;
+      data[targetIndex] = data[sourceIndex];
+      data[targetIndex + 1] = data[sourceIndex + 1];
+      data[targetIndex + 2] = data[sourceIndex + 2];
+      data[targetIndex + 3] = data[sourceIndex + 3];
+      data[targetIndex + 4] = data[sourceIndex + 4];
+      data[targetIndex + 5] = data[sourceIndex + 5];
+    }
+    writeIndex += 1;
+  }
+  state.count = writeIndex;
+  state.particleWriteCursor = writeIndex % Math.max(1, maxParticles(state, 'lava-lamp'));
 }
 
 function seedWater(state: ParticleMetaballState, width: number, height: number, lite: boolean): void {
@@ -908,8 +970,12 @@ function installPointer(state: ParticleMetaballState, preset: ParticleMetaballPr
 function applyPointerTool(state: ParticleMetaballState, preset: ParticleMetaballPreset, x: number, y: number, dx: number, dy: number, first: boolean, thermalIntent?: number): void {
   if (preset === 'lava-lamp') {
     const radius = finiteNumberSetting(state.settings, 'inputRadius', 90);
-    const heat = typeof thermalIntent === 'number' && thermalIntent < 0 ? -1 : state.modeId === 'cool' ? -1 : 1;
+    const removing = typeof thermalIntent === 'number' ? thermalIntent < 0 : state.modeId === 'remove';
     const intensity = typeof thermalIntent === 'number' ? clamp(Math.abs(thermalIntent), 0.25, 1.5) : 1;
+    if (removing) {
+      removeLavaWax(state, x, y, radius, intensity);
+      return;
+    }
     const lift = finiteNumberSetting(state.settings, 'inputLift', 240);
     const thermalRate = finiteNumberSetting(state.settings, 'inputThermalRate', 0.09);
     for (let i = 0; i < state.count; i += 1) {
@@ -919,12 +985,12 @@ function applyPointerTool(state: ParticleMetaballState, preset: ParticleMetaball
       const d = Math.hypot(px - x, py - y);
       if (d > radius) continue;
       const falloff = 1 - d / radius;
-      state.particleData[k + 5] = clamp(state.particleData[k + 5] + heat * falloff * thermalRate * intensity, 0, 1);
+      state.particleData[k + 5] = clamp(state.particleData[k + 5] + falloff * thermalRate * intensity, 0, 1);
       state.particleData[k + 2] += dx * falloff * 7;
-      state.particleData[k + 3] += dy * falloff * 7 - heat * falloff * lift * intensity;
+      state.particleData[k + 3] += dy * falloff * 7 - falloff * lift * intensity;
     }
     if (first) {
-      addLavaMetaballSeed(state, x, y, dx, dy, heat, intensity);
+      addLavaMetaballSeed(state, x, y, dx, dy, 1, intensity);
     }
     return;
   }
@@ -1081,21 +1147,32 @@ function solveLavaPair(state: ParticleMetaballState, a: number, b: number, tensi
   const dx = data[bi] - data[ai];
   const dy = data[bi + 1] - data[ai + 1];
   const dist = Math.max(0.001, Math.hypot(dx, dy));
-  const rest = (data[ai + 4] + data[bi + 4]) * 0.72;
-  const influence = (data[ai + 4] + data[bi + 4]) * 2.3;
+  const combinedRadius = data[ai + 4] + data[bi + 4];
+  const rest = combinedRadius * 0.96;
+  const softRest = combinedRadius * 1.18;
+  const influence = combinedRadius * 2.05;
   if (dist > influence) return;
   const nx = dx / dist;
   const ny = dy / dist;
   const overlap = rest - dist;
   if (overlap > 0) {
-    const push = overlap * tension * 0.5;
+    const push = overlap * (0.22 + tension * 1.1);
     data[ai + 2] -= nx * push;
     data[ai + 3] -= ny * push;
     data[bi + 2] += nx * push;
     data[bi + 3] += ny * push;
     return;
   }
-  const pull = (1 - dist / influence) * clump * 8;
+  if (dist < softRest) {
+    const compression = 1 - dist / softRest;
+    const push = compression * compression * (0.7 + tension * 1.8);
+    data[ai + 2] -= nx * push;
+    data[ai + 3] -= ny * push;
+    data[bi + 2] += nx * push;
+    data[bi + 3] += ny * push;
+    return;
+  }
+  const pull = (1 - smoothstep(softRest, influence, dist)) * clump * 2.4;
   data[ai + 2] += nx * pull;
   data[ai + 3] += ny * pull;
   data[bi + 2] -= nx * pull;
@@ -1466,11 +1543,12 @@ function renderParticles(state: ParticleMetaballState, preset: ParticleMetaballP
     gl.drawArrays(gl.POINTS, 0, 1);
   }
 
-  const renderStyle = typeof state.settings.renderStyle === 'string' ? state.settings.renderStyle : '';
-  if (preset === 'lava-lamp' && renderLavaSurface(state, palette, renderStyle)) return;
+  const renderStyle = preset === 'lava-lamp' ? lavaRenderStyle(state) : typeof state.settings.renderStyle === 'string' ? state.settings.renderStyle : '';
+  if (preset === 'lava-lamp' && renderStyle === 'ultra' && renderLavaSurface(state, palette, renderStyle)) return;
+  if (preset === 'lava-lamp' && renderStyle === 'enhanced' && renderLavaMetaballSurface(state, palette, renderStyle)) return;
   if (!state.particleProgram || !state.particleBuffer || state.count <= 0) return;
   if (preset === 'water-tank' && renderStyle !== 'particles' && renderWaterSurface(state, palette, renderStyle)) return;
-  if (preset === 'lava-lamp' || renderStyle === 'surface' || renderStyle === 'glass') {
+  if (renderStyle === 'surface' || renderStyle === 'glass') {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
   } else {
     gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -1483,10 +1561,10 @@ function renderParticles(state: ParticleMetaballState, preset: ParticleMetaballP
   gl.uniform1f(gl.getUniformLocation(state.particleProgram, 'uOpacity'), finiteNumberSetting(state.settings, 'opacity', preset === 'water-tank' ? 0.34 : 0.46));
   const styleWeight = renderStyle === 'cellular' || renderStyle === 'particles'
     ? 1
-    : renderStyle === 'surface'
+    : renderStyle === 'surface' || renderStyle === 'basic'
       ? 0.45
       : 0;
-  const styleMetaballOffset = renderStyle === 'particles' ? -0.42 : renderStyle === 'surface' ? -0.12 : renderStyle === 'glow' ? 0.08 : 0;
+  const styleMetaballOffset = renderStyle === 'particles' ? -0.42 : renderStyle === 'surface' || renderStyle === 'basic' ? -0.16 : renderStyle === 'glow' ? 0.08 : 0;
   const metaballBlend = clamp(finiteNumberSetting(state.settings, 'metaballBlend', preset === 'water-tank' ? 0.72 : 0.92) + styleMetaballOffset, 0, 1);
   gl.uniform1f(gl.getUniformLocation(state.particleProgram, 'uMetaball'), metaballBlend);
   gl.uniform1f(gl.getUniformLocation(state.particleProgram, 'uStyle'), styleWeight);
@@ -1528,6 +1606,54 @@ function renderLavaSurface(state: ParticleMetaballState, palette: number[], rend
       state.lavaRaymarchBlobData.subarray(0, state.lavaRaymarchBlobCount * LAVA_RAYMARCH_BLOB_STRIDE),
     );
   }
+  gl.bindBuffer(gl.ARRAY_BUFFER, state.quadBuffer);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  return true;
+}
+
+function renderLavaMetaballSurface(state: ParticleMetaballState, palette: number[], renderStyle: string): boolean {
+  if (!ensureLavaSurfaceTargets(state)) return false;
+  const gl = state.gl;
+  if (!state.lavaDensityProgram || !state.lavaCompositeProgram || !state.particleBuffer || !state.quadBuffer || !state.lavaDensityFramebuffer || !state.lavaDensityTexture) return false;
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, state.lavaDensityFramebuffer);
+  gl.viewport(0, 0, state.lavaDensityWidth, state.lavaDensityHeight);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE);
+  gl.useProgram(state.lavaDensityProgram);
+  gl.bindBuffer(gl.ARRAY_BUFFER, state.particleBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, state.particleData.subarray(0, state.count * 6), gl.DYNAMIC_DRAW);
+  gl.uniform2f(gl.getUniformLocation(state.lavaDensityProgram, 'uResolution'), state.width, state.height);
+  gl.uniform1f(gl.getUniformLocation(state.lavaDensityProgram, 'uPointScale'), pointScaleForRenderStyle('lava-lamp', renderStyle));
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 24, 0);
+  gl.enableVertexAttribArray(1);
+  gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 24, 8);
+  gl.drawArrays(gl.POINTS, 0, state.count);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, state.width, state.height);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.useProgram(state.lavaCompositeProgram);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, state.lavaDensityTexture);
+  gl.uniform1i(gl.getUniformLocation(state.lavaCompositeProgram, 'uDensity'), 0);
+  gl.uniform2f(gl.getUniformLocation(state.lavaCompositeProgram, 'uTexel'), 1 / Math.max(1, state.lavaDensityWidth), 1 / Math.max(1, state.lavaDensityHeight));
+  gl.uniform2f(gl.getUniformLocation(state.lavaCompositeProgram, 'uResolution'), state.width, state.height);
+  const hot = colorNumberToRgb(palette[0], [1, 0.55, 0.1]);
+  const warm = colorNumberToRgb(palette[1], [1, 0.12, 0.05]);
+  const cold = colorNumberToRgb(palette[2], [0.15, 0.22, 0.55]);
+  gl.uniform3f(gl.getUniformLocation(state.lavaCompositeProgram, 'uHot'), hot[0], hot[1], hot[2]);
+  gl.uniform3f(gl.getUniformLocation(state.lavaCompositeProgram, 'uWarm'), warm[0], warm[1], warm[2]);
+  gl.uniform3f(gl.getUniformLocation(state.lavaCompositeProgram, 'uCold'), cold[0], cold[1], cold[2]);
+  gl.uniform1f(gl.getUniformLocation(state.lavaCompositeProgram, 'uOpacity'), finiteNumberSetting(state.settings, 'opacity', 0.62));
+  gl.uniform1f(gl.getUniformLocation(state.lavaCompositeProgram, 'uMetaball'), finiteNumberSetting(state.settings, 'metaballBlend', 0.86));
+  gl.uniform1f(gl.getUniformLocation(state.lavaCompositeProgram, 'uStyle'), 0.35);
+  gl.uniform1f(gl.getUniformLocation(state.lavaCompositeProgram, 'uTemperatureContrast'), finiteNumberSetting(state.settings, 'thermalContrast', 1.25));
   gl.bindBuffer(gl.ARRAY_BUFFER, state.quadBuffer);
   gl.enableVertexAttribArray(0);
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
@@ -1587,6 +1713,41 @@ function ensureQuadBuffer(state: ParticleMetaballState): boolean {
   if (!state.quadBuffer) return false;
   gl.bindBuffer(gl.ARRAY_BUFFER, state.quadBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  return true;
+}
+
+function ensureLavaSurfaceTargets(state: ParticleMetaballState): boolean {
+  if (!state.lavaSurfaceSupported) return false;
+  const gl = state.gl;
+  const width = Math.max(1, state.width);
+  const height = Math.max(1, state.height);
+  if (!ensureQuadBuffer(state)) return false;
+  if (state.lavaDensityTexture && state.lavaDensityFramebuffer && state.lavaDensityWidth === width && state.lavaDensityHeight === height) return true;
+
+  deleteLavaSurfaceTargets(state);
+  state.lavaDensityWidth = width;
+  state.lavaDensityHeight = height;
+  state.lavaDensityTexture = gl.createTexture();
+  state.lavaDensityFramebuffer = gl.createFramebuffer();
+  if (!state.lavaDensityTexture || !state.lavaDensityFramebuffer) {
+    state.lavaSurfaceSupported = false;
+    return false;
+  }
+  gl.bindTexture(gl.TEXTURE_2D, state.lavaDensityTexture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, state.lavaDensityFramebuffer);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, state.lavaDensityTexture, 0);
+  const complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  if (!complete) {
+    deleteLavaSurfaceTargets(state);
+    state.lavaSurfaceSupported = false;
+    return false;
+  }
   return true;
 }
 
@@ -1668,9 +1829,9 @@ function updatePointerFeedback(state: ParticleMetaballState, preset: ParticleMet
   feedback.style.height = `${cssR * 2}px`;
   feedback.style.transform = `translate(${cssX - cssR}px, ${cssY - cssR}px)`;
   if (preset === 'lava-lamp') {
-    const cooling = state.modeId === 'cool';
-    feedback.style.borderColor = cooling ? 'rgba(125, 211, 252, 0.46)' : 'rgba(251, 146, 60, 0.46)';
-    feedback.style.backgroundColor = cooling ? 'rgba(14, 165, 233, 0.14)' : 'rgba(249, 115, 22, 0.14)';
+    const removing = state.modeId === 'remove';
+    feedback.style.borderColor = removing ? 'rgba(125, 211, 252, 0.46)' : 'rgba(251, 146, 60, 0.46)';
+    feedback.style.backgroundColor = removing ? 'rgba(14, 165, 233, 0.14)' : 'rgba(249, 115, 22, 0.14)';
   } else if (state.modeId === 'interact') {
     feedback.style.borderColor = 'rgba(255, 255, 255, 0.34)';
     feedback.style.backgroundColor = 'rgba(255, 255, 255, 0.12)';
@@ -1686,9 +1847,19 @@ function pointScaleForRenderStyle(preset: ParticleMetaballPreset, renderStyle: s
     if (renderStyle === 'surface') return 2.7;
     return 3.05;
   }
+  if (renderStyle === 'basic') return 3.7;
+  if (renderStyle === 'enhanced') return 4.35;
   if (renderStyle === 'cellular') return 4.25;
   if (renderStyle === 'smooth') return 5.1;
   return 5.65;
+}
+
+function lavaRenderStyle(state: ParticleMetaballState): string {
+  const renderStyle = typeof state.settings.renderStyle === 'string' ? state.settings.renderStyle : '';
+  if (renderStyle === 'basic' || renderStyle === 'enhanced' || renderStyle === 'ultra') return renderStyle;
+  if (renderStyle === 'smooth') return 'basic';
+  if (renderStyle === 'glow') return 'enhanced';
+  return 'ultra';
 }
 
 export class RawParticleMetaballScene extends RawWebGL2Scene {
@@ -1790,10 +1961,26 @@ export class RawParticleMetaballScene extends RawWebGL2Scene {
           simulation: preset,
           sharedScene: 'RawParticleMetaballScene',
           simulationPath: preset === 'water-tank' ? 'cpu-2d-pic-flip-pressure-grid' : 'cpu-particle-metaball-field-to-raymarch-proxies',
-          rendering: preset === 'water-tank' ? 'gpu-density-surface-water' : 'gpu-raymarch-sdf-lava-lamp',
-          acceleration: preset === 'water-tank' ? 'gpu-point-sprite-metaball-rendering' : 'gpu-fullscreen-raymarch-rendering',
-          gpuRenderPipeline: preset === 'water-tank' ? 'offscreen-density-threshold-normal-shade' : 'fullscreen-sdf-smooth-union-raymarch',
-          blendMode: preset === 'water-tank' ? 'surface-alpha-composite' : 'opaque-fullscreen-shader',
+          rendering: preset === 'water-tank'
+            ? 'gpu-density-surface-water'
+            : lavaRenderStyle(s) === 'ultra'
+              ? 'gpu-raymarch-sdf-lava-lamp'
+              : lavaRenderStyle(s) === 'enhanced'
+                ? 'gpu-density-metaball-lava'
+                : 'gpu-point-metaball-lava',
+          acceleration: preset === 'water-tank'
+            ? 'gpu-point-sprite-metaball-rendering'
+            : lavaRenderStyle(s) === 'ultra'
+              ? 'gpu-fullscreen-raymarch-rendering'
+              : 'gpu-point-sprite-metaball-rendering',
+          gpuRenderPipeline: preset === 'water-tank'
+            ? 'offscreen-density-threshold-normal-shade'
+            : lavaRenderStyle(s) === 'ultra'
+              ? 'fullscreen-sdf-smooth-union-raymarch'
+              : lavaRenderStyle(s) === 'enhanced'
+                ? 'offscreen-density-threshold-normal-shade'
+                : 'point-sprite-metaball',
+          blendMode: preset === 'water-tank' ? 'surface-alpha-composite' : lavaRenderStyle(s) === 'ultra' ? 'opaque-fullscreen-shader' : 'metaball-alpha-composite',
           gpuSimulated: false,
           gpuRendered: true,
           cpuTopology: true,

@@ -2,6 +2,7 @@ import {
   RawWebGL2Scene,
   finiteNumberSetting,
   type DomStylePayload,
+  type GestureEvent,
   type RawWebGL2RenderState,
 } from '@hooksjam/pixi-lab-core';
 import { GpuFluidTankRenderer, velocityFromScreenDelta, type GpuFluidTankOptions } from './GpuFluidTankRenderer.js';
@@ -35,26 +36,31 @@ const MARKUP = `
  * shared RawWebGL2Scene lifecycle instead of the generated standalone runtime.
  */
 export class RawFluidTankScene extends RawWebGL2Scene {
+  private controller: RawFluidTankController | null = null;
+
   constructor(private readonly preview = false) {
-    let controller: RawFluidTankController | null = null;
     super({
       name: 'RawFluidTank',
       markup: MARKUP,
       canvasSelector: '[data-raw-fluid-canvas="true"]',
       onInit: (state) => {
-        controller = new RawFluidTankController(state, this.preview);
+        this.controller = new RawFluidTankController(state, this.preview);
       },
-      onSettingsChange: (state) => controller?.applySettings(state),
-      onStyleChange: (state) => controller?.applyStyle(state),
-      onModeChange: (_state, mode) => controller?.setMode(mode),
-      onReset: (state) => controller?.reset(state),
-      render: (state) => controller?.render(state),
-      getDebugStats: () => controller?.getDebugStats() ?? null,
+      onSettingsChange: (state) => this.controller?.applySettings(state),
+      onStyleChange: (state) => this.controller?.applyStyle(state),
+      onModeChange: (_state, mode) => this.controller?.setMode(mode),
+      onReset: (state) => this.controller?.reset(state),
+      render: (state) => this.controller?.render(state),
+      getDebugStats: () => this.controller?.getDebugStats() ?? null,
       onDestroy: () => {
-        controller?.destroy();
-        controller = null;
+        this.controller?.destroy();
+        this.controller = null;
       },
     });
+  }
+
+  override pushGestures(gestures: GestureEvent[]): void {
+    this.controller?.pushGestures(gestures);
   }
 }
 
@@ -63,7 +69,7 @@ class RawFluidTankController {
   private readonly pointerTrails = new Map<number, RawPointerTrailPoint>();
   private readonly preview: boolean;
   private readonly loadingElement: HTMLElement | null;
-  private interactionMode: 'stir' | 'inject' = 'stir';
+  private interactionMode: 'stir' | 'inject';
   private options: GpuFluidTankOptions;
   private seed: number;
   private splatCount = 0;
@@ -71,6 +77,7 @@ class RawFluidTankController {
 
   constructor(state: RawWebGL2RenderState, preview: boolean) {
     this.preview = preview;
+    this.interactionMode = 'inject';
     this.seed = Math.random() * 1000;
     this.options = this.readOptions(state.settings, state.style, this.seed);
     const mount = state.canvas.parentElement ?? document.body;
@@ -109,7 +116,7 @@ class RawFluidTankController {
   }
 
   setMode(mode: string): void {
-    this.interactionMode = mode === 'inject' ? 'inject' : 'stir';
+    this.interactionMode = mode === 'inject' || mode === 'demo' ? 'inject' : 'stir';
   }
 
   reset(state: RawWebGL2RenderState): void {
@@ -117,7 +124,7 @@ class RawFluidTankController {
     this.options = this.readOptions(state.settings, state.style, this.seed);
     this.renderer.resize(this.renderer.canvas.clientWidth || this.canvasCssWidth(state.canvas), this.renderer.canvas.clientHeight || this.canvasCssHeight(state.canvas), true);
     this.renderer.setOptions(this.options);
-    this.renderer.randomizeDye(this.seed, true);
+    this.renderer.randomizeDye(this.seed, this.options.initMode !== 'blank');
     this.pointerTrails.clear();
     this.splatCount = 0;
   }
@@ -158,6 +165,48 @@ class RawFluidTankController {
     };
   }
 
+  pushGestures(gestures: GestureEvent[]): void {
+    const canvas = this.renderer.canvas;
+    const width = Math.max(1, canvas.clientWidth || this.canvasCssWidth(canvas));
+    const height = Math.max(1, canvas.clientHeight || this.canvasCssHeight(canvas));
+    const stats = this.renderer.stats();
+    for (const gesture of gestures) {
+      const id = gesture.id ?? -1;
+      if (gesture.kind === 'release') {
+        this.pointerTrails.delete(id);
+        continue;
+      }
+      if (gesture.kind !== 'drag' && gesture.kind !== 'tap' && gesture.kind !== 'hold') continue;
+      const point = {
+        x: clamp01(gesture.x / width),
+        y: clamp01(gesture.y / height),
+      };
+      const motion = gesture as GestureEvent & { dx?: number; dy?: number };
+      const previous = this.pointerTrails.get(id);
+      const fallbackDx = previous ? (point.x - previous.x) * width : 0;
+      const fallbackDy = previous ? (point.y - previous.y) * height : 0;
+      const dx = Number.isFinite(motion.dx) ? Number(motion.dx) : fallbackDx;
+      const dy = Number.isFinite(motion.dy) ? Number(motion.dy) : fallbackDy;
+      const velocity = velocityFromScreenDelta(
+        dx,
+        dy,
+        width,
+        height,
+        stats.simWidth || 1,
+        stats.simHeight || 1,
+      );
+      if (this.interactionMode === 'inject') {
+        this.renderer.inject(point.x, point.y, velocity.dx, velocity.dy, gesture.kind === 'tap' ? 0.72 : 1);
+      } else if (gesture.kind === 'tap' || gesture.kind === 'hold') {
+        this.renderer.smallSwirl(point.x, point.y);
+      } else {
+        this.renderer.stir({ x: point.x, y: point.y, dx: velocity.dx, dy: velocity.dy, radiusScale: 1 });
+      }
+      this.pointerTrails.set(id, point);
+      this.splatCount += 1;
+    }
+  }
+
   private bindPointerInput(canvas: HTMLCanvasElement): void {
     canvas.style.pointerEvents = 'auto';
     const onPointerDown = (event: PointerEvent) => {
@@ -172,6 +221,10 @@ class RawFluidTankController {
       this.splatCount += 1;
     };
     const onPointerMove = (event: PointerEvent) => {
+      if (event.pointerType === 'mouse' && event.buttons === 0) {
+        this.pointerTrails.delete(event.pointerId);
+        return;
+      }
       const previous = this.pointerTrails.get(event.pointerId);
       if (!previous) return;
       const point = this.toCanvasPoint(canvas, event);
@@ -206,6 +259,7 @@ class RawFluidTankController {
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerup', onPointerEnd);
     canvas.addEventListener('pointercancel', onPointerEnd);
+    canvas.addEventListener('lostpointercapture', onPointerEnd);
   }
 
   private toCanvasPoint(canvas: HTMLCanvasElement, event: PointerEvent): RawPointerTrailPoint {
@@ -238,6 +292,8 @@ class RawFluidTankController {
     const uniforms = style?.uniforms ?? {};
     const cellSize = finiteNumberSetting(settings, 'cellSize', Number(FLUID_TANK_DEFAULTS.cellSize));
     const pressureIterations = Math.round(finiteNumberSetting(settings, 'pressureIterations', Number(FLUID_TANK_DEFAULTS.pressureIterations)));
+    const visualPipeline: GpuFluidTankOptions['visualPipeline'] = style?.id === 'webgl-fluid-glow' ? 'reference' : 'standard';
+    const usePostProcessing = visualPipeline === 'reference';
     return {
       cellSize: this.preview ? Math.max(1.85, cellSize) : cellSize,
       fingerForce: this.preview ? Math.min(9, finiteNumberSetting(settings, 'fingerForce', Number(FLUID_TANK_DEFAULTS.fingerForce))) : finiteNumberSetting(settings, 'fingerForce', Number(FLUID_TANK_DEFAULTS.fingerForce)),
@@ -245,22 +301,31 @@ class RawFluidTankController {
       viscosity: finiteNumberSetting(settings, 'viscosity', Number(FLUID_TANK_DEFAULTS.viscosity)),
       curl: finiteNumberSetting(settings, 'curl', Number(FLUID_TANK_DEFAULTS.curl)),
       eddyAssist: finiteNumberSetting(settings, 'eddyAssist', Number(FLUID_TANK_DEFAULTS.eddyAssist)),
+      velocityPersistence: finiteNumberSetting(settings, 'velocityPersistence', Number(FLUID_TANK_DEFAULTS.velocityPersistence)),
       dyePersistence: finiteNumberSetting(settings, 'dyePersistence', Number(FLUID_TANK_DEFAULTS.dyePersistence)),
+      injectAmount: finiteNumberSetting(settings, 'injectAmount', Number(FLUID_TANK_DEFAULTS.injectAmount)),
+      injectTurbulence: finiteNumberSetting(settings, 'injectTurbulence', Number(FLUID_TANK_DEFAULTS.injectTurbulence)),
       pressureIterations: this.preview ? Math.min(18, pressureIterations) : pressureIterations,
       injectColorMode: injectColorModeSetting(settings.injectPalette, FLUID_TANK_DEFAULTS.injectPalette),
-      ambient: this.preview || Boolean(settings.ambient ?? FLUID_TANK_DEFAULTS.ambient),
+      ambient: Boolean(settings.ambient ?? FLUID_TANK_DEFAULTS.ambient),
       exposure: typeof uniforms.exposure === 'number' ? uniforms.exposure : Number(boundedCyanStyle.uniforms?.exposure ?? 1),
       palette,
       paletteStrength: typeof uniforms.paletteStrength === 'number' ? uniforms.paletteStrength : Number(boundedCyanStyle.uniforms?.paletteStrength ?? 0.76),
       edgeDarkening: typeof uniforms.edgeDarkening === 'number' ? uniforms.edgeDarkening : Number(boundedCyanStyle.uniforms?.edgeDarkening ?? 0.18),
-      shadingStrength: finiteNumberSetting(settings, 'shadingStrength', typeof uniforms.shadingStrength === 'number' ? uniforms.shadingStrength : 0.72),
-      bloomStrength: finiteNumberSetting(settings, 'bloomStrength', typeof uniforms.bloomStrength === 'number' ? uniforms.bloomStrength : 0.55),
+      shadingStrength: usePostProcessing
+        ? finiteNumberSetting(settings, 'shadingStrength', typeof uniforms.shadingStrength === 'number' ? uniforms.shadingStrength : 0.72)
+        : 0,
+      bloomStrength: usePostProcessing
+        ? finiteNumberSetting(settings, 'bloomStrength', typeof uniforms.bloomStrength === 'number' ? uniforms.bloomStrength : 0.55)
+        : 0,
       bloomThreshold: finiteNumberSetting(settings, 'bloomThreshold', typeof uniforms.bloomThreshold === 'number' ? uniforms.bloomThreshold : 0.62),
-      sunraysStrength: finiteNumberSetting(settings, 'sunraysStrength', typeof uniforms.sunraysStrength === 'number' ? uniforms.sunraysStrength : 0.46),
-      visualPipeline: style?.id === 'webgl-fluid-glow' ? 'reference' : 'standard',
+      sunraysStrength: usePostProcessing
+        ? finiteNumberSetting(settings, 'sunraysStrength', typeof uniforms.sunraysStrength === 'number' ? uniforms.sunraysStrength : 0.46)
+        : 0,
+      visualPipeline,
       seed,
       displayMode: 'dye',
-      initMode: initModeSetting(settings.renderStyle, FLUID_TANK_DEFAULTS.renderStyle),
+      initMode: this.preview ? 'blank' : initModeSetting(settings.renderStyle, FLUID_TANK_DEFAULTS.renderStyle),
       initImageUrl: resolveInitImageUrl(settings.initImageUrl, seed, this.preview),
     };
   }

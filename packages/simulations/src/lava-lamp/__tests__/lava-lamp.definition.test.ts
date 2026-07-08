@@ -45,16 +45,16 @@ describe('lava lamp definition', () => {
     const field = LAVA_LAMP_SETTINGS_FIELDS.find((candidate) => candidate.key === 'renderStyle');
     expect(field?.section).toBe('Rendering');
     expect(field?.type).toBe('select');
-    expect(field?.options?.map((option) => option.value)).toEqual(['smooth', 'glow', 'cellular']);
+    expect(field?.options?.map((option) => option.value)).toEqual(['basic', 'enhanced', 'ultra']);
     expect(LAVA_LAMP_SETTINGS_FIELDS.some((candidate) => candidate.key === 'renderScale')).toBe(false);
     expect(LAVA_LAMP_DEFAULTS.renderScale).toBeUndefined();
   });
 
-  it('exposes explicit raise/lower thermal input modes and controls', () => {
-    expect(lavaLampDefinition.modes?.map((mode) => mode.id)).toEqual(['heat', 'cool']);
+  it('exposes explicit add/remove wax input modes and controls', () => {
+    expect(lavaLampDefinition.modes?.map((mode) => mode.id)).toEqual(['add', 'remove']);
     const inputFields = LAVA_LAMP_SETTINGS_FIELDS.filter((field) => field.section === 'Input Mode');
     expect(inputFields.map((field) => field.key)).toEqual(['inputRadius', 'inputLift', 'inputThermalRate']);
-    expect(inputFields.every((field) => field.visibleModes?.join(',') === 'heat,cool')).toBe(true);
+    expect(inputFields.map((field) => field.visibleModes?.join(','))).toEqual(['add,remove', 'add', 'add']);
     expect(LAVA_LAMP_SETTINGS_FIELDS.map((field) => field.key)).toContain('thermalContrast');
     expect(LAVA_LAMP_SETTINGS_FIELDS.filter((field) => field.section === 'Thermal Motion').map((field) => field.key)).toEqual(['buoyancy', 'heatRate', 'coolRate', 'waxViscosity']);
   });

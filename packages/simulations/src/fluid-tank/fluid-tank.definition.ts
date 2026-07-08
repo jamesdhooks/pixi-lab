@@ -43,8 +43,8 @@ export const fluidTankDefinition: SimulationDefinition = {
   configDefaults: FLUID_TANK_DEFAULTS,
   styleManifest: fluidTankStyleManifest,
   modes: [
-    { id: 'stir', label: 'Stir', icon: '~', description: 'Drag to stir velocity along the pointer path without adding dye.' },
     { id: 'inject', label: 'Inject', icon: '+', description: 'Tap or drag to drip dye and push a spreading force into the fluid.' },
+    { id: 'stir', label: 'Stir', icon: '~', description: 'Drag to stir velocity along the pointer path without adding dye.' },
   ],
   gestureMap: {
     tap: 'create a small velocity swirl, or inject a concentrated dye drip in inject mode',

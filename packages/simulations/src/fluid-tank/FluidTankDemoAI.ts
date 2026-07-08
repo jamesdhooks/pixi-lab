@@ -12,6 +12,8 @@ export class FluidTankDemoAI implements SimulationAI {
   private nextOverhaulIn = 0;
   private angle = 0;
   private pointerId = -7301;
+  private previousX: number | null = null;
+  private previousY: number | null = null;
 
   constructor(private readonly options: { liteMode?: boolean } = {}) {}
 
@@ -26,24 +28,37 @@ export class FluidTankDemoAI implements SimulationAI {
       return [];
     }
 
-    this.angle += ctx.dt * 1.15;
+    this.angle += ctx.dt * (this.options.liteMode ? 1.85 : 1.25);
     const cx = ctx.width * (0.5 + Math.sin(this.angle * 0.7) * 0.24);
     const cy = ctx.height * (0.5 + Math.cos(this.angle * 0.61) * 0.22);
-    const dx = Math.cos(this.angle * 1.9) * ctx.width * 0.018;
-    const dy = Math.sin(this.angle * 1.6) * ctx.height * 0.018;
+    const startX = this.previousX ?? cx - Math.cos(this.angle * 1.9) * ctx.width * 0.026;
+    const startY = this.previousY ?? cy - Math.sin(this.angle * 1.6) * ctx.height * 0.026;
+    const totalDx = cx - startX;
+    const totalDy = cy - startY;
+    const distance = Math.hypot(totalDx, totalDy);
+    const stepSize = this.options.liteMode ? 10 : 14;
+    const steps = Math.max(2, Math.min(this.options.liteMode ? 9 : 7, Math.ceil(distance / stepSize)));
+    const gestures: GestureEvent[] = [];
 
-    return [
-      {
+    for (let i = 1; i <= steps; i += 1) {
+      const t = i / steps;
+      const x = startX + totalDx * t;
+      const y = startY + totalDy * t;
+      gestures.push({
         kind: 'drag',
         id: this.pointerId,
-        x: cx,
-        y: cy,
-        dx,
-        dy,
-        velocity: Math.hypot(dx, dy),
+        x,
+        y,
+        dx: totalDx / steps,
+        dy: totalDy / steps,
+        velocity: distance / steps,
         timestamp: performance.now(),
-      },
-    ];
+      });
+    }
+
+    this.previousX = cx;
+    this.previousY = cy;
+    return gestures;
   }
 
   reset(): void {
@@ -51,6 +66,8 @@ export class FluidTankDemoAI implements SimulationAI {
     this.nextOverhaulIn = 0;
     this.angle = 0;
     this.pointerId -= 1;
+    this.previousX = null;
+    this.previousY = null;
   }
 
   private doOverhaul(ctx: SimAIContext): void {
@@ -67,10 +84,16 @@ export class FluidTankDemoAI implements SimulationAI {
     ctx.applyNumericSetting('curl', curl);
     ctx.applyNumericSetting('eddyAssist', eddyAssist);
     ctx.applyNumericSetting('pressureIterations', this.options.liteMode ? Math.min(16, pressureIterations) : pressureIterations);
-    ctx.applyNumericSetting('dyePersistence', 0.9992 + Math.random() * 0.0008);
-    ctx.applySetting('ambient', true);
-    ctx.applySetting('renderStyle', Math.random() > 0.72 ? 'voronoi' : 'cloud');
+    ctx.applyNumericSetting('velocityPersistence', this.options.liteMode ? 0.986 : 0.978 + Math.random() * 0.018);
+    ctx.applyNumericSetting('dyePersistence', this.options.liteMode ? 0.9925 : 0.99 + Math.random() * 0.007);
+    ctx.applyNumericSetting('injectAmount', this.options.liteMode ? 0.48 : 0.52 + Math.random() * 0.55);
+    ctx.applyNumericSetting('injectTurbulence', this.options.liteMode ? 0.38 : 0.25 + Math.random() * 0.75);
+    ctx.applySetting('ambient', false);
+    ctx.applySetting('renderStyle', this.options.liteMode ? 'blank' : Math.random() > 0.72 ? 'voronoi' : 'cloud');
+    ctx.applySetting('injectPalette', Math.random() > 0.68 ? 'rainbow' : 'style');
     this.nextOverhaulIn = this.options.liteMode ? 14 + Math.random() * 8 : 20 + Math.random() * 15;
     this.elapsedSinceOverhaul = 0;
+    this.previousX = null;
+    this.previousY = null;
   }
 }

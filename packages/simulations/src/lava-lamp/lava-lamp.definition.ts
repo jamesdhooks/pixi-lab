@@ -54,8 +54,8 @@ export const lavaLampDefinition: SimulationDefinition = {
   settingsFields: LAVA_LAMP_SETTINGS_FIELDS,
   configDefaults: LAVA_LAMP_DEFAULTS,
   modes: [
-    { id: 'heat', label: 'Raise', icon: '▲', description: 'Add or heat nearby wax and lift it upward.' },
-    { id: 'cool', label: 'Lower', icon: '▼', description: 'Add or cool nearby wax and pull it downward.' },
+    { id: 'add', label: 'Add', icon: '+', description: 'Add wax into the lamp and lift nearby wax.' },
+    { id: 'remove', label: 'Remove', icon: '-', description: 'Remove wax from the brush area.' },
   ],
   styleManifest: lavaLampStyleManifest,
   directorEvents: [],
@@ -81,7 +81,7 @@ class LavaLampDemoAI implements SimulationAI {
   private elapsed = 0;
   private nextShuffleIn = 0;
   private angle = 0;
-  private cooling = false;
+  private removing = false;
 
   constructor(private readonly liteMode = false) {}
 
@@ -95,16 +95,16 @@ class LavaLampDemoAI implements SimulationAI {
     if (this.elapsed >= this.nextShuffleIn) this.randomize(ctx);
     const primaryX = ctx.width * (0.5 + Math.sin(this.angle * 0.7) * 0.26);
     const secondaryX = ctx.width * (0.5 - Math.sin(this.angle * 0.53) * 0.22);
-    const primaryY = ctx.height * (this.cooling ? 0.28 + Math.cos(this.angle * 1.1) * 0.1 : 0.72 + Math.cos(this.angle * 1.1) * 0.12);
-    const secondaryY = ctx.height * (this.cooling ? 0.74 + Math.sin(this.angle * 0.8) * 0.08 : 0.24 + Math.sin(this.angle * 0.8) * 0.08);
+    const primaryY = ctx.height * (this.removing ? 0.28 + Math.cos(this.angle * 1.1) * 0.1 : 0.72 + Math.cos(this.angle * 1.1) * 0.12);
+    const secondaryY = ctx.height * (this.removing ? 0.74 + Math.sin(this.angle * 0.8) * 0.08 : 0.24 + Math.sin(this.angle * 0.8) * 0.08);
     return [{
       kind: 'drag',
       id: PRIMARY_THERMAL_BRUSH_ID,
       x: primaryX,
       y: primaryY,
       dx: Math.cos(this.angle) * 8,
-      dy: this.cooling ? Math.abs(Math.sin(this.angle)) * 8 : -Math.abs(Math.sin(this.angle)) * 8,
-      strength: this.cooling ? -PRIMARY_THERMAL_STRENGTH : PRIMARY_THERMAL_STRENGTH,
+      dy: this.removing ? Math.abs(Math.sin(this.angle)) * 8 : -Math.abs(Math.sin(this.angle)) * 8,
+      strength: this.removing ? -PRIMARY_THERMAL_STRENGTH : PRIMARY_THERMAL_STRENGTH,
       timestamp: performance.now(),
     }, {
       kind: 'drag',
@@ -112,8 +112,8 @@ class LavaLampDemoAI implements SimulationAI {
       x: secondaryX,
       y: secondaryY,
       dx: -Math.cos(this.angle * 0.8) * 5,
-      dy: this.cooling ? -Math.abs(Math.sin(this.angle * 0.9)) * 5 : Math.abs(Math.sin(this.angle * 0.9)) * 5,
-      strength: this.cooling ? SECONDARY_THERMAL_STRENGTH : -SECONDARY_THERMAL_STRENGTH,
+      dy: this.removing ? -Math.abs(Math.sin(this.angle * 0.9)) * 5 : Math.abs(Math.sin(this.angle * 0.9)) * 5,
+      strength: this.removing ? SECONDARY_THERMAL_STRENGTH : -SECONDARY_THERMAL_STRENGTH,
       timestamp: performance.now(),
     }];
   }
@@ -122,14 +122,14 @@ class LavaLampDemoAI implements SimulationAI {
     this.elapsed = 0;
     this.nextShuffleIn = 0;
     this.angle = 0;
-    this.cooling = false;
+    this.removing = false;
   }
 
   private randomize(ctx: SimAIContext): void {
     const style = ctx.styleIds[Math.floor(Math.random() * Math.max(1, ctx.styleIds.length))];
     if (style) ctx.applyStyle(style);
-    this.cooling = Math.random() > 0.68;
-    ctx.applySetting('renderStyle', Math.random() > 0.72 ? 'cellular' : Math.random() > 0.42 ? 'glow' : 'smooth');
+    this.removing = Math.random() > 0.68;
+    ctx.applySetting('renderStyle', Math.random() > 0.72 ? 'ultra' : Math.random() > 0.42 ? 'enhanced' : 'basic');
     ctx.applyNumericSetting('maxParticles', this.liteMode ? 90 + Math.floor(Math.random() * 80) : 180 + Math.floor(Math.random() * 240));
     ctx.applyNumericSetting('initialBlobs', this.liteMode ? 60 + Math.floor(Math.random() * 70) : 120 + Math.floor(Math.random() * 260));
     ctx.applyNumericSetting('blobRadius', this.liteMode ? 15 + Math.random() * 8 : 14 + Math.random() * 26);
