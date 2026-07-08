@@ -6,16 +6,18 @@ import { RawParticleFluidScene } from './RawParticleFluidScene.js';
 
 export const particleFluidStyleManifest: SimulationDefinition['styleManifest'] = {
   defaultStyleId: 'haxiomic-cyan',
-  capabilities: { renderLayers: ['particles', 'density'], passes: ['primitive', 'densityMetaball', 'bloom'], qualities: ['raw'] },
+  capabilities: { renderLayers: ['particles'], passes: ['primitive'], qualities: ['raw'] },
   styles: [
-    { id: 'haxiomic-cyan', name: 'Haxiomic Cyan', palette: [0x021326, 0x00e5ff, 0xf8fbff, 0xff4fd8], background: 0x01040c, passes: ['densityMetaball', 'bloom'], uniforms: { bloomStrength: 1.24, fieldStrength: 0.92, fieldGain: 1.05, pointScale: 1 } },
-    { id: 'magenta-ink', name: 'Magenta Ink', palette: [0x15051b, 0xff2fd6, 0x52f7ff, 0xffffff], background: 0x07020d, passes: ['densityMetaball', 'bloom'], uniforms: { bloomStrength: 1.1, fieldStrength: 0.82, fieldGain: 0.95, pointScale: 1.06 } },
-    { id: 'phosphor-green', name: 'Phosphor Green', palette: [0x01160a, 0x6dff58, 0xeaff96, 0x1affd5], background: 0x000704, passes: ['densityMetaball', 'bloom'], uniforms: { bloomStrength: 0.92, fieldStrength: 0.7, fieldGain: 0.8, pointScale: 0.96 } },
-    { id: 'ember-plasma', name: 'Ember Plasma', palette: [0x1c0703, 0xff6b1a, 0xfff0b8, 0xff1f5f], background: 0x080201, passes: ['densityMetaball', 'bloom'], uniforms: { bloomStrength: 1.38, fieldStrength: 1.05, fieldGain: 1.18, pointScale: 1.08 } },
-    { id: 'ultraviolet', name: 'Ultraviolet', palette: [0x0b0622, 0x7c3cff, 0xf0d7ff, 0x00d4ff], background: 0x03010b, passes: ['densityMetaball', 'bloom'], uniforms: { bloomStrength: 1.05, fieldStrength: 0.96, fieldGain: 0.9, pointScale: 0.92 } },
-    { id: 'arctic-white', name: 'Arctic White', palette: [0x041621, 0x8de9ff, 0xffffff, 0x7dd3fc], background: 0x00070b, passes: ['densityMetaball', 'bloom'], uniforms: { bloomStrength: 0.78, fieldStrength: 0.74, fieldGain: 0.72, pointScale: 0.86 } },
-    { id: 'laser-red', name: 'Laser Red', palette: [0x190307, 0xff1248, 0xffe0e8, 0xff9f1c], background: 0x060003, passes: ['densityMetaball', 'bloom'], uniforms: { bloomStrength: 1.2, fieldStrength: 0.78, fieldGain: 0.88, pointScale: 1.02 } },
-    { id: 'mono-blueprint', name: 'Mono Blueprint', palette: [0x07111f, 0x4ea1ff, 0xdcecff, 0x193c72], background: 0x020817, passes: ['densityMetaball'], uniforms: { bloomStrength: 0.34, fieldStrength: 0.5, fieldGain: 0.52, pointScale: 0.82 } },
+    { id: 'haxiomic-cyan', name: 'Haxiomic Cyan', palette: [0x22001e, 0x017aff, 0xa1ecff, 0xffffff], background: 0x000000, passes: ['primitive'], uniforms: {} },
+    { id: 'magenta-current', name: 'Magenta Current', palette: [0x230019, 0xff2fd6, 0x7df9ff, 0xffffff], background: 0x050007, passes: ['primitive'], uniforms: {} },
+    { id: 'phosphor-stream', name: 'Phosphor Stream', palette: [0x021307, 0x6dff58, 0xecff9a, 0xffffff], background: 0x000704, passes: ['primitive'], uniforms: {} },
+    { id: 'ember-wake', name: 'Ember Wake', palette: [0x1f0602, 0xff6b1a, 0xfff0b8, 0xffffff], background: 0x070201, passes: ['primitive'], uniforms: {} },
+    { id: 'ultraviolet-rift', name: 'Ultraviolet Rift', palette: [0x100329, 0x8b5cf6, 0xf0abfc, 0xffffff], background: 0x03000a, passes: ['primitive'], uniforms: {} },
+    { id: 'arctic-spark', name: 'Arctic Spark', palette: [0x041621, 0x8de9ff, 0xffffff, 0x7dd3fc], background: 0x00070b, passes: ['primitive'], uniforms: {} },
+    { id: 'laser-red', name: 'Laser Red', palette: [0x210006, 0xff1248, 0xffd6df, 0xffffff], background: 0x060003, passes: ['primitive'], uniforms: {} },
+    { id: 'blueprint-ink', name: 'Blueprint Ink', palette: [0x07111f, 0x4ea1ff, 0xdcecff, 0xffffff], background: 0x020817, passes: ['primitive'], uniforms: {} },
+    { id: 'solar-flare', name: 'Solar Flare', palette: [0x1c0800, 0xfacc15, 0xfffbeb, 0xff6b1a], background: 0x050200, passes: ['primitive'], uniforms: {} },
+    { id: 'deep-sea-ion', name: 'Deep Sea Ion', palette: [0x001316, 0x14f1d9, 0xd9fff8, 0x67e8f9], background: 0x00080b, passes: ['primitive'], uniforms: {} },
   ],
 };
 
@@ -23,8 +25,8 @@ export const particleFluidDefinition: SimulationDefinition = {
   id: 'particle-fluid',
   kind: 'simulation',
   name: 'Particle Fluid',
-  short: 'Dense dye particles swirl like a fluid field under your pointer.',
-  long: 'A raw WebGL2 particle-fluid scene inspired by Haxiomic GPU Fluid Experiments (https://github.com/haxiomic/GPU-Fluid-Experiments), implemented here as an original Pixi Lab projected flow field with dense additive particles, native palettes, settings, preview, and demo automation.',
+  short: 'Dense point particles swirl like a fluid field under your pointer.',
+  long: 'A raw WebGL2 particle-fluid scene adapting the Haxiomic GPU Fluid Experiments particle execution model (https://github.com/haxiomic/GPU-Fluid-Experiments) into Pixi Lab with source-like velocity advection, pressure projection, dense additive point particles, native settings, preview, and demo automation.',
   tags: ['simulation', 'fluid', 'particles', 'raw-webgl'],
   attributions: [
     {
@@ -50,24 +52,19 @@ export const particleFluidDefinition: SimulationDefinition = {
   },
   settingsFields: PARTICLE_FLUID_SETTINGS_FIELDS,
   configDefaults: PARTICLE_FLUID_DEFAULTS,
-  modes: [
-    { id: 'vortex', label: 'Vortex', icon: '~', description: 'Drag to stir the particle fluid into local eddies.' },
-    { id: 'inject', label: 'Inject', icon: '+', description: 'Drag to add fresh dye particles and momentum.' },
-    { id: 'repel', label: 'Repel', icon: '*', description: 'Push the particle field away from the pointer.' },
-  ],
   styleManifest: particleFluidStyleManifest,
   gestureMap: {
     tap: 'pulse nearby particles',
-    drag: 'stir, inject, or repel particles depending on the selected input mode',
-    fast_swipe: 'throw a strong streak of dye through the fluid',
+    drag: 'stir particles by disturbing the velocity field',
+    fast_swipe: 'throw a strong streak through the particle field',
   },
   directorEvents: [
     { id: 'eddy-sweep', label: 'Eddy Sweep', minIntervalMs: 8000, maxIntervalMs: 18000, intensity: 0.45 },
-    { id: 'dye-bloom', label: 'Dye Bloom', minIntervalMs: 18000, maxIntervalMs: 32000, intensity: 0.72 },
+    { id: 'particle-sweep', label: 'Particle Sweep', minIntervalMs: 18000, maxIntervalMs: 32000, intensity: 0.72 },
   ],
   stagnationPolicy: {
     stagnant: false,
-    reason: 'Recover by reseeding the particle field or injecting a dye bloom when motion collapses.',
+    reason: 'Recover by reseeding the particle field when motion collapses.',
     severity: 0,
   },
   advancedPhysics: {
@@ -75,16 +72,15 @@ export const particleFluidDefinition: SimulationDefinition = {
     engine: 'custom-raw-model',
     portability: 'reusable-core',
     supportedShapes: ['circle', 'field'],
-    reusableFor: ['particle fluid studies', 'dye advection references', 'fluid-like point-density renderers'],
-    caveats: ['Inspired by Haxiomic GPU Fluid Experiments; this implementation is original and keeps the source-like velocity, dye, and particle split inside Pixi Lab raw WebGL2, with CPU-side field integration and GPU rendering.'],
+    reusableFor: ['particle fluid studies', 'velocity advection references', 'fluid-like point renderers'],
+    caveats: ['Adapts Haxiomic GPU Fluid Experiments into Pixi Lab raw WebGL2 with the source-like velocity and particle split, CPU-side field integration, and GPU point rendering.'],
   },
   defaultSeed: 260706,
   factory: () => new RawParticleFluidScene(),
   previewFactory: () => new ParticleFluidPreviewScene(),
   demoAiFactory: (ctx) => new ParticleFluidDemoAI({ liteMode: ctx.isPreview }),
   tutorialPages: [
-    { icon: '~', title: 'Vortex', body: 'Drag through the scene to bend the particle fluid into local eddies.' },
-    { icon: '+', title: 'Inject', body: 'Switch to Inject to add fresh dye particles and momentum under the pointer.' },
-    { icon: '*', title: 'Attribution', body: 'Visual reference: Haxiomic GPU Fluid Experiments, https://github.com/haxiomic/GPU-Fluid-Experiments.' },
+    { icon: '~', title: 'Drag', body: 'Drag through the scene to disturb the velocity field.' },
+    { icon: '*', title: 'Attribution', body: 'Adapted from Haxiomic GPU Fluid Experiments, https://github.com/haxiomic/GPU-Fluid-Experiments, GPL-3.0.' },
   ],
 };

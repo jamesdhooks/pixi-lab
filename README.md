@@ -100,7 +100,7 @@ Third-party references and notices live in [docs/attribution.md](docs/attributio
 - **Lava Lamp** credits Matt Bryant's [WebGL Lava Lamp](https://github.com/brybrant/lava-lamp), licensed under [GPL-3.0](https://github.com/brybrant/lava-lamp/blob/master/LICENSE), and the credited [raymarch lava lamp shader](https://www.shadertoy.com/view/fsKXDm) by [@Arrangemonk](https://www.shadertoy.com/user/Arrangemonk) as the source reference for its WebGL2 raymarch adaptation.
 - **Water Tank** credits Eric Arnebäck's [gl-water2d](https://github.com/Erkaman/gl-water2d), licensed under [MIT](https://github.com/Erkaman/gl-water2d/blob/master/LICENSE), as the inspiration for the SPH-style particle liquid path.
 - **Fluid Tank** credits Pavel Dobryakov's [WebGL Fluid Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation), licensed under [MIT](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation/blob/master/LICENSE), for adapted fluid rendering/post-processing ideas.
-- **Particle Fluid** credits Haxiomic's [GPU Fluid Experiments](https://github.com/haxiomic/GPU-Fluid-Experiments), licensed under [GPL-3.0](https://github.com/haxiomic/GPU-Fluid-Experiments/blob/master/LICENSE.txt), as the visual reference for its original particle-fluid scene.
+- **Particle Fluid** credits Haxiomic's [GPU Fluid Experiments](https://github.com/haxiomic/GPU-Fluid-Experiments), licensed under [GPL-3.0](https://github.com/haxiomic/GPU-Fluid-Experiments/blob/master/LICENSE.txt), for the adapted velocity-field execution model, particle motion palette, and HTML5 demo reference.
 
 ## License
 

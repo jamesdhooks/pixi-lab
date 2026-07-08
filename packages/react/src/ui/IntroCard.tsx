@@ -26,17 +26,14 @@ interface IntroCardProps {
   short: string;
   hints?: IntroHint[];
   attributions?: IntroAttribution[];
-  /** When false the card stays until the user taps. Defaults to true. */
-  autoDismiss?: boolean;
   onDismiss: () => void;
 }
 
-export function IntroCard({ icon, name, short, hints = [], attributions = [], autoDismiss = true, onDismiss }: IntroCardProps) {
+export function IntroCard({ icon, name, short, hints = [], attributions = [], onDismiss }: IntroCardProps) {
   useEffect(() => {
-    if (!autoDismiss) return;
     const id = setTimeout(onDismiss, 6000);
     return () => clearTimeout(id);
-  }, [onDismiss, autoDismiss]);
+  }, [onDismiss]);
 
   return (
     <motion.div
@@ -93,7 +90,7 @@ export function IntroCard({ icon, name, short, hints = [], attributions = [], au
           </div>
         )}
 
-        <p className="mt-4 text-center text-[11px] text-white/25">{autoDismiss ? 'Tap anywhere to dismiss' : 'Tap to close'}</p>
+        <p className="mt-4 text-center text-[11px] text-white/25">Tap anywhere to dismiss</p>
       </div>
     </motion.div>
   );

@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act } from 'react-dom/test-utils';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { IntroCard } from './IntroCard.js';
 
@@ -44,4 +46,38 @@ describe('IntroCard', () => {
     expect(markup).toContain('target="_blank"');
     expect(markup).toContain('rel="noopener noreferrer"');
   });
+
+  it('dismisses itself after the shared intro-card timeout', () => {
+    vi.useFakeTimers();
+    const onDismiss = vi.fn();
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    act(() => {
+      root.render(
+        <IntroCard
+          icon="~"
+          name="Water Tank"
+          short="Build, splash, and pour water particles."
+          onDismiss={onDismiss}
+        />,
+      );
+    });
+
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      root.unmount();
+    });
+    host.remove();
+    vi.useRealTimers();
+  });
+
 });

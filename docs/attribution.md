@@ -59,7 +59,7 @@ SOFTWARE.
 
 ## GPU Fluid Experiments
 
-Particle Fluid is an original Pixi Lab particle-fluid implementation visually inspired by:
+Particle Fluid adapts the velocity-field execution model, particle motion palette, and HTML5 demo reference from:
 
 - Project: [GPU Fluid Experiments](https://github.com/haxiomic/GPU-Fluid-Experiments)
 - Author: [Haxiomic](https://github.com/haxiomic)

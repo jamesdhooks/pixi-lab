@@ -105,10 +105,10 @@ const FLUID_VISUAL_PRESETS: Record<string, Record<string, number>> = {
     sunraysStrength: 0,
   },
   [FLUID_ENHANCED_STYLE_ID]: {
-    shadingStrength: 0.68,
-    bloomStrength: 1.22,
-    bloomThreshold: 0.34,
-    sunraysStrength: 0.94,
+    shadingStrength: 1,
+    bloomStrength: 0.8,
+    bloomThreshold: 0.6,
+    sunraysStrength: 1,
   },
 };
 
@@ -227,7 +227,6 @@ function GameLauncherInner({
   const mobilePortrait = isMobile && !isLandscape;
   const [shell, setShell] = useState<Shell>('playing');
   const [infoCardVisible, setInfoCardVisible] = useState(!autoDemo);
-  const [infoAutoDismiss, setInfoAutoDismiss] = useState(true);
   const [playKey, setPlayKey] = useState(0);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState<number | undefined>(undefined);
@@ -348,7 +347,6 @@ function GameLauncherInner({
   }, []);
   const openInfoCard = useCallback(() => {
     setInfoCardVisible(true);
-    setInfoAutoDismiss(false);
   }, []);
 
   const handleQuit = useCallback(() => {
@@ -360,7 +358,6 @@ function GameLauncherInner({
     setLives(undefined);
     setModeId(definition.modes?.[0]?.id ?? '');
     setInfoCardVisible(true);
-    setInfoAutoDismiss(true);
     setPlayKey((k) => k + 1);
     setShell('playing');
   }, [definition.modes]);
@@ -796,7 +793,6 @@ function GameLauncherInner({
                 short={definition.short}
                 hints={introHints}
                 attributions={definition.attributions}
-                autoDismiss={infoAutoDismiss}
                 onDismiss={() => setInfoCardVisible(false)}
               />
             )}

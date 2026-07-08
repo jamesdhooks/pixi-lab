@@ -40,7 +40,6 @@
     },
     "particle-fluid": {
       "style": "haxiomic-cyan",
-      "renderStyle": "dye",
       "maxParticles": 262144
     }
   }
