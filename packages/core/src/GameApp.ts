@@ -785,7 +785,10 @@ export class GameApp {
 
   private shouldRunSceneUpdate(snap: Readonly<InputSnapshot>): boolean {
     if (this.currentScene instanceof SimulationScene) return true;
-    if (this._mode === 'demo' || this._mode === 'screensaver') return true;
+    // Simulations usually advance visual fields in update(), but game previews
+    // should stay idle-by-default. Treat game demo/screensaver as active only
+    // when AI, input, particles, physics, or the scene itself requests work.
+    if ((this._mode === 'demo' || this._mode === 'screensaver') && this.aiController) return true;
     if (this.aiController) return true;
     if (this.renderInvalidated) return true;
     if (snap.justDown.size > 0 || snap.justUp.size > 0 || snap.pointers.size > 0) return true;

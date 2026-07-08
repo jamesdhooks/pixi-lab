@@ -37,6 +37,7 @@ export class PegboardScene extends Scene {
   private floatingTexts: FloatingText[] = [];
   private sparks: Spark[] = [];
   private dirty = true;
+  private boardDirty = true;
   private quality: RenderQuality = 'basic';
   private previewElapsed = 0;
   private appliedSettings: PegboardSettings = { maxDrops: PEGBOARD_DEFAULTS.maxDrops, gravity: PEGBOARD_DEFAULTS.gravity, bounce: PEGBOARD_DEFAULTS.bounce };
@@ -77,6 +78,7 @@ export class PegboardScene extends Scene {
 
   override setQuality(quality: RenderQuality): void {
     this.quality = quality;
+    this.boardDirty = true;
     this.dirty = true;
   }
 
@@ -138,15 +140,20 @@ export class PegboardScene extends Scene {
   }
 
   override render(): void {
-    if (!this.state || !this.dirty) return;
-    this.drawBoard(this.state);
-    this.drawBalls(this.state);
-    this.drawOverlay(this.state);
-    this.dirty = false;
+    if (!this.state || (!this.dirty && !this.boardDirty)) return;
+    if (this.boardDirty) {
+      this.drawBoard(this.state);
+      this.boardDirty = false;
+    }
+    if (this.dirty) {
+      this.drawBalls(this.state);
+      this.drawOverlay(this.state);
+      this.dirty = false;
+    }
   }
 
   override shouldRender(): boolean {
-    return this.dirty || this.sparks.length > 0 || this.floatingTexts.length > 0 || Boolean(this.state?.activeBalls.length);
+    return this.boardDirty || this.dirty || this.sparks.length > 0 || this.floatingTexts.length > 0 || Boolean(this.state?.activeBalls.length);
   }
 
   override getDebugStats(): Record<string, string | number | boolean | null> | null {
@@ -173,6 +180,7 @@ export class PegboardScene extends Scene {
     this.appliedSettings = this.readRuleSettings();
     this.model = createPegboardModel({ seed: this.ctx.seed, width, height, preview: this.preview, ...this.appliedSettings });
     this.previewElapsed = 0;
+    this.boardDirty = true;
     if (this.preview) this.seedPreviewDrops();
     this.handleEvents();
     this.refreshState();
