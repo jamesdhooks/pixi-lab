@@ -40,6 +40,8 @@ export class PegboardScene extends Scene {
   private boardDirty = true;
   private quality: RenderQuality = 'basic';
   private previewElapsed = 0;
+  private previewDropElapsed = 0;
+  private previewDropIndex = 0;
   private appliedSettings: PegboardSettings = { maxDrops: PEGBOARD_DEFAULTS.maxDrops, gravity: PEGBOARD_DEFAULTS.gravity, bounce: PEGBOARD_DEFAULTS.bounce };
 
   constructor(private readonly preview = false) {
@@ -70,6 +72,8 @@ export class PegboardScene extends Scene {
 
   override reset(): void {
     this.model?.restart();
+    this.previewDropElapsed = 0;
+    this.previewDropIndex = 0;
     if (this.preview) this.seedPreviewDrops();
     this.previewElapsed = 0;
     this.handleEvents();
@@ -86,10 +90,12 @@ export class PegboardScene extends Scene {
     if (!this.model || !this.state) return;
     if (this.preview) {
       this.previewElapsed += dt;
+      this.previewDropElapsed += dt;
       if (this.previewElapsed >= 8) {
         this.reset();
         return;
       }
+      this.dropPreviewBalls();
     }
     this.applyLiveSettings();
     for (const id of this.input.snapshot.justDown) {
@@ -170,7 +176,7 @@ export class PegboardScene extends Scene {
   private readRuleSettings() {
     const settings = this.ctx.systems.settings;
     return {
-      maxDrops: this.preview ? 5 : Number(settings.get('maxDrops') ?? PEGBOARD_DEFAULTS.maxDrops),
+      maxDrops: this.preview ? 32 : Number(settings.get('maxDrops') ?? PEGBOARD_DEFAULTS.maxDrops),
       gravity: this.preview ? 390 : Number(settings.get('gravity') ?? PEGBOARD_DEFAULTS.gravity),
       bounce: this.preview ? 0.48 : Number(settings.get('bounce') ?? PEGBOARD_DEFAULTS.bounce),
     };
@@ -180,6 +186,8 @@ export class PegboardScene extends Scene {
     this.appliedSettings = this.readRuleSettings();
     this.model = createPegboardModel({ seed: this.ctx.seed, width, height, preview: this.preview, ...this.appliedSettings });
     this.previewElapsed = 0;
+    this.previewDropElapsed = 0;
+    this.previewDropIndex = 0;
     this.boardDirty = true;
     if (this.preview) this.seedPreviewDrops();
     this.handleEvents();
@@ -187,13 +195,30 @@ export class PegboardScene extends Scene {
   }
 
   private seedPreviewDrops(): void {
+    this.dropPreviewBall();
+  }
+
+  private dropPreviewBalls(): void {
+    const state = this.model?.getState();
+    if (!state || state.phase === 'result') return;
+    const cadenceSeconds = 0.78;
+    const maxActiveBalls = 3;
+    while (this.previewDropElapsed >= cadenceSeconds && state.dropsRemaining > 0 && state.activeBalls.length < maxActiveBalls) {
+      this.previewDropElapsed -= cadenceSeconds;
+      this.dropPreviewBall();
+      const next = this.model?.getState();
+      if (!next || next.activeBalls.length >= maxActiveBalls || next.dropsRemaining <= 0) break;
+    }
+  }
+
+  private dropPreviewBall(): void {
     if (!this.model) return;
-    for (const x of [0.5, 0.36]) {
-      try {
-        this.model.dropBall(x);
-      } catch {
-        break;
-      }
+    const lanes = [0.5, 0.36, 0.64, 0.44, 0.56, 0.28, 0.72];
+    try {
+      this.model.dropBall(lanes[this.previewDropIndex % lanes.length]);
+      this.previewDropIndex += 1;
+    } catch {
+      // Preview resets periodically, so exhausting the round just idles briefly.
     }
   }
 
