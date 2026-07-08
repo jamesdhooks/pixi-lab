@@ -179,6 +179,13 @@ export interface GameLauncherProps {
   transparent?: boolean;
   /** Host callback for persisting the current scene tuning as disk-backed defaults. */
   onSaveDefaults?: (payload: SceneDefaultsSavePayload) => Promise<void> | void;
+  /** Show the built-in HUD quit/X button. Hosts with their own navigation chrome can disable it. */
+  showQuitButton?: boolean;
+  /**
+   * Restrict simulation controls for host-managed fixed/preset modes.
+   * Fixed mode keeps style/input/randomize affordances but hides free-tuning controls.
+   */
+  simulationControlMode?: 'full' | 'fixed';
 }
 
 export interface SceneDefaultsSavePayload {
@@ -212,6 +219,8 @@ function GameLauncherInner({
   onRenderSelectionChange,
   transparent = false,
   onSaveDefaults,
+  showQuitButton = true,
+  simulationControlMode = 'full',
 }: GameLauncherProps) {
   // ViewportProvider is mounted by GameLauncher wrapper; child components read context directly.
   const { isMobile, isLandscape } = useViewportContext();
@@ -596,7 +605,8 @@ function GameLauncherInner({
     [definition.id, settingsFields],
   );
   const hasRenderStylePicker = renderStyleModes.length > 1;
-  const hasEngineConfigurations = (definition.capabilities.engineConfigurations?.length ?? 0) > 1;
+  const fixedSimulationControls = definition.kind === 'simulation' && simulationControlMode === 'fixed';
+  const hasEngineConfigurations = !fixedSimulationControls && (definition.capabilities.engineConfigurations?.length ?? 0) > 1;
   const isSimulation = definition.kind === 'simulation';
   const hasDemoRandomizer = isSimulation && Boolean((definition as SimulationExperience).demoAiFactory);
   const colorSchemeOptions = useMemo(
@@ -790,7 +800,7 @@ function GameLauncherInner({
           <HUD
             score={definition.capabilities.score ? score : undefined}
             lives={lives}
-            onQuit={handleQuit}
+            onQuit={showQuitButton ? handleQuit : undefined}
             controls={
               (definition.styleManifest && !mobilePortrait) || (hasRenderStylePicker && !mobilePortrait) || (hasModes && !mobilePortrait) ? (
                 <div className="flex items-center gap-1.5">
@@ -858,7 +868,7 @@ function GameLauncherInner({
               {
                 key: 'reset',
                 label: 'Reset',
-                hidden: !definition.capabilities.reset,
+                hidden: fixedSimulationControls || !definition.capabilities.reset,
                 node: (
                   <button
                     className="flex h-8 items-center rounded-xl bg-black/30 px-3 text-xs font-semibold text-white/70 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
@@ -871,7 +881,7 @@ function GameLauncherInner({
               {
                 key: 'settings',
                 label: 'Settings',
-                hidden: false,
+                hidden: fixedSimulationControls,
                 node: (
                   <motion.button
                     whileTap={{ scale: 0.9 }}
@@ -902,6 +912,7 @@ function GameLauncherInner({
               {
                 key: 'hide-ui',
                 label: 'Hide UI',
+                hidden: fixedSimulationControls,
                 node: (
                   <motion.button
                     whileTap={{ scale: 0.9 }}
@@ -916,7 +927,7 @@ function GameLauncherInner({
               {
                 key: 'demo',
                 label: 'Demo mode',
-                hidden: !definition.capabilities.demo,
+                hidden: fixedSimulationControls || !definition.capabilities.demo,
                 node: (
                   <motion.button
                     whileTap={{ scale: 0.9 }}
@@ -948,7 +959,7 @@ function GameLauncherInner({
             ]}
           />
 
-          {appRef.current && (
+          {appRef.current && !fixedSimulationControls && (
             <SettingsDrawer
               open={settingsOpen}
               onClose={handleCloseSettings}
