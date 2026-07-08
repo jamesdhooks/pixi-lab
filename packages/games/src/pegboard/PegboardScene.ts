@@ -237,7 +237,12 @@ export class PegboardScene extends Scene {
     const arenaRadius = this.preview ? 12 : 28;
     this.boardLayer.roundRect(board.left, board.top, board.width, board.height, arenaRadius);
     this.boardLayer.fill({ color: 0x0f172a, alpha: 0.35 });
-    this.boardLayer.roundRect(board.left, board.top, board.width, board.height, arenaRadius);
+    this.boardLayer.moveTo(board.left, board.bottom);
+    this.boardLayer.lineTo(board.left, board.top + arenaRadius);
+    this.boardLayer.quadraticCurveTo(board.left, board.top, board.left + arenaRadius, board.top);
+    this.boardLayer.lineTo(board.right - arenaRadius, board.top);
+    this.boardLayer.quadraticCurveTo(board.right, board.top, board.right, board.top + arenaRadius);
+    this.boardLayer.lineTo(board.right, board.bottom);
     this.boardLayer.stroke({ color: 0x334155, width: 4, alpha: 0.8 });
     for (const peg of state.pegs) {
       this.boardLayer.circle(peg.x, peg.y, peg.radius + 5);
@@ -251,21 +256,32 @@ export class PegboardScene extends Scene {
       const bucketX = bin.x;
       const bucketWidth = bin.width;
       const isEdgeBucket = bin === state.bins[0] || bin === state.bins[state.bins.length - 1];
-      if (isEdgeBucket) {
-        this.boardLayer.roundRect(bucketX, y, bucketWidth, bucketHeight, 14);
-      } else {
-        this.boardLayer.rect(bucketX, y, bucketWidth, bucketHeight);
-      }
+      this.boardLayer.rect(bucketX, y, bucketWidth, bucketHeight);
       this.boardLayer.fill({ color: bin.color, alpha: 0.18 });
       if (!this.preview && bin !== state.bins[0]) {
         this.boardLayer.moveTo(bucketX, y + 3);
         this.boardLayer.lineTo(bucketX, y + bucketHeight - 3);
         this.boardLayer.stroke({ color: 0xffffff, width: 1.5, alpha: 0.22 });
       }
-      this.boardLayer.moveTo(bucketX, y);
-      this.boardLayer.lineTo(bucketX, y + bucketHeight);
-      this.boardLayer.lineTo(bucketX + bucketWidth, y + bucketHeight);
-      this.boardLayer.lineTo(bucketX + bucketWidth, y);
+      const outerRadius = isEdgeBucket ? Math.min(18, bucketWidth * 0.28, bucketHeight * 0.22) : 0;
+      if (bin === state.bins[0]) {
+        this.boardLayer.moveTo(bucketX, y);
+        this.boardLayer.lineTo(bucketX, y + bucketHeight - outerRadius);
+        this.boardLayer.quadraticCurveTo(bucketX, y + bucketHeight, bucketX + outerRadius, y + bucketHeight);
+        this.boardLayer.lineTo(bucketX + bucketWidth, y + bucketHeight);
+        this.boardLayer.lineTo(bucketX + bucketWidth, y);
+      } else if (bin === state.bins[state.bins.length - 1]) {
+        this.boardLayer.moveTo(bucketX, y);
+        this.boardLayer.lineTo(bucketX, y + bucketHeight);
+        this.boardLayer.lineTo(bucketX + bucketWidth - outerRadius, y + bucketHeight);
+        this.boardLayer.quadraticCurveTo(bucketX + bucketWidth, y + bucketHeight, bucketX + bucketWidth, y + bucketHeight - outerRadius);
+        this.boardLayer.lineTo(bucketX + bucketWidth, y);
+      } else {
+        this.boardLayer.moveTo(bucketX, y);
+        this.boardLayer.lineTo(bucketX, y + bucketHeight);
+        this.boardLayer.lineTo(bucketX + bucketWidth, y + bucketHeight);
+        this.boardLayer.lineTo(bucketX + bucketWidth, y);
+      }
       this.boardLayer.stroke({ color: bin.color, width: 3, alpha: 0.78 });
       if (this.preview) continue;
       const label = new Text({

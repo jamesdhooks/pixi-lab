@@ -61,7 +61,7 @@ export function GameOverModal({
   };
 
   return (
-    <div className="absolute left-0 top-0 z-40 flex h-full w-full items-center justify-center bg-slate-950 px-4 py-6 text-white">
+    <div data-result-backdrop className="absolute left-0 top-0 z-40 flex h-full w-full items-center justify-center px-4 py-6 text-white">
       <motion.div
         data-result-panel
         initial={{ scale: 0.88, opacity: 0, y: 24 }}
@@ -163,7 +163,7 @@ export function GameOverModal({
             data-play-again-button
             whileTap={{ scale: 0.98 }}
             onClick={onRestart}
-            className="flex items-center justify-center gap-3 rounded-2xl bg-cyan-300 py-5 text-lg font-black text-slate-950 transition-colors hover:bg-cyan-200"
+            className="flex items-center justify-center gap-3 rounded-2xl bg-cyan-700 py-5 text-lg font-black text-white shadow-lg shadow-cyan-950/35 transition-colors hover:bg-cyan-600"
           >
             <RotateCcw size={22} />
             Play Again

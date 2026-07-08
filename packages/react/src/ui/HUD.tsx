@@ -28,15 +28,15 @@ export function HUD({ score, lives, timeRemaining, gameStats, controls, onQuit, 
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.22, ease: 'easeOut' }}
-      className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 px-3 pt-3"
-      style={{ paddingTop: `${(safeArea.top || 0) + 12}px` }}
+      className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 px-4 pt-6"
+      style={{ paddingTop: `${(safeArea.top || 0) + 28}px` }}
     >
       {/* Left: Quit */}
       {onQuit && (
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={onQuit}
-          className="pointer-events-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-black/30 text-white/70 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
+          className="pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black/30 text-white/70 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
           aria-label="Quit"
         >
           <X size={15} strokeWidth={2.5} />
@@ -45,23 +45,23 @@ export function HUD({ score, lives, timeRemaining, gameStats, controls, onQuit, 
 
       {/* Center: score or custom controls — absolutely centered so left/right slot widths don't skew alignment */}
       <div className="pointer-events-none absolute inset-x-0 flex items-center justify-center"
-        style={{ top: `${(safeArea.top || 0) + 12}px`, height: '32px' }}
+        style={{ top: `${(safeArea.top || 0) + 28}px`, height: '54px' }}
       >
         <div className="pointer-events-auto">
           {controls ?? (
             score !== undefined ? (
-              <div className="flex items-center gap-2 rounded-2xl bg-black/40 px-4 py-2 shadow-lg shadow-black/25 backdrop-blur-md">
+              <div className="flex items-center gap-4 rounded-[1.35rem] bg-black/45 px-6 py-3.5 shadow-xl shadow-black/30 backdrop-blur-md">
                 <div className="text-center leading-none">
-                  <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/45">Score</div>
-                  <div className="text-lg font-black tabular-nums text-white sm:text-xl">{score.toLocaleString()}</div>
+                  <div className="text-[11px] font-black uppercase tracking-[0.22em] text-white/45">Score</div>
+                  <div className="text-3xl font-black tabular-nums text-white sm:text-4xl">{score.toLocaleString()}</div>
                 </div>
                 {gameStats?.dropsRemaining !== undefined ? (
-                  <div className="h-8 w-px bg-white/15" />
+                  <div className="h-11 w-px bg-white/15" />
                 ) : null}
                 {gameStats?.dropsRemaining !== undefined ? (
                   <div className="text-center leading-none">
-                    <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/45">Balls</div>
-                    <div className="text-lg font-black tabular-nums text-cyan-200 sm:text-xl">{gameStats.dropsRemaining}</div>
+                    <div className="text-[11px] font-black uppercase tracking-[0.22em] text-white/45">Balls</div>
+                    <div className="text-3xl font-black tabular-nums text-cyan-200 sm:text-4xl">{gameStats.dropsRemaining}</div>
                   </div>
                 ) : null}
               </div>
@@ -108,7 +108,7 @@ export function HUD({ score, lives, timeRemaining, gameStats, controls, onQuit, 
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={onTutorial}
-            className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-xl bg-black/30 text-white/60 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
+            className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-xl bg-black/30 text-white/60 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
             aria-label="How to play"
           >
             <HelpCircle size={15} />
@@ -118,7 +118,7 @@ export function HUD({ score, lives, timeRemaining, gameStats, controls, onQuit, 
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={onSettings}
-            className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-xl bg-black/30 text-white/60 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
+            className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-xl bg-black/30 text-white/60 backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
             aria-label="Settings"
           >
             <Settings size={15} />

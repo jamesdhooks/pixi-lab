@@ -45,6 +45,11 @@ describe('GameOverModal', () => {
     expect(container.querySelector('[data-result-panel]')?.className).toContain('max-w-2xl');
     expect(container.querySelector('[data-play-again-button]')?.className).toContain('text-lg');
     expect(container.querySelector('[data-quit-button]')?.className).toContain('text-lg');
+    const backdrop = container.querySelector('[data-result-backdrop]');
+    expect(backdrop).not.toBeNull();
+    expect(backdrop?.className).not.toContain('bg-slate-950');
+    expect(container.querySelector('[data-play-again-button]')?.className).not.toContain('text-slate-950');
+    expect(container.querySelector('[data-play-again-button]')?.className).toContain('text-white');
   });
 
   it('opens an on-screen keyboard when the name input receives focus', () => {
