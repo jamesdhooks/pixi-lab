@@ -13,6 +13,10 @@ function boardSpan(state: PegboardState) {
   return { left: state.board.left, right: state.board.right, width: state.board.width };
 }
 
+function bottomPegClearance(state: PegboardState): number {
+  return state.board.bottom - Math.max(...state.pegs.map((peg) => peg.y + peg.radius));
+}
+
 describe('PegboardModel', () => {
   it('creates a deterministic peg and bin layout from the seed', () => {
     const first = createPegboardModel({ seed: 42, width: 800, height: 600 }).getState();
@@ -22,8 +26,10 @@ describe('PegboardModel', () => {
     expect(first.pegs).toEqual(second.pegs);
     expect(first.bins).toEqual(second.bins);
     expect(first.pegs).toHaveLength(100);
-    expect(first.bins.map((bin) => bin.value)).toEqual([10, 25, 50, 100, 50, 25, 10]);
-    expect(first.bins.map((bin) => bin.label)).toEqual(['10', '25', '50', '100', '50', '25', '10']);
+    expect(first.dropsRemaining).toBe(30);
+    expect(first.settings.maxDrops).toBe(30);
+    expect(first.bins.map((bin) => bin.value)).toEqual([0, 25, 10, 50, 25, 100, 25, 50, 10, 25, 0]);
+    expect(first.bins.map((bin) => bin.label)).toEqual(['Nothing', '25', '10', '50', '25', '100', '25', '50', '10', '25', 'Nothing']);
   });
 
   it('leaves a top catchment lane before the lowered peg field', () => {
@@ -32,6 +38,12 @@ describe('PegboardModel', () => {
 
     expect(state.board.top).toBeLessThan(state.height * 0.1);
     expect(minPegY - state.board.top).toBeGreaterThan(state.height * 0.12);
+  });
+
+  it('extends pegs nearly to the scoring buckets', () => {
+    const state = createPegboardModel({ seed: 42, width: 1000, height: 700 }).getState();
+
+    expect(bottomPegClearance(state)).toBeLessThan(state.height * 0.08);
   });
 
   it('aligns pegs and bins to one centered board span', () => {
@@ -127,6 +139,8 @@ describe('PegboardModel', () => {
     const scored = model.getState();
     expect(scored.score).toBeGreaterThan(0);
     expect(scored.activeBalls).toHaveLength(0);
+    expect(scored.collectedBalls).toHaveLength(1);
+    expect(scored.collectedBalls[0]).toMatchObject({ binId: expect.any(String), scoreValue: expect.any(Number) });
     expect(lastActive.y - lastActive.radius).toBeGreaterThanOrEqual(scored.board.bottom);
     expect(lastActive.y + lastActive.radius).toBeLessThanOrEqual(scored.board.bottom + scored.bucketHeight);
   });
@@ -135,17 +149,19 @@ describe('PegboardModel', () => {
     const model = createPegboardModel({ seed: 9, width: 800, height: 600 });
     const ball = model.dropBall(0.5);
 
-    const scored = model.resolveBall(ball.id, 'bin-3');
+    const scored = model.resolveBall(ball.id, 'bin-5');
     const state = model.getState();
 
     expect(scored).toMatchObject({ points: 100, totalScore: 100, combo: 1 });
     expect(state.score).toBe(100);
     expect(state.combo).toBe(1);
-    expect(binScore(state, 'bin-3')).toBe(100);
+    expect(binScore(state, 'bin-5')).toBe(100);
     expect(state.activeBalls).toHaveLength(0);
+    expect(state.collectedBalls).toHaveLength(1);
+    expect(state.collectedBalls[0]).toMatchObject({ id: ball.id, binId: 'bin-5', scoreValue: 100 });
     expect(model.drainEvents()).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ kind: 'score', points: 100, binId: 'bin-3' }),
+        expect.objectContaining({ kind: 'score', points: 100, binId: 'bin-5' }),
         expect.objectContaining({ kind: 'burst', x: expect.any(Number), y: expect.any(Number) }),
       ]),
     );
@@ -166,6 +182,7 @@ describe('PegboardModel', () => {
     expect(restarted.score).toBe(0);
     expect(restarted.combo).toBe(0);
     expect(restarted.activeBalls).toHaveLength(0);
+    expect(restarted.collectedBalls).toHaveLength(0);
     expect(restarted.dropsRemaining).toBe(restarted.settings.maxDrops);
   });
 });

@@ -35,6 +35,11 @@ export interface PegboardBall {
   trail: readonly { x: number; y: number }[];
 }
 
+export interface PegboardCollectedBall extends PegboardBall {
+  binId: string;
+  scoreValue: number;
+}
+
 export interface PegboardResult {
   outcome: 'complete' | 'bust';
   finalScore: number;
@@ -63,6 +68,7 @@ export interface PegboardState {
   pegs: readonly PegboardPeg[];
   bins: readonly PegboardBin[];
   activeBalls: readonly PegboardBall[];
+  collectedBalls: readonly PegboardCollectedBall[];
   result: PegboardResult | null;
 }
 
@@ -115,6 +121,7 @@ export class PegboardModel {
   private readonly board: PegboardBoardBounds;
   private readonly bucketHeight: number;
   private readonly balls = new Map<string, MutableBall>();
+  private readonly collectedBalls: PegboardCollectedBall[] = [];
   private readonly events: PegboardVisualEvent[] = [];
   private phase: PegboardPhase = 'start';
   private score = 0;
@@ -151,6 +158,7 @@ export class PegboardModel {
       pegs: this.pegs.map((peg) => ({ ...peg })),
       bins: this.bins.map((bin) => ({ ...bin })),
       activeBalls: Array.from(this.balls.values(), cloneBall),
+      collectedBalls: this.collectedBalls.map((ball) => ({ ...ball, trail: ball.trail.map((point) => ({ ...point })) })),
       result: this.result ? { ...this.result } : null,
     };
   }
@@ -227,14 +235,32 @@ export class PegboardModel {
     this.score += points;
     this.bins[binIndex] = { ...bin, score: bin.score + points };
     this.balls.delete(ballId);
-    this.events.push({ kind: 'score', ballId, binId, points, combo: this.combo, x: ball.x, y: ball.y, color: bin.color });
-    this.events.push({ kind: 'burst', x: ball.x, y: ball.y, color: ball.color, strength: Math.max(1, bin.value / 25) });
+    const existingInBin = this.collectedBalls.filter((candidate) => candidate.binId === binId).length;
+    const columns = Math.max(1, Math.floor(bin.width / (ball.radius * 2.3)));
+    const column = existingInBin % columns;
+    const row = Math.floor(existingInBin / columns);
+    const spacingX = bin.width / columns;
+    const collectedX = clamp(bin.x + spacingX * (column + 0.5), bin.x + ball.radius, bin.x + bin.width - ball.radius);
+    const collectedY = clamp(this.board.bottom + this.bucketHeight - ball.radius - row * ball.radius * 1.65, this.board.bottom + ball.radius, this.board.bottom + this.bucketHeight - ball.radius);
+    this.collectedBalls.push({
+      ...cloneBall(ball),
+      x: collectedX,
+      y: collectedY,
+      vx: 0,
+      vy: 0,
+      trail: [],
+      binId,
+      scoreValue: points,
+    });
+    this.events.push({ kind: 'score', ballId, binId, points, combo: this.combo, x: collectedX, y: collectedY, color: bin.color });
+    this.events.push({ kind: 'burst', x: collectedX, y: collectedY, color: ball.color, strength: Math.max(1, bin.value / 25) });
     this.maybeFinish();
     return { points, totalScore: this.score, combo: this.combo };
   }
 
   restart(): void {
     this.balls.clear();
+    this.collectedBalls.splice(0, this.collectedBalls.length);
     for (let i = 0; i < this.bins.length; i += 1) {
       this.bins[i] = { ...this.bins[i], score: 0 };
     }
@@ -291,8 +317,8 @@ export class PegboardModel {
     const pegs: PegboardPeg[] = [];
     const rows = clamp(Math.floor(this.board.height / 38), 7, 14);
     const columns = clamp(Math.floor(this.board.width / 68), 8, 18);
-    const top = this.board.top + this.board.height * 0.22;
-    const bottom = this.board.top + this.board.height * 0.72;
+    const top = this.board.top + this.board.height * 0.2;
+    const bottom = this.board.top + this.board.height * 0.93;
     const rowGap = rows <= 1 ? 0 : (bottom - top) / (rows - 1);
     const radius = clamp(Math.min(this.board.width / columns, rowGap || 48) * 0.13, 5, 10);
     const usableWidth = this.board.width * 0.92;
@@ -315,7 +341,7 @@ export class PegboardModel {
   }
 
   private createBins(): PegboardBin[] {
-    const values = [10, 25, 50, 100, 50, 25, 10];
+    const values = [0, 25, 10, 50, 25, 100, 25, 50, 10, 25, 0];
     const width = this.board.width / values.length;
     return values.map((value, index) => ({
       id: `bin-${index}`,
@@ -323,8 +349,8 @@ export class PegboardModel {
       width,
       value,
       score: 0,
-      label: `${value}`,
-      color: BIN_COLORS[index % BIN_COLORS.length],
+      label: value === 0 ? 'Nothing' : `${value}`,
+      color: value === 0 ? 0x64748b : BIN_COLORS[index % BIN_COLORS.length],
     }));
   }
 
@@ -409,7 +435,7 @@ export function createPegboardModel(options: PegboardModelOptions): PegboardMode
     seed: options.seed,
     width: options.width,
     height: options.height,
-    maxDrops: options.maxDrops ?? 12,
+    maxDrops: options.maxDrops ?? 30,
     gravity: options.gravity ?? 720,
     bounce: options.bounce ?? 0.86,
   });

@@ -234,9 +234,10 @@ export class PegboardScene extends Scene {
       this.glowLayer.circle(width * ((i * 73) % 100) / 100, height * ((i * 41) % 100) / 100, 80 + (i % 5) * 30);
       this.glowLayer.fill({ color: [0x22d3ee, 0xa78bfa, 0xf472b6][i % 3], alpha });
     }
-    this.boardLayer.roundRect(board.left, board.top, board.width, board.height, 24);
-    this.boardLayer.stroke({ color: 0x334155, width: 4, alpha: 0.8 });
+    this.boardLayer.rect(board.left, board.top, board.width, board.height);
     this.boardLayer.fill({ color: 0x0f172a, alpha: 0.35 });
+    this.boardLayer.rect(board.left, board.top, board.width, board.height);
+    this.boardLayer.stroke({ color: 0x334155, width: 4, alpha: 0.8 });
     for (const peg of state.pegs) {
       this.boardLayer.circle(peg.x, peg.y, peg.radius + 5);
       this.boardLayer.fill({ color: peg.color, alpha: 0.16 });
@@ -248,14 +249,23 @@ export class PegboardScene extends Scene {
       const bucketHeight = state.bucketHeight;
       const bucketX = bin.x + 1;
       const bucketWidth = bin.width - 2;
-      this.boardLayer.rect(bucketX, y, bucketWidth, bucketHeight);
+      const isEdgeBucket = bin === state.bins[0] || bin === state.bins[state.bins.length - 1];
+      if (isEdgeBucket) {
+        this.boardLayer.roundRect(bucketX, y, bucketWidth, bucketHeight, 14);
+      } else {
+        this.boardLayer.rect(bucketX, y, bucketWidth, bucketHeight);
+      }
       this.boardLayer.fill({ color: bin.color, alpha: 0.18 });
       this.boardLayer.moveTo(bucketX, y);
       this.boardLayer.lineTo(bucketX, y + bucketHeight);
       this.boardLayer.lineTo(bucketX + bucketWidth, y + bucketHeight);
       this.boardLayer.lineTo(bucketX + bucketWidth, y);
       this.boardLayer.stroke({ color: bin.color, width: 3, alpha: 0.78 });
-      this.boardLayer.rect(bucketX, y + bucketHeight * 0.76, bucketWidth, bucketHeight * 0.24);
+      if (isEdgeBucket) {
+        this.boardLayer.roundRect(bucketX, y + bucketHeight * 0.76, bucketWidth, bucketHeight * 0.24, 12);
+      } else {
+        this.boardLayer.rect(bucketX, y + bucketHeight * 0.76, bucketWidth, bucketHeight * 0.24);
+      }
       this.boardLayer.fill({ color: bin.color, alpha: 0.34 });
       const label = new Text({
         text: bin.label,
@@ -276,7 +286,8 @@ export class PegboardScene extends Scene {
   private drawBalls(state: PegboardState): void {
     this.trailLayer.clear();
     this.ballLayer.clear();
-    for (const ball of state.activeBalls) {
+    const visibleBalls = [...state.collectedBalls, ...state.activeBalls];
+    for (const ball of visibleBalls) {
       for (let i = 1; i < ball.trail.length; i += 1) {
         const from = ball.trail[i - 1];
         const to = ball.trail[i];

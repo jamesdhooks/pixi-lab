@@ -1,7 +1,7 @@
 import type { SettingsField } from '@hooksjam/pixi-lab-core';
 
 export const PEGBOARD_DEFAULTS = {
-  maxDrops: 12,
+  maxDrops: 30,
   gravity: 720,
   bounce: 0.86,
   sparkleIntensity: 1,
@@ -15,7 +15,7 @@ export const PEGBOARD_SETTINGS_FIELDS: SettingsField[] = [
     section: 'Game Rules',
     type: 'number',
     min: 5,
-    max: 24,
+    max: 60,
     step: 1,
     default: PEGBOARD_DEFAULTS.maxDrops,
   },
