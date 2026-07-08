@@ -1284,7 +1284,7 @@ function ExperienceCard({ experience, index, onSelect, previewEnabled, showPrevi
       {/* Square canvas */}
       <div
         ref={previewRef}
-        className="relative w-full aspect-square rounded-2xl overflow-hidden pointer-events-none bg-slate-100 dark:bg-[#0d0d1e] transition-transform duration-200 group-hover:scale-[1.03]"
+        className="relative w-full aspect-square rounded-2xl overflow-hidden pointer-events-none bg-slate-100 dark:bg-[#0d0d1e]"
       >
         <PreviewTile definition={experience} index={index} size={previewSize} active={previewActive && previewEnabled} showFps={showPreviewFps} />
 

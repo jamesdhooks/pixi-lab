@@ -392,16 +392,6 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Glass border overlay */}
-      <div
-        className="pointer-events-none absolute inset-0 z-20 rounded-2xl"
-        style={{
-          background:
-            'linear-gradient(135deg, rgba(255,255,255,0.13) 0%, transparent 42%, transparent 58%, rgba(0,0,0,0.2) 100%)',
-          boxShadow:
-            'inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.2), inset 1px 0 rgba(255,255,255,0.13), inset -1px 0 rgba(0,0,0,0.08)',
-        }}
-      />
       {showFps && (
         <div className="pointer-events-none absolute bottom-1.5 right-1.5 z-30 rounded-md bg-black/45 px-1.5 py-0.5 font-mono text-[9px] font-semibold tabular-nums text-white/65">
           {previewFps > 0 ? `${previewFps} fps` : '-- fps'}
