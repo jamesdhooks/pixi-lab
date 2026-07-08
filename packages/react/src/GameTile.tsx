@@ -22,10 +22,11 @@ import {
 } from '@hooksjam/pixi-lab-core';
 import type { GameContext, LabExperience, SettingsField, SimAIContext, SimulationAI, SimulationExperience } from '@hooksjam/pixi-lab-core';
 
-/** Cap each preview tile's tick rate high enough to expose real perf issues.
- *  A 30fps cap made simple previews look artificially slow, especially when
- *  comparing them against shader demos that can render at display refresh. */
-const PREVIEW_FPS_CAP = 60;
+/** Preview tiles should run at display refresh unless the browser itself throttles them.
+ *  Passing a 60fps cap through Ticker can accidentally halve a 60Hz rAF stream
+ *  when timestamps land just under 16.667ms, which made game previews read ~30–35fps
+ *  while fullscreen scenes stayed at 60. */
+const PREVIEW_FPS_CAP: number | undefined = undefined;
 /** Stagger tile start-up so previews don't all create WebGL contexts at once. */
 const INIT_STAGGER_MS = 420;
 /**
@@ -392,6 +393,16 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Glass border overlay */}
+      <div
+        className="pointer-events-none absolute inset-0 z-20 rounded-2xl"
+        style={{
+          background:
+            'linear-gradient(135deg, rgba(255,255,255,0.13) 0%, transparent 42%, transparent 58%, rgba(0,0,0,0.2) 100%)',
+          boxShadow:
+            'inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.2), inset 1px 0 rgba(255,255,255,0.13), inset -1px 0 rgba(0,0,0,0.08)',
+        }}
+      />
       {showFps && (
         <div className="pointer-events-none absolute bottom-1.5 right-1.5 z-30 rounded-md bg-black/45 px-1.5 py-0.5 font-mono text-[9px] font-semibold tabular-nums text-white/65">
           {previewFps > 0 ? `${previewFps} fps` : '-- fps'}
