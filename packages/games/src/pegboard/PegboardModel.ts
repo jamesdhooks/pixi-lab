@@ -84,6 +84,7 @@ export interface PegboardModelOptions {
   maxDrops?: number;
   gravity?: number;
   bounce?: number;
+  preview?: boolean;
 }
 
 interface MutableBall extends Omit<PegboardBall, 'trail'> {
@@ -293,9 +294,9 @@ export class PegboardModel {
   }
 
   private createBoardBounds(): PegboardBoardBounds {
-    const horizontalMargin = clamp(this.options.width * 0.06, 28, 88);
-    const top = clamp(this.options.height * 0.08, 48, 92);
-    const bottomMargin = clamp(this.options.height * 0.055, 28, 56);
+    const horizontalMargin = this.options.preview ? clamp(this.options.width * 0.012, 2, 8) : clamp(this.options.width * 0.06, 28, 88);
+    const top = this.options.preview ? clamp(this.options.height * 0.035, 6, 16) : clamp(this.options.height * 0.08, 48, 92);
+    const bottomMargin = this.options.preview ? clamp(this.options.height * 0.035, 6, 14) : clamp(this.options.height * 0.055, 28, 56);
     const bottom = this.options.height - bottomMargin - this.bucketHeight;
     const left = horizontalMargin;
     const right = this.options.width - horizontalMargin;
@@ -310,15 +311,15 @@ export class PegboardModel {
   }
 
   private createBucketHeight(): number {
-    return clamp(this.options.height * 0.2, 116, 190);
+    return this.options.preview ? clamp(this.options.height * 0.28, 42, 70) : clamp(this.options.height * 0.2, 116, 190);
   }
 
   private createPegs(): PegboardPeg[] {
     const pegs: PegboardPeg[] = [];
-    const rows = clamp(Math.floor(this.board.height / 38), 7, 14);
-    const columns = clamp(Math.floor(this.board.width / 68), 8, 18);
-    const top = this.board.top + this.board.height * 0.2;
-    const bottom = this.board.top + this.board.height * 0.93;
+    const rows = this.options.preview ? 4 : clamp(Math.floor(this.board.height / 38), 7, 14);
+    const columns = this.options.preview ? 6 : clamp(Math.floor(this.board.width / 68), 8, 18);
+    const top = this.board.top + this.board.height * (this.options.preview ? 0.26 : 0.2);
+    const bottom = this.board.top + this.board.height * (this.options.preview ? 0.9 : 0.93);
     const rowGap = rows <= 1 ? 0 : (bottom - top) / (rows - 1);
     const radius = clamp(Math.min(this.board.width / columns, rowGap || 48) * 0.13, 5, 10);
     const usableWidth = this.board.width * 0.92;
@@ -341,7 +342,7 @@ export class PegboardModel {
   }
 
   private createBins(): PegboardBin[] {
-    const values = [0, 25, 10, 50, 25, 100, 25, 50, 10, 25, 0];
+    const values = this.options.preview ? [0, 25, 100, 25, 0] : [0, 25, 10, 50, 25, 100, 25, 50, 10, 25, 0];
     const width = this.board.width / values.length;
     return values.map((value, index) => ({
       id: `bin-${index}`,
@@ -349,7 +350,7 @@ export class PegboardModel {
       width,
       value,
       score: 0,
-      label: value === 0 ? 'Nothing' : `${value}`,
+      label: `${value}`,
       color: value === 0 ? 0x64748b : BIN_COLORS[index % BIN_COLORS.length],
     }));
   }
@@ -492,5 +493,6 @@ export function createPegboardModel(options: PegboardModelOptions): PegboardMode
     maxDrops: options.maxDrops ?? 30,
     gravity: options.gravity ?? 720,
     bounce: options.bounce ?? 0.86,
+    preview: options.preview ?? false,
   });
 }

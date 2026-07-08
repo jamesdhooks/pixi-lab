@@ -155,7 +155,7 @@ export class PegboardScene extends Scene {
 
   private createModel(width: number, height: number): void {
     this.appliedSettings = this.readRuleSettings();
-    this.model = createPegboardModel({ seed: this.ctx.seed, width, height, ...this.appliedSettings });
+    this.model = createPegboardModel({ seed: this.ctx.seed, width, height, preview: this.preview, ...this.appliedSettings });
     if (this.preview) {
       this.model.dropBall(0.5);
       this.model.dropBall(0.33);
@@ -234,9 +234,10 @@ export class PegboardScene extends Scene {
       this.glowLayer.circle(width * ((i * 73) % 100) / 100, height * ((i * 41) % 100) / 100, 80 + (i % 5) * 30);
       this.glowLayer.fill({ color: [0x22d3ee, 0xa78bfa, 0xf472b6][i % 3], alpha });
     }
-    this.boardLayer.rect(board.left, board.top, board.width, board.height);
+    const arenaRadius = this.preview ? 12 : 28;
+    this.boardLayer.roundRect(board.left, board.top, board.width, board.height, arenaRadius);
     this.boardLayer.fill({ color: 0x0f172a, alpha: 0.35 });
-    this.boardLayer.rect(board.left, board.top, board.width, board.height);
+    this.boardLayer.roundRect(board.left, board.top, board.width, board.height, arenaRadius);
     this.boardLayer.stroke({ color: 0x334155, width: 4, alpha: 0.8 });
     for (const peg of state.pegs) {
       this.boardLayer.circle(peg.x, peg.y, peg.radius + 5);
@@ -247,8 +248,8 @@ export class PegboardScene extends Scene {
     for (const bin of state.bins) {
       const y = state.board.bottom;
       const bucketHeight = state.bucketHeight;
-      const bucketX = bin.x + 1;
-      const bucketWidth = bin.width - 2;
+      const bucketX = bin.x;
+      const bucketWidth = bin.width;
       const isEdgeBucket = bin === state.bins[0] || bin === state.bins[state.bins.length - 1];
       if (isEdgeBucket) {
         this.boardLayer.roundRect(bucketX, y, bucketWidth, bucketHeight, 14);
@@ -256,17 +257,17 @@ export class PegboardScene extends Scene {
         this.boardLayer.rect(bucketX, y, bucketWidth, bucketHeight);
       }
       this.boardLayer.fill({ color: bin.color, alpha: 0.18 });
+      if (!this.preview && bin !== state.bins[0]) {
+        this.boardLayer.moveTo(bucketX, y + 3);
+        this.boardLayer.lineTo(bucketX, y + bucketHeight - 3);
+        this.boardLayer.stroke({ color: 0xffffff, width: 1.5, alpha: 0.22 });
+      }
       this.boardLayer.moveTo(bucketX, y);
       this.boardLayer.lineTo(bucketX, y + bucketHeight);
       this.boardLayer.lineTo(bucketX + bucketWidth, y + bucketHeight);
       this.boardLayer.lineTo(bucketX + bucketWidth, y);
       this.boardLayer.stroke({ color: bin.color, width: 3, alpha: 0.78 });
-      if (isEdgeBucket) {
-        this.boardLayer.roundRect(bucketX, y + bucketHeight * 0.76, bucketWidth, bucketHeight * 0.24, 12);
-      } else {
-        this.boardLayer.rect(bucketX, y + bucketHeight * 0.76, bucketWidth, bucketHeight * 0.24);
-      }
-      this.boardLayer.fill({ color: bin.color, alpha: 0.34 });
+      if (this.preview) continue;
       const label = new Text({
         text: bin.label,
         style: {

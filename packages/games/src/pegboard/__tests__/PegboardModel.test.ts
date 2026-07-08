@@ -29,7 +29,17 @@ describe('PegboardModel', () => {
     expect(first.dropsRemaining).toBe(30);
     expect(first.settings.maxDrops).toBe(30);
     expect(first.bins.map((bin) => bin.value)).toEqual([0, 25, 10, 50, 25, 100, 25, 50, 10, 25, 0]);
-    expect(first.bins.map((bin) => bin.label)).toEqual(['Nothing', '25', '10', '50', '25', '100', '25', '50', '10', '25', 'Nothing']);
+    expect(first.bins.map((bin) => bin.label)).toEqual(['0', '25', '10', '50', '25', '100', '25', '50', '10', '25', '0']);
+  });
+
+  it('uses a compact full-width no-text layout for preview tiles', () => {
+    const preview = createPegboardModel({ seed: 42, width: 180, height: 180, preview: true }).getState();
+
+    expect(preview.bins).toHaveLength(5);
+    expect(preview.bins.map((bin) => bin.label)).toEqual(['0', '25', '100', '25', '0']);
+    expect(preview.pegs.length).toBeLessThan(40);
+    expect(preview.board.left).toBeLessThanOrEqual(4);
+    expect(preview.board.width / preview.width).toBeGreaterThan(0.95);
   });
 
   it('leaves a top catchment lane before the lowered peg field', () => {

@@ -119,6 +119,10 @@ importers:
         version: 5.9.3
 
   packages/react:
+    dependencies:
+      react-simple-keyboard:
+        specifier: ^3.8.233
+        version: 3.8.233(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     devDependencies:
       '@hooksjam/pixi-lab-core':
         specifier: workspace:*
@@ -1565,6 +1569,12 @@ packages:
   react-refresh@0.17.0:
     resolution: {integrity: sha512-z6F7K9bV85EfseRCp2bzrpyQ0Gkw1uLoCel9XBVWPg/TjRj94SkJzUTGfOa4bs7iJvBWtQG0Wq7wnI0syw3EBQ==}
     engines: {node: '>=0.10.0'}
+
+  react-simple-keyboard@3.8.233:
+    resolution: {integrity: sha512-ePvATjqO3L22GfMPTHP7UL3q04dlbc5sWbT6JEH/t9mllyz8Aali4gc4adYFC5jFKIIY9Vi2LOaNgRb//tMkRw==}
+    peerDependencies:
+      react: ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   react@18.3.1:
     resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==}
@@ -3227,6 +3237,11 @@ snapshots:
   react-is@18.3.1: {}
 
   react-refresh@0.17.0: {}
+
+  react-simple-keyboard@3.8.233(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
 
   react@18.3.1:
     dependencies:
