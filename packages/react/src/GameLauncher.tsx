@@ -753,6 +753,12 @@ function GameLauncherInner({
         onReady={(app) => {
           appRef.current = app;
           setAppInstance(app);
+          if (fixedSimulationControls) {
+            for (const field of settingsFields) {
+              if (field.default !== undefined) app.settings.set(field.key, field.default);
+            }
+            setSettingsVersion((v) => v + 1);
+          }
           const storedRenderStyle = app.settings.get(RENDER_STYLE_FIELD_KEY);
           if (typeof storedRenderStyle === 'string' && renderStyleModes.some((mode) => mode.id === storedRenderStyle)) {
             setRenderStyleId(storedRenderStyle);
