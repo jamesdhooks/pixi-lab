@@ -9,6 +9,58 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./alien-vascular-tree": {
+      "import": "./dist/alien-vascular-tree/index.js",
+      "types": "./dist/alien-vascular-tree/index.d.ts"
+    },
+    "./chain-rain": {
+      "import": "./dist/chain-rain/index.js",
+      "types": "./dist/chain-rain/index.d.ts"
+    },
+    "./fireworks": {
+      "import": "./dist/fireworks/index.js",
+      "types": "./dist/fireworks/index.d.ts"
+    },
+    "./fluid-tank": {
+      "import": "./dist/fluid-tank/index.js",
+      "types": "./dist/fluid-tank/index.d.ts"
+    },
+    "./harmonic-sand": {
+      "import": "./dist/harmonic-sand/index.js",
+      "types": "./dist/harmonic-sand/index.d.ts"
+    },
+    "./lava-lamp": {
+      "import": "./dist/lava-lamp/index.js",
+      "types": "./dist/lava-lamp/index.d.ts"
+    },
+    "./mycelium": {
+      "import": "./dist/mycelium/index.js",
+      "types": "./dist/mycelium/index.d.ts"
+    },
+    "./orbital-shrapnel": {
+      "import": "./dist/orbital-shrapnel/index.js",
+      "types": "./dist/orbital-shrapnel/index.d.ts"
+    },
+    "./particle-fluid": {
+      "import": "./dist/particle-fluid/index.js",
+      "types": "./dist/particle-fluid/index.d.ts"
+    },
+    "./soft-body-blob": {
+      "import": "./dist/soft-body-blob/index.js",
+      "types": "./dist/soft-body-blob/index.d.ts"
+    },
+    "./splash-mpm": {
+      "import": "./dist/splash-mpm/index.js",
+      "types": "./dist/splash-mpm/index.d.ts"
+    },
+    "./turing-skin": {
+      "import": "./dist/turing-skin/index.js",
+      "types": "./dist/turing-skin/index.d.ts"
+    },
+    "./water-tank": {
+      "import": "./dist/water-tank/index.js",
+      "types": "./dist/water-tank/index.d.ts"
     }
   },
   "scripts": {
