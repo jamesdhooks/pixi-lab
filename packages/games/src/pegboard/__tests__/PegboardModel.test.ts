@@ -46,8 +46,8 @@ describe('PegboardModel', () => {
     const state = createPegboardModel({ seed: 42, width: 1000, height: 700 }).getState();
     const minPegY = Math.min(...state.pegs.map((peg) => peg.y - peg.radius));
 
-    expect(state.board.top).toBeLessThan(state.height * 0.1);
-    expect(minPegY - state.board.top).toBeGreaterThan(state.height * 0.12);
+    expect(state.board.top).toBeGreaterThanOrEqual(112);
+    expect(minPegY - state.board.top).toBeGreaterThan(state.height * 0.1);
   });
 
   it('extends pegs nearly to the scoring buckets', () => {

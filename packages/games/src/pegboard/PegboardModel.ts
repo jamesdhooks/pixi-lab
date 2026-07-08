@@ -295,7 +295,7 @@ export class PegboardModel {
 
   private createBoardBounds(): PegboardBoardBounds {
     const horizontalMargin = this.options.preview ? clamp(this.options.width * 0.012, 2, 8) : clamp(this.options.width * 0.06, 28, 88);
-    const top = this.options.preview ? clamp(this.options.height * 0.035, 6, 16) : clamp(this.options.height * 0.08, 48, 92);
+    const top = this.options.preview ? clamp(this.options.height * 0.035, 6, 16) : clamp(this.options.height * 0.16, 112, 144);
     const bottomMargin = this.options.preview ? clamp(this.options.height * 0.035, 6, 14) : clamp(this.options.height * 0.055, 28, 56);
     const bottom = this.options.height - bottomMargin - this.bucketHeight;
     const left = horizontalMargin;
@@ -316,7 +316,7 @@ export class PegboardModel {
 
   private createPegs(): PegboardPeg[] {
     const pegs: PegboardPeg[] = [];
-    const rows = this.options.preview ? 4 : clamp(Math.floor(this.board.height / 38), 7, 14);
+    const rows = this.options.preview ? 4 : clamp(Math.floor(this.board.height / 32), 9, 14);
     const columns = this.options.preview ? 6 : clamp(Math.floor(this.board.width / 68), 8, 18);
     const top = this.board.top + this.board.height * (this.options.preview ? 0.26 : 0.2);
     const bottom = this.board.top + this.board.height * (this.options.preview ? 0.9 : 0.93);

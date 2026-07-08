@@ -235,7 +235,13 @@ export class PegboardScene extends Scene {
       this.glowLayer.fill({ color: [0x22d3ee, 0xa78bfa, 0xf472b6][i % 3], alpha });
     }
     const arenaRadius = this.preview ? 12 : 28;
-    this.boardLayer.roundRect(board.left, board.top, board.width, board.height, arenaRadius);
+    this.boardLayer.moveTo(board.left, board.bottom);
+    this.boardLayer.lineTo(board.left, board.top + arenaRadius);
+    this.boardLayer.quadraticCurveTo(board.left, board.top, board.left + arenaRadius, board.top);
+    this.boardLayer.lineTo(board.right - arenaRadius, board.top);
+    this.boardLayer.quadraticCurveTo(board.right, board.top, board.right, board.top + arenaRadius);
+    this.boardLayer.lineTo(board.right, board.bottom);
+    this.boardLayer.lineTo(board.left, board.bottom);
     this.boardLayer.fill({ color: 0x0f172a, alpha: 0.35 });
     this.boardLayer.moveTo(board.left, board.bottom);
     this.boardLayer.lineTo(board.left, board.top + arenaRadius);
