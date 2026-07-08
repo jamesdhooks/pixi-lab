@@ -22,9 +22,10 @@ import {
 } from '@hooksjam/pixi-lab-core';
 import type { GameContext, GameExperience, LabExperience, SettingsField, SimAIContext, SimulationAI, SimulationExperience } from '@hooksjam/pixi-lab-core';
 
-/** Cap each preview tile's tick rate so many simultaneous tiles don't saturate
- *  the JS thread and tank the browser's own rAF rate below FPS_THRESHOLD. */
-const PREVIEW_FPS_CAP = 30;
+/** Cap each preview tile's tick rate high enough to expose real perf issues.
+ *  A 30fps cap made simple previews look artificially slow, especially when
+ *  comparing them against shader demos that can render at display refresh. */
+const PREVIEW_FPS_CAP = 60;
 /** Stagger tile start-up so previews don't all create WebGL contexts at once. */
 const INIT_STAGGER_MS = 420;
 /**

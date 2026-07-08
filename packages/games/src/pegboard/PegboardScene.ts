@@ -102,6 +102,12 @@ export class PegboardScene extends Scene {
         break;
       }
     }
+    const nextState = this.model.getState();
+    const hasActiveMotion = nextState.activeBalls.length > 0 || this.sparks.length > 0 || this.floatingTexts.length > 0;
+    if (!hasActiveMotion) {
+      this.state = nextState;
+      return;
+    }
     this.model.step(dt);
     this.handleEvents();
     this.refreshState();
