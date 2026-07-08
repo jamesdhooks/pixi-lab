@@ -26,6 +26,14 @@ describe('PegboardModel', () => {
     expect(first.bins.map((bin) => bin.label)).toEqual(['1×', '2×', '4×', '8×', '4×', '2×', '1×']);
   });
 
+  it('leaves a top catchment lane before the lowered peg field', () => {
+    const state = createPegboardModel({ seed: 42, width: 1000, height: 700 }).getState();
+    const minPegY = Math.min(...state.pegs.map((peg) => peg.y - peg.radius));
+
+    expect(state.board.top).toBeLessThan(state.height * 0.1);
+    expect(minPegY - state.board.top).toBeGreaterThan(state.height * 0.12);
+  });
+
   it('aligns pegs and bins to one centered board span', () => {
     const state = createPegboardModel({ seed: 42, width: 1000, height: 700 }).getState();
     const span = boardSpan(state);
@@ -104,6 +112,23 @@ describe('PegboardModel', () => {
     expect(ball.x).toBeCloseTo(160, 6);
     expect(state.activeBalls).toHaveLength(1);
     expect(state.dropsRemaining).toBe(state.settings.maxDrops - 1);
+  });
+
+  it('lets balls fall into open bucket boxes before scoring', () => {
+    const model = createPegboardModel({ seed: 17, width: 800, height: 600, maxDrops: 1, gravity: 900, bounce: 0.2 });
+    model.dropBall(0.5);
+
+    let lastActive = model.getState().activeBalls[0];
+    for (let i = 0; i < 1200 && model.getState().activeBalls.length > 0; i += 1) {
+      lastActive = model.getState().activeBalls[0];
+      model.step(1 / 240);
+    }
+
+    const scored = model.getState();
+    expect(scored.score).toBeGreaterThan(0);
+    expect(scored.activeBalls).toHaveLength(0);
+    expect(lastActive.y - lastActive.radius).toBeGreaterThanOrEqual(scored.board.bottom);
+    expect(lastActive.y + lastActive.radius).toBeLessThanOrEqual(scored.board.bottom + scored.bucketHeight);
   });
 
   it('scores resolved balls into bins with combo bonuses and produces visual events', () => {

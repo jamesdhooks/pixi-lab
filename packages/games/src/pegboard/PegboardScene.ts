@@ -246,11 +246,17 @@ export class PegboardScene extends Scene {
     for (const bin of state.bins) {
       const y = state.board.bottom;
       const bucketHeight = state.bucketHeight;
-      this.boardLayer.roundRect(bin.x + 1, y, bin.width - 2, bucketHeight, 10);
-      this.boardLayer.fill({ color: bin.color, alpha: 0.2 });
-      this.boardLayer.stroke({ color: bin.color, width: 2, alpha: 0.75 });
-      this.boardLayer.rect(bin.x + 1, y + bucketHeight * 0.72, bin.width - 2, bucketHeight * 0.28);
-      this.boardLayer.fill({ color: bin.color, alpha: 0.36 });
+      const bucketX = bin.x + 1;
+      const bucketWidth = bin.width - 2;
+      this.boardLayer.rect(bucketX, y, bucketWidth, bucketHeight);
+      this.boardLayer.fill({ color: bin.color, alpha: 0.18 });
+      this.boardLayer.moveTo(bucketX, y);
+      this.boardLayer.lineTo(bucketX, y + bucketHeight);
+      this.boardLayer.lineTo(bucketX + bucketWidth, y + bucketHeight);
+      this.boardLayer.lineTo(bucketX + bucketWidth, y);
+      this.boardLayer.stroke({ color: bin.color, width: 3, alpha: 0.78 });
+      this.boardLayer.rect(bucketX, y + bucketHeight * 0.76, bucketWidth, bucketHeight * 0.24);
+      this.boardLayer.fill({ color: bin.color, alpha: 0.34 });
       const label = new Text({
         text: bin.label,
         style: {

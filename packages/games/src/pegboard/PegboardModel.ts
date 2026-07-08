@@ -203,9 +203,10 @@ export class PegboardModel {
       ball.trail = [...ball.trail, { x: ball.x, y: ball.y }].slice(-12);
       this.collideWalls(ball);
       this.collidePegs(ball);
-      if (ball.y >= this.board.bottom) {
-        const bin = this.findBin(ball.x);
-        this.resolveBall(ball.id, bin.id);
+      this.collideBuckets(ball);
+      const scoringBin = this.findContainingBin(ball);
+      if (scoringBin) {
+        this.resolveBall(ball.id, scoringBin.id);
       }
     }
     this.maybeFinish();
@@ -267,7 +268,7 @@ export class PegboardModel {
 
   private createBoardBounds(): PegboardBoardBounds {
     const horizontalMargin = clamp(this.options.width * 0.06, 28, 88);
-    const top = clamp(this.options.height * 0.12, 72, 128);
+    const top = clamp(this.options.height * 0.08, 48, 92);
     const bottomMargin = clamp(this.options.height * 0.055, 28, 56);
     const bottom = this.options.height - bottomMargin - this.bucketHeight;
     const left = horizontalMargin;
@@ -288,10 +289,10 @@ export class PegboardModel {
 
   private createPegs(): PegboardPeg[] {
     const pegs: PegboardPeg[] = [];
-    const rows = clamp(Math.floor(this.board.height / 36), 7, 14);
+    const rows = clamp(Math.floor(this.board.height / 38), 7, 14);
     const columns = clamp(Math.floor(this.board.width / 68), 8, 18);
-    const top = this.board.top + this.board.height * 0.1;
-    const bottom = this.board.top + this.board.height * 0.78;
+    const top = this.board.top + this.board.height * 0.22;
+    const bottom = this.board.top + this.board.height * 0.72;
     const rowGap = rows <= 1 ? 0 : (bottom - top) / (rows - 1);
     const radius = clamp(Math.min(this.board.width / columns, rowGap || 48) * 0.13, 5, 10);
     const usableWidth = this.board.width * 0.92;
@@ -331,6 +332,17 @@ export class PegboardModel {
     return this.bins.find((bin) => x >= bin.x && x < bin.x + bin.width) ?? this.bins[this.bins.length - 1];
   }
 
+  private findContainingBin(ball: MutableBall): PegboardBin | null {
+    const bucketTop = this.board.bottom;
+    const bucketBottom = bucketTop + this.bucketHeight;
+    return this.bins.find((bin) => (
+      ball.x - ball.radius >= bin.x
+      && ball.x + ball.radius <= bin.x + bin.width
+      && ball.y - ball.radius >= bucketTop + Math.min(8, ball.radius * 0.4)
+      && ball.y + ball.radius <= bucketBottom
+    )) ?? null;
+  }
+
   private collideWalls(ball: MutableBall): void {
     if (ball.x < this.board.left + ball.radius) {
       ball.x = this.board.left + ball.radius;
@@ -339,6 +351,28 @@ export class PegboardModel {
     if (ball.x > this.board.right - ball.radius) {
       ball.x = this.board.right - ball.radius;
       ball.vx = -Math.abs(ball.vx) * this.settings.bounce;
+    }
+  }
+
+  private collideBuckets(ball: MutableBall): void {
+    const bucketTop = this.board.bottom;
+    const bucketBottom = bucketTop + this.bucketHeight;
+    if (ball.y + ball.radius < bucketTop || ball.y - ball.radius > bucketBottom) return;
+
+    const bin = this.findBin(ball.x);
+    const wallBounce = Math.max(0.18, this.settings.bounce * 0.42);
+    if (ball.x - ball.radius < bin.x) {
+      ball.x = bin.x + ball.radius;
+      ball.vx = Math.abs(ball.vx) * wallBounce;
+    }
+    if (ball.x + ball.radius > bin.x + bin.width) {
+      ball.x = bin.x + bin.width - ball.radius;
+      ball.vx = -Math.abs(ball.vx) * wallBounce;
+    }
+    if (ball.y + ball.radius > bucketBottom) {
+      ball.y = bucketBottom - ball.radius;
+      ball.vy = -Math.abs(ball.vy) * wallBounce;
+      ball.vx *= 0.72;
     }
   }
 
