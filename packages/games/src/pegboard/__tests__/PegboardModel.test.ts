@@ -147,6 +147,26 @@ describe('PegboardModel', () => {
     expect(collected.y).toBeCloseTo(lastActive.y, 4);
   });
 
+  it('lets later bucket balls jostle against already collected balls', () => {
+    const model = createPegboardModel({ seed: 21, width: 800, height: 600, maxDrops: 2, gravity: 900, bounce: 0.28 });
+
+    model.dropBall(0.5);
+    for (let i = 0; i < 2600 && model.getState().collectedBalls.length < 1; i += 1) {
+      model.step(1 / 240);
+    }
+    model.dropBall(0.5);
+    for (let i = 0; i < 2600 && model.getState().collectedBalls.length < 2; i += 1) {
+      model.step(1 / 240);
+    }
+
+    const state = model.getState();
+    expect(state.activeBalls).toHaveLength(0);
+    expect(state.collectedBalls).toHaveLength(2);
+    const [first, second] = state.collectedBalls;
+    const distance = Math.hypot(first.x - second.x, first.y - second.y);
+    expect(distance).toBeGreaterThan(first.radius * 1.1);
+  });
+
   it('scores resolved balls into fixed-value bins with combo bonuses and produces visual events', () => {
     const model = createPegboardModel({ seed: 9, width: 800, height: 600 });
     const ball = model.dropBall(0.5);

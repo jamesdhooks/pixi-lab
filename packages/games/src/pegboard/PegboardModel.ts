@@ -214,6 +214,7 @@ export class PegboardModel {
       this.collideWalls(ball);
       this.collidePegs(ball);
       this.collideBuckets(ball);
+      this.collideCollectedBalls(ball);
       const scoringBin = this.findSettledScoringBin(ball);
       if (scoringBin) {
         this.resolveBall(ball.id, scoringBin.id);
@@ -373,7 +374,7 @@ export class PegboardModel {
       ball.restingFrames = 0;
     }
 
-    return ball.restingFrames >= 8 ? bin : null;
+    return ball.restingFrames >= 24 ? bin : null;
   }
 
   private collideWalls(ball: MutableBall): void {
@@ -409,10 +410,42 @@ export class PegboardModel {
     if (ball.y + ball.radius > bucketBottom) {
       ball.y = bucketBottom - ball.radius;
       ball.vy = 0;
-      ball.vx *= 0.52;
-      if (Math.abs(ball.vx) < 12) {
+      ball.vx *= 0.86;
+      if (Math.abs(ball.vx) < 4) {
         ball.vx = 0;
       }
+    }
+  }
+
+  private collideCollectedBalls(ball: MutableBall): void {
+    if (ball.y + ball.radius < this.board.bottom) return;
+
+    for (const collected of this.collectedBalls) {
+      const dx = ball.x - collected.x;
+      const dy = ball.y - collected.y;
+      const min = ball.radius + collected.radius;
+      const distSq = dx * dx + dy * dy;
+      if (distSq >= min * min) continue;
+
+      const dist = distSq <= 0.0001 ? 0 : Math.sqrt(distSq);
+      const fallbackAngle = this.rng() * Math.PI * 2;
+      const nx = dist === 0 ? Math.cos(fallbackAngle) : dx / dist;
+      const ny = dist === 0 ? Math.sin(fallbackAngle) : dy / dist;
+      const overlap = min - dist;
+      ball.x += nx * (overlap + 0.2);
+      ball.y += ny * (overlap + 0.2);
+
+      const incomingDot = ball.vx * nx + ball.vy * ny;
+      if (incomingDot < 0) {
+        ball.vx -= 1.65 * incomingDot * nx;
+        ball.vy -= 1.65 * incomingDot * ny;
+      } else {
+        ball.vx += nx * 20;
+        ball.vy += ny * 12;
+      }
+      ball.vx += (this.rng() - 0.5) * 18;
+      ball.vy = Math.min(ball.vy, 120);
+      ball.restingFrames = 0;
     }
   }
 
