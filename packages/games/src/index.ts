@@ -5,11 +5,13 @@
  */
 import type { GameDefinition, LabExperience } from '@hooksjam/pixi-lab-core';
 import { ballPitDefinition } from './ballpit/ballpit.definition';
+import { pegboardDefinition } from './pegboard/pegboard.definition';
 
 export { ballPitDefinition } from './ballpit/ballpit.definition';
+export { pegboardDefinition } from './pegboard/pegboard.definition';
 
 /** All registered experiences shipped by the games package. */
-export const GAME_REGISTRY: readonly LabExperience[] = [ballPitDefinition] as const;
+export const GAME_REGISTRY: readonly LabExperience[] = [ballPitDefinition, pegboardDefinition] as const;
 
 /** Look up a game definition by ID */
 export function getGame(id: string): GameDefinition | undefined {

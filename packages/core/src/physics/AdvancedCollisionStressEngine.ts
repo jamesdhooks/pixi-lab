@@ -989,7 +989,7 @@ export class AdvancedCollisionStressEngine {
     let dx = this.positions[jk] - this.positions[ik];
     let dy = this.positions[jk + 1] - this.positions[ik + 1];
     const rr = this.radii[i] + this.radii[j];
-    let d2 = dx * dx + dy * dy;
+    const d2 = dx * dx + dy * dy;
     if (d2 >= rr * rr) return false;
     let distance = Math.sqrt(Math.max(d2, EPS));
     if (distance < 0.0001) {
