@@ -36,6 +36,14 @@ import {
   type RawWebGL2RenderState,
   type RawGpuKeyIndexSortStats,
 } from '@hooksjam/pixi-lab-core';
+import { BUILD_MODE_ID, sampleBuildFixture } from '../shared/build-mode.js';
+import {
+  createRawLiquidSurfaceRenderer,
+  destroyRawLiquidSurfaceRenderer,
+  liquidSurfaceOptionsFromSettings,
+  renderLiquidSurfaceFromBufferParticles,
+  type RawLiquidSurfaceRenderer,
+} from '../shared/RawLiquidSurfaceRenderer.js';
 
 const SOFT_BLOB_SORTED_CELL_RESIDENT_SCAN_LIMIT = 8;
 
@@ -114,10 +122,14 @@ interface SoftBlobWorld {
   contactCount: number;
   pairChecks: number;
   gridBuilds: number;
+  buildCapsules: Array<{ ax: number; ay: number; bx: number; by: number; radius: number }>;
   skinVertexCount: number;
   skinIndexCount: number;
   circleRenderCount: number;
   gpuUploadFloats: number;
+  liquidSurface: RawLiquidSurfaceRenderer;
+  liquidParticleBuffer: WebGLBuffer;
+  liquidParticleData: Float32Array;
   gpuCandidateSourceState?: RawGpuConstraintParticleState;
   gpuCandidateState?: RawGpuConstraintParticleState;
   gpuCandidateCellOffsets?: RawGpuConstraintParticleCellOffsetPass;
@@ -219,6 +231,7 @@ interface SoftBlobWorld {
   bodyOf: Int16Array;
   boundaryIndex: Int16Array;
   fixed: Uint8Array;
+  fixedVisible: Uint8Array;
   bodyBase: Int32Array;
   bodyBoundaryCount: Int16Array;
   bodyInteriorCount: Int16Array;
@@ -262,10 +275,11 @@ const MAX_BODIES = 160;
 const MAX_PARTICLES = MAX_BODIES * PARTICLES_PER_BODY;
 const MAX_SKIN_VERTICES = MAX_BODIES * SKIN_VERTICES_PER_BODY;
 const MAX_SKIN_INDICES = MAX_BODIES * SKIN_INDICES_PER_BODY;
-const SOFT_BLOB_METABALL_BOUNDARY_RADIUS_SCALE = 0.74;
-const SOFT_BLOB_METABALL_INTERIOR_RADIUS_SCALE = 1.18;
-const SOFT_BLOB_METABALL_FIELD_SCALE = 2.22;
-const SOFT_BLOB_METABALL_THRESHOLD = 0.064;
+const MAX_RENDER_CIRCLES = MAX_PARTICLES * 8;
+const SOFT_BLOB_LIQUID_STRIDE_FLOATS = 6;
+const SOFT_BLOB_LIQUID_STRIDE_BYTES = SOFT_BLOB_LIQUID_STRIDE_FLOATS * Float32Array.BYTES_PER_ELEMENT;
+const SOFT_BLOB_LIQUID_MAX_PARTICLES = MAX_PARTICLES * 8;
+const SOFT_BLOB_FILLER_KIND = 5;
 const TWO_PI = Math.PI * 2;
 const EPSILON = 0.000001;
 const CIRCLE_QUAD = new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]);
@@ -307,6 +321,7 @@ in float v_edge;
 out vec4 outColor;
 vec3 paletteColor(float indexValue) {
   int index = int(floor(indexValue + 0.5));
+  if (index == 5) return vec3(1.0);
   if (index == 4) return vec3(0.58, 0.58, 0.58);
   if (index == 1) return u_palette1;
   if (index == 2) return u_palette2;
@@ -358,7 +373,8 @@ void main() {
   if (d > 1.0) discard;
   float alpha = smoothstep(1.0, 0.72, d);
   vec3 color = paletteColor(v_kind);
-  outColor = vec4(color, alpha * 0.76);
+  float opacity = int(floor(v_kind + 0.5)) == 5 ? 0.18 : 0.76;
+  outColor = vec4(color, alpha * opacity);
 }`;
 
 const DENSITY_VERTEX_SHADER = `#version 300 es
@@ -562,7 +578,10 @@ function createWorld(state: RawWebGL2RenderState, preview: boolean): SoftBlobWor
   const blueprint = makeBodyBlueprint();
   const skinVertices = new Float32Array(MAX_SKIN_VERTICES * SKIN_FLOATS);
   const skinIndices = new Uint32Array(MAX_SKIN_INDICES);
-  const circleInstances = new Float32Array(MAX_PARTICLES * 4);
+  const circleInstances = new Float32Array(MAX_RENDER_CIRCLES * 4);
+  const liquidParticleBuffer = gl.createBuffer();
+  if (!liquidParticleBuffer) throw new Error('Unable to allocate soft-body liquid particle buffer.');
+  const liquidSurface = createRawLiquidSurfaceRenderer(gl);
   const world: SoftBlobWorld = {
     preview,
     programs,
@@ -593,10 +612,14 @@ function createWorld(state: RawWebGL2RenderState, preview: boolean): SoftBlobWor
     contactCount: 0,
     pairChecks: 0,
     gridBuilds: 0,
+    buildCapsules: [],
     skinVertexCount: 0,
     skinIndexCount: 0,
     circleRenderCount: 0,
     gpuUploadFloats: 0,
+    liquidSurface,
+    liquidParticleBuffer,
+    liquidParticleData: new Float32Array(SOFT_BLOB_LIQUID_MAX_PARTICLES * SOFT_BLOB_LIQUID_STRIDE_FLOATS),
     gpuCandidateUploadFloats: 0,
     gpuCandidateUploadMode: 'none',
     gpuCandidateCellRangeUploadFloats: 0,
@@ -657,6 +680,7 @@ function createWorld(state: RawWebGL2RenderState, preview: boolean): SoftBlobWor
     bodyOf: new Int16Array(MAX_PARTICLES),
     boundaryIndex: new Int16Array(MAX_PARTICLES),
     fixed: new Uint8Array(MAX_PARTICLES),
+    fixedVisible: new Uint8Array(MAX_PARTICLES),
     bodyBase: new Int32Array(MAX_BODIES),
     bodyBoundaryCount: new Int16Array(MAX_BODIES),
     bodyInteriorCount: new Int16Array(MAX_BODIES),
@@ -766,7 +790,7 @@ function attachPointerHandlers(state: RawWebGL2RenderState, world: SoftBlobWorld
     world.pointer.down = true;
     world.pointer.dragging = state.mode === 'interact';
     world.pointer.drawing = state.mode === 'draw';
-    world.pointer.building = state.mode === 'build';
+    world.pointer.building = state.mode === BUILD_MODE_ID;
     world.pointer.spawnAccumulator = 0;
     world.pointer.drawPoints = world.pointer.drawing || world.pointer.building ? [point] : [];
     world.pointer.grabbedBodies = world.pointer.dragging ? pickInteractionBodies(state, world, point.x, point.y) : [];
@@ -897,17 +921,17 @@ function spawnBuildFixture(state: RawWebGL2RenderState, world: SoftBlobWorld): v
   if (points.length === 0) return;
   const density = nodeDensity(state);
   const radius = nodeRadiusForDensity(density);
-  const start = points[0];
-  const end = points[points.length - 1];
-  if (points.length < 3 || distance(start.x, start.y, end.x, end.y) < radius * 1.5) {
-    addFixedParticle(world, start.x, start.y, radius);
+  const fixture = sampleBuildFixture(points, radius, { spacingScale: 1.55 });
+  if (!fixture) return;
+  if (fixture.kind === 'point') {
+    addFixedParticle(world, fixture.start.x, fixture.start.y, radius, true);
     return;
   }
-  const samples = sampleOpenPathByDistance([start, end], radius * 1.55);
-  for (const sample of samples) addFixedParticle(world, sample.x, sample.y, radius);
+  world.buildCapsules.push({ ax: fixture.start.x, ay: fixture.start.y, bx: fixture.end.x, by: fixture.end.y, radius });
+  for (const sample of fixture.samples) addFixedParticle(world, sample.x, sample.y, radius, false);
 }
 
-function addFixedParticle(world: SoftBlobWorld, x: number, y: number, radius: number): boolean {
+function addFixedParticle(world: SoftBlobWorld, x: number, y: number, radius: number, visible = true): boolean {
   if (world.particleCount >= MAX_PARTICLES) return false;
   const particle = world.particleCount;
   world.particleCount += 1;
@@ -919,39 +943,10 @@ function addFixedParticle(world: SoftBlobWorld, x: number, y: number, radius: nu
   world.bodyOf[particle] = -1;
   world.boundaryIndex[particle] = -1;
   world.fixed[particle] = 1;
+  world.fixedVisible[particle] = visible ? 1 : 0;
   return true;
 }
 
-function sampleOpenPathByDistance(points: Array<{ x: number; y: number }>, spacing: number): Array<{ x: number; y: number }> {
-  if (points.length < 2) return points;
-  const samples: Array<{ x: number; y: number }> = [{ x: points[0].x, y: points[0].y }];
-  let distanceSinceSample = 0;
-  let cursor = { x: points[0].x, y: points[0].y };
-  for (let pointIndex = 1; pointIndex < points.length; pointIndex += 1) {
-    const target = points[pointIndex];
-    let dx = target.x - cursor.x;
-    let dy = target.y - cursor.y;
-    let segmentLength = Math.sqrt(dx * dx + dy * dy);
-    while (distanceSinceSample + segmentLength >= spacing && segmentLength > 0.0001) {
-      const remaining = spacing - distanceSinceSample;
-      const t = remaining / segmentLength;
-      cursor = { x: cursor.x + dx * t, y: cursor.y + dy * t };
-      samples.push({ x: cursor.x, y: cursor.y });
-      distanceSinceSample = 0;
-      dx = target.x - cursor.x;
-      dy = target.y - cursor.y;
-      segmentLength = Math.sqrt(dx * dx + dy * dy);
-    }
-    distanceSinceSample += segmentLength;
-    cursor = { x: target.x, y: target.y };
-  }
-  const last = samples[samples.length - 1];
-  const final = points[points.length - 1];
-  const finalDx = final.x - last.x;
-  const finalDy = final.y - last.y;
-  if (finalDx * finalDx + finalDy * finalDy > spacing * spacing * 0.2025) samples.push({ x: final.x, y: final.y });
-  return samples;
-}
 
 function optimizeDrawnShape(points: Array<{ x: number; y: number }>, smoothing: number): Array<{ x: number; y: number }> {
   const minSpacing = 3 + smoothing * 8;
@@ -1147,6 +1142,7 @@ function clearWorld(world: SoftBlobWorld): void {
   world.demoSpawnTimer = 0;
   world.resetFloorTimer = 0;
   world.floorOpenTimer = 0;
+  world.buildCapsules = [];
 }
 
 function settingsNumber(state: RawWebGL2RenderState, key: string, fallback: number, min: number, max: number): number {
@@ -1837,7 +1833,7 @@ function updateGpuCandidateBridge(state: RawWebGL2RenderState, world: SoftBlobWo
 }
 
 function removeOffscreenBodies(state: RawWebGL2RenderState, world: SoftBlobWorld): void {
-  const fixedParticles: Array<{ x: number; y: number; oldX: number; oldY: number; radius: number }> = [];
+  const fixedParticles: Array<{ x: number; y: number; oldX: number; oldY: number; radius: number; visible: number }> = [];
   for (let particle = 0; particle < world.particleCount; particle += 1) {
     if (!world.fixed[particle]) continue;
     fixedParticles.push({
@@ -1846,6 +1842,7 @@ function removeOffscreenBodies(state: RawWebGL2RenderState, world: SoftBlobWorld
       oldX: world.oldX[particle],
       oldY: world.oldY[particle],
       radius: world.radius[particle],
+      visible: world.fixedVisible[particle],
     });
   }
   let targetBody = 0;
@@ -1895,6 +1892,7 @@ function removeOffscreenBodies(state: RawWebGL2RenderState, world: SoftBlobWorld
         world.bodyOf[to] = targetBody;
         world.boundaryIndex[to] = world.boundaryIndex[from];
         world.fixed[to] = world.fixed[from];
+        world.fixedVisible[to] = world.fixedVisible[from];
       }
     }
     targetBody += 1;
@@ -1910,6 +1908,7 @@ function removeOffscreenBodies(state: RawWebGL2RenderState, world: SoftBlobWorld
     world.bodyOf[targetParticle] = -1;
     world.boundaryIndex[targetParticle] = -1;
     world.fixed[targetParticle] = 1;
+    world.fixedVisible[targetParticle] = fixed.visible;
     targetParticle += 1;
   }
   world.bodyCount = targetBody;
@@ -1923,8 +1922,14 @@ function runDemo(state: RawWebGL2RenderState, world: SoftBlobWorld, dt: number):
   while (world.demoSpawnTimer >= interval) {
     world.demoSpawnTimer -= interval;
     const density = nodeDensity(state);
-    const size = blobSize(state) * (0.9 + density * 0.08) * (world.preview ? 0.52 : 1) * randomRange(0.9, 1.12);
-    const x = state.width * (0.26 + hash01(state.frame + world.bodyCount * 11.3) * 0.48);
+    const baseSize = blobSize(state) * (0.9 + density * 0.08) * (world.preview ? 0.52 : 1);
+    const sizeBand = world.preview
+      ? 0.52 + Math.pow(hash01(state.frame * 0.71 + world.bodyCount * 19.17), 1.35) * 0.78
+      : 0.46 + Math.pow(hash01(state.frame * 0.67 + world.bodyCount * 23.41), 1.2) * 1.2;
+    const size = clamp(baseSize * sizeBand, world.preview ? 12 : 16, world.preview ? 48 : 108);
+    const spawnStart = world.preview ? 0.06 : 0.26;
+    const spawnWidth = world.preview ? 0.88 : 0.48;
+    const x = state.width * (spawnStart + hash01(state.frame + world.bodyCount * 11.3) * spawnWidth);
     const y = -size * randomRange(0.8, 2.4);
     spawnBlob(world, x, y, size, undefined, undefined, density);
   }
@@ -2054,27 +2059,58 @@ function solveDistance(world: SoftBlobWorld, a: number, b: number, rest: number,
   world.y[b] -= cy;
 }
 
+function dampMembraneVelocity(world: SoftBlobWorld, a: number, b: number, damping: number): void {
+  if (damping <= 0) return;
+  const dx = world.x[b] - world.x[a];
+  const dy = world.y[b] - world.y[a];
+  const distSquared = dx * dx + dy * dy;
+  if (distSquared < EPSILON) return;
+  const invDist = 1 / Math.sqrt(distSquared);
+  const nx = dx * invDist;
+  const ny = dy * invDist;
+  const velocityAX = world.x[a] - world.oldX[a];
+  const velocityAY = world.y[a] - world.oldY[a];
+  const velocityBX = world.x[b] - world.oldX[b];
+  const velocityBY = world.y[b] - world.oldY[b];
+  const relativeVelocity = (velocityBX - velocityAX) * nx + (velocityBY - velocityAY) * ny;
+  const impulse = relativeVelocity * damping * 0.5;
+  world.oldX[a] -= nx * impulse;
+  world.oldY[a] -= ny * impulse;
+  world.oldX[b] += nx * impulse;
+  world.oldY[b] += ny * impulse;
+}
+
 function solveBodyStructure(state: RawWebGL2RenderState, world: SoftBlobWorld): void {
   const squish = settingsNumber(state, 'squishiness', 0.78, 0, 2);
   const surface = settingsNumber(state, 'surfaceTension', 0.28, 0, 1);
+  const elasticity = settingsNumber(state, 'boundaryElasticity', 0.8, 0, 10);
+  const membraneDamping = settingsNumber(state, 'membraneDamping', 0.28, 0, 1);
+  const areaPressure = settingsNumber(state, 'areaPressure', 1, 0, 2);
   const softness = clamp(squish / 2, 0, 1);
   const previewSoftness = world.preview ? 0.42 : 1;
-  const edgeStiffness = (0.20 + (1 - softness) * 0.40) * previewSoftness;
-  const bendStiffness = (0.01 + (1 - softness) * 0.09) * (world.preview ? 0.22 : 1);
-  const areaStiffness = (0.045 + (1 - softness) * 0.15) * (world.preview ? 0.32 : 1);
+  const elasticEdgeScale = Math.pow(1 / (1 + elasticity * 1.65), 1.65);
+  const elasticBendScale = Math.pow(1 / (1 + elasticity * 2.25), 1.9);
+  const edgeStiffness = (0.20 + (1 - softness) * 0.40) * previewSoftness * elasticEdgeScale;
+  const bendStiffness = (0.01 + (1 - softness) * 0.09) * (world.preview ? 0.22 : 1) * elasticBendScale;
+  const areaStiffness = (0.045 + (1 - softness) * 0.15) * (world.preview ? 0.32 : 1) * areaPressure * (1 + Math.sqrt(elasticity) * 0.12);
   const surfaceStiffness = surface * 0.06 * (world.preview ? 0.18 : 1);
+  const edgeDamping = membraneDamping * (0.012 + Math.min(4, elasticity) * 0.026);
+  const interiorMembraneScale = Math.pow(1 / (1 + elasticity * 0.72), 1.35);
   for (let body = 0; body < world.bodyCount; body += 1) {
     const base = world.bodyBase[body];
     const boundaryCount = world.bodyBoundaryCount[body];
     for (let index = 0; index < boundaryCount; index += 1) {
-      solveDistance(world, base + index, base + ((index + 1) % boundaryCount), world.edgeRest[body * BOUNDARY_COUNT + index], edgeStiffness);
+      const a = base + index;
+      const b = base + ((index + 1) % boundaryCount);
+      solveDistance(world, a, b, world.edgeRest[body * BOUNDARY_COUNT + index], edgeStiffness);
+      dampMembraneVelocity(world, a, b, edgeDamping);
     }
     for (let index = 0; index < boundaryCount; index += 1) {
       solveDistance(world, base + index, base + ((index + 2) % boundaryCount), world.bendRest[body * BOUNDARY_COUNT + index], bendStiffness);
     }
     solveArea(state, world, body, areaStiffness);
     solveSurfaceTension(world, body, surfaceStiffness);
-    solveInteriorMembrane(world, body);
+    solveInteriorMembrane(world, body, interiorMembraneScale);
   }
 }
 
@@ -2133,11 +2169,12 @@ function solveSurfaceTension(world: SoftBlobWorld, body: number, stiffness: numb
   }
 }
 
-function solveInteriorMembrane(world: SoftBlobWorld, body: number): void {
+function solveInteriorMembrane(world: SoftBlobWorld, body: number, stiffnessScale = 1): void {
   const base = world.bodyBase[body];
   const boundaryCount = world.bodyBoundaryCount[body];
   const interiorCount = world.bodyInteriorCount[body];
-  const stiffness = 0.72;
+  const stiffness = 0.72 * stiffnessScale;
+  if (stiffness <= 0.001) return;
   for (let interior = 0; interior < interiorCount; interior += 1) {
     const particle = base + boundaryCount + interior;
     let bestIndex = 0;
@@ -2567,6 +2604,15 @@ function renderOverlay(state: RawWebGL2RenderState, world: SoftBlobWorld): void 
     overlay.height = state.height;
   }
   context.clearRect(0, 0, overlay.width, overlay.height);
+  for (const capsule of world.buildCapsules) {
+    context.strokeStyle = 'rgba(132, 136, 144, 0.96)';
+    context.lineWidth = capsule.radius * 2;
+    context.lineCap = 'round';
+    context.beginPath();
+    context.moveTo(capsule.ax, capsule.ay);
+    context.lineTo(capsule.bx, capsule.by);
+    context.stroke();
+  }
   if (world.pointer.dragging) {
     const radius = settingsNumber(state, 'interactionRadius', 72, 16, 280);
     context.fillStyle = 'rgba(125, 249, 255, 0.14)';
@@ -2621,62 +2667,184 @@ function setPaletteUniforms(gl: WebGL2RenderingContext, uniforms: SoftBlobProgra
   }
 }
 
-function ensureDensityTarget(state: RawWebGL2RenderState, world: SoftBlobWorld): boolean {
-  const gl = state.gl;
-  const width = Math.max(1, state.width | 0);
-  const height = Math.max(1, state.height | 0);
-  if (world.densityWidth === width && world.densityHeight === height) return true;
-  world.densityWidth = width;
-  world.densityHeight = height;
-  gl.bindTexture(gl.TEXTURE_2D, world.densityTexture);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, world.densityFramebuffer);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, world.densityTexture, 0);
-  const complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  gl.bindTexture(gl.TEXTURE_2D, null);
-  return complete;
+function normalizedRenderStyle(settings: Record<string, unknown>): string {
+  const style = String(settings.renderStyle ?? 'basic');
+  return style === 'metaball' ? 'ultra' : style;
 }
 
-function renderDensitySkin(state: RawWebGL2RenderState, world: SoftBlobWorld, instanceCount: number): boolean {
-  if (instanceCount <= 0 || !ensureDensityTarget(state, world)) return false;
-  const gl = state.gl;
-  gl.bindFramebuffer(gl.FRAMEBUFFER, world.densityFramebuffer);
-  gl.viewport(0, 0, world.densityWidth, world.densityHeight);
-  gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.enable(gl.BLEND);
-  gl.blendEquation(gl.FUNC_ADD);
-  gl.blendFunc(gl.ONE, gl.ONE);
-  gl.useProgram(world.programs.density);
-  gl.uniform2f(world.uDensityResolution, state.width, state.height);
-  gl.uniform1f(world.uDensityFieldScale, SOFT_BLOB_METABALL_FIELD_SCALE);
-  gl.bindVertexArray(world.buffers.densityVao);
-  gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, instanceCount);
+function pushLiquidRenderParticle(
+  data: Float32Array,
+  count: number,
+  x: number,
+  y: number,
+  velocityX: number,
+  velocityY: number,
+  radius: number,
+  thermal: number,
+): number {
+  if (count >= SOFT_BLOB_LIQUID_MAX_PARTICLES) return count;
+  const offset = count * SOFT_BLOB_LIQUID_STRIDE_FLOATS;
+  data[offset] = x;
+  data[offset + 1] = y;
+  data[offset + 2] = velocityX;
+  data[offset + 3] = velocityY;
+  data[offset + 4] = radius;
+  data[offset + 5] = thermal;
+  return count + 1;
+}
 
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  gl.viewport(0, 0, state.width, state.height);
-  gl.disable(gl.BLEND);
-  gl.useProgram(world.programs.densityComposite);
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, world.densityTexture);
-  gl.uniform1i(world.uDensityCompositeTexture, 0);
-  gl.uniform2f(world.uDensityCompositeResolution, world.densityWidth, world.densityHeight);
-  gl.uniform3f(world.uDensityCompositePalette0, world.paletteData[0], world.paletteData[1], world.paletteData[2]);
-  gl.uniform3f(world.uDensityCompositePalette1, world.paletteData[3], world.paletteData[4], world.paletteData[5]);
-  gl.uniform1f(world.uDensityCompositeThreshold, SOFT_BLOB_METABALL_THRESHOLD);
-  gl.bindVertexArray(world.buffers.compositeVao);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
-  gl.bindTexture(gl.TEXTURE_2D, null);
-  gl.bindVertexArray(null);
-  gl.enable(gl.BLEND);
-  gl.blendEquation(gl.FUNC_ADD);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  return true;
+function boundarySample(world: SoftBlobWorld, body: number, sample: number, sampleCount: number): {
+  x: number;
+  y: number;
+  velocityX: number;
+  velocityY: number;
+  radius: number;
+} {
+  const base = world.bodyBase[body];
+  const boundaryCount = world.bodyBoundaryCount[body];
+  const scaled = (sample / Math.max(1, sampleCount)) * boundaryCount;
+  const index0 = Math.floor(scaled) % boundaryCount;
+  const index1 = (index0 + 1) % boundaryCount;
+  const t = scaled - Math.floor(scaled);
+  const p0 = base + index0;
+  const p1 = base + index1;
+  const x = world.x[p0] + (world.x[p1] - world.x[p0]) * t;
+  const y = world.y[p0] + (world.y[p1] - world.y[p0]) * t;
+  const velocityX = ((world.x[p0] - world.oldX[p0]) + ((world.x[p1] - world.oldX[p1]) - (world.x[p0] - world.oldX[p0])) * t) * 60;
+  const velocityY = ((world.y[p0] - world.oldY[p0]) + ((world.y[p1] - world.oldY[p1]) - (world.y[p0] - world.oldY[p0])) * t) * 60;
+  const radius = world.radius[p0] + (world.radius[p1] - world.radius[p0]) * t;
+  return { x, y, velocityX, velocityY, radius };
+}
+
+function appendBasicFillerCircles(state: RawWebGL2RenderState, world: SoftBlobWorld, renderCount: number): number {
+  const fillDensity = settingsNumber(state, 'liquidFillDensity', 1.15, 0, 3);
+  if (fillDensity <= 0.001) return renderCount;
+  for (let body = 0; body < world.bodyCount; body += 1) {
+    const base = world.bodyBase[body];
+    const centerX = world.bodyCenterX[body];
+    const centerY = world.bodyCenterY[body];
+    const nodeRadius = Math.max(1, world.radius[base]);
+    const sizeScale = Math.max(1, world.bodyExtent[body] / Math.max(12, nodeRadius * 3.4));
+    const ringCount = Math.max(1, Math.round((1 + fillDensity * 1.65) * Math.sqrt(sizeScale)));
+    const sampleCount = Math.max(7, Math.round((8 + fillDensity * 9) * Math.sqrt(sizeScale)));
+    const centerRadius = world.radius[base];
+    if (renderCount < MAX_RENDER_CIRCLES) {
+      const centerOffset = renderCount * 4;
+      world.circleInstances[centerOffset] = centerX;
+      world.circleInstances[centerOffset + 1] = centerY;
+      world.circleInstances[centerOffset + 2] = centerRadius;
+      world.circleInstances[centerOffset + 3] = SOFT_BLOB_FILLER_KIND;
+      renderCount += 1;
+    }
+    for (let sample = 0; sample < sampleCount; sample += 1) {
+      const edge = boundarySample(world, body, sample + (body % 2) * 0.5, sampleCount);
+      const renderRadius = edge.radius;
+      for (let ring = 0; ring <= ringCount; ring += 1) {
+        if (renderCount >= MAX_RENDER_CIRCLES) return renderCount;
+        const t = ring / Math.max(1, ringCount + 1);
+        const ease = t * t;
+        const offset = renderCount * 4;
+        world.circleInstances[offset] = centerX + (edge.x - centerX) * ease;
+        world.circleInstances[offset + 1] = centerY + (edge.y - centerY) * ease;
+        world.circleInstances[offset + 2] = renderRadius;
+        world.circleInstances[offset + 3] = SOFT_BLOB_FILLER_KIND;
+        renderCount += 1;
+      }
+    }
+  }
+  return renderCount;
+}
+
+function renderLiquidBlobSkin(state: RawWebGL2RenderState, world: SoftBlobWorld): boolean {
+  const data = world.liquidParticleData;
+  let count = 0;
+  const liquidRadius = settingsNumber(state, 'liquidParticleRadius', 1.35, 0.55, 7.5);
+  const visualRadiusScale = 0.78 + liquidRadius * 0.46;
+  for (let particle = 0; particle < world.particleCount; particle += 1) {
+    if (world.fixed[particle]) continue;
+    const body = world.bodyOf[particle];
+    if (body < 0) continue;
+    const local = particle - world.bodyBase[body];
+    const isBoundary = local >= 0 && local < world.bodyBoundaryCount[body];
+    const velocityX = (world.x[particle] - world.oldX[particle]) * 60;
+    const velocityY = (world.y[particle] - world.oldY[particle]) * 60;
+    const speed = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+    const colorPhase = clamp(world.bodyColorIndex[body] / 3, 0, 1);
+    const motionFoam = clamp(speed / 900, 0, 1);
+    count = pushLiquidRenderParticle(
+      data,
+      count,
+      world.x[particle],
+      world.y[particle],
+      velocityX,
+      velocityY,
+      world.radius[particle] * visualRadiusScale * (isBoundary ? 0.98 : 1.16),
+      clamp(colorPhase * 0.72 + motionFoam * 0.5, 0, 1),
+    );
+  }
+  const fillDensity = settingsNumber(state, 'liquidFillDensity', 1.15, 0, 3);
+  if (fillDensity > 0.001) {
+    for (let body = 0; body < world.bodyCount; body += 1) {
+      const base = world.bodyBase[body];
+      const centerX = world.bodyCenterX[body];
+      const centerY = world.bodyCenterY[body];
+      const nodeRadius = Math.max(1, world.radius[base]);
+      const sizeScale = Math.max(1, world.bodyExtent[body] / Math.max(12, nodeRadius * 3.2));
+      const ringCount = Math.max(2, Math.round((2 + fillDensity * 4.75) * Math.sqrt(sizeScale)));
+      const sampleCount = Math.max(18, Math.round((18 + fillDensity * 34) * Math.sqrt(sizeScale)));
+      const colorPhase = clamp(world.bodyColorIndex[body] / 3, 0, 1);
+      const centerVelocityX = (world.x[base] - world.oldX[base]) * 60;
+      const centerVelocityY = (world.y[base] - world.oldY[base]) * 60;
+      const centerRadius = Math.max(4, nodeRadius * visualRadiusScale * 1.08);
+      count = pushLiquidRenderParticle(data, count, centerX, centerY, centerVelocityX, centerVelocityY, centerRadius, colorPhase * 0.72);
+      for (let sample = 0; sample < sampleCount; sample += 1) {
+        const edge = boundarySample(world, body, sample + (body % 2) * 0.5, sampleCount);
+        const renderRadius = edge.radius * visualRadiusScale * 1.02;
+        for (let ring = 0; ring <= ringCount; ring += 1) {
+          const t = ring / Math.max(1, ringCount + 1);
+          const ease = t * t;
+          count = pushLiquidRenderParticle(
+            data,
+            count,
+            centerX + (edge.x - centerX) * ease,
+            centerY + (edge.y - centerY) * ease,
+            centerVelocityX + (edge.velocityX - centerVelocityX) * ease,
+            centerVelocityY + (edge.velocityY - centerVelocityY) * ease,
+            renderRadius,
+            colorPhase * 0.72,
+          );
+        }
+      }
+    }
+  }
+  if (count <= 0) return false;
+  const gl = state.gl;
+  gl.bindBuffer(gl.ARRAY_BUFFER, world.liquidParticleBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, data.subarray(0, count * SOFT_BLOB_LIQUID_STRIDE_FLOATS), gl.DYNAMIC_DRAW);
+  world.gpuUploadFloats += count * SOFT_BLOB_LIQUID_STRIDE_FLOATS;
+
+  const palette = state.style?.palette?.length ? state.style.palette.slice(0, 4) : [0xff6fae, 0x7df9ff, 0xffd166, 0xb8ff6a];
+  while (palette.length < 4) palette.push(palette[palette.length - 1] ?? 0xffffff);
+  const options = {
+    ...liquidSurfaceOptionsFromSettings(state.settings, 'ultra'),
+    pointScale: 1 + liquidRadius * 0.34,
+    densityScale: settingsNumber(state, 'liquidSplatDensity', 1.2, 0.45, 2.5),
+  };
+  const fieldScale = settingsNumber(state, 'liquidFieldScale', 0.82, 0.35, 1.5);
+  const resolution = Math.max(96, Math.round(Math.max(state.width, state.height) * fieldScale));
+  return renderLiquidSurfaceFromBufferParticles({
+    state,
+    renderer: world.liquidSurface,
+    particleBuffer: world.liquidParticleBuffer,
+    particleCount: count,
+    strideBytes: SOFT_BLOB_LIQUID_STRIDE_BYTES,
+    positionOffsetBytes: 0,
+    velocityOffsetBytes: 2 * Float32Array.BYTES_PER_ELEMENT,
+    renderDataOffsetBytes: 4 * Float32Array.BYTES_PER_ELEMENT,
+    palette: { palette, background: state.style?.background },
+    options,
+    resolution,
+  });
 }
 
 function renderScene(state: RawWebGL2RenderState): void {
@@ -2691,16 +2859,16 @@ function renderScene(state: RawWebGL2RenderState): void {
   gl.clearColor(world.backgroundData[0], world.backgroundData[1], world.backgroundData[2], 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  const style = String(state.settings.renderStyle ?? 'basic');
-  const useMetaballSkin = style === 'metaball';
+  const style = normalizedRenderStyle(state.settings);
+  const useUltraLiquidSkin = style === 'ultra';
   let enhancedFixedStart = 0;
   let enhancedFixedCount = 0;
-  if (style === 'enhanced' || useMetaballSkin) {
+  if (style === 'enhanced' || useUltraLiquidSkin) {
     world.skinVertexCount = 0;
     world.skinIndexCount = 0;
-    let densityCount = 0;
     for (let particle = 0; particle < world.particleCount; particle += 1) {
       if (world.fixed[particle]) {
+        if (!world.fixedVisible[particle]) continue;
         const offset = (world.particleCount - 1 - enhancedFixedCount) * 4;
         world.circleInstances[offset] = world.x[particle];
         world.circleInstances[offset + 1] = world.y[particle];
@@ -2709,24 +2877,9 @@ function renderScene(state: RawWebGL2RenderState): void {
         enhancedFixedCount += 1;
         continue;
       }
-      if (!useMetaballSkin) continue;
-      const offset = densityCount * 4;
-      const body = world.bodyOf[particle];
-      const local = particle - world.bodyBase[body];
-      const isBoundary = local >= 0 && local < world.bodyBoundaryCount[body];
-      world.circleInstances[offset] = world.x[particle];
-      world.circleInstances[offset + 1] = world.y[particle];
-      world.circleInstances[offset + 2] = world.radius[particle] * (isBoundary ? SOFT_BLOB_METABALL_BOUNDARY_RADIUS_SCALE : SOFT_BLOB_METABALL_INTERIOR_RADIUS_SCALE);
-      world.circleInstances[offset + 3] = world.bodyColorIndex[body];
-      densityCount += 1;
     }
-    const densityRendered = useMetaballSkin && densityCount > 0;
-    if (densityRendered) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, world.buffers.circleVbo);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, world.circleInstances, 0, densityCount * 4);
-      world.gpuUploadFloats += densityCount * 4;
-    }
-    if (!useMetaballSkin || !densityRendered || !renderDensitySkin(state, world, densityCount)) {
+    const liquidRendered = useUltraLiquidSkin && renderLiquidBlobSkin(state, world);
+    if (!liquidRendered) {
       const mesh = buildSkinMesh(state, world);
       world.skinVertexCount = mesh.vertices;
       world.skinIndexCount = mesh.indices;
@@ -2751,11 +2904,12 @@ function renderScene(state: RawWebGL2RenderState): void {
   }
 
   if (world.particleCount > 0) {
-    let renderCount = style === 'enhanced' || useMetaballSkin ? enhancedFixedCount : 0;
+    let renderCount = style === 'enhanced' || useUltraLiquidSkin ? enhancedFixedCount : 0;
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    if (style !== 'enhanced' && !useMetaballSkin) {
+    if (style !== 'enhanced' && !useUltraLiquidSkin) {
       for (let particle = 0; particle < world.particleCount; particle += 1) {
+        if (world.fixed[particle] && !world.fixedVisible[particle]) continue;
         const offset = renderCount * 4;
         world.circleInstances[offset] = world.x[particle];
         world.circleInstances[offset + 1] = world.y[particle];
@@ -2763,6 +2917,7 @@ function renderScene(state: RawWebGL2RenderState): void {
         world.circleInstances[offset + 3] = world.fixed[particle] ? 4 : world.bodyColorIndex[world.bodyOf[particle]];
         renderCount += 1;
       }
+      if (style === 'basic') renderCount = appendBasicFillerCircles(state, world, renderCount);
     }
     world.circleRenderCount = renderCount;
     if (renderCount > 0) {
@@ -2789,6 +2944,7 @@ function destroyWorld(state: RawWebGL2RenderState): void {
   destroyGpuCandidateBridge(world);
   for (const cleanup of world.cleanup) cleanup();
   const gl = state.gl;
+  destroyRawLiquidSurfaceRenderer(state, world.liquidSurface);
   gl.deleteProgram(world.programs.skin);
   gl.deleteProgram(world.programs.circle);
   gl.deleteProgram(world.programs.density);
@@ -2799,6 +2955,7 @@ function destroyWorld(state: RawWebGL2RenderState): void {
   gl.deleteVertexArray(world.buffers.compositeVao);
   gl.deleteBuffer(world.buffers.skinVbo);
   gl.deleteBuffer(world.buffers.skinIbo);
+  gl.deleteBuffer(world.liquidParticleBuffer);
   gl.deleteBuffer(world.buffers.quadVbo);
   gl.deleteBuffer(world.buffers.circleVbo);
   gl.deleteBuffer(world.buffers.compositeVbo);
@@ -2893,9 +3050,9 @@ export class ViscousSoftBodyBlobScene extends RawWebGL2Scene {
         return {
           renderer: 'raw-webgl2-viscous-soft-bodies',
           simulation: 'cpu-viscous-soft-body',
-          rendering: String(state.settings.renderStyle ?? 'basic') === 'metaball'
-            ? 'gpu-density-metaball-composite'
-            : String(state.settings.renderStyle ?? 'basic') === 'enhanced'
+          rendering: normalizedRenderStyle(state.settings) === 'ultra'
+            ? 'gpu-shared-liquid-surface-composite'
+            : normalizedRenderStyle(state.settings) === 'enhanced'
               ? 'gpu-boundary-skin-mesh'
               : 'gpu-instanced-circles',
           gpuSimulated: false,

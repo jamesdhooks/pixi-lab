@@ -54,6 +54,10 @@
       "import": "./dist/splash-mpm/index.js",
       "types": "./dist/splash-mpm/index.d.ts"
     },
+    "./sparks": {
+      "import": "./dist/sparks/index.js",
+      "types": "./dist/sparks/index.d.ts"
+    },
     "./turing-skin": {
       "import": "./dist/turing-skin/index.js",
       "types": "./dist/turing-skin/index.d.ts"

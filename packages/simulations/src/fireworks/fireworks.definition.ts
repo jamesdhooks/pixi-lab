@@ -9,10 +9,10 @@ export const fireworksDefinition: SimulationDefinition = {
   id: 'fireworks',
   kind: 'simulation',
   name: 'Fireworks',
-  short: 'GPU-simulated shells bloom into layered, crackling fireworks with probabilistic secondary bursts.',
-  long: 'A raw WebGL2 fireworks simulation with CPU-scheduled launch actors, GPU ping-pong spark state, trail feedback, color transitions, 32 explosion templates, and recursive secondary shells.',
+  short: 'Launch fireworks that bloom into colorful bursts.',
+  long: 'Launch fireworks and build a colorful sky show.',
   tags: ['simulation', 'particles', 'fireworks', 'trails', 'gpu'],
-  icon: '*',
+  icon: '✹',
   paletteHint: 'neon',
   capabilities: {
     tutorial: true,
@@ -34,14 +34,12 @@ export const fireworksDefinition: SimulationDefinition = {
   configDefaults: FIREWORKS_DEFAULTS,
   styleManifest: fireworksStyleManifest,
   modes: [
-    { id: 'single', label: 'Single', icon: '^', description: 'Each press launches exactly one targeted shell.' },
-    { id: 'stream', label: 'Stream', icon: '*', description: 'Press, drag, or let autofire keep launching shells.' },
+    { id: 'single', label: 'Single', icon: '^', description: 'Tap to launch one firework.' },
+    { id: 'stream', label: 'Stream', icon: '*', description: 'Hold or drag to keep launching fireworks.' },
   ],
   gestureMap: {
-    tap: 'launch one targeted shell',
-    double_tap: 'launch one targeted shell without adding a duplicate tap',
-    drag: 'stream extra shells only while in Stream mode',
-    fast_swipe: 'launch one high-energy shell',
+    tap: 'launch one firework',
+    drag: 'launch more fireworks in Stream mode',
   },
   directorEvents: [
     { id: 'gold-willow-finale', label: 'Gold Willow Finale', minIntervalMs: 9000, maxIntervalMs: 18000, intensity: 0.56 },

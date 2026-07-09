@@ -9,8 +9,8 @@ export const fluidTankDefinition: SimulationDefinition = {
   id: 'fluid-tank',
   kind: 'simulation',
   name: 'Fluid Tank',
-  short: 'A bounded raw WebGL fluid tank with dye advection and finger-driven swirls.',
-  long: 'A WebGL2 stable-fluid simulation with velocity, pressure, curl, dye advection, palette remapping, contextual input tools, and demo automation adapted into the rebuilt raw simulation framework.',
+  short: 'Stir colorful dye through a fluid tank.',
+  long: 'Stir colorful dye and watch it swirl through the tank.',
   tags: ['simulation', 'fluid', 'webgl', 'shader', 'ambient'],
   attributions: [
     {
@@ -43,13 +43,12 @@ export const fluidTankDefinition: SimulationDefinition = {
   configDefaults: FLUID_TANK_DEFAULTS,
   styleManifest: fluidTankStyleManifest,
   modes: [
-    { id: 'inject', label: 'Inject', icon: '+', description: 'Tap or drag to drip dye and push a spreading force into the fluid.' },
-    { id: 'stir', label: 'Stir', icon: '~', description: 'Drag to stir velocity along the pointer path without adding dye.' },
+    { id: 'inject', label: 'Inject', icon: '+', description: 'Tap or drag to add dye.' },
+    { id: 'stir', label: 'Stir', icon: '~', description: 'Drag to stir the fluid.' },
   ],
   gestureMap: {
-    tap: 'create a small velocity swirl, or inject a concentrated dye drip in inject mode',
-    drag: 'stir velocity in stir mode, or drip dye with spreading force in inject mode',
-    fast_swipe: 'stir the tank with a stronger sweep or inject a stronger dye stream in inject mode',
+    tap: 'add a small swirl or dye drop',
+    drag: 'stir the tank or add dye',
   },
   directorEvents: [
     { id: 'ambient-eddy', label: 'Ambient Eddy', minIntervalMs: 5000, maxIntervalMs: 11000, intensity: 0.35 },

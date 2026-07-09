@@ -25,7 +25,7 @@ describe('particle fluid definition', () => {
     expect(particleFluidDefinition.styleManifest.styles[0]?.id).toBe('haxiomic-cyan');
     expect(particleFluidDefinition.styleManifest.styles.every((style) => typeof style.background === 'number')).toBe(true);
     expect(new Set(particleFluidDefinition.styleManifest.styles.map((style) => style.id)).size).toBe(10);
-    expect(particleFluidDefinition.long).toContain('Haxiomic GPU Fluid Experiments');
+    expect(particleFluidDefinition.long).toBe('Stir a glowing cloud of particles and watch the current flow.');
     expect(particleFluidDefinition.advancedPhysics?.caveats.join(' ')).toContain('Haxiomic GPU Fluid Experiments');
     expect(particleFluidDefinition.attributions).toEqual([
       {
@@ -44,22 +44,41 @@ describe('particle fluid definition', () => {
     const particleBudget = PARTICLE_FLUID_SETTINGS_FIELDS.find((field) => field.key === 'maxParticles');
     const fluidScale = PARTICLE_FLUID_SETTINGS_FIELDS.find((field) => field.key === 'fieldCellSize');
     const tankScale = PARTICLE_FLUID_SETTINGS_FIELDS.find((field) => field.key === 'simulationScale');
+    const renderStyle = PARTICLE_FLUID_SETTINGS_FIELDS.find((field) => field.key === 'renderStyle');
+    const bloomStrength = PARTICLE_FLUID_SETTINGS_FIELDS.find((field) => field.key === 'bloomStrength');
+    const pulseStrength = PARTICLE_FLUID_SETTINGS_FIELDS.find((field) => field.key === 'pulseStrength');
+    expect(renderStyle).toMatchObject({
+      label: 'Style',
+      type: 'select',
+      default: 'basic',
+    });
+    expect(renderStyle?.options?.map((option) => option.value)).toEqual(['basic', 'enhanced']);
+    expect(bloomStrength).toMatchObject({
+      label: 'Bloom Strength',
+      visibleRenderStyles: ['enhanced'],
+      default: 0.9,
+    });
+    expect(pulseStrength).toMatchObject({
+      label: 'Gradient Pulse',
+      visibleRenderStyles: ['enhanced'],
+      default: 1,
+    });
     expect(particleBudget).toMatchObject({
       label: 'Particle Budget',
       min: 1024,
-      max: 1048576,
+      max: 4194304,
       numericScale: 'powerOfTwo',
       default: 262144,
     });
     expect(fluidScale).toMatchObject({
       label: 'Fluid Scale',
-      min: 2,
-      max: 6,
+      min: 1,
+      max: 10,
       default: 4,
     });
     expect(tankScale).toMatchObject({
       label: 'Tank Scale',
-      min: 0.5,
+      min: 0.25,
       max: 2.5,
       default: 1,
     });
@@ -89,7 +108,7 @@ describe('particle fluid definition', () => {
     demo?.onActivate?.(ctx);
     const gestures = demo?.think(ctx) ?? [];
     expect(styleCalls.length).toBeGreaterThan(0);
-    expect(settingCalls).toHaveLength(0);
+    expect(settingCalls).toEqual(['renderStyle']);
     for (const field of PARTICLE_FLUID_SETTINGS_FIELDS.filter((candidate) => candidate.type === 'number')) {
       expect(numericCalls).toContain(field.key);
     }

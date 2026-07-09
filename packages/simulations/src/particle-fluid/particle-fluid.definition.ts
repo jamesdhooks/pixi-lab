@@ -6,7 +6,7 @@ import { RawParticleFluidScene } from './RawParticleFluidScene.js';
 
 export const particleFluidStyleManifest: SimulationDefinition['styleManifest'] = {
   defaultStyleId: 'haxiomic-cyan',
-  capabilities: { renderLayers: ['particles'], passes: ['primitive'], qualities: ['raw'] },
+  capabilities: { renderLayers: ['particles', 'glow'], passes: ['primitive', 'bloom'], qualities: ['raw'] },
   styles: [
     { id: 'haxiomic-cyan', name: 'Haxiomic Cyan', palette: [0x22001e, 0x017aff, 0xa1ecff, 0xffffff], background: 0x000000, passes: ['primitive'], uniforms: {} },
     { id: 'magenta-current', name: 'Magenta Current', palette: [0x230019, 0xff2fd6, 0x7df9ff, 0xffffff], background: 0x050007, passes: ['primitive'], uniforms: {} },
@@ -25,8 +25,8 @@ export const particleFluidDefinition: SimulationDefinition = {
   id: 'particle-fluid',
   kind: 'simulation',
   name: 'Particle Fluid',
-  short: 'Dense point particles swirl like a fluid field under your pointer.',
-  long: 'A raw WebGL2 particle-fluid scene adapting the Haxiomic GPU Fluid Experiments particle execution model (https://github.com/haxiomic/GPU-Fluid-Experiments) into Pixi Lab with source-like velocity advection, pressure projection, dense additive point particles, native settings, preview, and demo automation.',
+  short: 'Stir a glowing cloud of fluid-like particles.',
+  long: 'Stir a glowing cloud of particles and watch the current flow.',
   tags: ['simulation', 'fluid', 'particles', 'raw-webgl'],
   attributions: [
     {
@@ -54,9 +54,7 @@ export const particleFluidDefinition: SimulationDefinition = {
   configDefaults: PARTICLE_FLUID_DEFAULTS,
   styleManifest: particleFluidStyleManifest,
   gestureMap: {
-    tap: 'pulse nearby particles',
-    drag: 'stir particles by disturbing the velocity field',
-    fast_swipe: 'throw a strong streak through the particle field',
+    drag: 'stir the particle velocity field',
   },
   directorEvents: [
     { id: 'eddy-sweep', label: 'Eddy Sweep', minIntervalMs: 8000, maxIntervalMs: 18000, intensity: 0.45 },
@@ -73,14 +71,14 @@ export const particleFluidDefinition: SimulationDefinition = {
     portability: 'reusable-core',
     supportedShapes: ['circle', 'field'],
     reusableFor: ['particle fluid studies', 'velocity advection references', 'fluid-like point renderers'],
-    caveats: ['Adapts Haxiomic GPU Fluid Experiments into Pixi Lab raw WebGL2 with the source-like velocity and particle split, CPU-side field integration, and GPU point rendering.'],
+    caveats: ['Adapts Haxiomic GPU Fluid Experiments into Pixi Lab raw WebGL2 with the source-like GPU velocity and particle split, plus a CPU compatibility fallback when float render targets are unavailable.'],
   },
   defaultSeed: 260706,
   factory: () => new RawParticleFluidScene(),
   previewFactory: () => new ParticleFluidPreviewScene(),
   demoAiFactory: (ctx) => new ParticleFluidDemoAI({ liteMode: ctx.isPreview }),
   tutorialPages: [
-    { icon: '~', title: 'Drag', body: 'Drag through the scene to disturb the velocity field.' },
-    { icon: '*', title: 'Attribution', body: 'Adapted from Haxiomic GPU Fluid Experiments, https://github.com/haxiomic/GPU-Fluid-Experiments, GPL-3.0.' },
+    { icon: '~', title: 'Drag The Current', body: 'Press and drag through the scene to disturb the velocity field.' },
+    { icon: '*', title: 'Inspired by / adapted from', body: 'Inspired by Haxiomic GPU Fluid Experiments, then adapted with Pixi Lab-specific raw WebGL particles, palettes, settings, previews, and demo automation.' },
   ],
 };

@@ -16,13 +16,13 @@ export const tutorialPages = [
   },
   {
     icon: '✋',
-    title: 'Drag to Attract',
-    body: 'Hold and drag your finger to pull the balls toward you.',
+    title: 'Interact Mode',
+    body: 'Switch to Interact, press near a cluster, and drag the picked balls with your pointer.',
   },
   {
     icon: '🧲',
-    title: 'Fill the Pit',
-    body: 'Closed walls keep balls on-screen, so keep spawning and stirring the pit.',
+    title: 'Stream Or Blast',
+    body: 'Stream pours balls while held. Explosion blasts nearby balls outward with a tap.',
   },
 ];
 
@@ -30,8 +30,8 @@ export const ballPitDefinition: SimulationDefinition = {
   kind: 'simulation',
   id: 'ball-pit',
   name: 'Ball Pit',
-  short: 'Spawn bouncy balls!',
-  long: 'A raw WebGL physics stress scene for dense circle piles using the shared advanced solver.',
+  short: 'Drop bouncy balls and push them around the pit.',
+  long: 'Fill the screen with bouncy balls and stir them around.',
   tags: ['physics', 'simulation', 'raw-webgl', 'advanced-engine'],
   icon: '🔴',
   paletteHint: 'rainbow',
@@ -48,10 +48,10 @@ export const ballPitDefinition: SimulationDefinition = {
   settingsFields: BALLPIT_SETTINGS_FIELDS,
   configDefaults: BALLPIT_DEFAULTS,
   modes: [
-    { id: 'single', label: 'Single', icon: '•', description: 'Tap once to drop one ball.' },
-    { id: 'stream', label: 'Stream', icon: '⋯', description: 'Hold to pour a continuous stream of balls.' },
-    { id: 'interact', label: 'Interact', icon: '✋', description: 'Drag existing balls around directly.' },
-    { id: 'explosion', label: 'Explosion', icon: '◎', description: 'Tap to push nearby balls outward with a force impulse.' },
+    { id: 'single', label: 'Single', icon: '•', description: 'Tap to drop one ball.' },
+    { id: 'stream', label: 'Stream', icon: '⋯', description: 'Hold to pour balls into the pit.' },
+    { id: 'interact', label: 'Interact', icon: '✋', description: 'Drag balls around.' },
+    { id: 'explosion', label: 'Explosion', icon: '◎', description: 'Tap to blast nearby balls outward.' },
   ],
   styleManifest: {
     defaultStyleId: 'rainbow',

@@ -5,6 +5,8 @@ const PARAM_PRESETS: Array<[number, number, number, number, number, number, numb
   [262144, 4, 1, 18, 32, 0.999, 1, 0.015, 0.6, 1, 1, 4],
   [1048576, 4, 1.15, 20, 32, 0.999, 1, 0.013, 0.6, 1.08, 1, 4],
   [1048576, 2, 0.9, 30, 32, 0.999, 1, 0.015, 0.6, 1, 1, 4],
+  [2097152, 3, 1, 22, 32, 0.999, 1, 0.014, 0.6, 1.05, 1, 4],
+  [1048576, 1, 0.8, 26, 32, 0.999, 1, 0.012, 0.6, 0.95, 1, 4],
 ];
 
 export class ParticleFluidDemoAI implements SimulationAI {
@@ -56,6 +58,7 @@ export class ParticleFluidDemoAI implements SimulationAI {
     ctx.resetScene();
     const style = ctx.styleIds[Math.floor(Math.random() * Math.max(1, ctx.styleIds.length))];
     if (style) ctx.applyStyle(style);
+    ctx.applySetting('renderStyle', Math.random() > 0.42 ? 'enhanced' : 'basic');
     const fallback: [number, number, number, number, number, number, number, number, number, number, number, number] = [262144, 4, 1, 18, 32, 0.999, 1, 0.015, 0.6, 1, 1, 4];
     const preset = PARAM_PRESETS[Math.floor(Math.random() * PARAM_PRESETS.length)] ?? fallback;
     const [maxParticles, fieldCellSize, simulationScale, solverIterations, cellSize, velocityDecay, particleDrag, forceRadius, forceTaper, forceStrength, pointSize, colorSpeedScale] = preset;
@@ -70,6 +73,8 @@ export class ParticleFluidDemoAI implements SimulationAI {
     ctx.applyNumericSetting('forceTaper', forceTaper);
     ctx.applyNumericSetting('forceStrength', forceStrength);
     ctx.applyNumericSetting('pointSize', pointSize);
+    ctx.applyNumericSetting('bloomStrength', this.options.liteMode ? 0.35 + Math.random() * 0.75 : 0.55 + Math.random() * 1.75);
+    ctx.applyNumericSetting('pulseStrength', this.options.liteMode ? 0.7 + Math.random() * 0.75 : 0.85 + Math.random() * 1.15);
     ctx.applyNumericSetting('colorSpeedScale', colorSpeedScale);
     this.elapsedSinceOverhaul = 0;
     this.nextOverhaulIn = this.options.liteMode ? 10 + Math.random() * 8 : 18 + Math.random() * 17;

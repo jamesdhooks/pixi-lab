@@ -20,7 +20,7 @@ import {
   Settings,
   withCommonSimulationSettings,
 } from '@hooksjam/pixi-lab-core';
-import type { GameContext, LabExperience, SettingsField, SimAIContext, SimulationAI, SimulationExperience } from '@hooksjam/pixi-lab-core';
+import type { GameContext, GestureEvent, LabExperience, SettingsField, SimAIContext, SimulationAI, SimulationExperience } from '@hooksjam/pixi-lab-core';
 
 /** Cap each preview tile's tick rate so many simultaneous tiles don't saturate
  *  the JS thread and tank the browser's own rAF rate below FPS_THRESHOLD. */
@@ -189,6 +189,11 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
         let demoElapsed = 0;
         let demoLastTime = performance.now();
         let demoRaf = 0;
+        const pushPreviewGestures = (gestures: GestureEvent[]) => {
+          if (gestures.length === 0) return;
+          const scene = directPreviewScene as unknown as { pushGestures?: (nextGestures: GestureEvent[]) => void };
+          if (typeof scene.pushGestures === 'function') scene.pushGestures(gestures);
+        };
         const buildDemoContext = (dt: number): SimAIContext => {
           const styleIds = (simDefinition?.styleManifest?.styles ?? [])
             .filter((style) => style.id !== '__random__')
@@ -210,7 +215,7 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
             applyNumericSetting: (key, value) => {
               settings.set(key, value);
             },
-            pushGestures: () => undefined,
+            pushGestures: pushPreviewGestures,
             resetScene: () => directPreviewScene.reset(),
             clearEmittersOnly: () => directPreviewScene.clearEmitters(),
           };
@@ -222,7 +227,7 @@ export function GameTile({ definition, onPress, size = 180, index = 0, active = 
             const dt = Math.min(0.1, Math.max(0, (now - demoLastTime) / 1000));
             demoLastTime = now;
             demoElapsed += dt;
-            demoAi?.think(buildDemoContext(dt));
+            pushPreviewGestures(demoAi?.think(buildDemoContext(dt)) ?? []);
             demoRaf = requestAnimationFrame(tickDemoAi);
           };
           demoRaf = requestAnimationFrame(tickDemoAi);

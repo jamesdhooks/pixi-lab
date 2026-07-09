@@ -10,14 +10,15 @@ export class OrbitalShrapnelPreviewScene extends RawOrbitalShrapnelReferenceScen
 
   override onEnter(ctx: GameContext, input: Input): void {
     ctx.systems.settings.set('rawParticleTextureSize', '64');
-    ctx.systems.settings.set('trailFade', 0.82);
-    ctx.systems.settings.set('bloomStrength', 0.34);
-    ctx.systems.settings.set('streakStrength', 0.16);
-    ctx.systems.settings.set('debrisSize', 0.48);
-    ctx.systems.settings.set('secondaryBodyCount', 2);
-    ctx.systems.settings.set('secondaryBodyStrength', 0.22);
-    ctx.systems.settings.set('planetRadius', 54);
-    ctx.systems.settings.set('gravity', 920);
+    ctx.systems.settings.set('trailFade', 0.72);
+    ctx.systems.settings.set('bloomStrength', 0.12);
+    ctx.systems.settings.set('streakStrength', 0.05);
+    ctx.systems.settings.set('debrisSize', 0.12);
+    ctx.systems.settings.set('debrisOpacity', 0.68);
+    ctx.systems.settings.set('secondaryBodyCount', 1);
+    ctx.systems.settings.set('secondaryBodyStrength', 0.12);
+    ctx.systems.settings.set('planetRadius', 42);
+    ctx.systems.settings.set('gravity', 780);
     super.onEnter(ctx, input);
     this.setMode('demo');
     const now = Date.now();

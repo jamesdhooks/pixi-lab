@@ -19,30 +19,31 @@ describe('IntroCard', () => {
     const markup = renderToStaticMarkup(
       <IntroCard
         icon="*"
-        name="Lava Lamp"
-        short="Thermal metaball wax blobs rise, cool, fall, and clump."
+        name="Water Tank"
+        short="Build, splash, and pour water particles."
         attributions={[
           {
-            label: 'WebGL Lava Lamp',
-            href: 'https://github.com/brybrant/lava-lamp',
-            author: 'Matt Bryant',
-            license: 'GPL-3.0',
+            label: 'gl-water2d',
+            href: 'https://github.com/Erkaman/gl-water2d',
+            author: 'Eric Arnebäck',
+            license: 'MIT',
           },
           {
-            label: 'Raymarch lava lamp shader',
-            href: 'https://www.shadertoy.com/view/fsKXDm',
-            author: '@Arrangemonk',
+            label: 'Splash',
+            href: 'https://github.com/matsuoka-601/Splash',
+            author: 'matsuoka-601',
           },
         ]}
         onDismiss={() => undefined}
       />,
     );
 
-    expect(markup).toContain('Attribution');
-    expect(markup).toContain('href="https://github.com/brybrant/lava-lamp"');
-    expect(markup).toContain('WebGL Lava Lamp by Matt Bryant (GPL-3.0)');
-    expect(markup).toContain('href="https://www.shadertoy.com/view/fsKXDm"');
-    expect(markup).toContain('Raymarch lava lamp shader by @Arrangemonk');
+    expect(markup).toContain('Inspired by / adapted from');
+    expect(markup).toContain('original creative choices');
+    expect(markup).toContain('href="https://github.com/Erkaman/gl-water2d"');
+    expect(markup).toContain('gl-water2d by Eric Arnebäck (MIT)');
+    expect(markup).toContain('href="https://github.com/matsuoka-601/Splash"');
+    expect(markup).toContain('Splash by matsuoka-601');
     expect(markup).toContain('target="_blank"');
     expect(markup).toContain('rel="noopener noreferrer"');
   });

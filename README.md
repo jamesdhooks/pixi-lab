@@ -13,7 +13,7 @@ A standalone **PixiJS v8** engine lab rebuilt around a small, intentional founda
 Main is intentionally narrow. It contains the reusable engine and host shell plus three content experiences:
 
 - **Ball Pit** — game package baseline and physics/game-loop proving ground.
-- **Harmonic Sand Plate** — simulation controls, presets, preview, and raw/Pixi rendering coverage.
+- **Haromonics** — simulation controls, presets, preview, and raw/Pixi rendering coverage.
 - **Orbital Shrapnel** — orbital simulation with raw renderer/composite planning coverage.
 
 Reference scenes, ambient packages, exploratory ports, and broad documentation drafts stay off main until they are cleaned up and promoted deliberately.
@@ -25,7 +25,7 @@ Reference scenes, ambient packages, exploratory ports, and broad documentation d
 | [`@hooksjam/pixi-lab-core`](packages/core) | Engine/runtime contracts, scene lifecycle, input, physics, rendering helpers, simulation adapters, styles, scoring, and quality controls. |
 | [`@hooksjam/pixi-lab-react`](packages/react) | React runtime shell, launcher, gallery tiles, HUD, settings, debug, and simulation controls. |
 | [`@hooksjam/pixi-lab-games`](packages/games) | Curated game registry. Currently exports Ball Pit only. |
-| [`@hooksjam/pixi-lab-simulations`](packages/simulations) | Curated simulation registry. Currently exports Harmonic Sand Plate and Orbital Shrapnel only. |
+| [`@hooksjam/pixi-lab-simulations`](packages/simulations) | Curated simulation registry. Currently exports Haromonics and Orbital Shrapnel only. |
 | [`@hooksjam/pixi-lab-demo`](packages/demo) | Vite demo app for launching and validating the curated set. |
 
 ## Quick start
@@ -95,12 +95,12 @@ Promotion to main should happen in this order:
 
 ## Attribution
 
-Third-party references and notices live in [docs/attribution.md](docs/attribution.md). Experiences can also declare scene-specific attribution links that appear in the intro title card.
+Third-party references and notices live in [docs/attribution.md](docs/attribution.md). Experiences can also declare scene-specific attribution links that appear in the intro title card as "Inspired by / adapted from." These references are not presented as one-to-one ports: Pixi Lab adapts source ideas while adding original creative direction, controls, rendering choices, simulation tuning, and engine integration.
 
-- **Lava Lamp** credits Matt Bryant's [WebGL Lava Lamp](https://github.com/brybrant/lava-lamp), licensed under [GPL-3.0](https://github.com/brybrant/lava-lamp/blob/master/LICENSE), and the credited [raymarch lava lamp shader](https://www.shadertoy.com/view/fsKXDm) by [@Arrangemonk](https://www.shadertoy.com/user/Arrangemonk) as the source reference for its WebGL2 raymarch adaptation.
-- **Water Tank** credits Eric Arnebäck's [gl-water2d](https://github.com/Erkaman/gl-water2d), licensed under [MIT](https://github.com/Erkaman/gl-water2d/blob/master/LICENSE), as the inspiration for the SPH-style particle liquid path.
-- **Fluid Tank** credits Pavel Dobryakov's [WebGL Fluid Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation), licensed under [MIT](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation/blob/master/LICENSE), for adapted fluid rendering/post-processing ideas.
-- **Particle Fluid** credits Haxiomic's [GPU Fluid Experiments](https://github.com/haxiomic/GPU-Fluid-Experiments), licensed under [GPL-3.0](https://github.com/haxiomic/GPU-Fluid-Experiments/blob/master/LICENSE.txt), for the adapted velocity-field execution model, particle motion palette, and HTML5 demo reference.
+- **Lava Lamp** is inspired by Matt Bryant's [WebGL Lava Lamp](https://github.com/brybrant/lava-lamp), licensed under [GPL-3.0](https://github.com/brybrant/lava-lamp/blob/master/LICENSE), while using Pixi Lab's own thermal particle model and shared liquid-surface renderer.
+- **Water Tank** is inspired by Eric Arnebäck's [gl-water2d](https://github.com/Erkaman/gl-water2d), licensed under [MIT](https://github.com/Erkaman/gl-water2d/blob/master/LICENSE), with Pixi Lab-specific interaction tools, obstacle building, palettes, and liquid rendering.
+- **Fluid Tank** adapts ideas from Pavel Dobryakov's [WebGL Fluid Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation), licensed under [MIT](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation/blob/master/LICENSE), with custom scene styles, palettes, input behavior, and demo integration.
+- **Particle Fluid** adapts ideas from Haxiomic's [GPU Fluid Experiments](https://github.com/haxiomic/GPU-Fluid-Experiments), licensed under [GPL-3.0](https://github.com/haxiomic/GPU-Fluid-Experiments/blob/master/LICENSE.txt), while using Pixi Lab's own raw WebGL2 particle solver, palettes, settings, and automation.
 
 ## License
 

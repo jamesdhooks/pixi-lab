@@ -28,7 +28,7 @@ const EXPERIENCES = [
   },
   {
     id: 'harmonic-sand',
-    name: 'Harmonic Sand Plate',
+    name: 'Haromonics',
     capabilities: { engineConfigurations: RESET_ENGINE_CONFIGURATIONS, settings: true },
   },
   {

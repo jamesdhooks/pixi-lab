@@ -59,7 +59,13 @@ export class OrbitalShrapnelDemoAI implements SimulationAI {
   private doOverhaul(ctx: SimAIContext): void {
     const { styleIds, applyStyle, applySetting, applyNumericSetting, resetScene } = ctx;
     resetScene();
-    if (styleIds.length > 0) applyStyle(styleIds[Math.floor(Math.random() * styleIds.length)]);
+    if (styleIds.length > 0) {
+      const previewStyles = ['realistic', 'ice-ring', 'kuiper-dust', 'solar-debris'];
+      const styleId = this.liteMode
+        ? previewStyles.find((candidate) => styleIds.includes(candidate)) ?? styleIds[0]
+        : styleIds[Math.floor(Math.random() * styleIds.length)];
+      applyStyle(styleId);
+    }
 
     for (const field of ORBITAL_SHRAPNEL_SETTINGS_FIELDS) {
       switch (field.type) {
@@ -87,6 +93,20 @@ export class OrbitalShrapnelDemoAI implements SimulationAI {
           break;
       }
     }
+
+    if (this.liteMode) {
+      applySetting('rawParticleTextureSize', '64');
+      applyNumericSetting('debrisSize', 0.08 + Math.random() * 0.09);
+      applyNumericSetting('debrisOpacity', 0.58 + Math.random() * 0.18);
+      applyNumericSetting('trailFade', 0.68 + Math.random() * 0.12);
+      applyNumericSetting('bloomStrength', 0.08 + Math.random() * 0.12);
+      applyNumericSetting('streakStrength', 0.03 + Math.random() * 0.07);
+      applyNumericSetting('secondaryBodyCount', Math.random() < 0.55 ? 0 : 1);
+      applyNumericSetting('secondaryBodyStrength', 0.08 + Math.random() * 0.1);
+      applyNumericSetting('planetRadius', 38 + Math.random() * 8);
+      applyNumericSetting('gravity', 720 + Math.random() * 220);
+    }
+
     this.nextOverhaulIn = 18 + Math.random() * 14;
     this.elapsedSinceOverhaul = 0;
   }

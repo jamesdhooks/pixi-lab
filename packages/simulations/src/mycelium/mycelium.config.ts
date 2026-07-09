@@ -1,7 +1,7 @@
 import type { SettingsField } from '@hooksjam/pixi-lab-core';
 
 export const MYCELIUM_SETTINGS_FIELDS: SettingsField[] = [
-  { key: 'renderStyle', label: 'Style', section: 'Rendering', type: 'select', default: 'enhanced', options: [{ label: 'Basic', value: 'basic' }, { label: 'Enhanced', value: 'enhanced' }, { label: 'Bloom', value: 'bloom' }] },
+  { key: 'renderStyle', label: 'Style', section: 'Rendering', type: 'select', default: 'enhanced', options: [{ label: 'Basic', value: 'basic' }, { label: 'Enhanced', value: 'enhanced' }, { label: 'Ultra', value: 'bloom' }] },
   { key: 'topology', label: 'Topology', section: 'Simulation', type: 'select', default: 'triangle', options: [{ label: 'Triangle', value: 'triangle' }, { label: 'Square', value: 'square' }] },
   { key: 'timeScale', label: 'Timescale', section: 'Simulation', type: 'number', min: 0, max: 2, step: 0.05, default: 1 },
   { key: 'resolution', label: 'Resolution', section: 'Simulation', type: 'number', min: 64, max: 4096, step: 1, numericScale: 'powerOfTwo', default: 128 },

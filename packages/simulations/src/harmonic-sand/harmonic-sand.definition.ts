@@ -8,9 +8,9 @@ import { HarmonicSandDemoAI } from './HarmonicSandDemoAI.js';
 export const harmonicSandDefinition: SimulationDefinition = {
   id: 'harmonic-sand',
   kind: 'simulation',
-  name: 'Harmonic Sand Plate',
-  short: 'Particles settle into glowing resonance lines.',
-  long: 'A touch-first Chladni-inspired plate where low-resolution wave fields pull sand-like particles into living nodal patterns.',
+  name: 'Haromonics',
+  short: 'Glowing sand gathers into shifting wave patterns.',
+  long: 'Place and move wave sources to shape glowing sand patterns.',
   tags: ['simulation', 'particles', 'resonance', 'ambient'],
   icon: '≋',
   paletteHint: 'neon',
@@ -34,11 +34,9 @@ export const harmonicSandDefinition: SimulationDefinition = {
   configDefaults: HARMONIC_SAND_DEFAULTS,
   styleManifest: harmonicSandStyleManifest,
   gestureMap: {
-    tap: 'place wave source',
-    drag: 'move nearest emitter',
-    double_tap: 'remove nearest emitter',
-    pinch: 'compress pattern',
-    spread: 'repel pattern',
+    tap: 'place a wave source',
+    drag: 'move the nearest source',
+    double_tap: 'remove the nearest source',
   },
   directorEvents: [
     { id: 'frequency-sweep', label: 'Frequency Sweep', minIntervalMs: 6000, maxIntervalMs: 12000, intensity: 0.35 },

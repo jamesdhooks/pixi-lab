@@ -1,0 +1,66 @@
+import type { SimStyleManifest } from '@hooksjam/pixi-lab-core';
+
+export const sparksStyleManifest: SimStyleManifest = {
+  defaultStyleId: 'white-hot',
+  capabilities: {
+    renderLayers: ['particles', 'trails', 'glow', 'debug'],
+    passes: ['trailFeedback', 'edgeGlow', 'bloom', 'colorGrade'],
+    qualities: ['raw'],
+  },
+  styles: [
+    {
+      id: 'white-hot',
+      name: 'White Hot',
+      description: 'Blue-white welding core with gold-orange cooling fragments.',
+      palette: [0xffffff, 0xdbeafe, 0x93c5fd, 0xffd166, 0xf97316],
+      background: 0x030507,
+      passes: ['trailFeedback', 'bloom'],
+      uniforms: { glowBias: 1.28, skyLift: 0.018, heatTint: 0.16 },
+    },
+    {
+      id: 'carbon-arc',
+      name: 'Carbon Arc',
+      description: 'Hard violet arc light with copper flecks and smoky red tails.',
+      palette: [0xf8fafc, 0xc4b5fd, 0x8b5cf6, 0xf97316, 0x7f1d1d],
+      background: 0x08050c,
+      passes: ['trailFeedback', 'bloom'],
+      uniforms: { glowBias: 1.16, skyLift: 0.025, heatTint: 0.28 },
+    },
+    {
+      id: 'plasma-cyan',
+      name: 'Plasma Cyan',
+      description: 'Cold cyan plasma with pale green secondary shards.',
+      palette: [0xffffff, 0xa7f3d0, 0x22d3ee, 0x38bdf8, 0xfef3c7],
+      background: 0x020711,
+      passes: ['trailFeedback', 'bloom'],
+      uniforms: { glowBias: 1.22, skyLift: 0.03, heatTint: 0.08 },
+    },
+    {
+      id: 'molten-gold',
+      name: 'Molten Gold',
+      description: 'Bright forge sparks that cool through amber and red.',
+      palette: [0xfffbeb, 0xfde68a, 0xf59e0b, 0xef4444, 0x7f1d1d],
+      background: 0x070301,
+      passes: ['trailFeedback', 'bloom'],
+      uniforms: { glowBias: 1.08, skyLift: 0.018, heatTint: 0.34 },
+    },
+    {
+      id: 'magnesium-flare',
+      name: 'Magnesium Flare',
+      description: 'Bleached white ignition with sharp lemon-yellow hot flecks.',
+      palette: [0xffffff, 0xfefce8, 0xfef08a, 0xfacc15, 0xffedd5],
+      background: 0x050505,
+      passes: ['trailFeedback', 'bloom'],
+      uniforms: { glowBias: 1.42, skyLift: 0.045, heatTint: 0.22 },
+    },
+    {
+      id: 'oxide-rain',
+      name: 'Oxide Rain',
+      description: 'Rust red and toxic green industrial sparks over a black bench.',
+      palette: [0xfef2f2, 0xfb923c, 0xdc2626, 0xa3e635, 0x22c55e],
+      background: 0x040604,
+      passes: ['trailFeedback', 'bloom'],
+      uniforms: { glowBias: 1.0, skyLift: 0.015, heatTint: 0.2 },
+    },
+  ],
+};

@@ -430,6 +430,11 @@ function engineSettings(state: BallPitRawState, quality: RenderQuality): Advance
     wallBounce: boolSetting(state.settings, 'wallBounce', false),
     wallBounceCoefficient: numberSetting(state.settings, 'wallBounceAmount', 0.18),
     airDragPerSecond: preview ? 0.994 : numberSetting(state.settings, 'airDrag', 0.998),
+    solverDampingPerSecond: preview ? 0.982 : numberSetting(state.settings, 'solverDamping', 0.982),
+    maxPairPushFactor: preview ? 0.75 : numberSetting(state.settings, 'maxPairPush', 0.75),
+    contactFriction: preview ? 0.72 : numberSetting(state.settings, 'friction', 0.72),
+    collisionSoftness: preview ? 1.05 : numberSetting(state.settings, 'collisionSoftness', 1.05),
+    impactBounceThreshold: preview ? 150 : numberSetting(state.settings, 'impactBounceThreshold', 150),
     openTop: true,
   };
 }

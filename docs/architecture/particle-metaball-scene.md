@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Use this scene for simulations that share dense particle state, raw WebGL rendering, and compact pointer/tool contracts. Water Tank uses the particle-density path directly; Lava Lamp uses the same scene lifecycle with a fullscreen raymarch shader for the visible wax.
+Use this scene for simulations that share dense particle state, raw WebGL rendering, and compact pointer/tool contracts. Water Tank uses the particle-density path directly; Lava Lamp uses the same scene lifecycle with the shared liquid-surface renderer for the visible wax.
 
 Good fits:
 
@@ -22,7 +22,7 @@ Poor fits:
 
 - Simulation integration: CPU spatial grid.
 - Particle upload: CPU to GPU dynamic float buffer.
-- Rendering: raw WebGL2 point sprites with metaball/density-style fragment shading, or a preset-specific fullscreen raymarch shader.
+- Rendering: raw WebGL2 point sprites with metaball/density-style fragment shading, or the shared liquid-surface renderer.
 - Debug stats must identify this honestly as `gpuRendered: true` and `gpuSimulated: false`.
 
 This is still GPU-accelerated in the expensive visual composition path, but it is not a full GPU simulation backend yet.
@@ -34,7 +34,7 @@ The Lava Lamp visual direction is inspired by Matt Bryant's WebGL Lava Lamp proj
 - Repository: https://github.com/brybrant/lava-lamp
 - Demo: https://brybrant.github.io/lava-lamp/
 
-Bryant's project credits its fragment shader as being based on Arrangemonk's Shadertoy raymarch lava lamp shader. The pixi-lab implementation adapts that raymarch structure into this repo's raw WebGL2 scene lifecycle, while the shared scene continues to own settings, input, preview, and debug stats.
+The pixi-lab implementation uses a native shared liquid-surface render path inside this repo's raw WebGL2 scene lifecycle, while the shared scene continues to own settings, input, preview, and debug stats.
 
 ## Shared behavior
 

@@ -11,6 +11,7 @@ export type AdvancedPhysicsEngineKind =
   | '2d-pic-flip-particle-water'
   | '2d-sph-double-density-relaxation-water'
   | 'raymarched-lava-lamp'
+  | 'shared-liquid-surface-lava'
   | 'viscous-amoeba-particles';
 export type AdvancedPhysicsShapeKind =
   | 'circle'

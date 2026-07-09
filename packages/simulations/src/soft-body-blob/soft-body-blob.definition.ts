@@ -1,4 +1,5 @@
 import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { buildModeDefinition } from '../shared/build-mode.js';
 import { SOFT_BODY_BLOB_DEFAULTS, SOFT_BODY_BLOB_SETTINGS_FIELDS } from './soft-body-blob.config.js';
 import { ViscousSoftBodyBlobScene } from './ViscousSoftBodyBlobScene.js';
 
@@ -23,8 +24,8 @@ export const softBodyBlobDefinition: SimulationDefinition = {
   id: 'soft-body-blob',
   kind: 'simulation',
   name: 'Soft-Body Blobs',
-  short: 'Viscous amoeba bodies fall into a squishy pile.',
-  long: 'A raw WebGL soft-body stress scene built from boundary particles, filled interior particles, area preservation, viscosity, plastic flow, and fitted amoeba skin rendering.',
+  short: 'Draw squishy blobs and watch them pile up.',
+  long: 'Draw squishy blobs, build obstacles, and drag them around.',
   tags: ['simulation', 'physics', 'soft-body', 'raw-webgl'],
   icon: '●',
   paletteHint: 'neon',
@@ -41,9 +42,9 @@ export const softBodyBlobDefinition: SimulationDefinition = {
   settingsFields: SOFT_BODY_BLOB_SETTINGS_FIELDS,
   configDefaults: SOFT_BODY_BLOB_DEFAULTS,
   modes: [
-    { id: 'draw', label: 'Draw', icon: '⬡', description: 'Draw a closed-ish shape that becomes a soft body.' },
-    { id: 'build', label: 'Build', icon: '◆', description: 'Place fixed obstacle points or drag fixed obstacle lines.' },
-    { id: 'interact', label: 'Interact', icon: '✋', description: 'Drag blob particles around directly.' },
+    { id: 'draw', label: 'Draw', icon: '⬡', description: 'Draw a loop to make a blob.' },
+    buildModeDefinition('Tap for pegs or drag to make a fixed line.'),
+    { id: 'interact', label: 'Interact', icon: '✋', description: 'Drag blobs around.' },
   ],
   styleManifest: softBodyBlobStyleManifest,
   directorEvents: [],
@@ -52,7 +53,7 @@ export const softBodyBlobDefinition: SimulationDefinition = {
     engine: 'viscous-amoeba-particles',
     portability: 'reusable-core',
     supportedShapes: ['soft-body', 'circle'],
-    reusableFor: ['blob piles', 'viscous connected particle bodies', 'filled soft-body collision stress tests', 'closed-body skin rendering'],
+    reusableFor: ['blob piles', 'viscous connected particle bodies', 'filled soft-body collision stress tests', 'closed-body skin rendering', 'shared liquid-surface particle rendering'],
     caveats: ['This topology is specialized for closed soft bodies; chains can reuse the Verlet/contact pieces, but not the area/skin constraints directly.'],
   },
   factory: () => new ViscousSoftBodyBlobScene(),

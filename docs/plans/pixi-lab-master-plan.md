@@ -12,7 +12,7 @@ Pixi Lab is no longer the broad legacy catalog from the old `main` branch. The a
 - a Vite demo app that composes curated registries;
 - exactly three fully promoted launch experiences:
   - Ball Pit;
-  - Harmonic Sand Plate;
+  - Haromonics;
   - Space Debris.
 
 This is the new baseline. The old ambient catalog, exploratory ports, raw-mode drafts, and scattered implementation notes are legacy/reference material until a future slice deliberately cleans and promotes them.
@@ -39,7 +39,7 @@ As of this update, that foundation is implemented and deployed from the rebuild 
 - Settings, tutorial, debug, style, demo/autoplay, reset, and runtime capability plumbing.
 - Curated launch experiences:
   - Ball Pit;
-  - Harmonic Sand Plate;
+  - Haromonics;
   - Space Debris.
 - Package-level tests that protect runtime and promoted content behavior.
 - Deployment through the dev-tools lab stack.
@@ -178,7 +178,7 @@ Remaining hardening:
 - tune preview and screensaver budgets if needed;
 - add regression tests when gameplay behavior changes.
 
-### Harmonic Sand Plate
+### Haromonics
 
 Package: `@hooksjam/pixi-lab-simulations`
 
@@ -274,6 +274,37 @@ Remaining hardening:
 - tune style palettes and high-density finale budgets after live inspection;
 - capture screenshots or clips once the look is approved.
 
+### Sparks
+
+Package: `@hooksjam/pixi-lab-simulations`
+
+Registry status: registered via `SIMULATION_REGISTRY`; manual demo QA still pending.
+
+Implemented definition includes:
+
+- id `sparks`;
+- raw WebGL2 scene;
+- preview scene;
+- settings/defaults;
+- style manifest;
+- demo AI with full style and numeric setting overhauls;
+- tutorial pages;
+- welding and shower modes;
+- gesture map for taps, double taps, drags, and fast swipes;
+- director events;
+- stagnation policy;
+- raw engine configuration;
+- capabilities for interactivity, ambient behavior, gestures, reset, director mode, stagnation recovery, debug overlay, style export, procedural texture capability, render target pooling, demo, and settings.
+
+Product role: the general-purpose spark engine playground. It validates pointer-driven welding emission, finite-lifespan GPU spark particles, bouncing surface response, split-shard mutation, palette-driven hot/cooling colors, and Basic/Enhanced/Ultra render pipelines.
+
+Remaining hardening:
+
+- James' manual demo QA pass;
+- browser visual QA for the welding contact core and bounced split shards;
+- tune palette balance, bloom, and Ultra capacity after live inspection;
+- capture screenshots or clips once the look is approved.
+
 ## Testing and verification baseline
 
 The clean foundation is expected to pass:
@@ -341,7 +372,7 @@ The clean-slate rebuild is done when:
 - the engine package exposes the shared runtime needed by the curated set;
 - the React shell launches experiences without scene-specific host forks;
 - the demo app composes registries and supports direct launch/demo/gallery behavior;
-- Ball Pit, Harmonic Sand Plate, and Space Debris are implemented as promoted experiences;
+- Ball Pit, Haromonics, and Space Debris are implemented as promoted experiences;
 - Fireworks is implemented as a registered raw simulation awaiting manual QA approval;
 - typecheck, tests, and build pass;
 - the lab service deploys and serves the current demo app;

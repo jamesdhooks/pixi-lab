@@ -70,7 +70,10 @@ export function IntroCard({ icon, name, short, hints = [], attributions = [], on
 
         {attributions.length > 0 && (
           <div className="mt-4 border-t border-white/10 pt-3">
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">Attribution</p>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">Inspired by / adapted from</p>
+            <p className="mb-1.5 max-w-[24rem] text-[10px] leading-snug text-white/35">
+              Pixi Lab adapts reference ideas with original creative choices, controls, rendering, and engine integration.
+            </p>
             <div className="grid grid-cols-1 gap-1">
               {attributions.map((attribution) => (
                 <a

@@ -10,6 +10,7 @@ import {
   type GestureEvent,
   type RawWebGL2RenderState,
 } from '@hooksjam/pixi-lab-core';
+import { SPARK_SIZE_VARIABILITY_GLSL, SPARK_SIZE_VARIABILITY_KEY } from '../shared/spark-rendering.js';
 import { FIREWORKS_DEFAULTS } from './fireworks.config.js';
 
 type FireworksMode = 'single' | 'stream';
@@ -55,6 +56,7 @@ interface FireworksSettings {
   secondaryScale: number;
   crackleIntensity: number;
   particleSize: number;
+  sparkSizeVariability: number;
   trailFade: number;
   bloomStrength: number;
   autoFinaleRate: number;
@@ -353,7 +355,10 @@ uniform ivec2 uStateSize;
 uniform vec4 uWorldBounds;
 uniform vec2 uCanvasSize;
 uniform float uParticleSize;
+uniform float uSizeVariability;
 uniform float uTime;
+
+${SPARK_SIZE_VARIABILITY_GLSL}
 
 out float vAlpha;
 out float vKind;
@@ -379,6 +384,8 @@ void main() {
   if (kind == 33.0) kindSize = 1.45;
   if (kind == 8.0 || kind == 10.0 || kind == 16.0 || kind == 22.0 || kind == 26.0 || kind == 31.0 || kind == 32.0) kindSize *= 1.55;
   if (kind == 3.0 || kind == 7.0 || kind == 15.0 || kind == 21.0 || kind == 30.0) kindSize *= 0.82;
+  float seededSize = sparkSizeVariation(velocity.w + kind * 29.0, uSizeVariability);
+  kindSize *= kind == 0.0 ? mix(1.0, seededSize, 0.34) : seededSize;
   vAlpha = fade;
   vKind = kind;
   vLifeT = lifeT;
@@ -479,6 +486,7 @@ class FireworksPointRenderer {
     height: number;
     worldBounds: [number, number, number, number];
     particleSize: number;
+    sparkSizeVariability: number;
     crackle: number;
     glowBias: number;
     colorShift: number;
@@ -502,6 +510,7 @@ class FireworksPointRenderer {
     gl.uniform4f(this.uniform('uWorldBounds'), options.worldBounds[0], options.worldBounds[1], options.worldBounds[2], options.worldBounds[3]);
     gl.uniform2f(this.uniform('uCanvasSize'), options.width, options.height);
     gl.uniform1f(this.uniform('uParticleSize'), options.particleSize);
+    gl.uniform1f(this.uniform('uSizeVariability'), options.sparkSizeVariability);
     gl.uniform1f(this.uniform('uCrackle'), options.crackle);
     gl.uniform1f(this.uniform('uGlowBias'), options.glowBias);
     gl.uniform1f(this.uniform('uColorShift'), options.colorShift);
@@ -660,6 +669,7 @@ function settingsFromState(state: RawWebGL2RenderState): FireworksSettings {
     secondaryScale: finiteNumberSetting(state.settings, 'secondaryScale', FIREWORKS_DEFAULTS.secondaryScale as number),
     crackleIntensity: finiteNumberSetting(state.settings, 'crackleIntensity', FIREWORKS_DEFAULTS.crackleIntensity as number),
     particleSize: finiteNumberSetting(state.settings, 'particleSize', FIREWORKS_DEFAULTS.particleSize as number),
+    sparkSizeVariability: finiteNumberSetting(state.settings, SPARK_SIZE_VARIABILITY_KEY, FIREWORKS_DEFAULTS.sparkSizeVariability as number),
     trailFade: finiteNumberSetting(state.settings, 'trailFade', FIREWORKS_DEFAULTS.trailFade as number),
     bloomStrength: finiteNumberSetting(state.settings, 'bloomStrength', FIREWORKS_DEFAULTS.bloomStrength as number),
     autoFinaleRate: finiteNumberSetting(state.settings, 'autoFinaleRate', FIREWORKS_DEFAULTS.autoFinaleRate as number),
@@ -797,6 +807,7 @@ function drawTrailAndComposite(runtime: FireworksRuntime, state: RawWebGL2Render
     height: state.height,
     worldBounds: [0, 0, state.width, state.height],
     particleSize: runtime.settings.particleSize,
+    sparkSizeVariability: runtime.settings.sparkSizeVariability,
     crackle: runtime.settings.crackleIntensity,
     glowBias,
     colorShift,
@@ -824,6 +835,7 @@ function drawTrailAndComposite(runtime: FireworksRuntime, state: RawWebGL2Render
     height: state.height,
     worldBounds: [0, 0, state.width, state.height],
     particleSize: runtime.settings.particleSize * 0.62,
+    sparkSizeVariability: runtime.settings.sparkSizeVariability,
     crackle: runtime.settings.crackleIntensity,
     glowBias,
     colorShift,
@@ -855,10 +867,10 @@ function updateActors(runtime: FireworksRuntime, dt: number): void {
   for (const actor of runtime.actors) {
     actor.age += dt;
     if (actor.age >= actor.fuse) {
-      const popTime = actor.fuse;
-      const x = actor.targetX ?? actor.x + actor.vx * popTime;
-      const y = actor.targetY ?? actor.y + actor.vy * popTime + runtime.settings.gravity * popTime * popTime * 0.5;
-      queueExplosion(runtime, x, y, actor);
+      const popState = shellPosition(runtime, actor, actor.fuse);
+      const x = actor.targetX ?? popState.x;
+      const y = actor.targetY ?? popState.y;
+      queueExplosion(runtime, x, y, actor, popState.vx, popState.vy);
     } else {
       const position = shellPosition(runtime, actor, actor.age);
       queueShellWake(runtime, actor, position.x, position.y, dt);
@@ -908,17 +920,19 @@ function queueShellWake(runtime: FireworksRuntime, actor: ShellActor, x: number,
   runtime.trailEnergy = 1;
 }
 
-function queueExplosion(runtime: FireworksRuntime, x: number, y: number, actor: ShellActor): void {
+function queueExplosion(runtime: FireworksRuntime, x: number, y: number, actor: ShellActor, parentVx: number, parentVy: number): void {
   const kind = 1 + Math.floor(nextRandom(runtime) * EXPLOSION_KIND_COUNT);
   const generationScale = generationScaleFor(runtime, actor.generation);
   const burstSizeScale = burstSizeScaleFor(runtime, kind);
   const physicalScale = generationScale * burstSizeScale;
   const burstPower = runtime.settings.explosionPower * physicalScale;
+  const particleInherit = particleVelocityInheritance(actor.generation);
+  const childInherit = childVelocityInheritance(actor.generation);
   runtime.queuedSpawns.push({
     x,
     y,
-    vx: actor.vx * 0.05,
-    vy: actor.vy * 0.05,
+    vx: parentVx * particleInherit,
+    vy: parentVy * particleInherit,
     count: particleCountForBurst(runtime, actor.generation, physicalScale),
     kind,
     seed: actor.seed + actor.generation * 211.13,
@@ -937,11 +951,19 @@ function queueExplosion(runtime: FireworksRuntime, x: number, y: number, actor: 
     if (nextRandom(runtime) > runtime.settings.secondaryChance) continue;
     const angle = -Math.PI * (0.18 + nextRandom(runtime) * 0.72);
     const speed = burstPower * (0.28 + nextRandom(runtime) * 0.38);
-    const vx = Math.cos(angle) * speed + actor.vx * 0.12;
-    const vy = Math.sin(angle) * speed + actor.vy * 0.12;
+    const vx = Math.cos(angle) * speed + parentVx * childInherit;
+    const vy = Math.sin(angle) * speed + parentVy * childInherit;
     queueActor(runtime, x, y, vx, vy, childGeneration, 0.42 + nextRandom(runtime) * 0.72, undefined, undefined, childPaletteSeed);
     runtime.secondaryActors += 1;
   }
+}
+
+function particleVelocityInheritance(generation: number): number {
+  return generation === 0 ? 0.26 : 0.38;
+}
+
+function childVelocityInheritance(generation: number): number {
+  return generation === 0 ? 0.24 : 0.34;
 }
 
 function particleCountForBurst(runtime: FireworksRuntime, generation: number, physicalScale: number): number {

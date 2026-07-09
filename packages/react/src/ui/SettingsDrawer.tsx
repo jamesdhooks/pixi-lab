@@ -7,7 +7,7 @@
  */
 import { Fragment, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronDown, Check, RotateCcw, Save } from 'lucide-react';
+import { X, ChevronDown, Check, RotateCcw, Save, PanelRight, PanelRightOpen } from 'lucide-react';
 import type { Settings } from '@hooksjam/pixi-lab-core';
 import type { SettingsField } from '@hooksjam/pixi-lab-core';
 import { BottomSheet } from './BottomSheet.js';
@@ -28,6 +28,9 @@ interface SettingsDrawerProps {
   maxPixels?: number;
   onMaxPixelsChange?: (v: number | undefined) => void;
   onSaveDefaults?: (request: SettingsDefaultsSaveRequest) => Promise<void> | void;
+  pinned?: boolean;
+  docked?: boolean;
+  onPinnedChange?: (pinned: boolean) => void;
 }
 
 export function SettingsDrawer({
@@ -39,6 +42,9 @@ export function SettingsDrawer({
   maxPixels,
   onMaxPixelsChange,
   onSaveDefaults,
+  pinned = false,
+  docked = false,
+  onPinnedChange,
 }: SettingsDrawerProps) {
   const { isMobile, isLandscape } = useViewportContext();
   const [vals, setVals] = useState<Record<string, unknown>>({});
@@ -214,6 +220,62 @@ export function SettingsDrawer({
     </div>
   );
 
+  const header = (
+    <>
+      <div className="flex items-center justify-between px-3.5 py-1.5">
+        <h3 className="text-sm font-bold text-white">Settings</h3>
+        <div className="flex items-center gap-1">
+          {onPinnedChange && (
+            <button
+              onClick={() => onPinnedChange(!pinned)}
+              className={`rounded-lg p-1 transition-colors ${
+                pinned ? 'bg-cyan-200/14 text-cyan-100' : 'text-white/40 hover:bg-white/10 hover:text-white'
+              }`}
+              aria-pressed={pinned}
+              aria-label={pinned ? 'Undock settings sidebar' : 'Pin settings as sidebar'}
+              title={pinned ? 'Undock settings sidebar' : 'Pin settings as sidebar'}
+            >
+              {pinned ? <PanelRightOpen size={14} /> : <PanelRight size={14} />}
+            </button>
+          )}
+          {onSaveDefaults && (
+            <button
+              onClick={saveVisibleDefaults}
+              disabled={saveState === 'saving'}
+              className={`rounded-lg p-1 transition-colors ${
+                saveState === 'saved'
+                  ? 'text-emerald-200'
+                  : saveState === 'error'
+                    ? 'text-rose-200'
+                    : 'text-white/40 hover:bg-white/10 hover:text-white'
+              } disabled:opacity-45`}
+              aria-label={sectionFilter ? `Save ${sectionFilter} defaults` : 'Save scene defaults'}
+              title={sectionFilter ? `Save ${sectionFilter} as defaults` : 'Save visible settings as defaults'}
+            >
+              <Save size={14} />
+            </button>
+          )}
+          <button
+            onClick={resetVisibleSettings}
+            className="rounded-lg p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+            aria-label={sectionFilter ? `Reset ${sectionFilter} settings` : 'Reset settings'}
+            title={sectionFilter ? `Reset ${sectionFilter}` : 'Reset all settings'}
+          >
+            <RotateCcw size={14} />
+          </button>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+            aria-label="Close settings"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+      <div className="mx-3.5 h-px bg-white/8" />
+    </>
+  );
+
   // Mobile portrait — render as a BottomSheet
   if (isMobile && !isLandscape) {
     return (
@@ -223,64 +285,40 @@ export function SettingsDrawer({
     );
   }
 
-  // Desktop / landscape — existing dropdown anchored top-right
+  // Desktop / landscape — optionally dock as a full-height scene sidebar.
   return (
     <AnimatePresence>
       {open && (
         <>
-          {/* Dropdown panel — slides in from top-right */}
-          <motion.div
-            key="panel"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="absolute right-3 top-12 z-50 w-[min(28rem,calc(100vw-1.5rem))] max-h-[76vh] overflow-y-auto rounded-2xl bg-black/80 shadow-xl backdrop-blur-md ring-1 ring-white/12"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-3.5 py-1.5">
-              <h3 className="text-sm font-bold text-white">Settings</h3>
-              <div className="flex items-center gap-1">
-                {onSaveDefaults && (
-                  <button
-                    onClick={saveVisibleDefaults}
-                    disabled={saveState === 'saving'}
-                    className={`rounded-lg p-1 transition-colors ${
-                      saveState === 'saved'
-                        ? 'text-emerald-200'
-                        : saveState === 'error'
-                          ? 'text-rose-200'
-                          : 'text-white/40 hover:bg-white/10 hover:text-white'
-                    } disabled:opacity-45`}
-                    aria-label={sectionFilter ? `Save ${sectionFilter} defaults` : 'Save scene defaults'}
-                    title={sectionFilter ? `Save ${sectionFilter} as defaults` : 'Save visible settings as defaults'}
-                  >
-                    <Save size={14} />
-                  </button>
-                )}
-                <button
-                  onClick={resetVisibleSettings}
-                  className="rounded-lg p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
-                  aria-label={sectionFilter ? `Reset ${sectionFilter} settings` : 'Reset settings'}
-                  title={sectionFilter ? `Reset ${sectionFilter}` : 'Reset all settings'}
-                >
-                  <RotateCcw size={14} />
-                </button>
-                <button
-                  onClick={onClose}
-                  className="rounded-lg p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
-                  aria-label="Close settings"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="mx-3.5 h-px bg-white/8" />
-
-            {content}
-          </motion.div>
+          {pinned ? (
+            <motion.aside
+              key="sidebar"
+              initial={docked ? { opacity: 1 } : { opacity: 0, x: 18 }}
+              animate={docked ? { opacity: 1 } : { opacity: 1, x: 0 }}
+              exit={docked ? { opacity: 1 } : { opacity: 0, x: 18 }}
+              transition={{ duration: 0.16, ease: 'easeOut' }}
+              className={
+                docked
+                  ? 'relative z-0 flex h-full w-full flex-col bg-zinc-950 ring-1 ring-white/12'
+                  : 'absolute bottom-0 right-0 top-0 z-50 flex w-[min(28rem,max(22rem,38vw))] max-w-[calc(100vw-1.5rem)] flex-col bg-zinc-950 shadow-xl ring-1 ring-white/12'
+              }
+            >
+              {header}
+              <div className="min-h-0 flex-1 overflow-y-auto">{content}</div>
+            </motion.aside>
+          ) : (
+            <motion.div
+              key="panel"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="absolute right-3 top-12 z-50 w-[min(28rem,calc(100vw-1.5rem))] max-h-[76vh] overflow-y-auto rounded-2xl bg-zinc-950 shadow-xl ring-1 ring-white/12"
+            >
+              {header}
+              {content}
+            </motion.div>
+          )}
         </>
       )}
     </AnimatePresence>

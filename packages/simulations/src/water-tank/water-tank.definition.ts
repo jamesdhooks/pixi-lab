@@ -1,4 +1,5 @@
 import { createEngineConfigurations, type GestureEvent, type SimAIContext, type SimulationAI, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { BUILD_MODE_ICON, buildModeDefinition } from '../shared/build-mode.js';
 import { RawGpuParticleWaterScene } from './RawGpuParticleWaterScene.js';
 import { WATER_TANK_DEFAULTS, WATER_TANK_SETTINGS_FIELDS } from './water-tank.config.js';
 
@@ -23,8 +24,8 @@ export const waterTankDefinition: SimulationDefinition = {
   id: 'water-tank',
   kind: 'simulation',
   name: 'Water Tank',
-  short: 'Particle water sloshes around buildable obstacles.',
-  long: 'A raw WebGL-rendered particle water tank inspired by Eric Arnebäck\'s gl-water2d SPH liquid demo, with double-density-relaxation-style particles, obstacle building, pouring, interaction, and demo automation.',
+  short: 'Pour water and build obstacles for it to splash around.',
+  long: 'Pour water, splash it around, and build obstacles in the tank.',
   tags: ['simulation', 'water', 'particles', 'raw-webgl'],
   attributions: [
     {
@@ -49,9 +50,9 @@ export const waterTankDefinition: SimulationDefinition = {
   settingsFields: WATER_TANK_SETTINGS_FIELDS,
   configDefaults: WATER_TANK_DEFAULTS,
   modes: [
-    { id: 'pour', label: 'Pour', icon: '+', description: 'Click or drag to pour water particles.' },
-    { id: 'build', label: 'Build', icon: '◆', description: 'Click for fixed pegs or drag a straight fixed obstacle line.' },
-    { id: 'interact', label: 'Interact', icon: '✋', description: 'Push water with a velocity field.' },
+    { id: 'pour', label: 'Pour', icon: '+', description: 'Tap or drag to pour water.' },
+    { id: 'splash', label: 'Splash', icon: '~', description: 'Drag to push the water around.' },
+    buildModeDefinition(),
   ],
   styleManifest: waterTankStyleManifest,
   directorEvents: [],
@@ -67,9 +68,10 @@ export const waterTankDefinition: SimulationDefinition = {
   previewFactory: () => new RawGpuParticleWaterScene(true),
   demoAiFactory: (ctx) => new WaterTankDemoAI(ctx.isPreview),
   tutorialPages: [
-    { icon: '+', title: 'Pour Water', body: 'Click or drag to add SPH-style liquid particles into the tank.' },
-    { icon: '◆', title: 'Build Surfaces', body: 'Switch to Build, click for fixed points, or drag to place fixed obstacle lines.' },
-    { icon: '*', title: 'Attribution', body: 'Fluid solver reference: gl-water2d by Eric Arnebäck, https://github.com/Erkaman/gl-water2d.' },
+    { icon: '+', title: 'Pour Water', body: 'Tap or drag to add SPH-style liquid particles into the tank.' },
+    { icon: '~', title: 'Splash Water', body: 'Switch to Splash and drag through the tank to push the water around.' },
+    { icon: BUILD_MODE_ICON, title: 'Build Surfaces', body: 'Switch to Build, tap for fixed points, or drag to place fixed obstacle lines.' },
+    { icon: '*', title: 'Inspired by / adapted from', body: 'Inspired by gl-water2d by Eric Arnebäck, then adapted with Pixi Lab-specific controls, obstacle building, palettes, liquid rendering, and demo automation.' },
   ],
 };
 
@@ -90,7 +92,15 @@ class WaterTankDemoAI implements SimulationAI {
     if (this.elapsed >= this.nextShuffleIn) this.randomize(ctx);
     const x = ctx.width * (0.5 + Math.sin(this.t * 1.1) * 0.28);
     const y = ctx.height * (0.18 + Math.cos(this.t * 0.8) * 0.08);
-    const gestures: GestureEvent[] = [{ kind: 'drag', id: -8201, x, y, dx: Math.cos(this.t * 2.4) * 12, dy: 8, timestamp: performance.now() }];
+    const gestures: GestureEvent[] = [{
+      kind: 'drag',
+      id: -8201,
+      x,
+      y,
+      dx: Math.cos(this.t * 1.6) * (this.liteMode ? 4 : 12),
+      dy: this.liteMode ? 3 : 8,
+      timestamp: performance.now(),
+    }];
     ctx.pushGestures(gestures);
     return gestures;
   }
@@ -104,27 +114,29 @@ class WaterTankDemoAI implements SimulationAI {
   private randomize(ctx: SimAIContext): void {
     const style = ctx.styleIds[Math.floor(Math.random() * Math.max(1, ctx.styleIds.length))];
     if (style) ctx.applyStyle(style);
-    ctx.applySetting('renderStyle', Math.random() > 0.72 ? 'particles' : Math.random() > 0.38 ? 'glass' : 'surface');
-    ctx.applyNumericSetting('maxParticles', this.liteMode ? 512 + Math.floor(Math.random() * 1024) : 2048 + Math.floor(Math.random() * 4096));
-    ctx.applyNumericSetting('particleRadius', this.liteMode ? 3.4 + Math.random() * 1.4 : 2.4 + Math.random() * 1.8);
-    ctx.applyNumericSetting('gravity', 850 + Math.random() * 720);
-    ctx.applyNumericSetting('viscosity', 0.65 + Math.random() * 1.6);
-    ctx.applyNumericSetting('viscositySigma', 0.45 + Math.random() * 1.2);
-    ctx.applyNumericSetting('viscosityBeta', 0.08 + Math.random() * 0.62);
-    ctx.applyNumericSetting('fluidGridResolution', this.liteMode ? 64 : Math.random() > 0.72 ? 256 : 128);
-    ctx.applyNumericSetting('restDensity', 0.46 + Math.random() * 0.82);
-    ctx.applyNumericSetting('stiffness', 0.012 + Math.random() * 0.055);
-    ctx.applyNumericSetting('nearStiffness', 0.7 + Math.random() * 1.65);
-    ctx.applyNumericSetting('surfaceTension', 350 + Math.random() * 1650);
-    ctx.applyNumericSetting('collisionBounce', Math.random() * 0.08);
-    ctx.applyNumericSetting('maxFluidSpeed', this.liteMode ? 1600 + Math.random() * 700 : 1900 + Math.random() * 1300);
-    ctx.applyNumericSetting('obstacleRamps', this.liteMode ? 1 + Math.floor(Math.random() * 3) : 2 + Math.floor(Math.random() * 6));
-    ctx.applyNumericSetting('obstaclePegs', this.liteMode ? Math.floor(Math.random() * 3) : 1 + Math.floor(Math.random() * 7));
-    ctx.applyNumericSetting('pourRate', this.liteMode ? 3200 + Math.random() * 4800 : 9000 + Math.random() * 16000);
-    ctx.applyNumericSetting('pourRadius', 20 + Math.random() * 34);
-    ctx.applyNumericSetting('buildRadius', this.liteMode ? 14 + Math.random() * 10 : 12 + Math.random() * 18);
-    ctx.applyNumericSetting('interactionStrength', 12 + Math.random() * 18);
-    ctx.applyNumericSetting('metaballBlend', 0.55 + Math.random() * 0.4);
+    ctx.applySetting('renderStyle', this.liteMode ? 'enhanced' : Math.random() > 0.24 ? 'enhanced' : 'basic');
+    ctx.applyNumericSetting('maxParticles', this.liteMode ? 384 + Math.floor(Math.random() * 512) : 2048 + Math.floor(Math.random() * 4096));
+    ctx.applyNumericSetting('particleRadius', this.liteMode ? 2.2 + Math.random() * 0.9 : 2.4 + Math.random() * 1.8);
+    ctx.applyNumericSetting('gravity', this.liteMode ? 620 + Math.random() * 280 : 850 + Math.random() * 720);
+    ctx.applyNumericSetting('viscosity', this.liteMode ? 0.45 + Math.random() * 0.45 : 0.65 + Math.random() * 1.6);
+    ctx.applyNumericSetting('viscositySigma', this.liteMode ? 0.34 + Math.random() * 0.42 : 0.45 + Math.random() * 1.2);
+    ctx.applyNumericSetting('viscosityBeta', this.liteMode ? 0.03 + Math.random() * 0.16 : 0.08 + Math.random() * 0.62);
+    ctx.applyNumericSetting('supportRadiusScale', this.liteMode ? 1.08 + Math.random() * 0.12 : 1.15 + Math.random() * 0.55);
+    ctx.applyNumericSetting('neighborPairBudget', this.liteMode ? 8192 : Math.random() > 0.55 ? 65536 : 32768);
+    ctx.applyNumericSetting('fluidGridResolution', this.liteMode ? 32 : Math.random() > 0.72 ? 256 : 128);
+    ctx.applyNumericSetting('restDensity', this.liteMode ? 0.68 + Math.random() * 0.28 : 0.46 + Math.random() * 0.82);
+    ctx.applyNumericSetting('stiffness', this.liteMode ? 0.008 + Math.random() * 0.018 : 0.012 + Math.random() * 0.055);
+    ctx.applyNumericSetting('nearStiffness', this.liteMode ? 0.42 + Math.random() * 0.58 : 0.7 + Math.random() * 1.65);
+    ctx.applyNumericSetting('surfaceTension', this.liteMode ? 45 + Math.random() * 190 : 350 + Math.random() * 1650);
+    ctx.applyNumericSetting('collisionBounce', this.liteMode ? 0 : Math.random() * 0.08);
+    ctx.applyNumericSetting('maxFluidSpeed', this.liteMode ? 780 + Math.random() * 360 : 1900 + Math.random() * 1300);
+    ctx.applyNumericSetting('obstacleRamps', this.liteMode ? 1 : 2 + Math.floor(Math.random() * 6));
+    ctx.applyNumericSetting('obstaclePegs', this.liteMode ? 1 + Math.floor(Math.random() * 2) : 1 + Math.floor(Math.random() * 7));
+    ctx.applyNumericSetting('pourRate', this.liteMode ? 520 + Math.random() * 620 : 9000 + Math.random() * 16000);
+    ctx.applyNumericSetting('pourRadius', this.liteMode ? 10 + Math.random() * 12 : 20 + Math.random() * 34);
+    ctx.applyNumericSetting('buildRadius', this.liteMode ? 7 + Math.random() * 4 : 12 + Math.random() * 18);
+    ctx.applyNumericSetting('interactionStrength', this.liteMode ? 4 + Math.random() * 7 : 12 + Math.random() * 18);
+    ctx.applyNumericSetting('metaballBlend', this.liteMode ? 0.46 + Math.random() * 0.18 : 0.55 + Math.random() * 0.4);
     ctx.resetScene();
     this.elapsed = 0;
     this.nextShuffleIn = this.liteMode ? 8 + Math.random() * 7 : 13 + Math.random() * 13;

@@ -29,13 +29,13 @@ describe('water tank definition', () => {
     const field = WATER_TANK_SETTINGS_FIELDS.find((candidate) => candidate.key === 'renderStyle');
     expect(field?.section).toBe('Rendering');
     expect(field?.type).toBe('select');
-    expect(field?.options?.map((option) => option.value)).toEqual(['particles', 'surface', 'glass']);
+    expect(field?.options?.map((option) => option.value)).toEqual(['basic', 'enhanced', 'ultra']);
     expect(WATER_TANK_SETTINGS_FIELDS.some((candidate) => candidate.key === 'renderScale')).toBe(false);
     expect(WATER_TANK_DEFAULTS.renderScale).toBeUndefined();
   });
 
-  it('supports pour, build, and interact modes with contextual input controls', () => {
-    expect(waterTankDefinition.modes?.map((mode) => mode.id)).toEqual(['pour', 'build', 'interact']);
+  it('supports pour, splash, and build modes with contextual input controls', () => {
+    expect(waterTankDefinition.modes?.map((mode) => mode.id)).toEqual(['pour', 'splash', 'build']);
     const inputFields = WATER_TANK_SETTINGS_FIELDS.filter((field) => field.section === 'Input Mode');
     expect(inputFields.length).toBeGreaterThan(0);
     expect(inputFields.every((field) => Array.isArray(field.visibleModes) && field.visibleModes.length > 0)).toBe(true);

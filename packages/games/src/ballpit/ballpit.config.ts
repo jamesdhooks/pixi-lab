@@ -128,7 +128,7 @@ export const BALLPIT_SETTINGS_FIELDS: SettingsField[] = [
     min: 0.05,
     max: 1.5,
     step: 0.01,
-    default: 0.82,
+    default: 1.05,
     advanced: true,
   },
   {
@@ -139,7 +139,7 @@ export const BALLPIT_SETTINGS_FIELDS: SettingsField[] = [
     min: 0.02,
     max: 2,
     step: 0.01,
-    default: 0.38,
+    default: 0.75,
     advanced: true,
   },
   {
@@ -201,8 +201,8 @@ export const BALLPIT_DEFAULTS: Record<string, unknown> = {
   burstCount: 5000,
   wallBounce: false,
   friction: 0.72,
-  collisionSoftness: 0.82,
-  maxPairPush: 0.38,
+  collisionSoftness: 1.05,
+  maxPairPush: 0.75,
   airDrag: 0.998,
   solverDamping: 0.982,
   wallBounceAmount: 0.16,

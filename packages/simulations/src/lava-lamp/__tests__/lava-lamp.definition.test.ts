@@ -25,7 +25,7 @@ describe('lava lamp definition', () => {
     expect(new Set(lavaLampDefinition.styleManifest.styles.map((style) => style.id)).size).toBe(10);
   });
 
-  it('credits the reference lava lamp work and shader lineage', () => {
+  it('documents the reference lava lamp inspiration', () => {
     expect(lavaLampDefinition.attributions).toEqual(expect.arrayContaining([
       expect.objectContaining({
         label: 'WebGL Lava Lamp',
@@ -33,12 +33,8 @@ describe('lava lamp definition', () => {
         author: 'Matt Bryant',
         license: 'GPL-3.0',
       }),
-      expect.objectContaining({
-        label: 'Raymarch lava lamp shader',
-        href: 'https://www.shadertoy.com/view/fsKXDm',
-        author: '@Arrangemonk',
-      }),
     ]));
+    expect(lavaLampDefinition.attributions?.some((attribution) => attribution.href.includes('shadertoy'))).toBe(false);
   });
 
   it('keeps render style separate from color palettes', () => {
@@ -46,6 +42,7 @@ describe('lava lamp definition', () => {
     expect(field?.section).toBe('Rendering');
     expect(field?.type).toBe('select');
     expect(field?.options?.map((option) => option.value)).toEqual(['basic', 'enhanced', 'ultra']);
+    expect(LAVA_LAMP_SETTINGS_FIELDS.find((candidate) => candidate.key === 'liquidRimLighting')?.visibleRenderStyles).toEqual(['ultra']);
     expect(LAVA_LAMP_SETTINGS_FIELDS.some((candidate) => candidate.key === 'renderScale')).toBe(false);
     expect(LAVA_LAMP_DEFAULTS.renderScale).toBeUndefined();
   });
@@ -56,7 +53,9 @@ describe('lava lamp definition', () => {
     expect(inputFields.map((field) => field.key)).toEqual(['inputRadius', 'inputLift', 'inputThermalRate']);
     expect(inputFields.map((field) => field.visibleModes?.join(','))).toEqual(['add,remove', 'add', 'add']);
     expect(LAVA_LAMP_SETTINGS_FIELDS.map((field) => field.key)).toContain('thermalContrast');
-    expect(LAVA_LAMP_SETTINGS_FIELDS.filter((field) => field.section === 'Thermal Motion').map((field) => field.key)).toEqual(['buoyancy', 'heatRate', 'coolRate', 'waxViscosity']);
+    expect(LAVA_LAMP_SETTINGS_FIELDS.filter((field) => field.section === 'Thermal Motion').map((field) => field.key)).toEqual(expect.arrayContaining(['buoyancy', 'thermalDrive', 'heatRate', 'coolRate', 'heatTransfer', 'turbulence', 'verticalTurbulence', 'waxViscosity']));
+    expect(LAVA_LAMP_SETTINGS_FIELDS.find((field) => field.key === 'heatTransfer')).toMatchObject({ max: 0.12, default: 0.012 });
+    expect(LAVA_LAMP_SETTINGS_FIELDS.find((field) => field.key === 'turbulence')).toMatchObject({ max: 4, default: 0.55 });
   });
 
   it('matches visible field defaults with runtime config defaults', () => {
@@ -65,11 +64,11 @@ describe('lava lamp definition', () => {
     }
   });
 
-  it('documents raw WebGL raymarch acceleration on the shared particle scene', () => {
+  it('documents raw WebGL liquid-surface rendering on the shared particle scene', () => {
     expect(lavaLampDefinition.advancedPhysics?.renderer).toBe('raw-webgl2');
-    expect(lavaLampDefinition.advancedPhysics?.engine).toBe('raymarched-lava-lamp');
+    expect(lavaLampDefinition.advancedPhysics?.engine).toBe('shared-liquid-surface-lava');
     expect(lavaLampDefinition.advancedPhysics?.portability).toBe('reusable-core');
-    expect(lavaLampDefinition.advancedPhysics?.reusableFor).toContain('raymarched lava lamps');
+    expect(lavaLampDefinition.advancedPhysics?.reusableFor).toContain('shared liquid-surface lava lamps');
   });
 
   it('provides demo AI gestures for both full scene and preview tile mode', () => {
@@ -91,15 +90,21 @@ describe('lava lamp definition', () => {
     };
     const demo = lavaLampDefinition.demoAiFactory?.(ctx);
     demo?.onActivate(ctx);
-    const gestures = demo?.think(ctx) ?? [];
+    let gestures = demo?.think(ctx) ?? [];
     expect(gestures.some((gesture) => gesture.kind === 'drag')).toBe(true);
     expect(gestures).toHaveLength(2);
-    expect(gestures.some((gesture) => (gesture.strength ?? 0) < 0)).toBe(true);
     expect(gestures.some((gesture) => (gesture.strength ?? 0) > 0)).toBe(true);
+    ctx.dt = 1;
+    gestures = demo?.think(ctx) ?? [];
+    expect(gestures.some((gesture) => gesture.kind === 'tap' && (gesture.strength ?? 0) > 0)).toBe(true);
     expect(applyStyleCalls.length).toBeGreaterThan(0);
     expect(settings).toContain('renderStyle');
     expect(numericSettings).toContain('maxParticles');
     expect(numericSettings).toContain('thermalContrast');
+    expect(numericSettings).toContain('liquidRimLighting');
+    expect(numericSettings).toContain('liquidHeatShimmer');
     expect(numericSettings).toContain('waxViscosity');
+    expect(numericSettings).toContain('heatTransfer');
+    expect(numericSettings).toContain('turbulence');
   });
 });

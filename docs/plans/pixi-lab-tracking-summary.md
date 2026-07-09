@@ -1,6 +1,6 @@
 # Pixi Lab Tracking Summary
 
-Updated: 2026-07-01  
+Updated: 2026-07-09
 Status: active tracking summary for the clean-slate rebuild
 
 ## Summary
@@ -8,7 +8,7 @@ Status: active tracking summary for the clean-slate rebuild
 Pixi Lab has moved from a broad legacy branch into a focused rebuild baseline. The current active branch implements the engine package, React runtime shell, demo host app, and the three promoted launch experiences:
 
 - Ball Pit;
-- Harmonic Sand Plate;
+- Haromonics;
 - Space Debris.
 
 The old main catalog is intentionally not the active tracking source anymore. This document replaces the old scattered tracker style with a concise record of what is implemented, what was deliberately left behind, and what remains before the rebuild should be treated as accepted on `main`.
@@ -39,6 +39,29 @@ Known non-blocking warnings:
 - Docker Compose optional environment-variable warnings for unrelated/defaulted values.
 - Docker Compose Bake/buildx warning.
 
+## Current in-progress branch snapshot
+
+Updated from working-tree inspection on 2026-07-09 17:12 EDT.
+
+Branch and scope:
+
+- Active branch remains `agent/pixi-lab-core-rebuild-clean`, ahead of `origin/agent/pixi-lab-core-rebuild-clean` by 2 commits at inspection time.
+- Working tree is intentionally dirty across core physics, React runtime controls, demo routing/UI, Ball Pit raw-mode metadata, simulation definitions/configs/renderers, docs, and `scene-defaults.json`.
+- New untracked simulation/shared implementation files are present under `packages/simulations/src/sparks/` plus `packages/simulations/src/shared/RawLiquidSurfaceRenderer.ts`, `build-fixtures.ts`, `build-mode.ts`, and `spark-rendering.ts`.
+
+Progress captured in this snapshot:
+
+- Sparks has been added to the active tracker as implemented and registered, with definition and input-mode test coverage recorded.
+- Fireworks, Particle Fluid, and Splash MPM remain tracked as implemented/registered and awaiting James' manual demo QA.
+- Current renderer work is broader than the last promoted baseline: shared particle/metaball/liquid rendering, raw GPU particle scenes, fluid/water/splash surfaces, soft-body visuals, and advanced constraint-particle scenes are all in flight.
+- React runtime/settings work is also in flight, especially launcher, tiles, bottom sheet, intro card, and settings drawer behavior.
+
+Verification status for this snapshot:
+
+- The latest completed verification evidence in this document still belongs to the prior clean baseline unless a newer command is explicitly recorded below.
+- Do not treat the current dirty worktree as accepted until focused tests/typechecks/builds are rerun and results are added here.
+- Next verification target should start with focused simulation and React gates, then broaden to recursive typecheck/test/build once local defects are resolved.
+
 ## Implementation progress
 
 ### Foundation packages
@@ -48,7 +71,7 @@ Known non-blocking warnings:
 | `packages/core` | Implemented | Public barrel exports engine runtime, scene/ticker/input/audio/settings/telemetry, experience definitions, physics, Pixi/render helpers, semantic pipelines, raw WebGL2 utilities, simulation fields, performance/stagnation/debug/AI helpers | Treat as foundation-complete; future shared APIs should be proven and tested before expansion |
 | `packages/react` | Implemented | Public barrel exports runtime components, launcher/gallery/preview tiles, viewport infrastructure, HUD/tutorial/settings/style/engine/debug/mode/shader/sim controls | Keep app-agnostic and capability-driven |
 | `packages/games` | Implemented for launch scope | `GAME_REGISTRY` contains `ballPitDefinition` | Only Ball Pit is promoted now |
-| `packages/simulations` | Implemented for launch scope | `SIMULATION_REGISTRY` contains `harmonicSandDefinition` and `orbitalShrapnelDefinition` | Only two simulations are promoted now |
+| `packages/simulations` | Implemented for expanded rebuild scope | `SIMULATION_REGISTRY` now includes Chain Rain, Soft Body Blob, Harmonic Sand, Mycelium, Orbital Shrapnel, Fluid Tank, Particle Fluid, Lava Lamp, Water Tank, Splash MPM, Fireworks, Sparks, Turing Skin, and Alien Vascular Tree definitions | Many expanded simulations are still awaiting manual demo QA and final verification |
 | `packages/demo` | Implemented | App composes game/simulation registries, launches active experience, handles filters, carousel/docked navigation, app demo mode, direct route parsing | Needs visual QA and bundle hardening |
 
 ### Runtime and engine capabilities
@@ -89,7 +112,7 @@ Tracking notes:
 - Serves as the physics/game-loop proof point.
 - Remaining work is acceptance QA, score readability under load, mobile touch validation, and preview/screensaver budget tuning if needed.
 
-### Harmonic Sand Plate
+### Haromonics
 
 Status: implemented and promoted.
 
@@ -144,6 +167,25 @@ Tracking notes:
 - Serves as the event-command GPU particle proof point: CPU-scheduled launch actors feed bounded spawn commands while dense spark motion, lifespan aging, color transition, point rendering, and trail feedback stay GPU-resident.
 - Includes 32 shader-level explosion templates plus probabilistic secondary shell actors for recursive smaller bursts.
 - Remaining work is James' manual demo QA, visual tuning across styles/densities, and performance capture for high-density finale settings.
+
+### Sparks
+
+Status: implemented and registered; awaiting manual demo QA.
+
+Evidence:
+
+- Registered in `SIMULATION_REGISTRY`.
+- Definition id: `sparks`.
+- Kind: `simulation`.
+- Exposes raw WebGL2 scene, preview scene, demo AI, tutorial pages, modes, settings/defaults, style manifest, gesture map, director events, stagnation policy, and raw engine configuration.
+- Advertises interactive, ambient, gestures, reset, director mode, stagnation recovery, debug overlay, style export, procedural textures, render target pool, demo, and settings capabilities.
+- Covered by `packages/simulations/src/sparks/__tests__/sparks.definition.test.ts` and `packages/simulations/src/sparks/__tests__/SparksInputModes.test.ts`.
+
+Tracking notes:
+
+- Serves as the general-purpose spark engine playground: the first mode is a welding torch/contact effect with finite-lifespan GPU particles, bouncing surface response, split-state shard mutation, trail feedback, and Basic/Enhanced/Ultra render styles.
+- Includes multiple color palettes for welding, plasma, magnesium, molten metal, and industrial oxide looks.
+- Remaining work is James' manual demo QA, browser visual tuning for the welding contact core, and performance capture for high-capacity Ultra showers.
 
 ### Particle Fluid
 
@@ -210,9 +252,10 @@ Disposition policy:
 - [x] React runtime package exists and exports the reusable host shell and controls.
 - [x] Demo app composes promoted registries.
 - [x] Ball Pit is implemented and registered.
-- [x] Harmonic Sand Plate is implemented and registered.
+- [x] Haromonics is implemented and registered.
 - [x] Space Debris is implemented and registered.
 - [x] Fireworks is implemented and registered.
+- [x] Sparks is implemented and registered.
 - [x] Typecheck passed.
 - [x] Test suite passed.
 - [x] Recursive build passed.
@@ -226,9 +269,10 @@ Disposition policy:
 - [ ] Review these new docs for product accuracy.
 - [ ] Browser-open deployed app through Cloudflare Access and visually test the gallery.
 - [ ] Launch Ball Pit from the deployed app and verify gameplay loop, scoring, tutorial, preview, and AI/screensaver behavior.
-- [ ] Launch Harmonic Sand Plate from the deployed app and verify touch gestures, settings, style presets, demo mode, debug overlay, and render profile behavior.
+- [ ] Launch Haromonics from the deployed app and verify touch gestures, settings, style presets, demo mode, debug overlay, and render profile behavior.
 - [ ] Launch Space Debris from the deployed app and verify add/influence modes, raw controls where available, style presets, demo mode, and render profile behavior.
 - [ ] Launch Fireworks from the deployed app and verify launch/fan/finale modes, secondary bursts, style presets, demo mode, debug overlay, and raw density behavior.
+- [ ] Launch Sparks from the deployed app and verify welding/drag/pinwheel/shower modes, palettes, demo mode, debug overlay, and raw spark-density performance.
 - [ ] Launch Particle Fluid from the deployed app and verify vortex/inject/repel modes, attribution text, palette presets, settings, demo mode, and raw particle density performance.
 - [ ] Launch Splash MPM from the deployed app and verify splash/jet/repel modes, attribution text, palette presets, settings, demo mode, and raw particle-grid performance.
 - [ ] Decide whether to address Vite large-bundle warning before or after main promotion.

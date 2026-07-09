@@ -45,14 +45,15 @@ describe('splash mpm definition', () => {
   });
 
   it('uses contextual input-mode settings', () => {
-    expect(splashMpmDefinition.modes?.map((mode) => mode.id)).toEqual(['splash', 'jet']);
+    expect(splashMpmDefinition.modes?.map((mode) => mode.id)).toEqual(['splash', 'pour', 'build']);
     const inputFields = SPLASH_MPM_SETTINGS_FIELDS.filter((field) => field.section === 'Input Mode');
     expect(inputFields.length).toBeGreaterThan(0);
     expect(inputFields.every((field) => Array.isArray(field.visibleModes) && field.visibleModes.length > 0)).toBe(true);
+    expect(inputFields.map((field) => field.key)).toEqual(['inputRadius', 'inputForce', 'emitRate', 'pourRadius', 'buildRadius']);
     expect(SPLASH_MPM_SETTINGS_FIELDS.map((field) => field.key)).toContain('resolution');
     const renderStyleField = SPLASH_MPM_SETTINGS_FIELDS.find((field) => field.key === 'renderStyle');
     expect(renderStyleField?.type).toBe('select');
-    expect(renderStyleField?.options?.map((option) => option.value)).toEqual(['basic', 'enhanced', 'raw']);
+    expect(renderStyleField?.options?.map((option) => option.value)).toEqual(['basic', 'enhanced', 'ultra']);
     expect(renderStyleField?.options?.map((option) => option.label)).toEqual(['Basic', 'Enhanced', 'Ultra']);
     const budgetField = SPLASH_MPM_SETTINGS_FIELDS.find((field) => field.key === 'maxParticles');
     expect(budgetField?.numericScale).toBe('powerOfTwo');
@@ -70,9 +71,21 @@ describe('splash mpm definition', () => {
       'enhancedSplatSize',
       'enhancedDepth',
       'enhancedEdge',
+      'liquidFieldScale',
+      'liquidSurfaceThreshold',
+      'liquidEdgeTightness',
+      'liquidEdgeSoftness',
+      'liquidSplatDensity',
+      'liquidParticleRadius',
+      'liquidRefraction',
+      'liquidGloss',
+      'liquidFoamStrength',
+      'liquidBloomStrength',
+      'liquidHeatShimmer',
+      'liquidDepthDiffusion',
     ]);
     expect(enhancedFields.every((field) => field.type === 'number')).toBe(true);
-    expect(enhancedFields.every((field) => field.visibleRenderStyles?.includes('enhanced'))).toBe(true);
+    expect(enhancedFields.every((field) => field.visibleRenderStyles?.includes('enhanced') || field.visibleRenderStyles?.includes('ultra'))).toBe(true);
   });
 
   it('provides demo AI style and setting overhauls plus gestures', () => {
@@ -101,5 +114,7 @@ describe('splash mpm definition', () => {
     expect(numericSettings).toContain('maxParticles');
     expect(numericSettings).toContain('resolution');
     expect(numericSettings).toContain('stiffness');
+    expect(numericSettings).toContain('pourRadius');
+    expect(numericSettings).toContain('buildRadius');
   });
 });

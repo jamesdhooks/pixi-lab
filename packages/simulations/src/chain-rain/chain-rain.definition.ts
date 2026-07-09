@@ -1,5 +1,6 @@
 import { createEngineConfigurations, type SimAIContext, type SimulationAI, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
 import { AdvancedConstraintParticlesRawScene } from '../advanced-physics/AdvancedConstraintParticlesRawScene.js';
+import { buildModeDefinition } from '../shared/build-mode.js';
 import { CHAIN_RAIN_DEFAULTS, CHAIN_RAIN_SETTINGS_FIELDS } from './chain-rain.config.js';
 
 const chainRainStyleManifest: SimulationDefinition['styleManifest'] = {
@@ -23,8 +24,8 @@ export const chainRainDefinition: SimulationDefinition = {
   id: 'chain-rain',
   kind: 'simulation',
   name: 'Snakes',
-  short: 'Soft constraint snakes fall, snag, and pile up.',
-  long: 'A raw WebGL constraint simulation where soft snakes made from colliding particles fall into a box and expose solver stretch, jitter, and pile stability.',
+  short: 'Draw soft snakes and let them pile up.',
+  long: 'Draw soft snakes, build obstacles, and drag them around.',
   tags: ['simulation', 'physics', 'constraints', 'raw-webgl'],
   icon: '⌁',
   paletteHint: 'neon',
@@ -41,9 +42,9 @@ export const chainRainDefinition: SimulationDefinition = {
   settingsFields: CHAIN_RAIN_SETTINGS_FIELDS,
   configDefaults: CHAIN_RAIN_DEFAULTS,
   modes: [
-    { id: 'draw', label: 'Draw', icon: '〰', description: 'Draw a line that becomes a snake.' },
-    { id: 'build', label: 'Build', icon: '◆', description: 'Place fixed obstacle points or drag fixed obstacle lines.' },
-    { id: 'interact', label: 'Interact', icon: '✋', description: 'Drag snake nodes around directly.' },
+    { id: 'draw', label: 'Draw', icon: '〰', description: 'Draw a line to make a snake.' },
+    buildModeDefinition('Tap for pegs or drag to make a fixed line.'),
+    { id: 'interact', label: 'Interact', icon: '✋', description: 'Drag snakes around.' },
   ],
   styleManifest: chainRainStyleManifest,
   directorEvents: [],
@@ -52,7 +53,7 @@ export const chainRainDefinition: SimulationDefinition = {
     engine: 'advanced-circle-particles',
     portability: 'reusable-core',
     supportedShapes: ['chain', 'circle'],
-    reusableFor: ['snake simulations', 'rope simulations', 'distance constraints', 'dense collision plus constraints', 'solver stability benchmarks'],
+    reusableFor: ['snake simulations', 'rope simulations', 'distance constraints', 'dense collision plus constraints', 'solver stability benchmarks', 'shared liquid-surface particle rendering'],
     caveats: ['Snakes are particle constraints, not rigid links with angular motors.'],
   },
   factory: () => new AdvancedConstraintParticlesRawScene('chain-rain'),
@@ -84,10 +85,13 @@ class SnakesDemoAI implements SimulationAI {
   private randomize(ctx: SimAIContext): void {
     const styleId = ctx.styleIds[Math.floor(Math.random() * Math.max(1, ctx.styleIds.length))];
     if (styleId) ctx.applyStyle(styleId);
-    ctx.applySetting('renderStyle', Math.random() < 0.72 ? 'enhanced' : 'basic');
-    ctx.applyNumericSetting('nodeRadius', this.liteMode ? 4 + Math.random() * 2.4 : 3.5 + Math.random() * 5.5);
-    ctx.applyNumericSetting('chainLength', this.liteMode ? 7 + Math.floor(Math.random() * 10) : 8 + Math.floor(Math.random() * 35));
-    ctx.applyNumericSetting('gravity', this.liteMode ? 850 + Math.random() * 500 : 700 + Math.random() * 1500);
+    ctx.applySetting('renderStyle', Math.random() < 0.16 ? 'ultra' : Math.random() < 0.72 ? 'enhanced' : 'basic');
+    ctx.applyNumericSetting('nodeRadius', this.liteMode ? 3.6 + Math.random() * 2.2 : 3.5 + Math.random() * 5.5);
+    ctx.applyNumericSetting('nodeVariance', this.liteMode ? Math.random() * 0.55 : Math.random() * 1.05);
+    ctx.applyNumericSetting('nodeVarianceWavelength', this.liteMode ? 10 + Math.floor(Math.random() * 18) : 5 + Math.floor(Math.random() * 34));
+    ctx.applyNumericSetting('nodeVarianceRoughness', this.liteMode ? Math.random() * 0.48 : Math.random() * 0.86);
+    ctx.applyNumericSetting('chainLength', this.liteMode ? 8 + Math.floor(Math.random() * 20) : 8 + Math.floor(Math.random() * 35));
+    ctx.applyNumericSetting('gravity', this.liteMode ? 940 + Math.random() * 440 : 700 + Math.random() * 1500);
     ctx.applyNumericSetting('friction', this.liteMode ? 0.34 + Math.random() * 0.44 : 0.18 + Math.random() * 0.72);
     ctx.applyNumericSetting('solverPasses', this.liteMode ? 2 : 2 + Math.floor(Math.random() * 4));
     ctx.applyNumericSetting('substeps', this.liteMode ? 1 : 1 + Math.floor(Math.random() * 3));
@@ -96,6 +100,6 @@ class SnakesDemoAI implements SimulationAI {
     ctx.applyNumericSetting('collisionSoftness', 0.58 + Math.random() * 0.62);
     ctx.resetScene();
     this.elapsed = 0;
-    this.nextShuffleIn = this.liteMode ? 7 + Math.random() * 7 : 11 + Math.random() * 13;
+    this.nextShuffleIn = this.liteMode ? 13 + Math.random() * 8 : 11 + Math.random() * 13;
   }
 }

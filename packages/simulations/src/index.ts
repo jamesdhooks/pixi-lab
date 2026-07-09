@@ -10,6 +10,7 @@ import { orbitalShrapnelDefinition } from './orbital-shrapnel/orbital-shrapnel.d
 import { particleFluidDefinition } from './particle-fluid/particle-fluid.definition.js';
 import { softBodyBlobDefinition } from './soft-body-blob/soft-body-blob.definition.js';
 import { splashMpmDefinition } from './splash-mpm/splash-mpm.definition.js';
+import { sparksDefinition } from './sparks/sparks.definition.js';
 import { turingSkinDefinition } from './turing-skin/turing-skin.definition.js';
 import { waterTankDefinition } from './water-tank/water-tank.definition.js';
 
@@ -43,6 +44,10 @@ export { softBodyBlobDefinition } from './soft-body-blob/soft-body-blob.definiti
 export { splashMpmDefinition, splashMpmStyleManifest } from './splash-mpm/splash-mpm.definition.js';
 export { RawSplashMpmScene } from './splash-mpm/RawSplashMpmScene.js';
 export { SplashMpmPreviewScene } from './splash-mpm/SplashMpmPreviewScene.js';
+export { sparksDefinition } from './sparks/sparks.definition.js';
+export { sparksStyleManifest } from './sparks/sparksStyleManifest.js';
+export { RawSparksScene } from './sparks/RawSparksScene.js';
+export { SparksPreviewScene } from './sparks/SparksPreviewScene.js';
 export { AdvancedConstraintParticlesRawScene } from './advanced-physics/AdvancedConstraintParticlesRawScene.js';
 export { turingSkinDefinition, turingSkinStyleManifest } from './turing-skin/turing-skin.definition.js';
 export { GpuTuringSkinScene } from './turing-skin/GpuTuringSkinScene.js';
@@ -50,17 +55,18 @@ export { waterTankDefinition, waterTankStyleManifest } from './water-tank/water-
 export { RawParticleMetaballScene } from './shared/RawParticleMetaballScene.js';
 
 export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [
-  harmonicSandDefinition,
-  orbitalShrapnelDefinition,
-  fireworksDefinition,
-  fluidTankDefinition,
   chainRainDefinition,
   softBodyBlobDefinition,
+  harmonicSandDefinition,
+  myceliumDefinition,
+  orbitalShrapnelDefinition,
+  fluidTankDefinition,
+  particleFluidDefinition,
   lavaLampDefinition,
   waterTankDefinition,
-  particleFluidDefinition,
   splashMpmDefinition,
-  myceliumDefinition,
+  fireworksDefinition,
+  sparksDefinition,
   turingSkinDefinition,
   alienVascularTreeDefinition,
 ] as const;

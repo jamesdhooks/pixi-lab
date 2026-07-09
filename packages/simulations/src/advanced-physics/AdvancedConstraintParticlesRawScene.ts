@@ -46,6 +46,14 @@ import {
   type RawWebGL2RenderState,
   type RenderQuality,
 } from '@hooksjam/pixi-lab-core';
+import { BUILD_MODE_ID, sampleBuildFixture } from '../shared/build-mode.js';
+import {
+  createRawLiquidSurfaceRenderer,
+  destroyRawLiquidSurfaceRenderer,
+  liquidSurfaceOptionsFromSettings,
+  renderLiquidSurfaceFromBufferParticles,
+  type RawLiquidSurfaceRenderer,
+} from '../shared/RawLiquidSurfaceRenderer.js';
 
 type ConstraintDemoKind = 'chain-rain' | 'soft-blob';
 type ConstraintGpuCollisionSource = 'cpu-spatial-neighbor-slots' | 'gpu-resident-list';
@@ -264,6 +272,9 @@ interface ConstraintRawState extends RawWebGL2RenderState {
   blobRestRadii?: Map<number, number>;
   groupedParticleScratch?: Map<number, number[]>;
   renderPointScratch?: RenderPoint[];
+  liquidSurface?: RawLiquidSurfaceRenderer;
+  liquidParticleBuffer?: WebGLBuffer;
+  liquidParticleData?: Float32Array;
   boundaryPointScratch?: IndexedRenderPoint[];
   closedRawScratch?: RenderPoint[];
   closedSmoothScratch?: RenderPoint[];
@@ -502,6 +513,8 @@ const DENSITY_QUAD = new Float32Array([
 const PARTICLE_QUAD = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
 const SOFT_BLOB_DENSITY_RINGS = new Float32Array([0.18, 0.34, 0.5, 0.66, 0.8, 0.92, 1]);
 const GPU_DEMO_CAPACITY = 4096;
+const LIQUID_STRIDE_FLOATS = 6;
+const LIQUID_STRIDE_BYTES = LIQUID_STRIDE_FLOATS * Float32Array.BYTES_PER_ELEMENT;
 
 function initDensityRenderer(state: ConstraintRawState): void {
   const gl = state.gl;
@@ -1935,6 +1948,10 @@ function renderStyleIsEnhanced(state: ConstraintRawState): boolean {
   return state.settings.renderStyle === 'enhanced';
 }
 
+function renderStyleIsUltra(state: ConstraintRawState): boolean {
+  return state.settings.renderStyle === 'ultra';
+}
+
 function softBlobNodeDensity(state: ConstraintRawState): number {
   return Math.max(0.1, Math.min(4, finiteNumberSetting(state.settings, 'nodeDensity', 1)));
 }
@@ -2490,28 +2507,75 @@ function engineSettings(state: ConstraintRawState, kind: ConstraintDemoKind, qua
   };
 }
 
+function snakeNodeVarianceAmount(state: ConstraintRawState): number {
+  return Math.max(0, Math.min(1.5, finiteNumberSetting(state.settings, 'nodeVariance', 0.28)));
+}
+
+function snakeNodeVarianceWavelength(state: ConstraintRawState): number {
+  return Math.max(2, Math.min(48, finiteNumberSetting(state.settings, 'nodeVarianceWavelength', 14)));
+}
+
+function snakeNodeVarianceRoughness(state: ConstraintRawState): number {
+  return Math.max(0, Math.min(1, finiteNumberSetting(state.settings, 'nodeVarianceRoughness', 0.35)));
+}
+
+function snakeNodeRadiusAt(state: ConstraintRawState, baseRadius: number, local: number, length: number, phase: number): number {
+  const amount = snakeNodeVarianceAmount(state);
+  if (amount <= 0) return baseRadius;
+  const wavelength = snakeNodeVarianceWavelength(state);
+  const roughness = snakeNodeVarianceRoughness(state);
+  const wave = (local / wavelength) * Math.PI * 2 + phase;
+  const primary = Math.sin(wave);
+  const secondary = Math.sin(wave * 0.47 + phase * 1.73);
+  const detail = Math.sin(wave * 2.19 + phase * 0.31);
+  const endpoint = length <= 1 ? 1 : Math.min(local / Math.max(1, length - 1), (length - 1 - local) / Math.max(1, length - 1));
+  const envelope = 0.72 + Math.min(1, endpoint * 5.5) * 0.28;
+  const signal = (primary * 0.62 + secondary * 0.28 + detail * roughness * 0.18) * envelope;
+  return baseRadius * Math.max(0.35, Math.min(2.35, 1 + signal * amount));
+}
+
 function spawnChain(state: ConstraintRawState): void {
   const engine = state.engine;
   if (!engine) return;
   const size = logicalSize(state);
   const radius = finiteNumberSetting(state.settings, 'nodeRadius', 5);
-  const length = clampInt(finiteNumberSetting(state.settings, 'chainLength', 16), 3, 96);
+  const baseLength = clampInt(finiteNumberSetting(state.settings, 'chainLength', 16), 3, 96);
+  const rainSpawn = state.inputMode === 'rain' || state.mode === 'demo';
+  const length = rainSpawn
+    ? clampInt(Math.round(baseLength * (0.55 + Math.random() * 1.45)), 4, 96)
+    : baseLength;
   const stiffness = finiteNumberSetting(state.settings, 'constraintStiffness', 0.92);
   const group = nextGroup(state);
-  const x = radius * 4 + Math.random() * Math.max(radius * 8, size.width - radius * 8);
-  const y = radius * 2;
+  const spacing = radius * 1.85;
+  const angle = rainSpawn ? Math.PI * (0.16 + Math.random() * 0.68) : -Math.PI * 0.5;
+  const radiusPhase = Math.random() * Math.PI * 2;
+  const minX = radius * 4 + Math.max(0, -Math.cos(angle) * spacing * Math.max(0, length - 1));
+  const maxX = Math.max(minX, size.width - radius * 4 - Math.max(0, Math.cos(angle) * spacing * Math.max(0, length - 1)));
+  const x = rainSpawn ? minX + Math.random() * Math.max(radius * 4, maxX - minX) : radius * 4 + Math.random() * Math.max(radius * 8, size.width - radius * 8);
+  const verticalSpan = Math.max(0, Math.sin(angle) * spacing * Math.max(0, length - 1));
+  const y = rainSpawn ? -verticalSpan - radius * (1.1 + Math.random() * 2.4) : radius * 2;
+  const lateralVelocity = rainSpawn ? Math.cos(angle) * (40 + Math.random() * 110) : 0;
+  const downwardVelocity = rainSpawn ? 70 + Math.random() * 130 : 0;
   let previous = -1;
+  let previousRadius = radius;
   for (let i = 0; i < length; i += 1) {
-    const node = engine.addParticle(x + (Math.random() - 0.5) * radius, y - i * radius * 1.85, {
-      radius,
-      velocityX: (Math.random() - 0.5) * 120,
-      velocityY: Math.random() * 80,
-      group,
-      local: i,
-    });
+    const nodeRadius = snakeNodeRadiusAt(state, radius, i, length, radiusPhase);
+    const jitter = (Math.random() - 0.5) * radius * (rainSpawn ? 0.7 : 1);
+    const node = engine.addParticle(
+      x + Math.cos(angle) * i * spacing + jitter,
+      y + Math.sin(angle) * i * spacing + (Math.random() - 0.5) * radius * 0.45,
+      {
+        radius: nodeRadius,
+        velocityX: lateralVelocity + (Math.random() - 0.5) * 70,
+        velocityY: downwardVelocity + Math.random() * 90,
+        group,
+        local: i,
+      },
+    );
     if (node < 0) break;
-    if (previous >= 0) engine.addDistanceConstraint(previous, node, { restLength: radius * 1.85, stiffness });
+    if (previous >= 0) engine.addDistanceConstraint(previous, node, { restLength: Math.max(radius * 0.25, (previousRadius + nodeRadius) * 0.94), stiffness });
     previous = node;
+    previousRadius = nodeRadius;
   }
 }
 
@@ -2614,19 +2678,23 @@ function spawnDrawnChain(state: ConstraintRawState): void {
   const spacing = radius * 2.02;
   const samples = sampleOpenPathByDistance(points, spacing);
   if (samples.length < 2) return;
+  const radiusPhase = Math.random() * Math.PI * 2;
   let previous = -1;
+  let previousRadius = radius;
   for (let local = 0; local < samples.length; local += 1) {
     const sample = samples[local];
-    const node = engine.addParticle(sample.x, sample.y, { radius, velocityX: 0, velocityY: 0, group, local });
+    const nodeRadius = snakeNodeRadiusAt(state, radius, local, samples.length, radiusPhase);
+    const node = engine.addParticle(sample.x, sample.y, { radius: nodeRadius, velocityX: 0, velocityY: 0, group, local });
     if (node < 0) return;
     if (previous >= 0) {
       const previousSample = samples[local - 1];
       engine.addDistanceConstraint(previous, node, {
-        restLength: Math.max(radius * 0.25, length2d(sample.x - previousSample.x, sample.y - previousSample.y)),
+        restLength: Math.max((previousRadius + nodeRadius) * 0.94, length2d(sample.x - previousSample.x, sample.y - previousSample.y)),
         stiffness,
       });
     }
     previous = node;
+    previousRadius = nodeRadius;
   }
 }
 
@@ -2637,16 +2705,13 @@ function spawnBuildFixture(state: ConstraintRawState): void {
   const radius = finiteNumberSetting(state.settings, 'nodeRadius', 5);
   const fixtureRadius = radius * 2.25;
   const group = nextGroup(state);
-  const start = points[0];
-  const end = points[points.length - 1];
-  const buildDx = end.x - start.x;
-  const buildDy = end.y - start.y;
-  if (points.length < 3 || buildDx * buildDx + buildDy * buildDy < radius * radius * 2.25) {
-    engine.addParticle(start.x, start.y, { radius: fixtureRadius, inverseMass: 0, velocityX: 0, velocityY: 0, group, local: 0 });
+  const fixture = sampleBuildFixture(points, fixtureRadius, { spacingScale: 1.35, clickDistanceScale: radius / fixtureRadius * 1.5 });
+  if (!fixture) return;
+  if (fixture.kind === 'point') {
+    engine.addParticle(fixture.start.x, fixture.start.y, { radius: fixtureRadius, inverseMass: 0, velocityX: 0, velocityY: 0, group, local: 0 });
     return;
   }
-  const samples = sampleOpenPathByDistance([start, end], fixtureRadius * 1.35);
-  samples.forEach((sample, local) => {
+  fixture.samples.forEach((sample, local) => {
     engine.addParticle(sample.x, sample.y, { radius: fixtureRadius, inverseMass: 0, velocityX: 0, velocityY: 0, group, local });
   });
 }
@@ -2655,7 +2720,7 @@ function seedChainRainBuildFixtures(state: ConstraintRawState, preview: boolean)
   const size = logicalSize(state);
   const radius = finiteNumberSetting(state.settings, 'nodeRadius', 5);
   const margin = Math.max(radius * 8, Math.min(size.width, size.height) * 0.08);
-  const count = preview ? 3 + Math.floor(Math.random() * 3) : 4 + Math.floor(Math.random() * 5);
+  const count = preview ? 6 + Math.floor(Math.random() * 5) : 4 + Math.floor(Math.random() * 5);
   const minX = margin;
   const maxX = Math.max(minX, size.width - margin);
   const minY = Math.max(margin, size.height * 0.28);
@@ -2667,8 +2732,8 @@ function seedChainRainBuildFixtures(state: ConstraintRawState, preview: boolean)
   for (let index = 0; index < count; index += 1) {
     const start = randomPoint();
     const lineRoll = Math.random();
-    if (lineRoll < (preview ? 0.32 : 0.46)) {
-      const length = margin * (1.1 + Math.random() * (preview ? 1.8 : 2.8));
+    if (lineRoll < (preview ? 0.68 : 0.46)) {
+      const length = margin * (1.25 + Math.random() * (preview ? 2.4 : 2.8));
       const angle = -Math.PI * 0.86 + Math.random() * Math.PI * 0.72;
       const end = {
         x: Math.max(minX, Math.min(maxX, start.x + Math.cos(angle) * length)),
@@ -3063,6 +3128,10 @@ function drawSkinMeshChains(state: ConstraintRawState, size: { width: number; he
   if (!engine) return;
   const palette = state.style?.palette ?? [];
   const groups = groupedParticleIndices(engine, state);
+  const skinWidth = Math.max(0.75, Math.min(2.4, finiteNumberSetting(state.settings, 'skinWidth', 1.08)));
+  const highlightWidth = Math.max(0, Math.min(1.4, finiteNumberSetting(state.settings, 'skinHighlightWidth', 0.34)));
+  const highlightStrength = Math.max(0, Math.min(1.5, finiteNumberSetting(state.settings, 'skinHighlightStrength', 0.72)));
+  const highlightOpacity = Math.max(0, Math.min(1, finiteNumberSetting(state.settings, 'skinHighlightOpacity', 0.42)));
   state.gl.disable(state.gl.BLEND);
   for (const [group, indices] of groups.entries()) {
     const isFixture = indices.every((index) => engine.inverseMasses[index] <= 0);
@@ -3073,21 +3142,162 @@ function drawSkinMeshChains(state: ConstraintRawState, size: { width: number; he
     const bodyColor: [number, number, number, number] = isFixture ? [0.58, 0.58, 0.58, 1] : paletteOptionColor(palette, group - 1, [0.45, 0.9, 1], 1);
     if (indices.length === 1) {
       const k = indices[0] << 1;
-      const disk = buildDiskTriangles(state, { x: engine.positions[k], y: engine.positions[k + 1] }, radius * 1.08, 20);
+      const disk = buildDiskTriangles(state, { x: engine.positions[k], y: engine.positions[k + 1] }, radius * skinWidth, 20);
       if (disk.length > 0) uploadDynamicGeometry(state, size, disk.data, bodyColor, state.gl.TRIANGLES, disk.length);
       continue;
     }
     if (indices.length < 2) continue;
     const points = renderPointsForIndices(state, engine, indices);
-    const body = buildSmoothOpenSkinTriangles(state, points, radius * 1.08);
+    const body = buildSmoothOpenSkinTriangles(state, points, radius * skinWidth);
     if (body.length > 0) uploadDynamicGeometry(state, size, body.data, bodyColor, state.gl.TRIANGLES, body.length);
-    state.gl.enable(state.gl.BLEND);
-    state.gl.blendFunc(state.gl.SRC_ALPHA, state.gl.ONE_MINUS_SRC_ALPHA);
-    const highlight = buildSmoothOpenSkinTriangles(state, points, radius * 0.34);
-    if (highlight.length > 0) uploadDynamicGeometry(state, size, highlight.data, brightenRgba(bodyColor, 0.72, 0.42), state.gl.TRIANGLES, highlight.length);
-    state.gl.disable(state.gl.BLEND);
+    if (highlightWidth > 0 && highlightOpacity > 0 && highlightStrength > 0) {
+      state.gl.enable(state.gl.BLEND);
+      state.gl.blendFunc(state.gl.SRC_ALPHA, state.gl.ONE_MINUS_SRC_ALPHA);
+      const highlight = buildSmoothOpenSkinTriangles(state, points, radius * highlightWidth);
+      if (highlight.length > 0) uploadDynamicGeometry(state, size, highlight.data, brightenRgba(bodyColor, highlightStrength, highlightOpacity), state.gl.TRIANGLES, highlight.length);
+      state.gl.disable(state.gl.BLEND);
+    }
   }
   state.gl.enable(state.gl.BLEND);
+}
+
+function pushLiquidSnakeParticle(
+  data: Float32Array,
+  count: number,
+  x: number,
+  y: number,
+  velocityX: number,
+  velocityY: number,
+  radius: number,
+  thermal: number,
+): number {
+  const capacity = Math.floor(data.length / LIQUID_STRIDE_FLOATS);
+  if (count >= capacity) return count;
+  const offset = count * LIQUID_STRIDE_FLOATS;
+  data[offset] = x;
+  data[offset + 1] = y;
+  data[offset + 2] = velocityX;
+  data[offset + 3] = velocityY;
+  data[offset + 4] = radius;
+  data[offset + 5] = thermal;
+  return count + 1;
+}
+
+function drawFixtureChains(state: ConstraintRawState, size: { width: number; height: number }, groups: Map<number, number[]>): void {
+  const engine = state.engine;
+  if (!engine) return;
+  const color: [number, number, number, number] = [0.58, 0.58, 0.58, 1];
+  state.gl.disable(state.gl.BLEND);
+  for (const indices of groups.values()) {
+    if (!indices.every((index) => engine.inverseMasses[index] <= 0)) continue;
+    let radius = 0;
+    for (const index of indices) radius = Math.max(radius, engine.radii[index]);
+    if (indices.length === 1) {
+      const k = indices[0] << 1;
+      const disk = buildDiskTriangles(state, { x: engine.positions[k], y: engine.positions[k + 1] }, radius * 1.08, 20);
+      if (disk.length > 0) uploadDynamicGeometry(state, size, disk.data, color, state.gl.TRIANGLES, disk.length);
+      continue;
+    }
+    const points = renderPointsForIndices(state, engine, indices);
+    const body = buildSmoothOpenSkinTriangles(state, points, radius * 1.08);
+    if (body.length > 0) uploadDynamicGeometry(state, size, body.data, color, state.gl.TRIANGLES, body.length);
+  }
+  state.gl.enable(state.gl.BLEND);
+}
+
+function renderLiquidSnakeSurface(state: ConstraintRawState, size: { width: number; height: number }): boolean {
+  const engine = state.engine;
+  const renderer = state.liquidSurface;
+  const buffer = state.liquidParticleBuffer;
+  const data = state.liquidParticleData;
+  if (!engine || !renderer || !buffer || !data || engine.count <= 0) return false;
+  const groups = groupedParticleIndices(engine, state);
+  const liquidRadius = Math.max(0.55, Math.min(7.5, finiteNumberSetting(state.settings, 'liquidParticleRadius', 1.45)));
+  const visualRadiusScale = 0.78 + liquidRadius * 0.46;
+  const bridgeFill = Math.max(0, Math.min(3, finiteNumberSetting(state.settings, 'liquidFillDensity', 1.1)));
+  const bridgeSpacingScale = Math.max(0.32, 1.25 - bridgeFill * 0.24);
+  const scaleX = state.width / Math.max(1, size.width);
+  const scaleY = state.height / Math.max(1, size.height);
+  const radiusScale = Math.sqrt(Math.max(0.0001, scaleX * scaleY));
+  let count = 0;
+  for (const [group, indices] of groups.entries()) {
+    if (indices.length <= 0 || indices.every((index) => engine.inverseMasses[index] <= 0)) continue;
+    const thermal = Math.max(0, Math.min(1, ((group - 1) % 4) / 3));
+    for (let cursor = 0; cursor < indices.length; cursor += 1) {
+      const index = indices[cursor];
+      const k = index << 1;
+      const x = engine.positions[k] * scaleX;
+      const y = engine.positions[k + 1] * scaleY;
+      const velocityX = engine.velocities[k] * scaleX;
+      const velocityY = engine.velocities[k + 1] * scaleY;
+      const radius = engine.radii[index] * visualRadiusScale * radiusScale;
+      const speed = length2d(engine.velocities[k], engine.velocities[k + 1]);
+      count = pushLiquidSnakeParticle(
+        data,
+        count,
+        x,
+        y,
+        velocityX,
+        velocityY,
+        radius,
+        Math.max(thermal * 0.72, Math.min(1, speed / 900) * 0.38),
+      );
+      if (cursor >= indices.length - 1) continue;
+      const next = indices[cursor + 1];
+      const nk = next << 1;
+      const nextX = engine.positions[nk] * scaleX;
+      const nextY = engine.positions[nk + 1] * scaleY;
+      const nextVelocityX = engine.velocities[nk] * scaleX;
+      const nextVelocityY = engine.velocities[nk + 1] * scaleY;
+      const dx = nextX - x;
+      const dy = nextY - y;
+      const distance = length2d(dx, dy);
+      const averageRadius = (engine.radii[index] + engine.radii[next]) * 0.5 * visualRadiusScale * radiusScale;
+      const bridgeCount = Math.max(0, Math.min(12, Math.ceil(distance / Math.max(1, averageRadius * bridgeSpacingScale)) - 1));
+      for (let bridge = 1; bridge <= bridgeCount; bridge += 1) {
+        const t = bridge / (bridgeCount + 1);
+        count = pushLiquidSnakeParticle(
+          data,
+          count,
+          x + dx * t,
+          y + dy * t,
+          velocityX + (nextVelocityX - velocityX) * t,
+          velocityY + (nextVelocityY - velocityY) * t,
+          averageRadius,
+          thermal * 0.72,
+        );
+      }
+    }
+  }
+  if (count <= 0) return false;
+  const gl = state.gl;
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, data.subarray(0, count * LIQUID_STRIDE_FLOATS), gl.DYNAMIC_DRAW);
+  state.densityUploadFloats = count * LIQUID_STRIDE_FLOATS;
+  const palette = state.style?.palette?.length ? state.style.palette.slice(0, 4) : [0x72e8ff, 0xe6fbff, 0x78a8ff, 0xffffff];
+  while (palette.length < 4) palette.push(palette[palette.length - 1] ?? 0xffffff);
+  const options = {
+    ...liquidSurfaceOptionsFromSettings(state.settings, 'ultra'),
+    pointScale: 1 + liquidRadius * 0.34,
+    densityScale: Math.max(0.45, Math.min(2.5, finiteNumberSetting(state.settings, 'liquidSplatDensity', 1.14))),
+  };
+  const fieldScale = Math.max(0.35, Math.min(1.5, finiteNumberSetting(state.settings, 'liquidFieldScale', 0.78)));
+  const resolution = Math.max(96, Math.round(Math.max(state.width, state.height) * fieldScale));
+  const rendered = renderLiquidSurfaceFromBufferParticles({
+    state,
+    renderer,
+    particleBuffer: buffer,
+    particleCount: count,
+    strideBytes: LIQUID_STRIDE_BYTES,
+    positionOffsetBytes: 0,
+    velocityOffsetBytes: 2 * Float32Array.BYTES_PER_ELEMENT,
+    renderDataOffsetBytes: 4 * Float32Array.BYTES_PER_ELEMENT,
+    palette: { palette, background: state.style?.background },
+    options,
+    resolution,
+  });
+  drawFixtureChains(state, size, groups);
+  return rendered;
 }
 
 void clampRenderPoint;
@@ -3203,8 +3413,8 @@ function installPointer(state: ConstraintRawState, kind: ConstraintDemoKind): vo
     const beforeCount = state.engine?.count ?? 0;
     state.drawing = false;
     state.drawPointerId = undefined;
-    if (points.length >= (state.inputMode === 'build' ? 1 : 2)) {
-      if (state.inputMode === 'build') spawnBuildFixture(state);
+    if (points.length >= (state.inputMode === BUILD_MODE_ID ? 1 : 2)) {
+      if (state.inputMode === BUILD_MODE_ID) spawnBuildFixture(state);
       else if (kind === 'chain-rain') spawnDrawnChain(state);
       else if (!spawnDrawnBlob(state) && (state.engine?.count ?? 0) <= beforeCount) {
         const radius = finiteNumberSetting(state.settings, 'nodeRadius', 4);
@@ -3218,7 +3428,7 @@ function installPointer(state: ConstraintRawState, kind: ConstraintDemoKind): vo
   };
   const down = (event: PointerEvent) => {
     const point = toLocal(event);
-    if (state.inputMode === 'draw' || state.inputMode === 'build') {
+    if (state.inputMode === 'draw' || state.inputMode === BUILD_MODE_ID) {
       state.needsRedraw = true;
       state.drawing = true;
       state.drawPointerId = event.pointerId;
@@ -3324,7 +3534,7 @@ export class AdvancedConstraintParticlesRawScene extends RawWebGL2Scene {
 
   constructor(kind: ConstraintDemoKind, preview = false) {
     const qualityState = { value: 'raw' as RenderQuality };
-    const sceneCapacity = preview ? (kind === 'chain-rain' ? 480 : 320) : 80_000;
+    const sceneCapacity = preview ? (kind === 'chain-rain' ? 2400 : 320) : 80_000;
     super({
       name: kind,
       canvasSelector: 'canvas',
@@ -3361,6 +3571,9 @@ export class AdvancedConstraintParticlesRawScene extends RawWebGL2Scene {
         s.drawVao = gl.createVertexArray();
         s.quadBuffer = gl.createBuffer() ?? undefined;
         s.centerBuffer = gl.createBuffer() ?? undefined;
+        s.liquidSurface = createRawLiquidSurfaceRenderer(gl);
+        s.liquidParticleBuffer = gl.createBuffer() ?? undefined;
+        s.liquidParticleData = new Float32Array(sceneCapacity * 8 * LIQUID_STRIDE_FLOATS);
         s.drawBuffer = gl.createBuffer() ?? undefined;
         s.drawPreviewData = new Float32Array(514);
         s.uResolution = gl.getUniformLocation(s.program, 'uResolution');
@@ -3423,7 +3636,7 @@ export class AdvancedConstraintParticlesRawScene extends RawWebGL2Scene {
       onModeChange: (state, mode) => {
         const s = state as ConstraintRawState;
         s.needsRedraw = true;
-        if (mode === 'interact' || mode === 'draw' || mode === 'build' || mode === 'rain') s.inputMode = mode;
+        if (mode === 'interact' || mode === 'draw' || mode === BUILD_MODE_ID || mode === 'rain') s.inputMode = mode;
         else if (mode === 'demo') {
           s.inputMode = 'rain';
           seedStarterBodies(s, kind, preview, true);
@@ -3448,7 +3661,7 @@ export class AdvancedConstraintParticlesRawScene extends RawWebGL2Scene {
         const size = logicalSize(s);
         s.activeQuality = qualityState.value;
         const gpuDemoActive = kind !== 'chain-rain' && (preview || (s.mode === 'demo' && !s.pointerDown));
-        const floorDropped = demoFloorIsDropped(s, preview);
+        const floorDropped = preview && kind === 'chain-rain' ? false : demoFloorIsDropped(s, preview);
         if (s.demoFloorDropped === true && !floorDropped) {
           seedStarterBodies(s, kind, preview);
           markGpuConstraintDirty(s, true);
@@ -3472,8 +3685,10 @@ export class AdvancedConstraintParticlesRawScene extends RawWebGL2Scene {
           }
         }
 
-        if (!floorDropped && (s.inputMode === 'rain' || preview) && (!preview || engine.count < (kind === 'chain-rain' ? 120 : 80))) {
-          const spawnRate = (preview ? (kind === 'chain-rain' ? 0.8 : 0.35) : finiteNumberSetting(s.settings, 'spawnRate', kind === 'chain-rain' ? 5 : 2)) * profile.spawnRateScale;
+        const previewSnakeRain = preview && kind === 'chain-rain';
+        const belowPreviewLimit = !preview || engine.count < (kind === 'chain-rain' ? 2200 : 80);
+        if ((previewSnakeRain || !floorDropped) && (s.inputMode === 'rain' || preview) && belowPreviewLimit) {
+          const spawnRate = (preview ? (kind === 'chain-rain' ? 3.25 : 0.35) : finiteNumberSetting(s.settings, 'spawnRate', kind === 'chain-rain' ? 5 : 2)) * profile.spawnRateScale;
           s.spawnAccumulator = (s.spawnAccumulator ?? 0) + spawnRate * s.deltaSeconds;
           const spawnCount = Math.min(8, s.spawnAccumulator | 0);
           for (let i = 0; i < spawnCount; i += 1) {
@@ -3495,8 +3710,9 @@ export class AdvancedConstraintParticlesRawScene extends RawWebGL2Scene {
         drawInteractionRadius(s, kind, size);
         if (!s.program || !s.vao || !s.centerBuffer || !s.uResolution || !s.uRadius || !s.uPrimary || !s.uSecondary) return;
 
+        const ultra = kind === 'chain-rain' && renderStyleIsUltra(s);
         const enhanced = renderStyleIsEnhanced(s);
-        if (enhanced) {
+        if (ultra || enhanced) {
           s.liveGpuDensityRendered = false;
           s.liveGpuDensityPointDraws = 0;
           s.liveGpuDensitySource = 'cpu-live-state';
@@ -3504,7 +3720,9 @@ export class AdvancedConstraintParticlesRawScene extends RawWebGL2Scene {
           s.liveGpuSortedCandidateFeedbackRenderActive = false;
           s.liveGpuSortedCandidateFeedbackRenderBlocker = 'not-rendered';
           s.densityUploadFloats = 0;
-          if (kind === 'chain-rain') drawSkinMeshChains(s, size);
+          if (ultra) {
+            if (!renderLiquidSnakeSurface(s, size)) drawSkinMeshChains(s, size);
+          } else if (kind === 'chain-rain') drawSkinMeshChains(s, size);
           else if (!renderLiveGpuDensityBody(s, kind, size) && !drawDensityBody(s, kind, size)) drawSkinMeshBlobs(s, size);
         } else {
           s.liveGpuDensityRendered = false;
@@ -3531,10 +3749,10 @@ export class AdvancedConstraintParticlesRawScene extends RawWebGL2Scene {
           gl.bindVertexArray(null);
         }
 
-        if ((s.inputMode === 'draw' || s.inputMode === 'build') && s.drawing && s.drawPoints && s.drawPoints.length > 1 && s.drawProgram && s.drawVao && s.drawBuffer && s.uDrawResolution && s.uDrawColor) {
+        if ((s.inputMode === 'draw' || s.inputMode === BUILD_MODE_ID) && s.drawing && s.drawPoints && s.drawPoints.length > 1 && s.drawProgram && s.drawVao && s.drawBuffer && s.uDrawResolution && s.uDrawColor) {
           const sourcePoints = s.drawPoints;
           const sourceCount = Math.min(256, sourcePoints.length);
-          const buildLine = s.inputMode === 'build' && sourceCount > 1;
+          const buildLine = s.inputMode === BUILD_MODE_ID && sourceCount > 1;
           const pointCount = buildLine ? 2 : kind === 'soft-blob' && sourceCount > 2 ? sourceCount + 1 : sourceCount;
           const data = s.drawPreviewData && s.drawPreviewData.length >= pointCount * 2
             ? s.drawPreviewData
@@ -3550,7 +3768,7 @@ export class AdvancedConstraintParticlesRawScene extends RawWebGL2Scene {
           gl.bindVertexArray(s.drawVao);
           uploadDrawBuffer(s, data, pointCount * 2);
           gl.uniform2f(s.uDrawResolution, size.width, size.height);
-          gl.uniform4f(s.uDrawColor, s.inputMode === 'build' ? 0.58 : (kind === 'chain-rain' ? 0.45 : 1), s.inputMode === 'build' ? 0.58 : (kind === 'chain-rain' ? 0.92 : 0.42), s.inputMode === 'build' ? 0.58 : (kind === 'chain-rain' ? 1 : 0.78), 0.86);
+          gl.uniform4f(s.uDrawColor, s.inputMode === BUILD_MODE_ID ? 0.58 : (kind === 'chain-rain' ? 0.45 : 1), s.inputMode === BUILD_MODE_ID ? 0.58 : (kind === 'chain-rain' ? 0.92 : 0.42), s.inputMode === BUILD_MODE_ID ? 0.58 : (kind === 'chain-rain' ? 1 : 0.78), 0.86);
           gl.drawArrays(gl.LINE_STRIP, 0, pointCount);
           gl.bindVertexArray(null);
         }
@@ -3757,10 +3975,12 @@ export class AdvancedConstraintParticlesRawScene extends RawWebGL2Scene {
         return scalarDebugStats({
           renderer: kind === 'chain-rain' ? 'raw-webgl2-snakes' : 'raw-webgl2-constraint-blobs',
           simulation: 'cpu-constraint-particles',
-          rendering: renderStyleIsEnhanced(s)
-            ? s.liveGpuDensityRendered === true
-              ? 'gpu-texture-density-metaball-composite-live'
-              : 'gpu-density-metaball-composite'
+          rendering: renderStyleIsUltra(s)
+            ? 'gpu-shared-liquid-surface-composite'
+            : renderStyleIsEnhanced(s)
+              ? s.liveGpuDensityRendered === true
+                ? 'gpu-texture-density-metaball-composite-live'
+                : 'gpu-density-metaball-composite'
             : 'gpu-instanced-particles',
           gpuSimulated: false,
           gpuRendered: true,
@@ -4042,6 +4262,8 @@ export class AdvancedConstraintParticlesRawScene extends RawWebGL2Scene {
         if (s.densityTexture) s.gl.deleteTexture(s.densityTexture);
         if (s.densityFramebuffer) s.gl.deleteFramebuffer(s.densityFramebuffer);
         if (s.densityCenterBuffer) s.gl.deleteBuffer(s.densityCenterBuffer);
+        if (s.liquidSurface) destroyRawLiquidSurfaceRenderer(s, s.liquidSurface);
+        if (s.liquidParticleBuffer) s.gl.deleteBuffer(s.liquidParticleBuffer);
         if (s.densityQuadBuffer) s.gl.deleteBuffer(s.densityQuadBuffer);
         if (s.drawBuffer) s.gl.deleteBuffer(s.drawBuffer);
         if (s.centerBuffer) s.gl.deleteBuffer(s.centerBuffer);

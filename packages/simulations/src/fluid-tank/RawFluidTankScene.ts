@@ -10,6 +10,9 @@ import { FLUID_TANK_DEFAULTS } from './fluid-tank.config.js';
 import { boundedCyanStyle } from './styles/bounded-cyan.js';
 
 const PUBLIC_RANDOM_IMAGE_URL_BASE = 'https://picsum.photos';
+const PREVIEW_FINGER_RADIUS = 0.026;
+const PREVIEW_INJECT_AMOUNT = 0.62;
+const PREVIEW_INJECT_TURBULENCE = 0.32;
 
 interface RawPointerTrailPoint {
   x: number;
@@ -59,7 +62,7 @@ export class RawFluidTankScene extends RawWebGL2Scene {
     });
   }
 
-  override pushGestures(gestures: GestureEvent[]): void {
+  pushGestures(gestures: GestureEvent[]): void {
     this.controller?.pushGestures(gestures);
   }
 }
@@ -297,14 +300,14 @@ class RawFluidTankController {
     return {
       cellSize: this.preview ? Math.max(1.85, cellSize) : cellSize,
       fingerForce: this.preview ? Math.min(9, finiteNumberSetting(settings, 'fingerForce', Number(FLUID_TANK_DEFAULTS.fingerForce))) : finiteNumberSetting(settings, 'fingerForce', Number(FLUID_TANK_DEFAULTS.fingerForce)),
-      fingerRadius: finiteNumberSetting(settings, 'fingerRadius', Number(FLUID_TANK_DEFAULTS.fingerRadius)),
+      fingerRadius: this.preview ? PREVIEW_FINGER_RADIUS : finiteNumberSetting(settings, 'fingerRadius', Number(FLUID_TANK_DEFAULTS.fingerRadius)),
       viscosity: finiteNumberSetting(settings, 'viscosity', Number(FLUID_TANK_DEFAULTS.viscosity)),
       curl: finiteNumberSetting(settings, 'curl', Number(FLUID_TANK_DEFAULTS.curl)),
       eddyAssist: finiteNumberSetting(settings, 'eddyAssist', Number(FLUID_TANK_DEFAULTS.eddyAssist)),
       velocityPersistence: finiteNumberSetting(settings, 'velocityPersistence', Number(FLUID_TANK_DEFAULTS.velocityPersistence)),
       dyePersistence: finiteNumberSetting(settings, 'dyePersistence', Number(FLUID_TANK_DEFAULTS.dyePersistence)),
-      injectAmount: finiteNumberSetting(settings, 'injectAmount', Number(FLUID_TANK_DEFAULTS.injectAmount)),
-      injectTurbulence: finiteNumberSetting(settings, 'injectTurbulence', Number(FLUID_TANK_DEFAULTS.injectTurbulence)),
+      injectAmount: this.preview ? PREVIEW_INJECT_AMOUNT : finiteNumberSetting(settings, 'injectAmount', Number(FLUID_TANK_DEFAULTS.injectAmount)),
+      injectTurbulence: this.preview ? PREVIEW_INJECT_TURBULENCE : finiteNumberSetting(settings, 'injectTurbulence', Number(FLUID_TANK_DEFAULTS.injectTurbulence)),
       pressureIterations: this.preview ? Math.min(18, pressureIterations) : pressureIterations,
       injectColorMode: injectColorModeSetting(settings.injectPalette, FLUID_TANK_DEFAULTS.injectPalette),
       ambient: Boolean(settings.ambient ?? FLUID_TANK_DEFAULTS.ambient),
@@ -326,7 +329,7 @@ class RawFluidTankController {
       seed,
       displayMode: 'dye',
       initMode: this.preview ? 'blank' : initModeSetting(settings.renderStyle, FLUID_TANK_DEFAULTS.renderStyle),
-      initImageUrl: resolveInitImageUrl(settings.initImageUrl, seed, this.preview),
+      initImageUrl: this.preview ? '' : resolveInitImageUrl(settings.initImageUrl, seed),
     };
   }
 }
@@ -337,10 +340,10 @@ function initModeSetting(value: unknown, fallback: unknown): GpuFluidTankOptions
   return 'cloud';
 }
 
-function resolveInitImageUrl(value: unknown, seed: number, preview: boolean): string {
+function resolveInitImageUrl(value: unknown, seed: number): string {
   const explicit = typeof value === 'string' ? value.trim() : '';
   if (explicit.length > 0) return explicit;
-  const size = preview ? 768 : 1280;
+  const size = 1280;
   const imageSeed = Math.abs(Math.floor(seed * 100000)).toString(36);
   return `${PUBLIC_RANDOM_IMAGE_URL_BASE}/seed/fluid-tank-${imageSeed}/${size}/${size}`;
 }

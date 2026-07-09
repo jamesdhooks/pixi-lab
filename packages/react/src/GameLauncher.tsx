@@ -4,7 +4,7 @@
  * Full-screen game shell. Intro → gameplay → game over.
  * Settings button pauses the engine and opens the settings drawer.
  */
-import { useState, useCallback, useRef, useEffect, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dices, Eye, EyeOff, HelpCircle, Play, Settings as SettingsIcon, X } from 'lucide-react';
 import { GameRuntime } from './GameRuntime.js';
@@ -144,6 +144,19 @@ const RUNTIME_PERF_CSS = `
 }
 `;
 
+const DEFAULT_SETTINGS_SIDEBAR_WIDTH = 448;
+const MIN_SETTINGS_SIDEBAR_WIDTH = 320;
+const MAX_SETTINGS_SIDEBAR_WIDTH = 720;
+const MIN_SETTINGS_STAGE_WIDTH = 420;
+
+function clampSettingsSidebarWidth(width: number, viewportWidth: number): number {
+  const maxForViewport = Math.max(
+    MIN_SETTINGS_SIDEBAR_WIDTH,
+    Math.min(MAX_SETTINGS_SIDEBAR_WIDTH, viewportWidth - MIN_SETTINGS_STAGE_WIDTH),
+  );
+  return Math.min(maxForViewport, Math.max(MIN_SETTINGS_SIDEBAR_WIDTH, Math.round(width)));
+}
+
 export interface GameLauncherProps {
   definition: LabExperience;
   userId?: string;
@@ -231,6 +244,8 @@ function GameLauncherInner({
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState<number | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsPinned, setSettingsPinned] = useState(false);
+  const [settingsSidebarWidth, setSettingsSidebarWidth] = useState(DEFAULT_SETTINGS_SIDEBAR_WIDTH);
   const [imageUrlEditorOpen, setImageUrlEditorOpen] = useState(false);
   const [imageUrlDraft, setImageUrlDraft] = useState('');
   const [uiHidden, setUiHidden] = useState(autoDemo);
@@ -289,8 +304,9 @@ function GameLauncherInner({
   }, [uiHidden]);
 
   useEffect(() => {
+    if (definition.kind !== 'game') return;
     nameSuggestions.load().then(setSuggestions).catch(() => {});
-  }, []);
+  }, [definition.kind]);
 
   useEffect(() => {
     const nextSelection = resolveStartupRenderSelection();
@@ -423,6 +439,38 @@ function GameLauncherInner({
   const handleCloseSettings = useCallback(() => {
     setSettingsOpen(false);
   }, []);
+
+  const handleSettingsPinnedChange = useCallback((pinned: boolean) => {
+    setSettingsPinned(pinned);
+    if (pinned) setSettingsOpen(true);
+  }, []);
+
+  const handleSettingsResizePointerDown = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startWidth = settingsSidebarWidth;
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      setSettingsSidebarWidth(clampSettingsSidebarWidth(startWidth + startX - moveEvent.clientX, window.innerWidth));
+    };
+    const handlePointerUp = () => {
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+  }, [settingsSidebarWidth]);
 
   const handleScoreSubmit = useCallback(
     async (name: string) => {
@@ -603,6 +651,7 @@ function GameLauncherInner({
   );
   const hasRenderStylePicker = renderStyleModes.length > 1;
   const fixedSimulationControls = definition.kind === 'simulation' && simulationControlMode === 'fixed';
+  const settingsDocked = settingsOpen && settingsPinned && !mobilePortrait && !fixedSimulationControls && !uiHidden;
   const hasEngineConfigurations = !fixedSimulationControls && (definition.capabilities.engineConfigurations?.length ?? 0) > 1;
   const isSimulation = definition.kind === 'simulation';
   const hasDemoRandomizer = isSimulation && Boolean((definition as SimulationExperience).demoAiFactory);
@@ -734,49 +783,50 @@ function GameLauncherInner({
   }
 
   return (
-    <div className={`pixi-lab-runtime-shell fixed top-0 left-0 w-full h-full z-50 overflow-hidden${transparent ? '' : ' bg-black'}`}>
+    <div className={`pixi-lab-runtime-shell fixed top-0 left-0 z-50 flex h-full w-full overflow-hidden${transparent ? '' : ' bg-black'}`}>
       <style>{RUNTIME_PERF_CSS}</style>
-      {/* Game canvas — always mounted */}
-      <GameRuntime
-        definition={definition}
-        userId={userId}
-        mode={autoDemo && definition.capabilities.demo ? 'demo' : 'play'}
-        renderSelection={renderSelection}
-        quality={sceneLegacyQuality}
-        experimentalRawEngine={experimentalRawEngine}
-        transparent={transparent}
-        maxPixels={localMaxPixels}
-        onEvent={handleEvent}
-        onReady={(app) => {
-          appRef.current = app;
-          setAppInstance(app);
-          if (fixedSimulationControls) {
-            for (const field of settingsFields) {
-              if (field.default !== undefined) app.settings.set(field.key, field.default);
+      <div className="relative h-full min-w-0 flex-1 overflow-hidden">
+        {/* Game canvas — always mounted */}
+        <GameRuntime
+          definition={definition}
+          userId={userId}
+          mode={autoDemo && definition.capabilities.demo ? 'demo' : 'play'}
+          renderSelection={renderSelection}
+          quality={sceneLegacyQuality}
+          experimentalRawEngine={experimentalRawEngine}
+          transparent={transparent}
+          maxPixels={localMaxPixels}
+          onEvent={handleEvent}
+          onReady={(app) => {
+            appRef.current = app;
+            setAppInstance(app);
+            if (fixedSimulationControls) {
+              for (const field of settingsFields) {
+                if (field.default !== undefined) app.settings.set(field.key, field.default);
+              }
+              setSettingsVersion((v) => v + 1);
             }
-            setSettingsVersion((v) => v + 1);
-          }
-          const storedRenderStyle = app.settings.get(RENDER_STYLE_FIELD_KEY);
-          if (typeof storedRenderStyle === 'string' && renderStyleModes.some((mode) => mode.id === storedRenderStyle)) {
-            setRenderStyleId(storedRenderStyle);
-          } else if (renderStyleId) {
-            app.settings.set(RENDER_STYLE_FIELD_KEY, renderStyleId);
-          }
-          const storedStyleId = readStoredStyleId(definition);
-          if (storedStyleId) {
-            setStyleId(storedStyleId);
-            app.setStyle(storedStyleId);
-          }
-          const initMode = definition.modes?.[0]?.id ?? '';
-          if (autoDemo && definition.capabilities.demo) {
-            enterDemoMode(app);
-          } else if (initMode) {
-            app.setInteractionMode(initMode);
-          }
-          onRuntimeReady?.();
-        }}
-        className="w-full h-full"
-      />
+            const storedRenderStyle = app.settings.get(RENDER_STYLE_FIELD_KEY);
+            if (typeof storedRenderStyle === 'string' && renderStyleModes.some((mode) => mode.id === storedRenderStyle)) {
+              setRenderStyleId(storedRenderStyle);
+            } else if (renderStyleId) {
+              app.settings.set(RENDER_STYLE_FIELD_KEY, renderStyleId);
+            }
+            const storedStyleId = readStoredStyleId(definition);
+            if (storedStyleId) {
+              setStyleId(storedStyleId);
+              app.setStyle(storedStyleId);
+            }
+            const initMode = definition.modes?.[0]?.id ?? '';
+            if (autoDemo && definition.capabilities.demo) {
+              enterDemoMode(app);
+            } else if (initMode) {
+              app.setInteractionMode(initMode);
+            }
+            onRuntimeReady?.();
+          }}
+          className="w-full h-full"
+        />
 
       {/* ── Playing shell ─────────────────────────────────────────────────────────── */}
       {shell === 'playing' && (
@@ -790,7 +840,7 @@ function GameLauncherInner({
                 key={playKey}
                 icon={definition.icon}
                 name={definition.name}
-                short={definition.short}
+                short={definition.long}
                 hints={introHints}
                 attributions={definition.attributions}
                 onDismiss={() => setInfoCardVisible(false)}
@@ -961,7 +1011,7 @@ function GameLauncherInner({
             ]}
           />
 
-          {appRef.current && !fixedSimulationControls && (
+          {appRef.current && !fixedSimulationControls && !settingsDocked && (
             <SettingsDrawer
               open={settingsOpen}
               onClose={handleCloseSettings}
@@ -971,6 +1021,8 @@ function GameLauncherInner({
               maxPixels={localMaxPixels}
               onMaxPixelsChange={handleMaxPixelsChange}
               onSaveDefaults={onSaveDefaults ? handleSaveDefaults : undefined}
+              pinned={settingsPinned && !mobilePortrait}
+              onPinnedChange={handleSettingsPinnedChange}
             />
           )}
 
@@ -1108,6 +1160,37 @@ function GameLauncherInner({
             onQuit={handleQuit}
           />
         ) : null
+      )}
+      </div>
+
+      {appRef.current && !fixedSimulationControls && settingsDocked && (
+        <div
+          className="relative h-full shrink-0"
+          style={{ width: settingsSidebarWidth }}
+        >
+          <button
+            type="button"
+            aria-label="Resize settings sidebar"
+            title="Resize settings sidebar"
+            onPointerDown={handleSettingsResizePointerDown}
+            className="absolute bottom-0 left-0 top-0 z-[60] w-3 -translate-x-1/2 cursor-col-resize touch-none"
+          >
+            <span className="absolute left-1/2 top-1/2 h-12 w-px -translate-y-1/2 rounded-full bg-white/20" />
+          </button>
+          <SettingsDrawer
+            open={settingsOpen}
+            onClose={handleCloseSettings}
+            settings={appRef.current.settings}
+            fields={visibleSettingsFields}
+            settingsVersion={settingsVersion}
+            maxPixels={localMaxPixels}
+            onMaxPixelsChange={handleMaxPixelsChange}
+            onSaveDefaults={onSaveDefaults ? handleSaveDefaults : undefined}
+            pinned
+            docked
+            onPinnedChange={handleSettingsPinnedChange}
+          />
+        </div>
       )}
     </div>
   );

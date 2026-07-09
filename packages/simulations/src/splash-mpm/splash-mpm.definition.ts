@@ -1,4 +1,5 @@
 import { createEngineConfigurations, type SimulationDefinition } from '@hooksjam/pixi-lab-core';
+import { BUILD_MODE_ICON, buildModeDefinition } from '../shared/build-mode.js';
 import { RawSplashMpmScene } from './RawSplashMpmScene.js';
 import { SplashMpmDemoAI } from './SplashMpmDemoAI.js';
 import { SplashMpmPreviewScene } from './SplashMpmPreviewScene.js';
@@ -25,8 +26,8 @@ export const splashMpmDefinition: SimulationDefinition = {
   id: 'splash-mpm',
   kind: 'simulation',
   name: 'Splash MPM',
-  short: 'A 2D particle-grid water sheet inspired by Splash.',
-  long: 'An independent raw WebGL2 2D fluid scene inspired by matsuoka-601/Splash. It adapts the project\'s MLS-MPM particle/grid transfer, single-substep real-time bias, density-grid rendering, and smoothed screen-space fluid surface ideas into Pixi Lab without copying WebGPU source.',
+  short: 'Splash, pour, and shape a sheet of water.',
+  long: 'Splash, pour, and build surfaces for a sheet of water.',
   tags: ['simulation', 'water', 'particles', 'mpm', 'raw-webgl'],
   attributions: [
     {
@@ -53,18 +54,18 @@ export const splashMpmDefinition: SimulationDefinition = {
   settingsFields: SPLASH_MPM_SETTINGS_FIELDS,
   configDefaults: SPLASH_MPM_DEFAULTS,
   modes: [
-    { id: 'splash', label: 'Splash', icon: '~', description: 'Drag to stir the APIC/MLS-MPM particle sheet.' },
-    { id: 'jet', label: 'Jet', icon: '+', description: 'Drag to inject new water particles and momentum.' },
+    { id: 'splash', label: 'Splash', icon: '~', description: 'Drag to stir the water.' },
+    { id: 'pour', label: 'Pour', icon: '+', description: 'Drag to pour more water.' },
+    buildModeDefinition(),
   ],
   styleManifest: splashMpmStyleManifest,
   gestureMap: {
-    tap: 'kick nearby particles',
-    drag: 'stir or inject particles depending on the active mode',
-    fast_swipe: 'throw a fast splash impulse through the particle-grid solver',
+    tap: 'start a splash or pour at the pointer',
+    drag: 'splash, pour, or draw a build surface',
   },
   directorEvents: [
     { id: 'surface-slap', label: 'Surface Slap', minIntervalMs: 9000, maxIntervalMs: 18000, intensity: 0.5 },
-    { id: 'jet-reset', label: 'Jet Reset', minIntervalMs: 18000, maxIntervalMs: 32000, intensity: 0.72 },
+    { id: 'pour-reset', label: 'Pour Reset', minIntervalMs: 18000, maxIntervalMs: 32000, intensity: 0.72 },
   ],
   stagnationPolicy: {
     stagnant: false,
@@ -77,15 +78,16 @@ export const splashMpmDefinition: SimulationDefinition = {
     portability: 'reusable-core',
     supportedShapes: ['circle', 'field'],
     reusableFor: ['2D MPM water scenes', 'particle-grid liquid toys', 'screen-space fluid surface renderers'],
-    caveats: ['Inspired by matsuoka-601/Splash, https://github.com/matsuoka-601/Splash. Basic renders particles only, enhanced renders the fluid surface, and raw/high enables the full foam-density treatment. This is an original 2D raw WebGL2 adaptation of the MLS-MPM and screen-space fluid rendering ideas, not copied WebGPU/WGSL source.'],
+    caveats: ['Inspired by matsuoka-601/Splash, https://github.com/matsuoka-601/Splash. Basic renders particles only, enhanced renders the shared compact liquid surface, and ultra enables the foam-density treatment. This is an original 2D raw WebGL2 adaptation of the MLS-MPM and screen-space fluid rendering ideas, not copied WebGPU/WGSL source.'],
   },
   defaultSeed: 6012026,
   factory: () => new RawSplashMpmScene(),
   previewFactory: () => new SplashMpmPreviewScene(),
   demoAiFactory: (ctx) => new SplashMpmDemoAI({ liteMode: ctx.isPreview }),
   tutorialPages: [
+    { icon: '+', title: 'Pour', body: 'Use Pour to inject fresh particles while the pointer is held.' },
     { icon: '~', title: 'Splash', body: 'Drag through the water sheet to transfer momentum into the particle-grid solver.' },
-    { icon: '+', title: 'Jet', body: 'Switch to Jet to inject fresh particles and carve bright surface foam.' },
-    { icon: '~', title: 'Attribution', body: 'Technique reference: Splash by matsuoka-601, https://github.com/matsuoka-601/Splash.' },
+    { icon: BUILD_MODE_ICON, title: 'Build', body: 'Use Build to tap in a fixed point or drag out a fixed collision surface.' },
+    { icon: '~', title: 'Inspired by / adapted from', body: 'Inspired by Splash by matsuoka-601, then adapted into a Pixi Lab 2D raw WebGL scene with custom controls, palettes, surface rendering, and demo behavior.' },
   ],
 };

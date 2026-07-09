@@ -12,6 +12,11 @@ export interface AdvancedCollisionStressSettings {
   readonly wallBounce: boolean;
   readonly wallBounceCoefficient: number;
   readonly airDragPerSecond: number;
+  readonly solverDampingPerSecond: number;
+  readonly maxPairPushFactor: number;
+  readonly contactFriction: number;
+  readonly collisionSoftness: number;
+  readonly impactBounceThreshold: number;
   readonly openTop: boolean;
 }
 
@@ -147,6 +152,11 @@ const DEFAULT_SETTINGS: AdvancedCollisionStressSettings = {
   wallBounce: false,
   wallBounceCoefficient: 0.18,
   airDragPerSecond: 0.998,
+  solverDampingPerSecond: 0.982,
+  maxPairPushFactor: 0.38,
+  contactFriction: 0.72,
+  collisionSoftness: 0.82,
+  impactBounceThreshold: 150,
   openTop: false,
 };
 
@@ -264,6 +274,11 @@ export class AdvancedCollisionStressEngine {
       wallBounce: settings.wallBounce ?? current.wallBounce,
       wallBounceCoefficient: clamp(finite(settings.wallBounceCoefficient ?? current.wallBounceCoefficient, DEFAULT_SETTINGS.wallBounceCoefficient), 0, 1),
       airDragPerSecond: clamp(finite(settings.airDragPerSecond ?? current.airDragPerSecond, DEFAULT_SETTINGS.airDragPerSecond), 0, 1),
+      solverDampingPerSecond: clamp(finite(settings.solverDampingPerSecond ?? current.solverDampingPerSecond, DEFAULT_SETTINGS.solverDampingPerSecond), 0, 1),
+      maxPairPushFactor: clamp(finite(settings.maxPairPushFactor ?? current.maxPairPushFactor, DEFAULT_SETTINGS.maxPairPushFactor), 0.02, 2),
+      contactFriction: clamp(finite(settings.contactFriction ?? current.contactFriction, DEFAULT_SETTINGS.contactFriction), 0, 2),
+      collisionSoftness: clamp(finite(settings.collisionSoftness ?? current.collisionSoftness, DEFAULT_SETTINGS.collisionSoftness), 0.05, 1.5),
+      impactBounceThreshold: Math.max(0, finite(settings.impactBounceThreshold ?? current.impactBounceThreshold, DEFAULT_SETTINGS.impactBounceThreshold)),
       openTop: settings.openTop ?? current.openTop,
     };
     if (this.particleCount > this.settings.maxParticles) this.clear();
@@ -870,21 +885,23 @@ export class AdvancedCollisionStressEngine {
       if (this.inverseMasses[i] <= 0) continue;
       const k = i << 1;
       const radius = this.radii[i];
-      let vx = (this.positions[k] - this.previousPositions[k]) * invDt;
-      let vy = (this.positions[k + 1] - this.previousPositions[k + 1]) * invDt;
+      const damping = Math.pow(this.settings.solverDampingPerSecond, dt * 60);
+      const wallFriction = Math.max(0, 1 - this.settings.contactFriction * 0.12);
+      let vx = (this.positions[k] - this.previousPositions[k]) * invDt * damping;
+      let vy = (this.positions[k + 1] - this.previousPositions[k + 1]) * invDt * damping;
       if (this.positions[k] <= radius + 0.25 && vx < 0) {
-        vx = -vx * bounce;
-        vy *= 0.94;
+        vx = -vx > this.settings.impactBounceThreshold ? -vx * bounce : 0;
+        vy *= wallFriction;
       } else if (this.positions[k] >= this.width - radius - 0.25 && vx > 0) {
-        vx = -vx * bounce;
-        vy *= 0.94;
+        vx = vx > this.settings.impactBounceThreshold ? -vx * bounce : 0;
+        vy *= wallFriction;
       }
       if (!this.settings.openTop && this.positions[k + 1] <= radius + 0.25 && vy < 0) {
-        vy = -vy * bounce;
-        vx *= 0.94;
+        vy = -vy > this.settings.impactBounceThreshold ? -vy * bounce : 0;
+        vx *= wallFriction;
       } else if (this.positions[k + 1] >= this.height - radius - 0.25 && vy > 0) {
-        vy = -vy * bounce;
-        vx *= 0.89;
+        vy = vy > this.settings.impactBounceThreshold ? -vy * bounce : 0;
+        vx *= wallFriction;
       }
       const speed2 = vx * vx + vy * vy;
       if (speed2 > maxSpeed * maxSpeed) {
@@ -1005,12 +1022,41 @@ export class AdvancedCollisionStressEngine {
     const wj = this.particleWeight(j);
     const ws = wi + wj;
     if (ws <= 0) return false;
-    const correction = Math.min(rr - distance, rr * 0.55) * relax / ws;
-    this.positions[ik] -= dx * correction * wi;
-    this.positions[ik + 1] -= dy * correction * wi;
-    this.positions[jk] += dx * correction * wj;
-    this.positions[jk + 1] += dy * correction * wj;
+    const invWeight = 1 / ws;
+    const totalPush = (rr - distance) * this.settings.collisionSoftness * relax;
+    const maxPush = rr * 0.5 * this.settings.maxPairPushFactor;
+    const pushI = Math.min(totalPush * wi * invWeight, maxPush);
+    const pushJ = Math.min(totalPush * wj * invWeight, maxPush);
+    this.positions[ik] -= dx * pushI;
+    this.positions[ik + 1] -= dy * pushI;
+    this.positions[jk] += dx * pushJ;
+    this.positions[jk + 1] += dy * pushJ;
+    this.applyCircleContactFriction(i, j, dx, dy, wi, wj, invWeight);
     return true;
+  }
+
+  private applyCircleContactFriction(i: number, j: number, normalX: number, normalY: number, wi: number, wj: number, invWeight: number): void {
+    const friction = this.settings.contactFriction;
+    if (friction <= 0) return;
+    const ik = i << 1;
+    const jk = j << 1;
+    const tangentX = -normalY;
+    const tangentY = normalX;
+    const viT = (this.positions[ik] - this.previousPositions[ik]) * tangentX + (this.positions[ik + 1] - this.previousPositions[ik + 1]) * tangentY;
+    const vjT = (this.positions[jk] - this.previousPositions[jk]) * tangentX + (this.positions[jk + 1] - this.previousPositions[jk + 1]) * tangentY;
+    const relativeTangent = vjT - viT;
+    if (relativeTangent > -1e-5 && relativeTangent < 1e-5) return;
+    const tangentImpulse = relativeTangent * Math.min(0.62, friction * 0.48);
+    if (wi > 0) {
+      const correction = tangentImpulse * wi * invWeight;
+      this.previousPositions[ik] -= tangentX * correction;
+      this.previousPositions[ik + 1] -= tangentY * correction;
+    }
+    if (wj > 0) {
+      const correction = tangentImpulse * wj * invWeight;
+      this.previousPositions[jk] += tangentX * correction;
+      this.previousPositions[jk + 1] += tangentY * correction;
+    }
   }
 
   private rebuildCapsuleGrid(cellSize: number): void {

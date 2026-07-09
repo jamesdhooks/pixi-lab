@@ -1,4 +1,5 @@
 import type { SettingsField } from '@hooksjam/pixi-lab-core';
+import { sparkSizeVariabilityField } from '../shared/spark-rendering.js';
 
 export const FIREWORKS_SETTINGS_FIELDS: SettingsField[] = [
   { key: 'launchPower', label: 'Launch Power', section: 'Launch', type: 'number', min: 420, max: 1560, step: 20, default: 940 },
@@ -14,6 +15,7 @@ export const FIREWORKS_SETTINGS_FIELDS: SettingsField[] = [
   { key: 'secondaryScale', label: 'Secondary Size', section: 'Explosion', description: 'Scales child burst particle count and power per generation.', type: 'number', min: 0.18, max: 0.9, step: 0.01, default: 0.54 },
   { key: 'crackleIntensity', label: 'Crackle', section: 'Rendering', type: 'number', min: 0, max: 1.5, step: 0.05, default: 0.78 },
   { key: 'particleSize', label: 'Spark Size', section: 'Rendering', type: 'number', min: 0.45, max: 3.8, step: 0.05, default: 1.45 },
+  sparkSizeVariabilityField(0.38),
   { key: 'trailFade', label: 'Trail Persistence', section: 'Rendering', type: 'number', min: 0.78, max: 0.995, step: 0.005, default: 0.932 },
   { key: 'bloomStrength', label: 'Glow Strength', section: 'Rendering', type: 'number', min: 0.4, max: 3.8, step: 0.05, default: 1.82 },
   { key: 'autoFinaleRate', label: 'Stream Rate', section: 'Input Mode', type: 'number', min: 0.2, max: 6, step: 0.1, default: 2.6, visibleModes: ['stream'] },
@@ -50,6 +52,7 @@ export const FIREWORKS_DEFAULTS: Record<string, unknown> = {
   secondaryScale: 0.54,
   crackleIntensity: 0.78,
   particleSize: 1.45,
+  sparkSizeVariability: 0.38,
   trailFade: 0.932,
   bloomStrength: 1.82,
   autoFinaleRate: 2.6,

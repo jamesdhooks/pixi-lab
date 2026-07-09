@@ -8,6 +8,21 @@ import {
   type RawSceneDebugStats,
   type RawWebGL2RenderState,
 } from '@hooksjam/pixi-lab-core';
+import {
+  BUILD_MODE_ID,
+  BUILD_OBSTACLE_MESH_COLOR_GLSL,
+  BUILD_OBSTACLE_POINT_COLOR_GLSL,
+  BuildPathController,
+  pushBuildCapsuleTriangles,
+  pushBuildFixtureTriangles,
+} from '../shared/build-mode.js';
+import {
+  createRawLiquidSurfaceRenderer,
+  destroyRawLiquidSurfaceRenderer,
+  liquidSurfaceOptionsFromSettings,
+  renderLiquidSurfaceFromTextureParticles,
+  type RawLiquidSurfaceRenderer,
+} from '../shared/RawLiquidSurfaceRenderer.js';
 
 interface GpuWaterPointer {
   active: boolean;
@@ -33,8 +48,12 @@ interface GpuWaterState extends RawWebGL2RenderState {
   compositeProgram: WebGLProgram | null;
   particleProgram: WebGLProgram | null;
   obstacleProgram: WebGLProgram | null;
+  obstacleMeshProgram: WebGLProgram | null;
+  liquidSurface: RawLiquidSurfaceRenderer | null;
+  particleSpriteTexture: WebGLTexture | null;
   quadBuffer: WebGLBuffer | null;
   obstaclePointBuffer: WebGLBuffer | null;
+  obstacleMeshBuffer: WebGLBuffer | null;
   densityTarget: RawFramebuffer | null;
   blurTarget: RawFramebuffer | null;
   densityWidth: number;
@@ -49,6 +68,11 @@ interface GpuWaterState extends RawWebGL2RenderState {
   cpuOldPositions: Float32Array;
   cpuDensity: Float32Array;
   cpuNearDensity: Float32Array;
+  cpuPairI: Int32Array;
+  cpuPairJ: Int32Array;
+  cpuPairNx: Float32Array;
+  cpuPairNy: Float32Array;
+  cpuPairA: Float32Array;
   cpuUploadPositions: Float32Array;
   cpuUploadVelocities: Float32Array;
   spawnUploadPositions: Float32Array;
@@ -60,6 +84,8 @@ interface GpuWaterState extends RawWebGL2RenderState {
   cpuGridColumns: number;
   cpuGridRows: number;
   cpuNeighborPairs: number;
+  cpuNeighborPairLimit: number;
+  cpuNeighborPairsDropped: number;
   cpuGridCellCount: number;
   cpuRecycledParticles: number;
   cpuNeedsFullUpload: boolean;
@@ -74,16 +100,17 @@ interface GpuWaterState extends RawWebGL2RenderState {
   obstaclePointCount: number;
   obstacleLines: Float32Array;
   obstacleLineCount: number;
-  buildStart: { x: number; y: number } | null;
+  buildController: BuildPathController;
   pendingGestures: GestureEvent[];
   feedbackElement: HTMLDivElement | null;
   cleanupPointer?: () => void;
 }
 
-const MAX_OBSTACLE_POINTS = 24;
+const MAX_OBSTACLE_POINTS = 96;
 const MAX_OBSTACLE_LINES = 24;
 const OBSTACLE_POINT_STRIDE = 3;
 const OBSTACLE_LINE_STRIDE = 5;
+const REFERENCE_PARTICLE_SPRITE_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAAAklEQVR4AewaftIAAALHSURBVI3B23brJhAAUAaGiyRHdp2mt///uD4kJ5YsxAADdM5KHvrW7g3qGwAY+KKNAAD9EwglhuhijNGbGGP08aUpgUoAgAEAbQQiWkS0xhg0xqARSrQv3FpjUZm5NqHEGKMhABgA0PjFee+D937y3k/OOa+1Nkr03lspJYuUc045ZwKAwkIJBGEEIroQwrwsy8uyLOs8zy/TNC3WWqdErbWklOJ5ns8Y4w4AmojUEK21gQCgjTHovQ/Lsrxcr9fX6/X6uq7r/XK5XJ1zXolSSj6OY9v3/QciWiXGGF20LlALRLQhhHlZlvV2u/0q/rzf77+v6/qL935SIuec9n3/9N4HEMxcmbmK0lpj1FobRLTe+2lZlvV6vb6KP97e3v663W5vIYRZCSI6QwgziFprSSlFIjpTSrHWWlALYww65/w0Tcvlcrmu63q7+3t/cIMe4558TMtffesAtmrjnndBzHZoxBpRQwczmOY3POBSVKKXQcx/Z4PD4ej8f7cRxbzjkxc+0Cxxi9tcZElABAK9EEEcVpmi7WWqdErbWklI4Y4/M4jkeM8UlEqbXGY4yOQzQBAIWIYIzRmbmmlA7nXDDGoBKtNS6lUM45EdGZcyZmLk0MAUoAgAEAjcIYg9Zah4jWGINaa6NE770JFlWU1hr/NMboY4wG6hsAGADQ/2K0AACtxBijf2v92xijjzGaEv8AMTxVs1G/0pUAAAAASUVORK5CYII=';
 
 const MARKUP = `
   <canvas data-gpu-water-canvas class="absolute inset-0 h-full w-full touch-none"></canvas>
@@ -110,6 +137,7 @@ uniform float uPointScale;
 uniform float uActiveLimit;
 out float vFoam;
 out float vActive;
+flat out float vPaletteT;
 void main() {
   int id = gl_VertexID;
   int width = int(uTextureSize.x);
@@ -118,6 +146,7 @@ void main() {
   vec4 velocity = texelFetch(uVelocities, pixel, 0);
   vActive = step(float(id), uActiveLimit - 0.5) * step(0.0001, position.z);
   vFoam = velocity.w;
+  vPaletteT = fract(position.w + sin(float(id) * 12.9898 + 78.233) * 43758.5453);
   vec2 clip = position.xy / max(uResolution, vec2(1.0)) * 2.0 - 1.0;
   clip.y = -clip.y;
   gl_Position = vec4(clip, 0.0, 1.0);
@@ -135,11 +164,10 @@ void main() {
   float d2 = dot(p, p);
   if (d2 > 1.0) discard;
   float r = sqrt(d2);
-  float a = clamp(1.0 - r, 0.0, 1.0);
-  float density = a * a;
-  float nearDensity = density * a;
-  float edge = smoothstep(0.46, 0.94, d2) * (1.0 - smoothstep(0.88, 1.0, d2));
-  outColor = vec4(density, nearDensity, density * clamp(vFoam + edge * 0.5, 0.0, 1.0) * 0.16, density);
+  float density = 1.0 - smoothstep(0.58, 1.0, r);
+  float nearDensity = density * density;
+  float edge = smoothstep(0.5, 0.95, r) * density;
+  outColor = vec4(density, nearDensity, density * clamp(vFoam + edge * 0.35, 0.0, 1.0) * 0.12, density);
 }`;
 
 const BLUR_FRAGMENT = `#version 300 es
@@ -166,53 +194,147 @@ uniform vec3 uSurfaceColor;
 uniform vec3 uDeepColor;
 uniform vec3 uBackground;
 uniform float uOpacity;
-uniform float uGlass;
 in vec2 vUv;
 out vec4 outColor;
+
+vec4 packedAt(vec2 uv) {
+  return texture(uDensity, clamp(uv, vec2(0.0), vec2(1.0)));
+}
+
+float densityAt(vec2 uv) {
+  return packedAt(uv).r;
+}
+
+float foamAt(vec2 uv) {
+  vec4 packed = packedAt(uv);
+  return clamp(packed.b / max(0.001, packed.r), 0.0, 1.0);
+}
+
+float filteredDensityAt(vec2 uv) {
+  vec2 texel = uTexel;
+  float center = densityAt(uv);
+  float lowBound = center - 0.08;
+  float highBound = center + 0.08;
+  float sum = center;
+  float weight = 1.0;
+  for (int y = -2; y <= 2; y += 1) {
+    for (int x = -2; x <= 2; x += 1) {
+      if (x == 0 && y == 0) continue;
+      vec2 offsetCells = vec2(float(x), float(y));
+      float sampleDepth = densityAt(uv + offsetCells * texel);
+      float w = exp(-dot(offsetCells, offsetCells) * 0.24);
+      if (sampleDepth < lowBound) {
+        w = 0.0;
+      } else if (sampleDepth > highBound) {
+        sampleDepth = center + 0.05;
+      } else {
+        lowBound = min(lowBound, sampleDepth - 0.08);
+        highBound = max(highBound, sampleDepth + 0.08);
+      }
+      sum += sampleDepth * w;
+      weight += w;
+    }
+  }
+  return clamp(sum / max(0.001, weight), 0.0, 1.0);
+}
+
+float clampedDensityNeighbor(vec2 uv, float anchor) {
+  float sampleDepth = densityAt(uv);
+  if (sampleDepth < anchor - 0.075) return anchor;
+  return min(sampleDepth, anchor + 0.05);
+}
+
+float filteredFoamAt(vec2 uv) {
+  vec2 texel = uTexel;
+  float sum = foamAt(uv) * 0.42;
+  float weight = 0.42;
+  for (int y = -1; y <= 1; y += 1) {
+    for (int x = -1; x <= 1; x += 1) {
+      vec2 offsetCells = vec2(float(x), float(y));
+      float w = exp(-dot(offsetCells, offsetCells) * 0.45);
+      sum += foamAt(uv + offsetCells * texel) * w;
+      weight += w;
+    }
+  }
+  return clamp(sum / max(0.001, weight), 0.0, 1.0);
+}
+
 void main() {
-  vec4 center = texture(uDensity, vUv);
-  float density = center.r;
-  vec3 background = uBackground * (0.74 + smoothstep(0.8, 0.1, distance(vUv, vec2(0.5))) * 0.26);
-  float surface = smoothstep(0.08, 0.26, density);
+  float d = densityAt(vUv);
+  vec3 background = uBackground * (0.72 + smoothstep(0.92, 0.18, distance(vUv, vec2(0.5))) * 0.28);
+  float surfaceCut = 0.22;
+  float contourWidth = max(0.0035, fwidth(d) * 1.85);
+  float surface = smoothstep(surfaceCut - contourWidth, surfaceCut + contourWidth, d);
   if (surface <= 0.002) {
     outColor = vec4(background, 1.0);
     return;
   }
-  float left = texture(uDensity, vUv - vec2(uTexel.x, 0.0)).r;
-  float right = texture(uDensity, vUv + vec2(uTexel.x, 0.0)).r;
-  float down = texture(uDensity, vUv - vec2(0.0, uTexel.y)).r;
-  float up = texture(uDensity, vUv + vec2(0.0, uTexel.y)).r;
-  vec2 gradient = vec2(left - right, down - up);
-  vec3 normal = normalize(vec3(gradient * 5.4, 1.0));
-  vec3 light = normalize(vec3(-0.32, -0.62, 0.72));
-  float lambert = clamp(dot(normal, light), 0.0, 1.0);
-  float rim = smoothstep(0.08, 0.24, density) * (1.0 - smoothstep(0.28, 0.72, density));
-  float foam = clamp(center.b / max(center.r, 0.001), 0.0, 1.0);
-  float specular = pow(max(0.0, dot(reflect(-light, normal), vec3(0.0, 0.0, 1.0))), 44.0);
-  vec3 water = mix(uSurfaceColor, uDeepColor, smoothstep(0.16, 0.82, density) * 0.78);
-  water *= 0.72 + lambert * 0.36;
-  water = mix(water, uFoamColor, smoothstep(0.36, 0.86, foam) * 0.58 + rim * 0.28);
-  water += uFoamColor * specular * mix(0.14, 0.42, uGlass);
-  water += uSurfaceColor * rim * mix(0.08, 0.26, uGlass);
+  float north = clampedDensityNeighbor(vUv + vec2(0.0, uTexel.y), d);
+  float south = clampedDensityNeighbor(vUv - vec2(0.0, uTexel.y), d);
+  float east = clampedDensityNeighbor(vUv + vec2(uTexel.x, 0.0), d);
+  float west = clampedDensityNeighbor(vUv - vec2(uTexel.x, 0.0), d);
+  vec3 normal = normalize(vec3((west - east) * 3.9, (south - north) * 3.9, 0.34));
+  vec3 viewDir = vec3(0.0, 0.0, 1.0);
+  vec3 light = normalize(vec3(-0.35, -0.55, 0.74));
+  vec3 halfDir = normalize(light + viewDir);
+  float shade = clamp(dot(normal, light), 0.0, 1.0);
+  float rim = surface * (1.0 - smoothstep(surfaceCut + contourWidth, surfaceCut + 0.055, d));
+  float foam = filteredFoamAt(vUv);
+  float depth = smoothstep(surfaceCut, surfaceCut + 0.65, d);
+  float fresnel = clamp(0.02 + 0.98 * pow(1.0 - max(0.0, dot(normal, viewDir)), 5.0), 0.0, 1.0) * surface;
+  float specular = pow(max(0.0, dot(normal, halfDir)), 142.0) * surface;
+  float opticalDepth = clamp(depth * 0.92 + d * 0.22, 0.0, 1.0);
+  vec3 transmittance = exp(-opticalDepth * 2.45 * (vec3(1.0) - clamp(uDeepColor, vec3(0.02), vec3(0.98))));
+  vec3 refracted = mix(uDeepColor, mix(background, uSurfaceColor, 0.36), transmittance);
+  vec3 reflected = mix(uSurfaceColor, uFoamColor, 0.2 + shade * 0.28);
+  vec3 water = mix(refracted, reflected, fresnel * 0.52);
+  water += uSurfaceColor * shade * 0.08;
+  water += uFoamColor * (rim * 0.24 + smoothstep(0.32, 0.88, foam) * 0.22 + specular * 0.48);
+  water = mix(water, uDeepColor, rim * 0.1);
   outColor = vec4(mix(background, water, surface * uOpacity), 1.0);
 }`;
 
 const PARTICLE_FRAGMENT = `#version 300 es
 precision highp float;
+uniform sampler2D uSprite;
 uniform vec3 uSurfaceColor;
 uniform vec3 uFoamColor;
+uniform vec3 uPalette0;
+uniform vec3 uPalette1;
+uniform vec3 uPalette2;
+uniform vec3 uPalette3;
 uniform float uOpacity;
+uniform float uReferenceRender;
 in float vFoam;
 in float vActive;
+flat in float vPaletteT;
 out vec4 outColor;
+
+vec3 sampleParticlePalette(float t) {
+  if (t < 0.25) return uPalette0;
+  if (t < 0.5) return uPalette1;
+  if (t < 0.75) return uPalette2;
+  return uPalette3;
+}
+
 void main() {
   if (vActive < 0.5) discard;
   vec2 p = gl_PointCoord * 2.0 - 1.0;
   float d2 = dot(p, p);
   if (d2 > 1.0) discard;
-  float alpha = (1.0 - smoothstep(0.62, 1.0, d2)) * uOpacity;
+  if (uReferenceRender < 0.5) {
+    float alpha = 1.0 - smoothstep(0.94, 1.0, d2);
+    outColor = vec4(sampleParticlePalette(vPaletteT), alpha);
+    return;
+  }
+  vec4 referenceSprite = texture(uSprite, gl_PointCoord);
+  float referenceSample = exp(-d2 * 3.55) * smoothstep(1.0, 0.72, d2);
+  float basicSample = 1.0 - smoothstep(0.62, 1.0, d2);
+  float particleSample = mix(basicSample, referenceSprite.a, uReferenceRender);
+  float alpha = particleSample * uOpacity;
   vec3 color = mix(uSurfaceColor, uFoamColor, smoothstep(0.42, 1.0, vFoam));
-  outColor = vec4(color * (0.8 + 0.2 * sqrt(max(0.0, 1.0 - d2))), alpha);
+  vec3 spriteColor = mix(vec3(particleSample), referenceSprite.rgb, uReferenceRender);
+  outColor = vec4(color * spriteColor, alpha);
 }`;
 
 const OBSTACLE_VERTEX = `#version 300 es
@@ -234,7 +356,24 @@ void main() {
   float d2 = dot(p, p);
   if (d2 > 1.0) discard;
   float shade = 0.72 + 0.28 * sqrt(max(0.0, 1.0 - d2));
-  outColor = vec4(vec3(0.54, 0.56, 0.60) * shade, 0.94);
+  outColor = vec4(${BUILD_OBSTACLE_POINT_COLOR_GLSL} * shade, 1.0);
+}`;
+
+const OBSTACLE_MESH_VERTEX = `#version 300 es
+precision highp float;
+layout(location = 0) in vec2 aPosition;
+uniform vec2 uResolution;
+void main() {
+  vec2 clip = aPosition / max(uResolution, vec2(1.0)) * 2.0 - 1.0;
+  clip.y = -clip.y;
+  gl_Position = vec4(clip, 0.0, 1.0);
+}`;
+
+const OBSTACLE_MESH_FRAGMENT = `#version 300 es
+precision highp float;
+out vec4 outColor;
+void main() {
+  outColor = vec4(${BUILD_OBSTACLE_MESH_COLOR_GLSL}, 1.0);
 }`;
 
 function compile(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader {
@@ -268,8 +407,35 @@ function link(gl: WebGL2RenderingContext, vertexSource: string, fragmentSource: 
   return program;
 }
 
+function createReferenceParticleSprite(gl: WebGL2RenderingContext): WebGLTexture | null {
+  const texture = gl.createTexture();
+  if (!texture) return null;
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
+  const image = new Image();
+  image.onload = () => {
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  };
+  image.src = REFERENCE_PARTICLE_SPRITE_SRC;
+  gl.bindTexture(gl.TEXTURE_2D, null);
+  return texture;
+}
+
 function clamp(value: number, low: number, high: number): number {
   return Math.max(low, Math.min(high, value));
+}
+
+function smoothstep(edge0: number, edge1: number, value: number): number {
+  if (edge0 === edge1) return value < edge0 ? 0 : 1;
+  const t = clamp((value - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
 }
 
 function random(seed: number): [number, number] {
@@ -296,6 +462,11 @@ function pourRate(state: GpuWaterState): number {
 function viscosityValue(state: GpuWaterState): number {
   const value = finiteNumberSetting(state.settings, 'viscosity', 8.5);
   return value;
+}
+
+function neighborPairBudget(state: GpuWaterState, count: number): number {
+  const configured = Math.floor(finiteNumberSetting(state.settings, 'neighborPairBudget', 65536));
+  return Math.max(count * 6, Math.min(262144, configured));
 }
 
 function pointerXY(canvas: HTMLCanvasElement, event: PointerEvent): [number, number] {
@@ -384,14 +555,15 @@ function uploadParticleCluster(state: GpuWaterState, x: number, y: number, count
   if (state.spawnUploadVelocities.length < required) state.spawnUploadVelocities = new Float32Array(required);
   const positions = state.spawnUploadPositions;
   const velocities = state.spawnUploadVelocities;
-  const separation = radius * 0.82;
+  const separation = radius * 1.85;
+  const effectiveSpread = Math.max(spread, separation * 1.2);
   let made = 0;
-  const ring = Math.max(2, Math.ceil(spread / Math.max(1, separation)));
+  const ring = Math.max(2, Math.ceil(effectiveSpread / Math.max(1, separation)));
   for (let row = -ring; row <= ring && made < actualCount; row += 1) {
     for (let col = -ring; col <= ring && made < actualCount; col += 1) {
       const ox = (col + (row % 2 === 0 ? 0 : 0.5)) * separation;
       const oy = row * separation * 0.866;
-      if (ox * ox + oy * oy > spread * spread) continue;
+      if (ox * ox + oy * oy > effectiveSpread * effectiveSpread) continue;
       let randomValue = 0;
       [randomValue, state.seed] = random(state.seed + made * 19);
       const k = made * 4;
@@ -423,7 +595,7 @@ function uploadParticleCluster(state: GpuWaterState, x: number, y: number, count
     [randomValue, state.seed] = random(state.seed + made * 13);
     const angle = randomValue * Math.PI * 2;
     [randomValue, state.seed] = random(state.seed + 23);
-    const distance = Math.sqrt(randomValue) * spread;
+    const distance = Math.sqrt(randomValue) * effectiveSpread;
     const k = made * 4;
     positions[k] = clamp(x + Math.cos(angle) * distance, radius + 4, state.width - radius - 4);
     positions[k + 1] = clamp(y + Math.sin(angle) * distance, radius + 4, state.height - radius - 4);
@@ -468,8 +640,7 @@ function addObstacleLine(state: GpuWaterState, ax: number, ay: number, bx: numbe
   state.obstacleLines[index + 2] = bx;
   state.obstacleLines[index + 3] = by;
   state.obstacleLines[index + 4] = radius;
-  addObstaclePoint(state, ax, ay, radius);
-  addObstaclePoint(state, bx, by, radius);
+  state.obstacleLineCount += 1;
 }
 
 function resetObstacles(state: GpuWaterState, preview: boolean): void {
@@ -477,11 +648,13 @@ function resetObstacles(state: GpuWaterState, preview: boolean): void {
   state.obstacleLineCount = 0;
   state.obstaclePoints.fill(0);
   state.obstacleLines.fill(0);
-  const radius = finiteNumberSetting(state.settings, 'buildRadius', 18);
+  const radius = preview
+    ? Math.min(10, finiteNumberSetting(state.settings, 'buildRadius', 18))
+    : finiteNumberSetting(state.settings, 'buildRadius', 18);
   const ramps = preview ? Math.min(2, Math.floor(finiteNumberSetting(state.settings, 'obstacleRamps', 2))) : Math.floor(finiteNumberSetting(state.settings, 'obstacleRamps', 4));
   const pegs = preview ? Math.min(2, Math.floor(finiteNumberSetting(state.settings, 'obstaclePegs', 2))) : Math.floor(finiteNumberSetting(state.settings, 'obstaclePegs', 3));
   for (let i = 0; i < pegs; i += 1) {
-    addObstaclePoint(state, state.width * (0.28 + (i % 3) * 0.22), state.height * (0.42 + Math.floor(i / 3) * 0.15), radius);
+    addObstaclePoint(state, state.width * (0.28 + (i % 3) * 0.22), state.height * (0.36 + Math.floor(i / 3) * 0.18), radius);
   }
   for (let i = 0; i < ramps; i += 1) {
     const left = i % 2 === 0;
@@ -512,7 +685,7 @@ function resetWater(state: GpuWaterState, preview: boolean): void {
   state.cpuOldPositions.fill(0);
   state.cpuDensity.fill(0);
   state.cpuNearDensity.fill(0);
-  state.buildStart = null;
+  state.buildController.reset();
   seedGpuParticles(state);
   resetObstacles(state, preview);
 }
@@ -522,7 +695,10 @@ function installPointer(state: GpuWaterState): () => void {
     const [x, y] = pointerXY(state.canvas, event);
     state.pointer = { active: true, id: event.pointerId, x, y, vx: 0, vy: 0 };
     state.canvas.setPointerCapture(event.pointerId);
-    if (state.modeId === 'build') state.buildStart = { x, y };
+    if (state.modeId === BUILD_MODE_ID) {
+      state.buildController.begin(event.pointerId, { x, y });
+    }
+    event.preventDefault();
   };
   const move = (event: PointerEvent) => {
     if (!state.pointer.active || state.pointer.id !== event.pointerId) return;
@@ -531,19 +707,26 @@ function installPointer(state: GpuWaterState): () => void {
     state.pointer.vy = (y - state.pointer.y) * 60;
     state.pointer.x = x;
     state.pointer.y = y;
+    if (state.modeId === BUILD_MODE_ID) {
+      state.buildController.move(event.pointerId, { x, y });
+    }
+    event.preventDefault();
   };
   const up = (event: PointerEvent) => {
     if (!state.pointer.active || state.pointer.id !== event.pointerId) return;
     const [x, y] = pointerXY(state.canvas, event);
-    if (state.modeId === 'build') {
-      const start = state.buildStart;
+    if (state.modeId === BUILD_MODE_ID) {
       const radius = finiteNumberSetting(state.settings, 'buildRadius', 18);
-      if (start && Math.hypot(x - start.x, y - start.y) >= radius * 1.5) addObstacleLine(state, start.x, start.y, x, y, radius);
-      else addObstaclePoint(state, x, y, radius);
-      state.buildStart = null;
+      const fixture = state.buildController.end(event.pointerId, { x, y }, radius);
+      if (fixture?.kind === 'line') addObstacleLine(state, fixture.start.x, fixture.start.y, fixture.end.x, fixture.end.y, radius);
+      else if (fixture) addObstaclePoint(state, fixture.start.x, fixture.start.y, radius);
+    } else {
+      state.buildController.cancel(event.pointerId);
     }
     state.pointer.active = false;
     state.feedbackElement?.classList.add('hidden');
+    state.canvas.releasePointerCapture?.(event.pointerId);
+    event.preventDefault();
   };
   state.canvas.addEventListener('pointerdown', down);
   state.canvas.addEventListener('pointermove', move);
@@ -566,13 +749,14 @@ function ensureQuad(state: GpuWaterState): WebGLBuffer | null {
   return state.quadBuffer;
 }
 
-function pointScale(state: GpuWaterState): number {
+
+function enhancedDensityPointScale(state: GpuWaterState): number {
   const blend = clamp(finiteNumberSetting(state.settings, 'metaballBlend', 0.76), 0, 1);
-  return 1.45 + blend * 3.25;
+  return 2.35 + blend * 0.3;
 }
 
 function ensureDensityTarget(state: GpuWaterState): boolean {
-  const target = Math.max(32, Math.min(512, Math.floor(finiteNumberSetting(state.settings, 'fluidGridResolution', 128))));
+  const target = Math.max(128, Math.min(1024, Math.floor(finiteNumberSetting(state.settings, 'fluidGridResolution', 512))));
   const aspect = state.width / Math.max(1, state.height);
   const width = Math.max(1, Math.round(aspect >= 1 ? target : target * aspect));
   const height = Math.max(1, Math.round(aspect >= 1 ? target / aspect : target));
@@ -592,6 +776,10 @@ function unbindTextureUnits(gl: WebGL2RenderingContext): void {
     gl.bindTexture(gl.TEXTURE_2D, null);
   }
 }
+
+void renderDensity;
+void blurDensity;
+void renderComposite;
 
 function renderDensity(state: GpuWaterState): void {
   const gpu = state.particleState;
@@ -614,7 +802,11 @@ function renderDensity(state: GpuWaterState): void {
   gl.uniform1i(gl.getUniformLocation(state.densityProgram, 'uVelocities'), 1);
   gl.uniform2f(gl.getUniformLocation(state.densityProgram, 'uResolution'), state.width, state.height);
   gl.uniform2f(gl.getUniformLocation(state.densityProgram, 'uTextureSize'), gpu.width, gpu.height);
-  gl.uniform1f(gl.getUniformLocation(state.densityProgram, 'uPointScale'), pointScale(state));
+  const densityPixelScale = Math.min(
+    state.densityWidth / Math.max(1, state.width),
+    state.densityHeight / Math.max(1, state.height),
+  );
+  gl.uniform1f(gl.getUniformLocation(state.densityProgram, 'uPointScale'), enhancedDensityPointScale(state) * densityPixelScale);
   gl.uniform1f(gl.getUniformLocation(state.densityProgram, 'uActiveLimit'), state.activeLimit);
   gl.drawArrays(gl.POINTS, 0, state.activeLimit);
 }
@@ -657,7 +849,10 @@ function renderComposite(state: GpuWaterState, densityTarget: RawFramebuffer | n
   const foam = colorNumberToRgb(palette[3] ?? palette[0], [0.92, 1, 1]);
   const surface = colorNumberToRgb(palette[0], [0.54, 0.95, 1]);
   const deep = colorNumberToRgb(palette[2] ?? palette[1], [0.02, 0.2, 0.36]);
-  const background = colorNumberToRgb(state.style?.background, [0.01, 0.02, 0.04]);
+  const renderStyle = typeof state.settings.renderStyle === 'string' ? state.settings.renderStyle : 'enhanced';
+  const background = renderStyle === 'basic' || renderStyle === 'particles'
+    ? colorNumberToRgb(state.style?.background, [0.01, 0.02, 0.04])
+    : [0, 0, 0] as [number, number, number];
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.drawBuffers([gl.BACK]);
   gl.viewport(0, 0, state.width, state.height);
@@ -672,7 +867,6 @@ function renderComposite(state: GpuWaterState, densityTarget: RawFramebuffer | n
   gl.uniform3f(gl.getUniformLocation(state.compositeProgram, 'uDeepColor'), deep[0], deep[1], deep[2]);
   gl.uniform3f(gl.getUniformLocation(state.compositeProgram, 'uBackground'), background[0], background[1], background[2]);
   gl.uniform1f(gl.getUniformLocation(state.compositeProgram, 'uOpacity'), finiteNumberSetting(state.settings, 'opacity', 0.74));
-  gl.uniform1f(gl.getUniformLocation(state.compositeProgram, 'uGlass'), state.settings.renderStyle === 'glass' ? 1 : 0.35);
   gl.bindBuffer(gl.ARRAY_BUFFER, quad);
   gl.enableVertexAttribArray(0);
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
@@ -680,15 +874,20 @@ function renderComposite(state: GpuWaterState, densityTarget: RawFramebuffer | n
 }
 
 function renderParticleOverlay(state: GpuWaterState): void {
-  if (state.settings.renderStyle !== 'particles') return;
+  const renderStyle = typeof state.settings.renderStyle === 'string' ? state.settings.renderStyle : 'enhanced';
+  const referenceRender = renderStyle !== 'basic' && renderStyle !== 'particles';
   const gpu = state.particleState;
   if (!gpu || !state.particleProgram) return;
   const gl = state.gl;
   const palette = state.style?.palette ?? [0xb8f7ff, 0x4dd8ff, 0x0b4f8a, 0xffffff];
   const surface = colorNumberToRgb(palette[0], [0.54, 0.95, 1]);
   const foam = colorNumberToRgb(palette[3] ?? palette[0], [0.92, 1, 1]);
+  const palette0 = colorNumberToRgb(palette[0], [0.54, 0.95, 1]);
+  const palette1 = colorNumberToRgb(palette[1] ?? palette[0], [0.3, 0.85, 1]);
+  const palette2 = colorNumberToRgb(palette[2] ?? palette[1] ?? palette[0], [0.04, 0.32, 0.54]);
+  const palette3 = colorNumberToRgb(palette[3] ?? palette[2] ?? palette[0], [0.92, 1, 1]);
   gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.blendFunc(referenceRender ? gl.ONE : gl.SRC_ALPHA, referenceRender ? gl.ONE : gl.ONE_MINUS_SRC_ALPHA);
   gl.useProgram(state.particleProgram);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, gpu.positions.read.texture.texture);
@@ -696,19 +895,30 @@ function renderParticleOverlay(state: GpuWaterState): void {
   gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, gpu.velocities.read.texture.texture);
   gl.uniform1i(gl.getUniformLocation(state.particleProgram, 'uVelocities'), 1);
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, state.particleSpriteTexture);
+  gl.uniform1i(gl.getUniformLocation(state.particleProgram, 'uSprite'), 2);
   gl.uniform2f(gl.getUniformLocation(state.particleProgram, 'uResolution'), state.width, state.height);
   gl.uniform2f(gl.getUniformLocation(state.particleProgram, 'uTextureSize'), gpu.width, gpu.height);
-  gl.uniform1f(gl.getUniformLocation(state.particleProgram, 'uPointScale'), 1.8);
+  gl.uniform1f(gl.getUniformLocation(state.particleProgram, 'uPointScale'), referenceRender ? 2.0 : 1.8);
   gl.uniform1f(gl.getUniformLocation(state.particleProgram, 'uActiveLimit'), state.activeLimit);
   gl.uniform3f(gl.getUniformLocation(state.particleProgram, 'uSurfaceColor'), surface[0], surface[1], surface[2]);
   gl.uniform3f(gl.getUniformLocation(state.particleProgram, 'uFoamColor'), foam[0], foam[1], foam[2]);
+  gl.uniform3f(gl.getUniformLocation(state.particleProgram, 'uPalette0'), palette0[0], palette0[1], palette0[2]);
+  gl.uniform3f(gl.getUniformLocation(state.particleProgram, 'uPalette1'), palette1[0], palette1[1], palette1[2]);
+  gl.uniform3f(gl.getUniformLocation(state.particleProgram, 'uPalette2'), palette2[0], palette2[1], palette2[2]);
+  gl.uniform3f(gl.getUniformLocation(state.particleProgram, 'uPalette3'), palette3[0], palette3[1], palette3[2]);
   gl.uniform1f(gl.getUniformLocation(state.particleProgram, 'uOpacity'), finiteNumberSetting(state.settings, 'opacity', 0.74));
+  gl.uniform1f(gl.getUniformLocation(state.particleProgram, 'uReferenceRender'), referenceRender ? 1 : 0);
   gl.drawArrays(gl.POINTS, 0, state.activeLimit);
 }
 
 function clearParticleBackground(state: GpuWaterState): void {
   const gl = state.gl;
-  const background = colorNumberToRgb(state.style?.background, [0.01, 0.02, 0.04]);
+  const renderStyle = typeof state.settings.renderStyle === 'string' ? state.settings.renderStyle : 'enhanced';
+  const background = renderStyle === 'basic' || renderStyle === 'particles'
+    ? colorNumberToRgb(state.style?.background, [0.01, 0.02, 0.04])
+    : [0, 0, 0] as [number, number, number];
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, state.width, state.height);
   gl.disable(gl.BLEND);
@@ -717,6 +927,7 @@ function clearParticleBackground(state: GpuWaterState): void {
 }
 
 function renderObstacles(state: GpuWaterState): void {
+  renderObstacleCapsules(state);
   if (!state.obstacleProgram || !state.obstaclePointBuffer || state.obstaclePointCount <= 0) return;
   const gl = state.gl;
   const data = new Float32Array(state.obstaclePointCount * 4);
@@ -728,8 +939,7 @@ function renderObstacles(state: GpuWaterState): void {
     data[dst + 2] = state.obstaclePoints[src + 2];
     data[dst + 3] = 1;
   }
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.disable(gl.BLEND);
   gl.useProgram(state.obstacleProgram);
   gl.uniform2f(gl.getUniformLocation(state.obstacleProgram, 'uResolution'), state.width, state.height);
   gl.bindBuffer(gl.ARRAY_BUFFER, state.obstaclePointBuffer);
@@ -739,14 +949,42 @@ function renderObstacles(state: GpuWaterState): void {
   gl.drawArrays(gl.POINTS, 0, state.obstaclePointCount);
 }
 
+function renderObstacleCapsules(state: GpuWaterState): void {
+  const buildRadius = finiteNumberSetting(state.settings, 'buildRadius', 18);
+  const activeFixtures = state.buildController.activeFixtures(buildRadius);
+  if (!state.obstacleMeshProgram || !state.obstacleMeshBuffer || (state.obstacleLineCount <= 0 && activeFixtures.length <= 0)) return;
+  const vertices: number[] = [];
+  for (let i = 0; i < state.obstacleLineCount; i += 1) {
+    const src = i * OBSTACLE_LINE_STRIDE;
+    const start = { x: state.obstacleLines[src], y: state.obstacleLines[src + 1] };
+    const end = { x: state.obstacleLines[src + 2], y: state.obstacleLines[src + 3] };
+    const radius = state.obstacleLines[src + 4];
+    pushBuildCapsuleTriangles(vertices, start, end, radius);
+  }
+  for (const fixture of activeFixtures) {
+    pushBuildFixtureTriangles(vertices, fixture, buildRadius);
+  }
+  if (vertices.length === 0) return;
+  const gl = state.gl;
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.useProgram(state.obstacleMeshProgram);
+  gl.uniform2f(gl.getUniformLocation(state.obstacleMeshProgram, 'uResolution'), state.width, state.height);
+  gl.bindBuffer(gl.ARRAY_BUFFER, state.obstacleMeshBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2);
+}
+
 function updateFeedback(state: GpuWaterState): void {
   const feedback = state.feedbackElement;
   if (!feedback) return;
-  if (!state.pointer.active || state.modeId === 'build') {
+  if (!state.pointer.active || state.modeId === BUILD_MODE_ID) {
     feedback.classList.add('hidden');
     return;
   }
-  const radius = state.modeId === 'interact' ? finiteNumberSetting(state.settings, 'interactionRadius', 76) : finiteNumberSetting(state.settings, 'pourRadius', 22);
+  const radius = state.modeId === 'splash' ? finiteNumberSetting(state.settings, 'interactionRadius', 76) : finiteNumberSetting(state.settings, 'pourRadius', 22);
   const rect = state.canvas.getBoundingClientRect();
   const sx = rect.width / Math.max(1, state.width);
   const sy = rect.height / Math.max(1, state.height);
@@ -755,11 +993,15 @@ function updateFeedback(state: GpuWaterState): void {
   feedback.style.width = `${cssR * 2}px`;
   feedback.style.height = `${cssR * 2}px`;
   feedback.style.transform = `translate(${state.pointer.x * sx - cssR}px, ${state.pointer.y * sy - cssR}px)`;
-  feedback.style.borderColor = state.modeId === 'interact' ? 'rgba(255,255,255,0.34)' : 'rgba(103,232,249,0.42)';
-  feedback.style.backgroundColor = state.modeId === 'interact' ? 'rgba(255,255,255,0.12)' : 'rgba(34,211,238,0.12)';
+  feedback.style.borderColor = state.modeId === 'splash' ? 'rgba(255,255,255,0.34)' : 'rgba(103,232,249,0.42)';
+  feedback.style.backgroundColor = state.modeId === 'splash' ? 'rgba(255,255,255,0.12)' : 'rgba(34,211,238,0.12)';
 }
 
 function applyGestures(state: GpuWaterState): void {
+  if (state.modeId !== 'pour') {
+    state.pendingGestures.length = 0;
+    return;
+  }
   while (state.pendingGestures.length > 0) {
     const gesture = state.pendingGestures.shift();
     if (!gesture) continue;
@@ -784,6 +1026,32 @@ function emitWater(state: GpuWaterState, dt: number): void {
   uploadParticleCluster(state, state.pointer.x, state.pointer.y, count, pourRadius, state.pointer.vx * 0.1, state.pointer.vy * 0.1 + 125);
 }
 
+function applyInteractionField(state: GpuWaterState, dt: number): void {
+  if (state.modeId !== 'splash' || !state.pointer.active || state.cpuCount <= 0) return;
+  const radius = finiteNumberSetting(state.settings, 'interactionRadius', 76);
+  const strength = finiteNumberSetting(state.settings, 'interactionStrength', 18);
+  const radiusSquared = radius * radius;
+  const px = state.pointer.x;
+  const py = state.pointer.y;
+  const fieldVx = state.pointer.vx;
+  const fieldVy = state.pointer.vy;
+  const idleKick = Math.hypot(fieldVx, fieldVy) < 0.001 ? 0 : 1;
+  const p = state.cpuPositions;
+  const v = state.cpuVelocities;
+  for (let i = 0; i < state.cpuCount; i += 1) {
+    const k = i * 2;
+    const dx = p[k] - px;
+    const dy = p[k + 1] - py;
+    const distanceSquared = dx * dx + dy * dy;
+    if (distanceSquared > radiusSquared) continue;
+    const distance = Math.sqrt(Math.max(0.0001, distanceSquared));
+    const falloff = 1 - distance / Math.max(1, radius);
+    const force = falloff * falloff * strength * dt * idleKick;
+    v[k] += fieldVx * force;
+    v[k + 1] += fieldVy * force;
+  }
+}
+
 function simulateSphWater(state: GpuWaterState, dt: number): void {
   const count = Math.min(state.cpuCount, maxParticles(state));
   state.cpuCount = count;
@@ -791,8 +1059,10 @@ function simulateSphWater(state: GpuWaterState, dt: number): void {
   if (count <= 0) return;
 
   const radius = particleRadius(state);
-  const supportRadius = Math.max(radius * 3.8, 7);
-  const densityScale = (radius * radius) / (supportRadius * supportRadius);
+  const supportRadiusScale = finiteNumberSetting(state.settings, 'supportRadiusScale', 1.35);
+  const softContactRadius = radius * 0.92;
+  const supportRadius = Math.max(radius * supportRadiusScale, radius * 1.15);
+  const densityScale = 1 / Math.max(1, (supportRadius / Math.max(1, radius)) * 0.72);
   const gravity = finiteNumberSetting(state.settings, 'gravity', 1120);
   const restDensity = finiteNumberSetting(state.settings, 'restDensity', 6.4);
   const stiffness = finiteNumberSetting(state.settings, 'stiffness', 0.0061) * radius * 5.5;
@@ -835,20 +1105,22 @@ function simulateSphWater(state: GpuWaterState, dt: number): void {
       density[i] = 0;
       nearDensity[i] = 0;
     }
-    const viscosityGrid = buildCpuSpatialGrid(state, count, positions, supportRadius);
+    if (viscosity > 0.0001 && (sigma > 0.0001 || beta > 0.0001)) {
+      const viscosityGrid = buildCpuSpatialGrid(state, count, positions, supportRadius);
 
-    forEachSphPair(count, positions, supportRadius, viscosityGrid, (i, j, nx, ny, _distance, a) => {
-      const i2 = i * 2;
-      const j2 = j * 2;
-      const u = (velocities[i2] - velocities[j2]) * nx + (velocities[i2 + 1] - velocities[j2 + 1]) * ny;
-      const uFrame = u * stepDt;
-      const rawImpulse = a * (sigma * uFrame + beta * uFrame * Math.abs(uFrame)) * 0.5 * viscosity * frameDt;
-      const impulse = clamp(rawImpulse, -Math.abs(uFrame), Math.abs(uFrame)) / Math.max(0.001, stepDt);
-      velocities[i2] -= nx * impulse;
-      velocities[i2 + 1] -= ny * impulse;
-      velocities[j2] += nx * impulse;
-      velocities[j2 + 1] += ny * impulse;
-    });
+      forEachSphPair(count, positions, supportRadius, viscosityGrid, (i, j, nx, ny, _distance, a) => {
+        const i2 = i * 2;
+        const j2 = j * 2;
+        const u = (velocities[i2] - velocities[j2]) * nx + (velocities[i2 + 1] - velocities[j2 + 1]) * ny;
+        const uFrame = u * stepDt;
+        const rawImpulse = a * (sigma * uFrame + beta * uFrame * Math.abs(uFrame)) * 0.5 * viscosity * frameDt;
+        const impulse = clamp(rawImpulse, -Math.abs(uFrame), Math.abs(uFrame)) / Math.max(0.001, stepDt);
+        velocities[i2] -= nx * impulse;
+        velocities[i2 + 1] -= ny * impulse;
+        velocities[j2] += nx * impulse;
+        velocities[j2 + 1] += ny * impulse;
+      });
+    }
 
     for (let i = 0; i < count; i += 1) {
       const k = i * 2;
@@ -858,31 +1130,23 @@ function simulateSphWater(state: GpuWaterState, dt: number): void {
     }
 
     const pressureGrid = buildCpuSpatialGrid(state, count, positions, supportRadius);
-
-    const neighborPairs = forEachSphPair(
-      count,
-      positions,
-      supportRadius,
-      pressureGrid,
-      (i, j, _nx, _ny, _distance, a) => {
-        const aa = a * a;
-        const aaa = aa * a;
-        density[i] += aa * densityScale;
-        density[j] += aa * densityScale;
-        nearDensity[i] += aaa * densityScale;
-        nearDensity[j] += aaa * densityScale;
-      },
-      true,
-    );
+    const neighborPairs = cacheDensityPairs(state, count, positions, supportRadius, pressureGrid, densityScale, neighborPairBudget(state, count));
     state.cpuNeighborPairs = neighborPairs;
     state.cpuGridCellCount = pressureGrid.columns * pressureGrid.rows;
 
-    forEachSphPair(count, positions, supportRadius, pressureGrid, (i, j, nx, ny, _distance, a) => {
+    for (let pair = 0; pair < neighborPairs; pair += 1) {
+      const i = state.cpuPairI[pair];
+      const j = state.cpuPairJ[pair];
+      const nx = state.cpuPairNx[pair];
+      const ny = state.cpuPairNy[pair];
+      const a = state.cpuPairA[pair];
       const pressureI = stiffness * (density[i] - restDensity);
       const pressureJ = stiffness * (density[j] - restDensity);
       const nearPressure = nearStiffness * (nearDensity[i] + nearDensity[j]) * 0.5;
       const displacement = ((pressureI + pressureJ) * 0.5 * a + nearPressure * a * a) * frameDt * frameDt;
-      const amount = clamp(displacement * 0.5, -radius * 0.1, radius * 0.42);
+      const distance = supportRadius * (1 - a);
+      const overlapPush = Math.max(0, softContactRadius - distance) * 0.08;
+      const amount = clamp(displacement * 0.5 + overlapPush, -radius * 0.08, radius * 0.28);
       const dx = nx * amount;
       const dy = ny * amount;
       const i2 = i * 2;
@@ -891,7 +1155,7 @@ function simulateSphWater(state: GpuWaterState, dt: number): void {
       forces[i2 + 1] += dy;
       forces[j2] -= dx;
       forces[j2 + 1] -= dy;
-    });
+    }
 
     for (let i = 0; i < count; i += 1) {
       const k = i * 2;
@@ -910,11 +1174,62 @@ function simulateSphWater(state: GpuWaterState, dt: number): void {
         velocities[k] = 0;
         velocities[k + 1] = 0;
       }
-      state.cpuFoam[i] = clamp(state.cpuFoam[i] * 0.965 + Math.min(1, Math.hypot(velocities[k], velocities[k + 1]) / Math.max(1, maxSpeed)) * 0.04, 0, 1);
+      const foamSpeed = smoothstep(maxSpeed * 0.32, maxSpeed * 0.82, Math.hypot(velocities[k], velocities[k + 1]));
+      state.cpuFoam[i] = clamp(state.cpuFoam[i] * 0.998 + foamSpeed * 0.012, 0, 1);
     }
   }
 
-  uploadCpuWaterToGpu(state, count, radius);
+}
+
+function cacheDensityPairs(
+  state: GpuWaterState,
+  count: number,
+  positions: Float32Array,
+  supportRadius: number,
+  grid: CpuSpatialGrid,
+  densityScale: number,
+  pairLimit: number,
+): number {
+  const limit = Math.max(0, Math.floor(pairLimit));
+  if (state.cpuPairI.length < limit) {
+    state.cpuPairI = new Int32Array(limit);
+    state.cpuPairJ = new Int32Array(limit);
+    state.cpuPairNx = new Float32Array(limit);
+    state.cpuPairNy = new Float32Array(limit);
+    state.cpuPairA = new Float32Array(limit);
+  }
+  state.cpuNeighborPairLimit = limit;
+  state.cpuNeighborPairsDropped = 0;
+  let pairCount = 0;
+  forEachSphPair(
+    count,
+    positions,
+    supportRadius,
+    grid,
+    (i, j, nx, ny, _distance, a) => {
+      const aa = a * a;
+      const aaa = aa * a;
+      densityScalePair(state, i, j, aa, aaa, densityScale);
+      if (pairCount < limit) {
+        state.cpuPairI[pairCount] = i;
+        state.cpuPairJ[pairCount] = j;
+        state.cpuPairNx[pairCount] = nx;
+        state.cpuPairNy[pairCount] = ny;
+        state.cpuPairA[pairCount] = a;
+        pairCount += 1;
+      } else {
+        state.cpuNeighborPairsDropped += 1;
+      }
+    },
+  );
+  return pairCount;
+}
+
+function densityScalePair(state: GpuWaterState, i: number, j: number, aa: number, aaa: number, densityScale: number): void {
+  state.cpuDensity[i] += aa * densityScale;
+  state.cpuDensity[j] += aa * densityScale;
+  state.cpuNearDensity[i] += aaa * densityScale;
+  state.cpuNearDensity[j] += aaa * densityScale;
 }
 
 function forEachSphPair(
@@ -1097,14 +1412,18 @@ function uploadCpuWaterToGpu(state: GpuWaterState, count: number, radius: number
 function advanceWaterSimulation(state: GpuWaterState): void {
   const frameDt = Math.min(1 / 20, Math.max(0, state.deltaSeconds));
   emitWater(state, frameDt);
+  applyInteractionField(state, frameDt);
   state.physicsAccumulator = Math.min(state.physicsAccumulator + frameDt, 1 / 10);
   const fixedDt = 1 / 60;
-  const maxSteps = 4;
+  const maxSteps = state.cpuCount > 3072 ? 2 : state.cpuCount > 1536 ? 3 : 4;
   let steps = 0;
   while (state.physicsAccumulator >= fixedDt && steps < maxSteps) {
     simulateSphWater(state, fixedDt);
     state.physicsAccumulator -= fixedDt;
     steps += 1;
+  }
+  if (steps > 0 && state.cpuCount > 0) {
+    uploadCpuWaterToGpu(state, state.cpuCount, particleRadius(state));
   }
   if (steps === maxSteps && state.physicsAccumulator >= fixedDt) {
     state.physicsAccumulator = Math.min(state.physicsAccumulator, fixedDt * 0.5);
@@ -1116,16 +1435,32 @@ function renderWater(state: GpuWaterState): void {
   applyGestures(state);
   updateFeedback(state);
   advanceWaterSimulation(state);
-  if (state.settings.renderStyle === 'particles') {
+  const renderStyle = typeof state.settings.renderStyle === 'string' ? state.settings.renderStyle : 'enhanced';
+  if (renderStyle === 'basic' || renderStyle === 'particles') {
     clearParticleBackground(state);
     renderParticleOverlay(state);
     renderObstacles(state);
     return;
   }
-  renderDensity(state);
-  const displayTarget = blurDensity(state);
-  renderComposite(state, displayTarget);
-  renderParticleOverlay(state);
+  const gpu = state.particleState;
+  if (gpu && state.liquidSurface) {
+    const options = liquidSurfaceOptionsFromSettings(state.settings, renderStyle);
+    renderLiquidSurfaceFromTextureParticles({
+      state,
+      renderer: state.liquidSurface,
+      positionsTexture: gpu.positions.read.texture.texture,
+      velocitiesTexture: gpu.velocities.read.texture.texture,
+      textureWidth: gpu.width,
+      textureHeight: gpu.height,
+      activeCount: state.activeLimit,
+      palette: {
+        palette: state.style?.palette ?? [0xb8f7ff, 0x4dd8ff, 0x0b4f8a, 0xffffff],
+        background: state.style?.background,
+      },
+      options,
+      resolution: finiteNumberSetting(state.settings, 'fluidGridResolution', 512) * finiteNumberSetting(state.settings, 'liquidFieldScale', 0.78),
+    });
+  }
   renderObstacles(state);
 }
 
@@ -1139,8 +1474,12 @@ function destroyWater(state: GpuWaterState): void {
   if (state.compositeProgram) state.gl.deleteProgram(state.compositeProgram);
   if (state.particleProgram) state.gl.deleteProgram(state.particleProgram);
   if (state.obstacleProgram) state.gl.deleteProgram(state.obstacleProgram);
+  if (state.obstacleMeshProgram) state.gl.deleteProgram(state.obstacleMeshProgram);
+  destroyRawLiquidSurfaceRenderer(state, state.liquidSurface);
+  if (state.particleSpriteTexture) state.gl.deleteTexture(state.particleSpriteTexture);
   if (state.quadBuffer) state.gl.deleteBuffer(state.quadBuffer);
   if (state.obstaclePointBuffer) state.gl.deleteBuffer(state.obstaclePointBuffer);
+  if (state.obstacleMeshBuffer) state.gl.deleteBuffer(state.obstacleMeshBuffer);
 }
 
 export class RawGpuParticleWaterScene extends RawWebGL2Scene {
@@ -1162,8 +1501,12 @@ export class RawGpuParticleWaterScene extends RawWebGL2Scene {
         s.compositeProgram = link(s.gl, QUAD_VERTEX, COMPOSITE_FRAGMENT);
         s.particleProgram = link(s.gl, DENSITY_VERTEX, PARTICLE_FRAGMENT);
         s.obstacleProgram = link(s.gl, OBSTACLE_VERTEX, OBSTACLE_FRAGMENT);
+        s.obstacleMeshProgram = link(s.gl, OBSTACLE_MESH_VERTEX, OBSTACLE_MESH_FRAGMENT);
+        s.liquidSurface = createRawLiquidSurfaceRenderer(s.gl);
+        s.particleSpriteTexture = createReferenceParticleSprite(s.gl);
         s.quadBuffer = null;
         s.obstaclePointBuffer = s.gl.createBuffer();
+        s.obstacleMeshBuffer = s.gl.createBuffer();
         s.densityTarget = null;
         s.blurTarget = null;
         s.densityWidth = 0;
@@ -1176,6 +1519,11 @@ export class RawGpuParticleWaterScene extends RawWebGL2Scene {
         s.cpuOldPositions = new Float32Array(s.capacity * 2);
         s.cpuDensity = new Float32Array(s.capacity);
         s.cpuNearDensity = new Float32Array(s.capacity);
+        s.cpuPairI = new Int32Array(65536);
+        s.cpuPairJ = new Int32Array(65536);
+        s.cpuPairNx = new Float32Array(65536);
+        s.cpuPairNy = new Float32Array(65536);
+        s.cpuPairA = new Float32Array(65536);
         s.cpuUploadPositions = new Float32Array(s.capacity * 4);
         s.cpuUploadVelocities = new Float32Array(s.capacity * 4);
         s.spawnUploadPositions = new Float32Array(1024);
@@ -1187,6 +1535,8 @@ export class RawGpuParticleWaterScene extends RawWebGL2Scene {
         s.cpuGridColumns = 0;
         s.cpuGridRows = 0;
         s.cpuNeighborPairs = 0;
+        s.cpuNeighborPairLimit = 65536;
+        s.cpuNeighborPairsDropped = 0;
         s.cpuGridCellCount = 0;
         s.cpuRecycledParticles = 0;
         s.cpuNeedsFullUpload = false;
@@ -1201,7 +1551,7 @@ export class RawGpuParticleWaterScene extends RawWebGL2Scene {
         s.obstaclePointCount = 0;
         s.obstacleLines = new Float32Array(MAX_OBSTACLE_LINES * OBSTACLE_LINE_STRIDE);
         s.obstacleLineCount = 0;
-        s.buildStart = null;
+        s.buildController = new BuildPathController();
         s.pendingGestures = this.pendingGestures;
         s.feedbackElement = s.canvas.parentElement?.querySelector<HTMLDivElement>('[data-gpu-water-feedback]') ?? null;
         s.canvas.dataset.pixiLabContextLabel = 'water-tank-gpu';
@@ -1210,7 +1560,11 @@ export class RawGpuParticleWaterScene extends RawWebGL2Scene {
       },
       onReset: (state) => resetWater(state as GpuWaterState, preview),
       onModeChange: (state, mode) => {
-        (state as GpuWaterState).modeId = mode === 'demo' ? 'pour' : mode;
+        const waterState = state as GpuWaterState;
+        waterState.modeId = mode === 'demo' ? 'pour' : mode === 'interact' ? 'splash' : mode;
+        waterState.pendingGestures.length = 0;
+        waterState.spawnAccumulator = 0;
+        waterState.buildController.reset();
       },
       render: (state) => renderWater(state as GpuWaterState),
       getDebugStats: (state): RawSceneDebugStats => {
@@ -1229,11 +1583,14 @@ export class RawGpuParticleWaterScene extends RawWebGL2Scene {
           cpuGridCells: s.cpuGridCellCount,
           cpuTouchedGridCells: s.cpuGridTouchedCount,
           cpuNeighborPairs: s.cpuNeighborPairs,
+          cpuNeighborPairLimit: s.cpuNeighborPairLimit,
+          cpuNeighborPairsDropped: s.cpuNeighborPairsDropped,
           cpuRecycledParticles: s.cpuRecycledParticles,
           particles: s.activeLimit,
           maxParticles: maxParticles(s),
           particleTexture: s.particleState ? `${s.particleState.width}x${s.particleState.height}` : null,
           particleRadius: Math.round(particleRadius(s) * 100) / 100,
+          supportRadiusScale: finiteNumberSetting(s.settings, 'supportRadiusScale', 1.35),
           restDensity: finiteNumberSetting(s.settings, 'restDensity', 0.72),
           stiffness: finiteNumberSetting(s.settings, 'stiffness', 0.028),
           nearStiffness: finiteNumberSetting(s.settings, 'nearStiffness', 1.15),
@@ -1245,7 +1602,7 @@ export class RawGpuParticleWaterScene extends RawWebGL2Scene {
           gpuBroadphase: 'not-active',
           obstaclePoints: s.obstaclePointCount,
           obstacleLines: s.obstacleLineCount,
-          renderStyle: typeof s.settings.renderStyle === 'string' ? s.settings.renderStyle : 'glass',
+          renderStyle: typeof s.settings.renderStyle === 'string' ? s.settings.renderStyle : 'enhanced',
           mode: s.modeId,
           preview: this.preview,
         };
