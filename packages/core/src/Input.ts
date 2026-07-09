@@ -17,6 +17,8 @@ export class Input {
 
   private pendingDown = new Set<number>();
   private pendingUp = new Set<number>();
+  private pendingRemoval = new Set<number>();
+  private removalAfterFlush = new Set<number>();
 
   // Coordinate transform: logical scale factor canvas → game world
   private scaleX = 1;
@@ -48,10 +50,16 @@ export class Input {
 
   /** Call at the start of each game tick to rotate justDown/justUp sets */
   flush() {
+    for (const id of this.removalAfterFlush) {
+      this._snapshot.pointers.delete(id);
+    }
+    this.removalAfterFlush.clear();
     this._snapshot.justDown = new Set(this.pendingDown);
     this._snapshot.justUp = new Set(this.pendingUp);
+    this.removalAfterFlush = new Set(this.pendingRemoval);
     this.pendingDown.clear();
     this.pendingUp.clear();
+    this.pendingRemoval.clear();
   }
 
   get snapshot(): Readonly<InputSnapshot> {
@@ -150,13 +158,24 @@ export class Input {
   };
 
   private onUp = (e: globalThis.PointerEvent) => {
-    this._snapshot.pointers.delete(e.pointerId);
+    const existing = this._snapshot.pointers.get(e.pointerId);
+    if (existing) {
+      const { x, y } = this.clientToGame(e.clientX, e.clientY);
+      existing.x = x;
+      existing.y = y;
+      existing.type = 'up';
+    }
     this.pendingUp.add(e.pointerId);
+    this.pendingRemoval.add(e.pointerId);
   };
 
   private onCancel = (e: globalThis.PointerEvent) => {
-    this._snapshot.pointers.delete(e.pointerId);
+    const existing = this._snapshot.pointers.get(e.pointerId);
+    if (existing) {
+      existing.type = 'up';
+    }
     this.pendingUp.add(e.pointerId);
+    this.pendingRemoval.add(e.pointerId);
   };
 
   private onContextMenu = (e: Event) => {
