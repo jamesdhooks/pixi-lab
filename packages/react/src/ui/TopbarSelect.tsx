@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react';
 
 export interface TopbarSelectOption {
   id: string;
@@ -18,9 +18,11 @@ export interface TopbarSelectProps {
   listMode?: boolean;
   /** Preserve the accessible label while omitting the visible control prefix. */
   hideLabel?: boolean;
+  /** Familiar visual cue shown before the selected value. */
+  icon?: LucideIcon;
 }
 
-export function TopbarSelect({ label, value, options, onChange, listMode = false, hideLabel = false }: TopbarSelectProps) {
+export function TopbarSelect({ label, value, options, onChange, listMode = false, hideLabel = false, icon: Icon }: TopbarSelectProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -89,9 +91,11 @@ export function TopbarSelect({ label, value, options, onChange, listMode = false
         type="button"
         onClick={handleToggle}
         aria-label={label}
+        title={label}
         className="flex h-8 min-w-[8rem] items-center gap-1.5 pl-2.5 pr-2 text-xs font-semibold text-white transition-colors hover:bg-white/10"
       >
         {!hideLabel && <span className="text-[9px] font-bold uppercase tracking-widest text-white/45">{label}</span>}
+        {Icon && <Icon size={13} aria-hidden="true" className="shrink-0 text-white/55" />}
         <span className="flex min-w-0 items-center gap-1.5">
           {current && <OptionChip option={current} />}
           <span className="whitespace-nowrap">{current?.label ?? value}</span>
@@ -121,10 +125,7 @@ export function TopbarSelect({ label, value, options, onChange, listMode = false
                 ...(openUpward
                   ? { bottom: window.innerHeight - btnRect.top + 6 }
                   : { top: btnRect.bottom + 6 }),
-                left: Math.max(8, Math.min(
-                  btnRect.left + btnRect.width / 2 - dropdownWidth / 2,
-                  window.innerWidth - dropdownWidth - 8,
-                )),
+                left: Math.max(8, Math.min(btnRect.left, window.innerWidth - dropdownWidth - 8)),
                 minWidth: dropdownWidth,
               }}
               className="z-[9999] overflow-hidden rounded-xl bg-black/30 p-1 backdrop-blur-md"

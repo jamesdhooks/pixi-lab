@@ -515,26 +515,21 @@ void main() {
         float effectiveMaxAttempts = clamp(baseMaxAttempts * countRamp, 0.0, 48.0);
         if (float(attempt) >= effectiveMaxAttempts) continue;
         float childOrdinal = float(attempt);
-        float probeSeed = parentVelocity.w + float(parentIndex) * 17.31 + childOrdinal * 283.13 + uTime * 23.7;
-        // The parent state is sampled from the frame immediately after collision, so
-        // its velocity is the actual reflected direction used by the physics pass.
-        vec2 parentDir = length(parentVelocity.xy) > 0.001 ? normalize(parentVelocity.xy) : decodeBounceMarker(marker);
+        // Do not hash the packed palette seed here: its billions-scale value loses
+        // child-level precision in GPU floats and can rotate an entire burst together.
+        float probeSeed = float(parentIndex) * 0.754877666 + childOrdinal * 19.371 + floor(uTime * 23.7);
+        // The marker stores the reflected angle at the exact collision step.
+        vec2 parentDir = decodeBounceMarker(marker);
         float spread = clamp(uBounceBurstSpread, 0.0, 3.0);
         float fanHalfAngle = spread * (PI / 6.0);
-        float activeChildCount = max(1.0, ceil(effectiveMaxAttempts));
-        float pairOrdinal = floor(childOrdinal * 0.5);
-        float pairSeed = parentVelocity.w + float(parentIndex) * 17.31 + pairOrdinal * 283.13;
-        float pairAngle = hash(pairSeed + 29.0) * fanHalfAngle;
-        float pairSide = mod(childOrdinal, 2.0) < 0.5 ? -1.0 : 1.0;
-        bool centerChild = mod(activeChildCount, 2.0) > 0.5 && childOrdinal >= activeChildCount - 1.0;
-        float fanAngle = centerChild ? 0.0 : pairSide * pairAngle;
+        float fanAngle = signedHash(probeSeed + 29.0) * fanHalfAngle;
         vec2 burstDir = normalize(rotateVector(parentDir, fanAngle));
         float speedVariation = mix(max(0.05, 1.0 - uBounceSparkSpeedVariability), 1.0 + uBounceSparkSpeedVariability, hash(probeSeed + 67.0));
         float speedRamp = mix(0.28, 1.0, impactT);
         float speedScale = max(0.0, uBounceSparkSpeedScale) * speedRamp * (1.0 + impactT * max(0.0, uBounceBurstImpactSpeedScale)) * speedVariation;
         float inheritedSpeed = parentSpeed * speedScale * mix(0.34, 1.18, hash(probeSeed + 37.0));
         float burstSpeed = max(0.0, uSparkPower) * speedScale * mix(0.18, 1.08, hash(probeSeed + 41.0));
-        velocity.xy = burstDir * (inheritedSpeed + burstSpeed) + parentVelocity.xy * mix(0.02, 0.18, hash(probeSeed + 43.0));
+        velocity.xy = burstDir * (inheritedSpeed + burstSpeed) + parentDir * parentSpeed * mix(0.02, 0.18, hash(probeSeed + 43.0));
         position.xy = parentPosition.xy + burstDir * mix(5.0, 24.0, hash(probeSeed + 47.0));
         age = 0.0;
         life = mix(0.85, 2.15, hash(probeSeed + 53.0)) * max(0.0, uBounceSparkLifespan) * lifeVariationForSpread(probeSeed + 59.0, uBounceSparkLifespanVariability);
@@ -778,9 +773,10 @@ void main() {
   float profileVariability = bounceProfile ? uBounceSparkSizeVariability : uPrimarySparkSizeVariability;
   float sparkSize = bounceProfile ? bounceSpark : primarySpark;
   float generationSize = generation < 0.5 ? coreBurst : sparkSize;
-  float seededSize = sparkSizeVariation(velocity.w + generation * 41.0, profileVariability);
+  float renderSeed = float(index) * 0.754877666 + generation * 41.0;
+  float seededSize = sparkSizeVariation(renderSeed, profileVariability);
   generationSize *= generation < 0.5 ? mix(1.0, seededSize, 0.38) : seededSize;
-  float lengthSeed = sparkSizeVariation(velocity.w + generation * 59.0 + 701.0, profileLengthVariability);
+  float lengthSeed = sparkSizeVariation(renderSeed + 701.0, profileLengthVariability);
   float lengthControl = clamp(profileLength * lengthSeed, 0.0, 12.0);
   float speedStretch = generation < 0.5 ? 1.0 : 1.0 + clamp(length(velocity.xy) / 980.0, 0.0, 1.0) * mix(0.82, 2.35, uRenderTier) * mix(0.62, 1.18, profileVariability) * lengthControl;
   float pointScale = generation < 0.5
@@ -1055,9 +1051,10 @@ void main() {
   float profileLength = bounceProfile ? uBounceSparkLength : uPrimarySparkLength;
   float profileLengthVariability = bounceProfile ? uBounceSparkLengthVariability : uPrimarySparkLengthVariability;
   float profileVariability = bounceProfile ? uBounceSparkSizeVariability : uPrimarySparkSizeVariability;
-  float lengthSeed = sparkSizeVariation(velocity.w + generation * 59.0 + 701.0, profileLengthVariability);
+  float renderSeed = float(particleIndex) * 0.754877666 + generation * 41.0;
+  float lengthSeed = sparkSizeVariation(renderSeed + 701.0, profileLengthVariability);
   float lengthControl = clamp(profileLength * lengthSeed, 0.0, 12.0);
-  float seedSize = sparkSizeVariation(velocity.w + generation * 41.0, profileVariability);
+  float seedSize = sparkSizeVariation(renderSeed, profileVariability);
   float trailSeconds = mix(0.0, 0.048, min(1.0, continuityT)) * mix(1.0, 1.72, max(0.0, continuityT - 1.0)) * lengthControl;
   float maxTrail = mix(0.0, 168.0, continuityT * 0.5) * mix(0.86, 1.32, uRenderTier) * max(0.0, lengthControl);
   float trailLength = clamp(speed * trailSeconds, 0.0, maxTrail);
@@ -1880,7 +1877,7 @@ function queueCoreFlashBurst(runtime: SparksRuntime, x: number, y: number, dx: n
   const count = Math.max(0, Math.floor(flashes));
   const variability = clamp(runtime.settings.coreSpark.sizeVariability, 0, 1);
   const jitterRadius = runtime.settings.torchRadius * mix(0.04, 0.32, variability);
-  const positionVariability = runtime.mode === 'welding' ? Math.max(0, runtime.settings.coreSparkTorchPositionVariability) : 0;
+  const positionVariability = runtime.mode === 'welding' ? clamp(runtime.settings.coreSparkTorchPositionVariability, 0, 50) : 0;
   for (let index = 0; index < count; index += 1) {
     const angle = nextRandom(runtime) * Math.PI * 2;
     const radius = jitterRadius * Math.pow(nextRandom(runtime), 1.85);

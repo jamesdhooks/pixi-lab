@@ -23,7 +23,7 @@ export const SPARK_PARTICLE_PROFILES: SparkParticleProfileDefinition[] = [
     prefix: 'primarySpark',
     label: 'Primary',
     description: 'Primary emitted sparks.',
-    controls: ['size', 'length', 'lengthVariability', 'sizeVariability', 'lifespan', 'lifespanVariability', 'speedScale'],
+    controls: ['size', 'sizeVariability', 'length', 'lengthVariability', 'lifespan', 'lifespanVariability', 'speedScale'],
     defaults: {
       size: 3.6,
       length: 1,
@@ -38,7 +38,7 @@ export const SPARK_PARTICLE_PROFILES: SparkParticleProfileDefinition[] = [
     prefix: 'bounceSpark',
     label: 'Bounce',
     description: 'Secondary sparks spawned from primary spark bounces.',
-    controls: ['size', 'length', 'lengthVariability', 'sizeVariability', 'lifespan', 'lifespanVariability', 'speedScale', 'speedVariability'],
+    controls: ['size', 'sizeVariability', 'length', 'lengthVariability', 'lifespan', 'lifespanVariability', 'speedScale', 'speedVariability'],
     defaults: {
       size: 0.42,
       length: 0.72,
@@ -58,7 +58,7 @@ export const SPARKS_SETTINGS_FIELDS: SettingsField[] = [
   { key: 'sparkPower', label: 'Spark Power', section: 'Input Mode', type: 'number', min: 90, max: 6000, step: 25, default: 480, visibleModes: SPARK_EMITTER_MODES },
   { key: 'sparkDirectionChaos', label: 'Direction Chaos', section: 'Input Mode', description: 'Varies the initial direction of emitted sparks.', type: 'number', min: 0, max: 1, step: 0.01, default: 0.42, visibleModes: SPARK_EMITTER_MODES },
   { key: 'torchRadius', label: 'Torch Radius', section: 'Input Mode', type: 'number', min: 4, max: 56, step: 1, default: 24, visibleModes: SPARK_EMITTER_MODES },
-  { key: 'coreSparkTorchPositionVariability', label: 'Torch Position Variability', section: 'Input Mode', description: 'Adds a random plus-or-minus position offset to each white-hot core flash from the welding torch.', type: 'number', min: 0, max: 640, step: 1, default: 0, visibleModes: ['welding'] },
+  { key: 'coreSparkTorchPositionVariability', label: 'Torch Position Variability', section: 'Input Mode', description: 'Adds a random plus-or-minus position offset to each white-hot core flash from the welding torch.', type: 'number', min: 0, max: 50, step: 1, default: 0, visibleModes: ['welding'] },
   { key: 'buildRadius', label: 'Build Radius', section: 'Input Mode', type: 'number', min: 10, max: 44, step: 1, default: 18, visibleModes: ['build'] },
   { key: 'bounceRestitution', label: 'Bounce', section: 'Physics', type: 'number', min: 0, max: 1.35, step: 0.01, default: 0.58 },
   { key: 'bounceLifeDecay', label: 'Bounce Life Decay', section: 'Physics', description: 'Removes this fraction of a spark remaining lifespan each time it bounces. Zero disables extra bounce aging; one expires on bounce.', type: 'number', min: 0, max: 1, step: 0.01, default: 0.18 },

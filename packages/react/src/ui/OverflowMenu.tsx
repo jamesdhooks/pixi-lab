@@ -33,6 +33,8 @@ export interface OverflowItem {
   fullWidth?: boolean;
   /** Section label shown above a fullWidth item */
   sectionLabel?: string;
+  /** Close the collapsed menu before this control opens another surface. */
+  closeOnActivate?: boolean;
 }
 
 export interface OverflowMenuProps {
@@ -83,7 +85,7 @@ export function OverflowMenu({ items, compact = false }: OverflowMenuProps) {
 
   const rows = visible.map((item) =>
     item.fullWidth ? (
-      <div key={item.key} className="py-1">
+      <div key={item.key} className="py-1" onClickCapture={item.closeOnActivate ? () => setOpen(false) : undefined}>
         {item.sectionLabel && (
           <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-white/35">
             {item.sectionLabel}
@@ -95,6 +97,7 @@ export function OverflowMenu({ items, compact = false }: OverflowMenuProps) {
       <div
         key={item.key}
         className="flex min-h-touch items-center justify-between gap-3 rounded-xl px-2 py-2"
+        onClickCapture={item.closeOnActivate ? () => setOpen(false) : undefined}
       >
         <span className="text-sm font-medium text-white/70">{item.label}</span>
         <div className="flex shrink-0 items-center">{item.node}</div>

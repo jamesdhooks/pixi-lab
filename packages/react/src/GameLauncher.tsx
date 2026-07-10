@@ -6,7 +6,7 @@
  */
 import { useState, useCallback, useRef, useEffect, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dices, Eye, EyeOff, HelpCircle, Play, Settings as SettingsIcon, X } from 'lucide-react';
+import { Dices, Eye, EyeOff, HelpCircle, MousePointer2, Paintbrush, Palette, Play, Settings as SettingsIcon, X } from 'lucide-react';
 import { GameRuntime } from './GameRuntime.js';
 import { IntroCard } from './ui/IntroCard.js';
 import { GameOverModal } from './ui/GameOverModal.js';
@@ -34,6 +34,41 @@ import type { GameApp } from '@hooksjam/pixi-lab-core';
 import type { IntroHint } from './ui/IntroCard.js';
 
 type Shell = 'playing' | 'gameover';
+
+const SETTINGS_PINNED_STORAGE_KEY = 'pixi-lab:settingsPinned';
+const SETTINGS_OPEN_STORAGE_KEY = 'pixi-lab:settingsOpen';
+
+function readStoredSettingsPinned(): boolean {
+  try {
+    return localStorage.getItem(SETTINGS_PINNED_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeStoredSettingsPinned(pinned: boolean): void {
+  try {
+    localStorage.setItem(SETTINGS_PINNED_STORAGE_KEY, String(pinned));
+  } catch {
+    /* ignore */
+  }
+}
+
+function readStoredSettingsOpen(): boolean {
+  try {
+    return localStorage.getItem(SETTINGS_OPEN_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeStoredSettingsOpen(open: boolean): void {
+  try {
+    localStorage.setItem(SETTINGS_OPEN_STORAGE_KEY, String(open));
+  } catch {
+    /* ignore */
+  }
+}
 
 function readStoredRenderSelection(): unknown {
   try {
@@ -91,7 +126,7 @@ function writeStoredStyleId(definition: LabExperience, styleId: string): void {
 }
 
 const RENDER_STYLE_FIELD_KEY = 'renderStyle';
-const COMPACT_TOPBAR_STAGE_WIDTH = 1120;
+const COMPACT_TOPBAR_STAGE_WIDTH = 1360;
 const FLUID_BASIC_STYLE_ID = 'bounded-cyan';
 const FLUID_ENHANCED_STYLE_ID = 'webgl-fluid-glow';
 const FLUID_VISUAL_STYLE_MODES = [
@@ -244,8 +279,8 @@ function GameLauncherInner({
   const [playKey, setPlayKey] = useState(0);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState<number | undefined>(undefined);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsPinned, setSettingsPinned] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(readStoredSettingsOpen);
+  const [settingsPinned, setSettingsPinned] = useState(readStoredSettingsPinned);
   const [settingsSidebarWidth, setSettingsSidebarWidth] = useState(DEFAULT_SETTINGS_SIDEBAR_WIDTH);
   const [isCompactTopbar, setIsCompactTopbar] = useState(false);
   const [imageUrlEditorOpen, setImageUrlEditorOpen] = useState(false);
@@ -292,6 +327,10 @@ function GameLauncherInner({
   const [appInstance, setAppInstance] = useState<GameApp | null>(null);
   /** Bumped each time the demo AI changes a setting — causes SimControlPanel to re-sync. */
   const [settingsVersion, setSettingsVersion] = useState(0);
+
+  useEffect(() => {
+    writeStoredSettingsOpen(settingsOpen);
+  }, [settingsOpen]);
 
   useEffect(() => {
     const stage = sceneStageRef.current;
@@ -460,6 +499,7 @@ function GameLauncherInner({
   }, []);
 
   const handleSettingsPinnedChange = useCallback((pinned: boolean) => {
+    writeStoredSettingsPinned(pinned);
     setSettingsPinned(pinned);
     if (pinned) setSettingsOpen(true);
   }, []);
@@ -689,6 +729,7 @@ function GameLauncherInner({
       options={colorSchemeOptions}
       onChange={handleStyleChange}
       hideLabel
+      icon={Palette}
     />
   ) : null;
   const fluidVisualStyleControl = definition.id === 'fluid-tank' ? (
@@ -698,6 +739,8 @@ function GameLauncherInner({
         value={styleId === FLUID_ENHANCED_STYLE_ID ? FLUID_ENHANCED_STYLE_ID : FLUID_BASIC_STYLE_ID}
         options={FLUID_VISUAL_STYLE_MODES}
         onChange={handleStyleChange}
+        hideLabel
+        icon={Paintbrush}
       />
     ) : (
       <ModeToggle
@@ -714,6 +757,8 @@ function GameLauncherInner({
         value={modeId}
         options={definition.modes!}
         onChange={handleModeChange}
+        hideLabel
+        icon={MousePointer2}
       />
     ) : (
       <ModeToggle modes={definition.modes!} value={modeId} onChange={handleModeChange} />
@@ -775,6 +820,8 @@ function GameLauncherInner({
         value={renderStyleId}
         options={renderStyleModes}
         onChange={handleRenderStyleChange}
+        hideLabel
+        icon={Paintbrush}
       />
     ) : (
       <ModeToggle modes={renderStyleModes} value={renderStyleId} onChange={handleRenderStyleChange} />
@@ -980,6 +1027,7 @@ function GameLauncherInner({
                 key: 'settings',
                 label: 'Settings',
                 hidden: fixedSimulationControls,
+                closeOnActivate: true,
                 node: (
                   <motion.button
                     whileTap={{ scale: 0.9 }}
