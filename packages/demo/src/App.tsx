@@ -504,10 +504,6 @@ export function App() {
     ? 'bottom-0 left-0 right-0'
     : isLeft ? 'top-0 left-0 bottom-0 w-[196px]' : 'top-0 right-0 bottom-0 w-[196px]';
   const panelInitialAnim = isBottom ? { y: '100%' } : isLeft ? { x: '-100%' } : { x: '100%' };
-  const chevronPositionClass = isBottom
-    ? 'bottom-1 left-1/2 -translate-x-1/2 h-8 w-12'
-    : isLeft ? 'left-1 top-1/2 -translate-y-1/2 h-12 w-8' : 'right-1 top-1/2 -translate-y-1/2 h-12 w-8';
-  const ChevronOpenIcon = isBottom ? ChevronUp : isLeft ? ChevronRight : ChevronLeft;
   const ChevronCloseIcon = isBottom ? ChevronDown : isLeft ? ChevronLeft : ChevronRight;
 
   // When docked, shrink the experience area to leave real space for the carousel.
@@ -630,27 +626,6 @@ export function App() {
       {/* ── Carousel — outside the experience key so it persists across switches ── */}
       {active && !appDemoActive && (
         <>
-          {/* Chevron toggle + render settings — visible when carousel is closed */}
-          <AnimatePresence>
-            {!carouselOpen && (
-              <>
-                <motion.button
-                  key="chevron-open"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                  onClick={() => setCarouselOpen(true)}
-                  aria-label="Show experience picker"
-                  className={`fixed z-[60] flex items-center justify-center ${chevronPositionClass} text-white/20 transition-colors hover:text-white/50`}
-                >
-                  <ChevronOpenIcon size={16} />
-                </motion.button>
-
-              </>
-            )}
-          </AnimatePresence>
-
           {/* Carousel panel */}
           <AnimatePresence>
             {carouselOpen && (

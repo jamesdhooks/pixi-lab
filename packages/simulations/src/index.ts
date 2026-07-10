@@ -41,17 +41,20 @@ export { particleFluidDefinition, particleFluidStyleManifest } from './particle-
 export { RawParticleFluidScene } from './particle-fluid/RawParticleFluidScene.js';
 export { ParticleFluidPreviewScene } from './particle-fluid/ParticleFluidPreviewScene.js';
 export { softBodyBlobDefinition } from './soft-body-blob/soft-body-blob.definition.js';
+export { ViscousSoftBodyBlobScene } from './soft-body-blob/ViscousSoftBodyBlobScene.js';
 export { splashMpmDefinition, splashMpmStyleManifest } from './splash-mpm/splash-mpm.definition.js';
 export { RawSplashMpmScene } from './splash-mpm/RawSplashMpmScene.js';
 export { SplashMpmPreviewScene } from './splash-mpm/SplashMpmPreviewScene.js';
 export { sparksDefinition } from './sparks/sparks.definition.js';
 export { sparksStyleManifest } from './sparks/sparksStyleManifest.js';
 export { RawSparksScene } from './sparks/RawSparksScene.js';
+export { SparksDemoAI } from './sparks/SparksDemoAI.js';
 export { SparksPreviewScene } from './sparks/SparksPreviewScene.js';
 export { AdvancedConstraintParticlesRawScene } from './advanced-physics/AdvancedConstraintParticlesRawScene.js';
 export { turingSkinDefinition, turingSkinStyleManifest } from './turing-skin/turing-skin.definition.js';
 export { GpuTuringSkinScene } from './turing-skin/GpuTuringSkinScene.js';
 export { waterTankDefinition, waterTankStyleManifest } from './water-tank/water-tank.definition.js';
+export { RawGpuParticleWaterScene } from './water-tank/RawGpuParticleWaterScene.js';
 export { RawParticleMetaballScene } from './shared/RawParticleMetaballScene.js';
 
 export const SIMULATION_REGISTRY: readonly SimulationDefinition[] = [

@@ -55,10 +55,14 @@ Progress captured in this snapshot:
 - Fireworks, Particle Fluid, and Splash MPM remain tracked as implemented/registered and awaiting James' manual demo QA.
 - Current renderer work is broader than the last promoted baseline: shared particle/metaball/liquid rendering, raw GPU particle scenes, fluid/water/splash surfaces, soft-body visuals, and advanced constraint-particle scenes are all in flight.
 - React runtime/settings work is also in flight, especially launcher, tiles, bottom sheet, intro card, and settings drawer behavior.
+- Removed the collapsed in-game experience-picker chevron/tab from `packages/demo/src/App.tsx`; it was rendering as a stray empty rounded rectangle at the bottom-center of every launched game.
 
 Verification status for this snapshot:
 
-- The latest completed verification evidence in this document still belongs to the prior clean baseline unless a newer command is explicitly recorded below.
+- `git diff --check -- packages/demo/src/App.tsx` passed after the picker-tab removal.
+- `pnpm --filter @hooksjam/pixi-lab-demo typecheck` passed after the picker-tab removal.
+- Browser QA on `http://127.0.0.1:5173/?experience=ball-pit` confirmed the bottom-center empty rectangle / `Show experience picker` control is gone.
+- The broader completed verification evidence in this document still belongs to the prior clean baseline unless a newer command is explicitly recorded below.
 - Do not treat the current dirty worktree as accepted until focused tests/typechecks/builds are rerun and results are added here.
 - Next verification target should start with focused simulation and React gates, then broaden to recursive typecheck/test/build once local defects are resolved.
 
@@ -183,7 +187,7 @@ Evidence:
 
 Tracking notes:
 
-- Serves as the general-purpose spark engine playground: the first mode is a welding torch/contact effect with finite-lifespan GPU particles, bouncing surface response, split-state shard mutation, trail feedback, and Basic/Enhanced/Ultra render styles.
+- Serves as the general-purpose spark engine playground: the first mode is a welding torch/contact effect with finite-lifespan GPU particles, bouncing surface response, secondary bounce bursts, trail feedback, and Basic/Enhanced/Ultra render styles.
 - Includes multiple color palettes for welding, plasma, magnesium, molten metal, and industrial oxide looks.
 - Remaining work is James' manual demo QA, browser visual tuning for the welding contact core, and performance capture for high-capacity Ultra showers.
 

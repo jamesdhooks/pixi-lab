@@ -21,7 +21,7 @@ import {
   pushBuildFixtureTriangles,
   type BuildFixtureSamples,
 } from '../shared/build-mode.js';
-import { SPARK_SIZE_VARIABILITY_GLSL, SPARK_SIZE_VARIABILITY_KEY } from '../shared/spark-rendering.js';
+import { SPARK_SIZE_VARIABILITY_GLSL, SPARK_SIZE_VARIABILITY_KEY, sparkParticleProfileSettingKey, type SparkProfileSettingKey } from '../shared/spark-rendering.js';
 import { SPARKS_DEFAULTS } from './sparks.config.js';
 
 type SparksMode = 'welding' | 'pinwheel' | 'shower' | 'build';
@@ -76,6 +76,19 @@ interface TorchContact {
   pattern: SparksEmitterPattern;
 }
 
+interface SparkParticleRuntimeProfile {
+  rate: number;
+  size: number;
+  length: number;
+  lengthVariability: number;
+  sizeVariability: number;
+  lifespan: number;
+  lifespanVariability: number;
+  speedScale: number;
+  intensity: number;
+  afterglow: number;
+}
+
 interface SparksSettings {
   emissionRate: number;
   sparkPower: number;
@@ -83,32 +96,25 @@ interface SparksSettings {
   torchRadius: number;
   buildRadius: number;
   contactHeat: number;
-  coreFlashRate: number;
-  coreFlashSize: number;
-  coreFlashVariability: number;
+  coreSpark: SparkParticleRuntimeProfile;
   bounceRestitution: number;
-  splitChance: number;
-  maxSplits: number;
+  bounceLifeDecay: number;
   bounceBurstChance: number;
   bounceBurstCount: number;
-  bounceBurstPower: number;
+  bounceBurstCountSpeedScale: number;
+  bounceBurstImpactSpeedScale: number;
   bounceBurstSpread: number;
-  sparkLifespan: number;
-  sparkLifespanVariability: number;
+  primarySpark: SparkParticleRuntimeProfile;
+  bounceSpark: SparkParticleRuntimeProfile;
   sparkTurbulence: number;
   gravity: number;
   airDrag: number;
   surfaceFriction: number;
   renderStyle: SparksRenderStyle;
-  particleSize: number;
-  sparkLength: number;
-  sparkSizeVariability: number;
   trailFade: number;
   trailContinuity: number;
   bloomStrength: number;
   heatRadius: number;
-  coreIntensity: number;
-  coreAfterglow: number;
   rawParticleTextureSize: number;
   simDepth: number;
 }
@@ -136,7 +142,6 @@ interface SparksRuntime {
   coreFlashAccumulator: number;
   lastGpuPasses: number;
   emittedSparks: number;
-  splitBursts: number;
   contactBursts: number;
   buildSurfaces: BuildSurface[];
   buildController: BuildPathController;
@@ -178,12 +183,16 @@ uniform float uDt;
 uniform float uGravity;
 uniform float uDamping;
 uniform float uRestitution;
-uniform float uSplitChance;
-uniform float uMaxSplits;
+uniform float uBounceLifeDecay;
 uniform float uBounceBurstChance;
 uniform float uBounceBurstCount;
-uniform float uBounceBurstPower;
+uniform float uBounceBurstCountSpeedScale;
+uniform float uBounceBurstImpactSpeedScale;
 uniform float uBounceBurstSpread;
+uniform float uSparkPower;
+uniform float uBounceSparkSpeedScale;
+uniform float uBounceSparkLifespan;
+uniform float uBounceSparkLifespanVariability;
 uniform float uSurfaceFriction;
 uniform float uTime;
 uniform float uSpawnActive;
@@ -222,6 +231,23 @@ vec2 direction(float angle) {
   return vec2(cos(angle), sin(angle));
 }
 
+vec2 rotateVector(vec2 value, float angle) {
+  float s = sin(angle);
+  float c = cos(angle);
+  return vec2(value.x * c - value.y * s, value.x * s + value.y * c);
+}
+
+float encodeBounceMarker(vec2 reflectedDirection) {
+  float angle = atan(reflectedDirection.y, reflectedDirection.x);
+  float angleT = clamp((angle + PI) / (PI * 2.0), 0.0, 1.0);
+  return 0.205 + angleT * 0.29;
+}
+
+vec2 decodeBounceMarker(float marker) {
+  float angleT = clamp((marker - 0.205) / 0.29, 0.0, 1.0);
+  return direction(angleT * PI * 2.0 - PI);
+}
+
 vec2 reflectWithFriction(vec2 velocity, vec2 normal, float friction) {
   vec2 bounced = reflect(velocity, normal);
   vec2 tangent = vec2(-normal.y, normal.x);
@@ -237,12 +263,16 @@ vec2 withMinimumSpeed(vec2 velocity, vec2 fallbackDirection, float speed) {
   return velocity * (speed / currentSpeed);
 }
 
-float lifeVariation(float seed) {
-  float spread = clamp(uLifeVariability, 0.0, 1.0);
+float lifeVariationForSpread(float seed, float variability) {
+  float spread = clamp(variability, 0.0, 1.0);
   float centered = signedHash(seed + 613.0) * 0.62;
   float rareLong = step(0.84, hash(seed + 719.0)) * hash(seed + 821.0) * 0.92;
   float rareShort = step(0.88, hash(seed + 929.0)) * hash(seed + 1031.0) * 0.38;
   return max(0.18, 1.0 + (centered + rareLong - rareShort) * spread);
+}
+
+float lifeVariation(float seed) {
+  return lifeVariationForSpread(seed, uLifeVariability);
 }
 
 vec2 turbulenceField(vec2 position, float age, float seed) {
@@ -320,7 +350,9 @@ void main() {
 
     if (life > 0.0) {
     float bounceMarker = kind >= 0.5 ? fract(kind) : 0.0;
+    float nextBounceMarker = 0.0;
     kind = kind < 0.5 ? kind : floor(kind + 0.01);
+    float sourceGeneration = kind;
     vec2 previousPosition = position.xy;
     age += uDt;
     velocity.y += uGravity * uDt;
@@ -332,7 +364,6 @@ void main() {
     }
     position.xy += velocity.xy * uDt;
 
-    float splitRoll = hash(seed + floor(age * 28.0) * 37.13 + kind * 91.7);
     float burstRoll = hash(seed + floor(age * 31.0) * 43.17 + kind * 127.3);
     bool bounced = false;
     vec2 normal = vec2(0.0, -1.0);
@@ -383,69 +414,24 @@ void main() {
       velocity.xy = reflectWithFriction(velocity.xy, normal, uSurfaceFriction) * restitution;
       float reboundFloor = incomingSpeed * mix(0.18, 0.98, restitutionT);
       velocity.xy = withMinimumSpeed(velocity.xy, normal, reboundFloor);
-      bool splitTriggered = false;
-      if (splitRoll < uSplitChance && kind < 1.0 + uMaxSplits) {
-        float branchSeed = seed + age * 53.0 + kind * 107.0;
-        vec2 tangent = vec2(-normal.y, normal.x);
-        float branchSign = signedHash(branchSeed + 23.0) < 0.0 ? -1.0 : 1.0;
-        float splitSpeed = max(length(velocity.xy), incomingSpeed * mix(0.76, 1.42, hash(branchSeed + 41.0)));
-        vec2 branchDirection = normalize(
-          normal * mix(0.16, 0.5, hash(branchSeed + 59.0)) +
-          tangent * branchSign * mix(0.78, 1.36, hash(branchSeed + 67.0))
-        );
-        kind += 1.0;
-        velocity.xy = mix(velocity.xy, branchDirection * splitSpeed, 0.86);
-        life = max(life, age + mix(0.32, 0.95, hash(branchSeed + 83.0)) * uLifeScale);
-        age *= mix(0.62, 0.82, hash(branchSeed + 97.0));
-        seed += 97.0 + kind * 31.0 + floor(age * 19.0);
-        splitTriggered = true;
+      vec2 reflectedDirection = length(velocity.xy) > 0.001 ? normalize(velocity.xy) : normal;
+      if (sourceGeneration >= 0.5) {
+        float remainingLife = max(0.0, life - age);
+        life = min(life, age + remainingLife * max(0.0, 1.0 - clamp(uBounceLifeDecay, 0.0, 1.0)));
       }
-      if (kind >= 0.5 && uBounceBurstCount > 0.0 && (splitTriggered || burstRoll < uBounceBurstChance)) {
-        bounceMarker = 0.37;
+      if (sourceGeneration >= 0.5 && sourceGeneration < 1.5 && uBounceBurstCount > 0.0 && burstRoll < uBounceBurstChance) {
+        nextBounceMarker = encodeBounceMarker(reflectedDirection);
       }
-      kind = floor(kind + 0.01) + bounceMarker;
+    }
+
+    if (kind >= 0.5) {
+      kind = floor(kind + 0.01) + nextBounceMarker;
     }
 
     if (age >= life || position.y > uWorldBounds.w + 160.0 || length(velocity.xy) < 3.0 && age > life * 0.82) {
       life = 0.0;
       age = 0.0;
       velocity.xy = vec2(0.0);
-    }
-  }
-
-  if (max(uBounceBurstChance, uSplitChance) > 0.0 && uBounceBurstCount > 0.0) {
-    bool bounceSpawned = false;
-    int capacity = uStateSize.x * uStateSize.y;
-    int burstStride = 4099;
-    float maxAttempts = clamp(uBounceBurstCount, 0.0, 48.0);
-    for (int attempt = 0; attempt < 48; attempt += 1) {
-      if (bounceSpawned || float(attempt) >= maxAttempts) continue;
-      int parentIndex = int(mod(float(index) - float(burstStride * (attempt + 1)), float(capacity)));
-      ivec2 parentTexel = ivec2(parentIndex % uStateSize.x, parentIndex / uStateSize.x);
-      vec4 parentPosition = texelFetch(uPosition, parentTexel, 0);
-      vec4 parentVelocity = texelFetch(uVelocity, parentTexel, 0);
-      float parentGeneration = floor(parentVelocity.z + 0.01);
-      float marker = fract(parentVelocity.z);
-      if (parentPosition.w > 0.0 && parentGeneration >= 1.0 && marker > 0.28 && marker < 0.48) {
-        float childOrdinal = float(attempt);
-        float probeSeed = parentVelocity.w + float(parentIndex) * 17.31 + childOrdinal * 283.13 + uTime * 23.7;
-        vec2 parentDir = length(parentVelocity.xy) > 0.001 ? normalize(parentVelocity.xy) : direction(hash(probeSeed + 19.0) * PI * 2.0);
-        vec2 tangent = vec2(-parentDir.y, parentDir.x);
-        float spread = clamp(uBounceBurstSpread, 0.0, 3.0);
-        vec2 burstDir = normalize(
-          parentDir * mix(0.18, 1.05, hash(probeSeed + 23.0)) +
-          tangent * signedHash(probeSeed + 29.0) * mix(0.05, 2.05, spread) * mix(0.36, 1.18, hash(probeSeed + 31.0))
-        );
-        float inheritedSpeed = length(parentVelocity.xy) * mix(0.18, 0.94, hash(probeSeed + 37.0));
-        float burstSpeed = uBounceBurstPower * mix(0.04, 0.7, hash(probeSeed + 41.0));
-        velocity.xy = burstDir * (inheritedSpeed + burstSpeed) + parentVelocity.xy * mix(0.02, 0.18, hash(probeSeed + 43.0));
-        position.xy = parentPosition.xy + burstDir * mix(1.0, 14.0, hash(probeSeed + 47.0));
-        age = 0.0;
-        life = mix(0.18, 0.92, hash(probeSeed + 53.0)) * uLifeScale * lifeVariation(probeSeed + 59.0);
-        kind = min(parentGeneration + 1.0, 2.0 + uMaxSplits);
-        seed = probeSeed + parentVelocity.w * 0.017 + parentGeneration * 71.0;
-        bounceSpawned = true;
-      }
     }
   }
 
@@ -498,6 +484,45 @@ void main() {
           life *= 0.86;
           velocity.xy *= mix(1.18, 1.82, hash(spawnSeed + 81.0));
         }
+      }
+    }
+  }
+
+  if (uBounceBurstChance > 0.0 && uBounceBurstCount > 0.0) {
+    bool bounceSpawned = false;
+    int capacity = uStateSize.x * uStateSize.y;
+    int burstStride = 4099;
+    float baseMaxAttempts = clamp(uBounceBurstCount, 0.0, 48.0);
+    for (int attempt = 0; attempt < 48; attempt += 1) {
+      if (bounceSpawned || (uBounceBurstCountSpeedScale <= 0.0 && float(attempt) >= baseMaxAttempts)) continue;
+      int parentIndex = int(mod(float(index) - float(burstStride * (attempt + 1)), float(capacity)));
+      ivec2 parentTexel = ivec2(parentIndex % uStateSize.x, parentIndex / uStateSize.x);
+      vec4 parentPosition = texelFetch(uPosition, parentTexel, 0);
+      vec4 parentVelocity = texelFetch(uVelocity, parentTexel, 0);
+      float parentGeneration = floor(parentVelocity.z + 0.01);
+      float marker = fract(parentVelocity.z);
+      if (parentPosition.w > 0.0 && parentGeneration >= 1.0 && parentGeneration < 1.5 && marker > 0.2 && marker < 0.5) {
+        float parentSpeed = length(parentVelocity.xy);
+        float impactT = smoothstep(0.0, max(1.0, uSparkPower * 1.35), parentSpeed);
+        float effectiveMaxAttempts = clamp(baseMaxAttempts * (1.0 + impactT * max(0.0, uBounceBurstCountSpeedScale)), 0.0, 48.0);
+        if (float(attempt) >= effectiveMaxAttempts) continue;
+        float childOrdinal = float(attempt);
+        float probeSeed = parentVelocity.w + float(parentIndex) * 17.31 + childOrdinal * 283.13 + uTime * 23.7;
+        vec2 parentDir = decodeBounceMarker(marker);
+        float spread = clamp(uBounceBurstSpread, 0.0, 3.0);
+        float fanHalfAngle = mix(PI * 0.04, PI * 0.5, smoothstep(0.0, 1.0, spread));
+        float fanAngle = signedHash(probeSeed + 29.0) * fanHalfAngle;
+        vec2 burstDir = normalize(rotateVector(parentDir, fanAngle));
+        float speedScale = max(0.0, uBounceSparkSpeedScale) * (1.0 + impactT * max(0.0, uBounceBurstImpactSpeedScale));
+        float inheritedSpeed = parentSpeed * speedScale * mix(0.34, 1.18, hash(probeSeed + 37.0));
+        float burstSpeed = max(0.0, uSparkPower) * speedScale * mix(0.18, 1.08, hash(probeSeed + 41.0));
+        velocity.xy = burstDir * (inheritedSpeed + burstSpeed) + parentVelocity.xy * mix(0.02, 0.18, hash(probeSeed + 43.0));
+        position.xy = parentPosition.xy + burstDir * mix(5.0, 24.0, hash(probeSeed + 47.0));
+        age = 0.0;
+        life = mix(0.85, 2.15, hash(probeSeed + 53.0)) * max(0.0, uBounceSparkLifespan) * lifeVariationForSpread(probeSeed + 59.0, uBounceSparkLifespanVariability);
+        kind = parentGeneration + 1.0;
+        seed = probeSeed + parentVelocity.w * 0.017 + parentGeneration * 71.0;
+        bounceSpawned = true;
       }
     }
   }
@@ -671,9 +696,14 @@ uniform sampler2D uVelocity;
 uniform ivec2 uStateSize;
 uniform vec4 uWorldBounds;
 uniform vec2 uCanvasSize;
-uniform float uParticleSize;
-uniform float uSparkLength;
-uniform float uSizeVariability;
+uniform float uPrimarySparkSize;
+uniform float uPrimarySparkLength;
+uniform float uPrimarySparkLengthVariability;
+uniform float uPrimarySparkSizeVariability;
+uniform float uBounceSparkSize;
+uniform float uBounceSparkLength;
+uniform float uBounceSparkLengthVariability;
+uniform float uBounceSparkSizeVariability;
 uniform float uRenderTier;
 uniform float uSimDepth;
 uniform float uCoreFlashSize;
@@ -697,10 +727,11 @@ void main() {
   vec4 velocity = texelFetch(uVelocity, texel, 0);
   float life = position.w;
   float age = position.z;
+  float generation = velocity.z < 0.5 ? velocity.z : floor(velocity.z + 0.01);
   float lifeT = life > 0.0 ? clamp(age / life, 0.0, 1.0) : 1.0;
   float fade = 0.0;
   if (life > 0.0) {
-    if (velocity.z < 0.5) {
+    if (generation < 0.5) {
       float flashSeed = fract(sin(velocity.w + 113.0) * 43758.5453123);
       float ignition = smoothstep(0.0, mix(0.018, 0.075, flashSeed), lifeT);
       float flashDecay = pow(max(0.0, 1.0 - lifeT), mix(5.8, 2.35, clamp(uCoreAfterglow, 0.0, 1.0)));
@@ -718,28 +749,34 @@ void main() {
   float coreBurst = mix(7.0, 22.0, coreBurstSeed) * max(0.01, uCoreFlashSize) * coreVariance;
   coreBurst *= mix(1.12, 0.14, smoothstep(0.04, 0.88, lifeT));
   float primarySpark = mix(10.0, 30.0, sparkBurstSeed) * mix(1.0, 0.84, smoothstep(0.1, 0.9, lifeT));
-  float splitSpark = mix(7.0, 18.0, sparkBurstSeed) * mix(1.0, 0.78, smoothstep(0.1, 0.88, lifeT));
+  float bounceSpark = mix(7.0, 18.0, sparkBurstSeed) * mix(1.0, 0.78, smoothstep(0.1, 0.88, lifeT));
   float depthScale = mix(1.0, mix(0.72, 1.24, sparkBurstSeed), uSimDepth);
   primarySpark *= depthScale;
-  splitSpark *= depthScale;
-  float sparkSize = velocity.z < 1.5 ? primarySpark : splitSpark;
-  float generationSize = velocity.z < 0.5 ? coreBurst : sparkSize;
-  float seededSize = sparkSizeVariation(velocity.w + velocity.z * 41.0, uSizeVariability);
-  generationSize *= velocity.z < 0.5 ? mix(1.0, seededSize, 0.38) : seededSize;
-  float lengthControl = clamp(uSparkLength, 0.0, 12.0);
-  float speedStretch = velocity.z < 0.5 ? 1.0 : 1.0 + clamp(length(velocity.xy) / 980.0, 0.0, 1.0) * mix(0.82, 2.35, uRenderTier) * mix(0.62, 1.18, uSizeVariability) * lengthControl;
-  float pointScale = velocity.z < 0.5
+  bounceSpark *= depthScale;
+  bool bounceProfile = generation >= 2.0;
+  float profileSize = bounceProfile ? uBounceSparkSize : uPrimarySparkSize;
+  float profileLength = bounceProfile ? uBounceSparkLength : uPrimarySparkLength;
+  float profileLengthVariability = bounceProfile ? uBounceSparkLengthVariability : uPrimarySparkLengthVariability;
+  float profileVariability = bounceProfile ? uBounceSparkSizeVariability : uPrimarySparkSizeVariability;
+  float sparkSize = bounceProfile ? bounceSpark : primarySpark;
+  float generationSize = generation < 0.5 ? coreBurst : sparkSize;
+  float seededSize = sparkSizeVariation(velocity.w + generation * 41.0, profileVariability);
+  generationSize *= generation < 0.5 ? mix(1.0, seededSize, 0.38) : seededSize;
+  float lengthSeed = sparkSizeVariation(velocity.w + generation * 59.0 + 701.0, profileLengthVariability);
+  float lengthControl = clamp(profileLength * lengthSeed, 0.0, 12.0);
+  float speedStretch = generation < 0.5 ? 1.0 : 1.0 + clamp(length(velocity.xy) / 980.0, 0.0, 1.0) * mix(0.82, 2.35, uRenderTier) * mix(0.62, 1.18, profileVariability) * lengthControl;
+  float pointScale = generation < 0.5
     ? mix(0.72, 2.45, smoothstep(0.02, 2.4, clamp(uCoreFlashSize, 0.02, 2.4)))
-    : uParticleSize;
+    : profileSize;
   vAlpha = fade;
-  vKind = velocity.z;
+  vKind = generation;
   vLifeT = lifeT;
   vSeed = velocity.w;
   vSpeed = length(velocity.xy);
   vTrailStretch = speedStretch;
   vDir = vSpeed > 0.001 ? normalize(velocity.xy) : vec2(1.0, 0.0);
   gl_Position = fade > 0.0 ? vec4(normalized.x * 2.0 - 1.0, 1.0 - normalized.y * 2.0, 0.0, 1.0) : vec4(2.0, 2.0, 0.0, 1.0);
-  float pointLimit = velocity.z < 0.5 ? 180.0 : (velocity.z < 1.5 ? 118.0 : 86.0);
+  float pointLimit = generation < 0.5 ? 180.0 : (generation < 1.5 ? 118.0 : 58.0);
   gl_PointSize = min(pointLimit, max(1.0, pointScale * generationSize * speedStretch * pxScale * mix(1.0, 1.85, uRenderTier)));
 }`;
 
@@ -856,9 +893,8 @@ class SparksPointRenderer {
     width: number;
     height: number;
     worldBounds: [number, number, number, number];
-    particleSize: number;
-    sparkLength: number;
-    sparkSizeVariability: number;
+    primarySpark: SparkParticleRuntimeProfile;
+    bounceSpark: SparkParticleRuntimeProfile;
     renderTier: number;
     coreFlashSize: number;
     coreFlashVariability: number;
@@ -886,9 +922,14 @@ class SparksPointRenderer {
     gl.uniform2i(this.uniform('uStateSize'), options.particleState.width, options.particleState.height);
     gl.uniform4f(this.uniform('uWorldBounds'), options.worldBounds[0], options.worldBounds[1], options.worldBounds[2], options.worldBounds[3]);
     gl.uniform2f(this.uniform('uCanvasSize'), options.width, options.height);
-    gl.uniform1f(this.uniform('uParticleSize'), options.particleSize);
-    gl.uniform1f(this.uniform('uSparkLength'), options.sparkLength);
-    gl.uniform1f(this.uniform('uSizeVariability'), options.sparkSizeVariability);
+    gl.uniform1f(this.uniform('uPrimarySparkSize'), options.primarySpark.size);
+    gl.uniform1f(this.uniform('uPrimarySparkLength'), options.primarySpark.length);
+    gl.uniform1f(this.uniform('uPrimarySparkLengthVariability'), options.primarySpark.lengthVariability);
+    gl.uniform1f(this.uniform('uPrimarySparkSizeVariability'), options.primarySpark.sizeVariability);
+    gl.uniform1f(this.uniform('uBounceSparkSize'), options.bounceSpark.size);
+    gl.uniform1f(this.uniform('uBounceSparkLength'), options.bounceSpark.length);
+    gl.uniform1f(this.uniform('uBounceSparkLengthVariability'), options.bounceSpark.lengthVariability);
+    gl.uniform1f(this.uniform('uBounceSparkSizeVariability'), options.bounceSpark.sizeVariability);
     gl.uniform1f(this.uniform('uRenderTier'), options.renderTier);
     gl.uniform1f(this.uniform('uSimDepth'), options.simDepth);
     gl.uniform1f(this.uniform('uCoreFlashSize'), options.coreFlashSize);
@@ -930,9 +971,14 @@ uniform sampler2D uPosition;
 uniform sampler2D uVelocity;
 uniform ivec2 uStateSize;
 uniform vec2 uCanvasSize;
-uniform float uParticleSize;
-uniform float uSparkLength;
-uniform float uSizeVariability;
+uniform float uPrimarySparkSize;
+uniform float uPrimarySparkLength;
+uniform float uPrimarySparkLengthVariability;
+uniform float uPrimarySparkSizeVariability;
+uniform float uBounceSparkSize;
+uniform float uBounceSparkLength;
+uniform float uBounceSparkLengthVariability;
+uniform float uBounceSparkSizeVariability;
 uniform float uTrailContinuity;
 uniform float uRenderTier;
 uniform float uSimDepth;
@@ -961,6 +1007,7 @@ void main() {
   float life = position.w;
   float age = position.z;
   float kind = velocity.z;
+  float generation = kind < 0.5 ? kind : floor(kind + 0.01);
   float lifeT = life > 0.0 ? clamp(age / life, 0.0, 1.0) : 1.0;
   float speed = length(velocity.xy);
   float continuity = max(0.0, uTrailContinuity);
@@ -968,7 +1015,7 @@ void main() {
     vAlpha = 0.0;
     vLocal = vec2(0.0);
     vLifeT = lifeT;
-    vKind = kind;
+    vKind = generation;
     vSeed = velocity.w;
     vSpeedT = 0.0;
     gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
@@ -983,8 +1030,14 @@ void main() {
   vec2 normal = vec2(-axis.y, axis.x);
   float speedT = clamp(speed / 1400.0, 0.0, 1.0);
   float continuityT = clamp(continuity, 0.0, 2.0);
-  float lengthControl = clamp(uSparkLength, 0.0, 12.0);
-  float seedSize = sparkSizeVariation(velocity.w + kind * 41.0, uSizeVariability);
+  bool bounceProfile = generation >= 2.0;
+  float profileSize = bounceProfile ? uBounceSparkSize : uPrimarySparkSize;
+  float profileLength = bounceProfile ? uBounceSparkLength : uPrimarySparkLength;
+  float profileLengthVariability = bounceProfile ? uBounceSparkLengthVariability : uPrimarySparkLengthVariability;
+  float profileVariability = bounceProfile ? uBounceSparkSizeVariability : uPrimarySparkSizeVariability;
+  float lengthSeed = sparkSizeVariation(velocity.w + generation * 59.0 + 701.0, profileLengthVariability);
+  float lengthControl = clamp(profileLength * lengthSeed, 0.0, 12.0);
+  float seedSize = sparkSizeVariation(velocity.w + generation * 41.0, profileVariability);
   float trailSeconds = mix(0.0, 0.048, min(1.0, continuityT)) * mix(1.0, 1.72, max(0.0, continuityT - 1.0)) * lengthControl;
   float maxTrail = mix(0.0, 168.0, continuityT * 0.5) * mix(0.86, 1.32, uRenderTier) * max(0.0, lengthControl);
   float trailLength = clamp(speed * trailSeconds, 0.0, maxTrail);
@@ -992,7 +1045,7 @@ void main() {
     vAlpha = 0.0;
     vLocal = vec2(0.0);
     vLifeT = lifeT;
-    vKind = kind;
+    vKind = generation;
     vSeed = velocity.w;
     vSpeedT = speedT;
     gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
@@ -1000,7 +1053,7 @@ void main() {
   }
   float depthSeed = hashTrail(velocity.w + 71.0);
   float depthScale = mix(1.0, mix(0.76, 1.22, depthSeed), uSimDepth);
-  float width = max(0.55, uParticleSize * mix(0.34, 0.74, uRenderTier) * seedSize * depthScale);
+  float width = max(0.55, profileSize * mix(0.34, 0.74, uRenderTier) * seedSize * depthScale);
   vec2 tail = position.xy - axis * trailLength;
   vec2 headPosition = position.xy + axis * min(width * 0.75, trailLength * 0.12);
   vec2 world = mix(tail, headPosition, along) + normal * side * width;
@@ -1010,7 +1063,7 @@ void main() {
   vAlpha = youngGate * lifeFade * mix(0.22, 0.74, speedT) * mix(0.72, 1.24, min(1.0, continuityT));
   vLocal = vec2(along, side);
   vLifeT = lifeT;
-  vKind = kind;
+  vKind = generation;
   vSeed = velocity.w;
   vSpeedT = speedT;
   gl_Position = vec4(normalized.x * 2.0 - 1.0, 1.0 - normalized.y * 2.0, 0.0, 1.0);
@@ -1091,9 +1144,8 @@ class SparksTrailSegmentRenderer {
     target: WebGLFramebuffer | null;
     width: number;
     height: number;
-    particleSize: number;
-    sparkLength: number;
-    sparkSizeVariability: number;
+    primarySpark: SparkParticleRuntimeProfile;
+    bounceSpark: SparkParticleRuntimeProfile;
     trailContinuity: number;
     renderTier: number;
     simDepth: number;
@@ -1118,9 +1170,14 @@ class SparksTrailSegmentRenderer {
     gl.uniform1i(this.uniform('uVelocity'), 1);
     gl.uniform2i(this.uniform('uStateSize'), options.particleState.width, options.particleState.height);
     gl.uniform2f(this.uniform('uCanvasSize'), options.width, options.height);
-    gl.uniform1f(this.uniform('uParticleSize'), options.particleSize);
-    gl.uniform1f(this.uniform('uSparkLength'), options.sparkLength);
-    gl.uniform1f(this.uniform('uSizeVariability'), options.sparkSizeVariability);
+    gl.uniform1f(this.uniform('uPrimarySparkSize'), options.primarySpark.size);
+    gl.uniform1f(this.uniform('uPrimarySparkLength'), options.primarySpark.length);
+    gl.uniform1f(this.uniform('uPrimarySparkLengthVariability'), options.primarySpark.lengthVariability);
+    gl.uniform1f(this.uniform('uPrimarySparkSizeVariability'), options.primarySpark.sizeVariability);
+    gl.uniform1f(this.uniform('uBounceSparkSize'), options.bounceSpark.size);
+    gl.uniform1f(this.uniform('uBounceSparkLength'), options.bounceSpark.length);
+    gl.uniform1f(this.uniform('uBounceSparkLengthVariability'), options.bounceSpark.lengthVariability);
+    gl.uniform1f(this.uniform('uBounceSparkSizeVariability'), options.bounceSpark.sizeVariability);
     gl.uniform1f(this.uniform('uTrailContinuity'), options.trailContinuity);
     gl.uniform1f(this.uniform('uRenderTier'), options.renderTier);
     gl.uniform1f(this.uniform('uSimDepth'), options.simDepth);
@@ -1410,7 +1467,6 @@ function createRuntime(state: RawWebGL2RenderState, mode: SparksMode, seedInitia
     coreFlashAccumulator: 0,
     lastGpuPasses: 0,
     emittedSparks: 0,
-    splitBursts: 0,
     contactBursts: 0,
     buildSurfaces: randomInitialBuildSurfaces(state.width, state.height),
     buildController: new BuildPathController({ minPointDistance: 5, spacingScale: 1.45, clickDistanceScale: 1.5 }),
@@ -1423,7 +1479,7 @@ function createRuntime(state: RawWebGL2RenderState, mode: SparksMode, seedInitia
   };
   runtime.cleanup = attachPointerInput(state, runtime);
   if (seedInitialBurst) {
-    queueCoreFlashBurst(runtime, state.width * 0.5, state.height * 0.58, 0, -1, 1.25, Math.max(1, Math.round(runtime.settings.coreFlashRate * 0.5)), 1.35);
+    queueCoreFlashBurst(runtime, state.width * 0.5, state.height * 0.58, 0, -1, 1.25, Math.max(1, Math.round(runtime.settings.coreSpark.rate * 0.5)), 1.35);
     queueContactBurst(runtime, state.width * 0.5, state.height * 0.58, 0, -1, 0.8, true, 'welding');
   }
   return runtime;
@@ -1507,6 +1563,35 @@ function createParticleState(state: RawWebGL2RenderState): RawGpuParticleState {
   });
 }
 
+type SparkProfileLegacyKeys = Partial<Record<SparkProfileSettingKey, string>>;
+
+function readSparkProfile(state: RawWebGL2RenderState, prefix: string, legacyKeys: SparkProfileLegacyKeys = {}): SparkParticleRuntimeProfile {
+  return {
+    rate: readProfileSetting(state, prefix, 'rate', legacyKeys.rate),
+    size: readProfileSetting(state, prefix, 'size', legacyKeys.size),
+    length: readProfileSetting(state, prefix, 'length', legacyKeys.length),
+    lengthVariability: readProfileSetting(state, prefix, 'lengthVariability', legacyKeys.lengthVariability),
+    sizeVariability: readProfileSetting(state, prefix, 'sizeVariability', legacyKeys.sizeVariability),
+    lifespan: readProfileSetting(state, prefix, 'lifespan', legacyKeys.lifespan),
+    lifespanVariability: readProfileSetting(state, prefix, 'lifespanVariability', legacyKeys.lifespanVariability),
+    speedScale: readProfileSetting(state, prefix, 'speedScale', legacyKeys.speedScale),
+    intensity: readProfileSetting(state, prefix, 'intensity', legacyKeys.intensity),
+    afterglow: readProfileSetting(state, prefix, 'afterglow', legacyKeys.afterglow),
+  };
+}
+
+function readProfileSetting(
+  state: RawWebGL2RenderState,
+  prefix: string,
+  key: SparkProfileSettingKey,
+  legacyKey?: string,
+): number {
+  const profileKey = sparkParticleProfileSettingKey(prefix, key);
+  const raw = state.settings[profileKey] ?? (legacyKey ? state.settings[legacyKey] : undefined) ?? SPARKS_DEFAULTS[profileKey];
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : Number(SPARKS_DEFAULTS[profileKey] ?? 0);
+}
+
 function settingsFromState(state: RawWebGL2RenderState): SparksSettings {
   const rawEdge = Number(state.settings.rawParticleTextureSize ?? SPARKS_DEFAULTS.rawParticleTextureSize);
   return {
@@ -1516,32 +1601,40 @@ function settingsFromState(state: RawWebGL2RenderState): SparksSettings {
     torchRadius: finiteNumberSetting(state.settings, 'torchRadius', SPARKS_DEFAULTS.torchRadius as number),
     buildRadius: finiteNumberSetting(state.settings, 'buildRadius', SPARKS_DEFAULTS.buildRadius as number),
     contactHeat: finiteNumberSetting(state.settings, 'contactHeat', SPARKS_DEFAULTS.contactHeat as number),
-    coreFlashRate: finiteNumberSetting(state.settings, 'coreFlashRate', SPARKS_DEFAULTS.coreFlashRate as number),
-    coreFlashSize: finiteNumberSetting(state.settings, 'coreFlashSize', SPARKS_DEFAULTS.coreFlashSize as number),
-    coreFlashVariability: finiteNumberSetting(state.settings, 'coreFlashVariability', SPARKS_DEFAULTS.coreFlashVariability as number),
+    coreSpark: readSparkProfile(state, 'coreSpark', {
+      rate: 'coreFlashRate',
+      size: 'coreFlashSize',
+      sizeVariability: 'coreFlashVariability',
+      intensity: 'coreIntensity',
+      afterglow: 'coreAfterglow',
+    }),
     bounceRestitution: finiteNumberSetting(state.settings, 'bounceRestitution', SPARKS_DEFAULTS.bounceRestitution as number),
-    splitChance: finiteNumberSetting(state.settings, 'splitChance', SPARKS_DEFAULTS.splitChance as number),
-    maxSplits: finiteNumberSetting(state.settings, 'maxSplits', SPARKS_DEFAULTS.maxSplits as number),
+    bounceLifeDecay: finiteNumberSetting(state.settings, 'bounceLifeDecay', SPARKS_DEFAULTS.bounceLifeDecay as number),
     bounceBurstChance: finiteNumberSetting(state.settings, 'bounceBurstChance', SPARKS_DEFAULTS.bounceBurstChance as number),
     bounceBurstCount: finiteNumberSetting(state.settings, 'bounceBurstCount', SPARKS_DEFAULTS.bounceBurstCount as number),
-    bounceBurstPower: finiteNumberSetting(state.settings, 'bounceBurstPower', SPARKS_DEFAULTS.bounceBurstPower as number),
+    bounceBurstCountSpeedScale: finiteNumberSetting(state.settings, 'bounceBurstCountSpeedScale', SPARKS_DEFAULTS.bounceBurstCountSpeedScale as number),
+    bounceBurstImpactSpeedScale: finiteNumberSetting(state.settings, 'bounceBurstImpactSpeedScale', SPARKS_DEFAULTS.bounceBurstImpactSpeedScale as number),
     bounceBurstSpread: finiteNumberSetting(state.settings, 'bounceBurstSpread', SPARKS_DEFAULTS.bounceBurstSpread as number),
-    sparkLifespan: finiteNumberSetting(state.settings, 'sparkLifespan', SPARKS_DEFAULTS.sparkLifespan as number),
-    sparkLifespanVariability: finiteNumberSetting(state.settings, 'sparkLifespanVariability', SPARKS_DEFAULTS.sparkLifespanVariability as number),
+    primarySpark: readSparkProfile(state, 'primarySpark', {
+      size: 'particleSize',
+      length: 'sparkLength',
+      sizeVariability: SPARK_SIZE_VARIABILITY_KEY,
+      lifespan: 'sparkLifespan',
+      lifespanVariability: 'sparkLifespanVariability',
+    }),
+    bounceSpark: readSparkProfile(state, 'bounceSpark', {
+      lifespan: 'bounceBurstLifeScale',
+      speedScale: 'bounceBurstSpeedScale',
+    }),
     sparkTurbulence: finiteNumberSetting(state.settings, 'sparkTurbulence', SPARKS_DEFAULTS.sparkTurbulence as number),
     gravity: finiteNumberSetting(state.settings, 'gravity', SPARKS_DEFAULTS.gravity as number),
     airDrag: finiteNumberSetting(state.settings, 'airDrag', SPARKS_DEFAULTS.airDrag as number),
     surfaceFriction: finiteNumberSetting(state.settings, 'surfaceFriction', SPARKS_DEFAULTS.surfaceFriction as number),
     renderStyle: renderStyleFromString(String(state.settings.renderStyle ?? SPARKS_DEFAULTS.renderStyle)),
-    particleSize: finiteNumberSetting(state.settings, 'particleSize', SPARKS_DEFAULTS.particleSize as number),
-    sparkLength: finiteNumberSetting(state.settings, 'sparkLength', SPARKS_DEFAULTS.sparkLength as number),
-    sparkSizeVariability: finiteNumberSetting(state.settings, SPARK_SIZE_VARIABILITY_KEY, SPARKS_DEFAULTS.sparkSizeVariability as number),
     trailFade: finiteNumberSetting(state.settings, 'trailFade', SPARKS_DEFAULTS.trailFade as number),
     trailContinuity: finiteNumberSetting(state.settings, 'trailContinuity', SPARKS_DEFAULTS.trailContinuity as number),
     bloomStrength: finiteNumberSetting(state.settings, 'bloomStrength', SPARKS_DEFAULTS.bloomStrength as number),
     heatRadius: finiteNumberSetting(state.settings, 'heatRadius', SPARKS_DEFAULTS.heatRadius as number),
-    coreIntensity: finiteNumberSetting(state.settings, 'coreIntensity', SPARKS_DEFAULTS.coreIntensity as number),
-    coreAfterglow: finiteNumberSetting(state.settings, 'coreAfterglow', SPARKS_DEFAULTS.coreAfterglow as number),
     rawParticleTextureSize: clamp(Math.floor(Number.isFinite(rawEdge) ? rawEdge : 256), 128, 768),
     simDepth: simDepthFromString(String(state.settings.simDepth ?? SPARKS_DEFAULTS.simDepth)),
   };
@@ -1652,7 +1745,7 @@ function attachPointerInput(state: RawWebGL2RenderState, runtime: SparksRuntime)
       coreAccumulator: 0,
       pattern: patternForMode(runtime.mode),
     });
-    queueCoreFlashBurst(runtime, point.x, point.y, 0, -1, 1.35, Math.max(1, Math.round(runtime.settings.coreFlashRate * 0.55)), 1.45);
+    queueCoreFlashBurst(runtime, point.x, point.y, 0, -1, 1.35, Math.max(1, Math.round(runtime.settings.coreSpark.rate * 0.55)), 1.45);
     queueContactBurst(runtime, point.x, point.y, 0, -1, 0.9, true, patternForMode(runtime.mode));
   };
   const move = (event: PointerEvent) => {
@@ -1738,14 +1831,14 @@ function updateContacts(runtime: SparksRuntime, dt: number): void {
     for (let index = 0; index < bursts; index += 1) {
       queueContactBurst(runtime, contact.x, contact.y, contact.dx, contact.dy, contact.strength, false, contact.pattern);
     }
-    queueCoreFlashBurst(runtime, contact.x, contact.y, contact.dx, contact.dy, contact.strength, Math.min(12, Math.round(bursts * runtime.settings.coreFlashRate * 0.32)), 1.28);
+    queueCoreFlashBurst(runtime, contact.x, contact.y, contact.dx, contact.dy, contact.strength, Math.min(12, Math.round(bursts * runtime.settings.coreSpark.rate * 0.32)), 1.28);
   }
 }
 
 function advanceCoreFlashAccumulator(runtime: SparksRuntime, x: number, y: number, dx: number, dy: number, strength: number, accumulator: number, dt: number): number {
-  const rate = Math.max(0, runtime.settings.coreFlashRate);
+  const rate = Math.max(0, runtime.settings.coreSpark.rate);
   if (rate <= 0) return 0;
-  const variability = clamp(runtime.settings.coreFlashVariability, 0, 1);
+  const variability = clamp(runtime.settings.coreSpark.sizeVariability, 0, 1);
   let nextAccumulator = accumulator + rate * Math.max(0.35, strength) * dt;
   let flashes = 0;
   while (nextAccumulator >= 1 && flashes < 4) {
@@ -1760,7 +1853,7 @@ function advanceCoreFlashAccumulator(runtime: SparksRuntime, x: number, y: numbe
 
 function queueCoreFlashBurst(runtime: SparksRuntime, x: number, y: number, dx: number, dy: number, strength: number, flashes: number, syncBoost: number): void {
   const count = Math.max(0, Math.floor(flashes));
-  const variability = clamp(runtime.settings.coreFlashVariability, 0, 1);
+  const variability = clamp(runtime.settings.coreSpark.sizeVariability, 0, 1);
   const jitterRadius = runtime.settings.torchRadius * mix(0.04, 0.32, variability);
   for (let index = 0; index < count; index += 1) {
     const angle = nextRandom(runtime) * Math.PI * 2;
@@ -1771,14 +1864,14 @@ function queueCoreFlashBurst(runtime: SparksRuntime, x: number, y: number, dx: n
 }
 
 function queueCoreGlow(runtime: SparksRuntime, x: number, y: number, dx: number, dy: number, strength: number): void {
-  const variability = clamp(runtime.settings.coreFlashVariability, 0, 1);
+  const variability = clamp(runtime.settings.coreSpark.sizeVariability, 0, 1);
   const flashVariation = mix(1, mix(0.42, 2.18, nextRandom(runtime)), variability);
-  const flashSize = Math.max(0.05, runtime.settings.coreFlashSize);
+  const flashSize = Math.max(0.05, runtime.settings.coreSpark.size);
   const contactHeat = Math.max(0, runtime.settings.contactHeat);
   const heatStrength = contactHeat * clamp(strength, 0, 2.8);
-  const coreLife = clamp(0.085 + runtime.settings.coreAfterglow * 0.22 + heatStrength * 0.014, 0.075, 0.42);
+  const coreLife = clamp((0.085 + runtime.settings.coreSpark.afterglow * 0.22 + heatStrength * 0.014) * Math.max(0, runtime.settings.coreSpark.lifespan), 0.04, 1.2);
   const coreSize = mix(18, 78, clamp(runtime.settings.heatRadius / 130, 0, 1)) * Math.sqrt(flashSize) * Math.sqrt(flashVariation);
-  const coreIntensity = clamp(heatStrength * 0.32, 0, 2.6) * mix(1, mix(0.72, 1.45, nextRandom(runtime)), variability);
+  const coreIntensity = clamp(heatStrength * 0.32, 0, 2.6) * Math.max(0, runtime.settings.coreSpark.intensity / 3.65) * mix(1, mix(0.72, 1.45, nextRandom(runtime)), variability);
   runtime.coreFlashes.push({
     x,
     y,
@@ -1801,7 +1894,7 @@ function queueCoreGlow(runtime: SparksRuntime, x: number, y: number, dx: number,
       seed: nextRandom(runtime) * 10000,
       paletteSeed: nextRandom(runtime) * 50000,
       power: Math.max(0, runtime.settings.heatRadius * flashSize) * clamp(strength * 0.036, 0, 0.18) * Math.sqrt(flashVariation),
-      lifeScale: clamp(0.28 + runtime.settings.coreAfterglow * 0.3 + heatStrength * 0.022, 0.22, 0.78),
+      lifeScale: clamp(0.28 + runtime.settings.coreSpark.afterglow * 0.3 + heatStrength * 0.022, 0.22, 0.78) * Math.max(0, runtime.settings.coreSpark.lifespan),
       pattern: 0,
     });
   }
@@ -1813,37 +1906,22 @@ function queueContactBurst(runtime: SparksRuntime, x: number, y: number, dx: num
   const count = Math.max(0, Math.round((burst ? 34 : 10) * heat));
   if (count <= 0) return;
   const isShower = pattern === 'shower';
+  const primaryPower = runtime.settings.sparkPower * runtime.settings.primarySpark.speedScale;
   const inheritedVx = isShower ? 0 : dx * (burst ? 0.62 : 0.32);
   const inheritedVy = isShower ? 0 : dy * (burst ? 0.62 : 0.32);
   runtime.queuedSpawns.push({
     x,
     y,
     vx: inheritedVx,
-    vy: isShower ? 0 : inheritedVy - runtime.settings.sparkPower * 0.05,
+    vy: isShower ? 0 : inheritedVy - primaryPower * 0.05,
     count,
     kind: 1,
     seed: nextRandom(runtime) * 10000 + runtime.emittedSparks * 0.017,
     paletteSeed: nextRandom(runtime) * 50000,
-    power: runtime.settings.sparkPower * (pattern === 'pinwheel' ? 1.08 : burst ? 1.18 : 0.98),
+    power: primaryPower * (pattern === 'pinwheel' ? 1.08 : burst ? 1.18 : 0.98),
     lifeScale: clamp(0.42 + heat * 0.1, 0.24, 0.92),
     pattern: patternToSpawnNumber(pattern),
   });
-  if (runtime.settings.splitChance > 0.12 && pattern !== 'shower') {
-    runtime.queuedSpawns.push({
-      x: x + signedRandom(runtime) * runtime.settings.torchRadius,
-      y: y + signedRandom(runtime) * runtime.settings.torchRadius,
-      vx: inheritedVx * 0.68 + signedRandom(runtime) * runtime.settings.sparkPower * 0.18,
-      vy: inheritedVy * 0.68 - runtime.settings.sparkPower * 0.1,
-      count: Math.max(2, Math.round(count * runtime.settings.splitChance * 0.36)),
-      kind: 2,
-      seed: nextRandom(runtime) * 10000 + runtime.splitBursts * 0.037,
-      paletteSeed: nextRandom(runtime) * 50000,
-      power: runtime.settings.sparkPower * 0.92,
-      lifeScale: 0.78,
-      pattern: patternToSpawnNumber(pattern),
-    });
-    runtime.splitBursts += 1;
-  }
   runtime.emittedSparks += count;
   runtime.contactBursts += 1;
   runtime.trailEnergy = 1;
@@ -1893,12 +1971,16 @@ function runStepPass(runtime: SparksRuntime, state: RawWebGL2RenderState, dt: nu
       gl.uniform1f(uniform('uGravity'), runtime.settings.gravity);
       gl.uniform1f(uniform('uDamping'), runtime.settings.airDrag);
       gl.uniform1f(uniform('uRestitution'), runtime.settings.bounceRestitution);
-      gl.uniform1f(uniform('uSplitChance'), runtime.settings.splitChance);
-      gl.uniform1f(uniform('uMaxSplits'), runtime.settings.maxSplits);
+      gl.uniform1f(uniform('uBounceLifeDecay'), runtime.settings.bounceLifeDecay);
       gl.uniform1f(uniform('uBounceBurstChance'), runtime.settings.bounceBurstChance);
       gl.uniform1f(uniform('uBounceBurstCount'), runtime.settings.bounceBurstCount);
-      gl.uniform1f(uniform('uBounceBurstPower'), runtime.settings.bounceBurstPower);
+      gl.uniform1f(uniform('uBounceBurstCountSpeedScale'), runtime.settings.bounceBurstCountSpeedScale);
+      gl.uniform1f(uniform('uBounceBurstImpactSpeedScale'), runtime.settings.bounceBurstImpactSpeedScale);
+      gl.uniform1f(uniform('uBounceSparkSpeedScale'), runtime.settings.bounceSpark.speedScale);
+      gl.uniform1f(uniform('uBounceSparkLifespan'), runtime.settings.bounceSpark.lifespan);
+      gl.uniform1f(uniform('uBounceSparkLifespanVariability'), runtime.settings.bounceSpark.lifespanVariability);
       gl.uniform1f(uniform('uBounceBurstSpread'), runtime.settings.bounceBurstSpread);
+      gl.uniform1f(uniform('uSparkPower'), runtime.settings.sparkPower * runtime.settings.primarySpark.speedScale);
       gl.uniform1f(uniform('uSurfaceFriction'), runtime.settings.surfaceFriction);
       gl.uniform1f(uniform('uTime'), state.timeSeconds);
       gl.uniform1f(uniform('uSpawnActive'), spawn ? 1 : 0);
@@ -1912,8 +1994,8 @@ function runStepPass(runtime: SparksRuntime, state: RawWebGL2RenderState, dt: nu
       gl.uniform1f(uniform('uSpawnPower'), spawn?.power ?? 0);
       gl.uniform1f(uniform('uSpawnPattern'), spawn?.pattern ?? 0);
       gl.uniform1f(uniform('uDirectionChaos'), runtime.settings.sparkDirectionChaos);
-      gl.uniform1f(uniform('uLifeScale'), (spawn?.lifeScale ?? 1) * runtime.settings.sparkLifespan);
-      gl.uniform1f(uniform('uLifeVariability'), runtime.settings.sparkLifespanVariability);
+      gl.uniform1f(uniform('uLifeScale'), (spawn?.lifeScale ?? 1) * (spawn?.kind === 0 ? runtime.settings.coreSpark.lifespan : runtime.settings.primarySpark.lifespan));
+      gl.uniform1f(uniform('uLifeVariability'), spawn?.kind === 0 ? runtime.settings.coreSpark.lifespanVariability : runtime.settings.primarySpark.lifespanVariability);
       gl.uniform1f(uniform('uTurbulence'), runtime.settings.sparkTurbulence);
       gl.uniform1f(uniform('uSimDepth'), runtime.settings.simDepth);
       gl.uniform1f(uniform('uBuildRadius'), sparksBuildRadius(runtime));
@@ -1965,7 +2047,7 @@ function drawScene(runtime: SparksRuntime, state: RawWebGL2RenderState): void {
     });
     renderBuildObstacles(runtime, state);
     drawTrailSegments(runtime, state, null, 0.5, 0.9);
-    drawPoints(runtime, state, null, 0.46, 0.82, runtime.settings.particleSize * 1.08, 0.82);
+    drawPoints(runtime, state, null, 0.46, 0.82, 1.08, 0.82);
     drawCoreFlashes(runtime, state, null, 0.54, 1.06);
     return;
   }
@@ -1989,11 +2071,11 @@ function drawScene(runtime: SparksRuntime, state: RawWebGL2RenderState): void {
     },
   });
   drawTrailSegments(runtime, state, runtime.trail.write.framebuffer, runtime.settings.renderStyle === 'ultra' ? 0.88 : 0.66, glowBias * 1.45);
-  drawPoints(runtime, state, runtime.trail.write.framebuffer, runtime.settings.renderStyle === 'ultra' ? 0.46 : 0.32, glowBias * 0.34, runtime.settings.particleSize * 1.05, 0.22);
+  drawPoints(runtime, state, runtime.trail.write.framebuffer, runtime.settings.renderStyle === 'ultra' ? 0.46 : 0.32, glowBias * 0.34, 1.05, 0.22);
   drawCoreFlashes(runtime, state, runtime.trail.write.framebuffer, runtime.settings.renderStyle === 'ultra' ? 0.9 : 0.62, glowBias * 1.2);
   if (runtime.settings.renderStyle === 'ultra') {
     drawTrailSegments(runtime, state, runtime.trail.write.framebuffer, 0.36, glowBias * 0.52);
-    drawPoints(runtime, state, runtime.trail.write.framebuffer, 0.2, glowBias * 0.16, runtime.settings.particleSize * 1.4, 0.12);
+    drawPoints(runtime, state, runtime.trail.write.framebuffer, 0.2, glowBias * 0.16, 1.4, 0.12);
     drawCoreFlashes(runtime, state, runtime.trail.write.framebuffer, 0.34, glowBias * 0.48);
   }
   runtime.trail.swap();
@@ -2015,7 +2097,7 @@ function drawScene(runtime: SparksRuntime, state: RawWebGL2RenderState): void {
     },
   });
   renderBuildObstacles(runtime, state);
-  drawPoints(runtime, state, null, 0.72, glowBias * 1.08, runtime.settings.particleSize * 1.45, 1);
+  drawPoints(runtime, state, null, 0.72, glowBias * 1.08, 1.45, 1);
   drawCoreFlashes(runtime, state, null, 0.84, glowBias * 1.35);
 }
 
@@ -2031,13 +2113,12 @@ function drawTrailSegments(
     target,
     width: state.width,
     height: state.height,
-    particleSize: runtime.settings.particleSize,
-    sparkLength: runtime.settings.sparkLength,
-    sparkSizeVariability: runtime.settings.sparkSizeVariability,
+    primarySpark: runtime.settings.primarySpark,
+    bounceSpark: runtime.settings.bounceSpark,
     trailContinuity: runtime.settings.trailContinuity,
     renderTier,
     simDepth: runtime.settings.simDepth,
-    coreIntensity: runtime.settings.coreIntensity,
+    coreIntensity: runtime.settings.coreSpark.intensity,
     glowBias,
     time: state.timeSeconds,
     palette: state.style?.palette ?? [0xffffff, 0xdbeafe, 0x93c5fd, 0xffd166, 0xf97316],
@@ -2057,9 +2138,9 @@ function drawCoreFlashes(
     width: state.width,
     height: state.height,
     renderTier,
-    coreFlashSize: runtime.settings.coreFlashSize,
-    coreIntensity: runtime.settings.coreIntensity,
-    coreAfterglow: runtime.settings.coreAfterglow,
+    coreFlashSize: runtime.settings.coreSpark.size,
+    coreIntensity: runtime.settings.coreSpark.intensity,
+    coreAfterglow: runtime.settings.coreSpark.afterglow,
     glowBias,
     time: state.timeSeconds,
   });
@@ -2113,23 +2194,26 @@ function drawPoints(
   target: WebGLFramebuffer | null,
   renderTier: number,
   glowBias = 1,
-  particleSize = runtime.settings.particleSize,
+  primarySizeScale = 1,
   coreAlpha = 1,
 ): void {
+  const primarySpark = {
+    ...runtime.settings.primarySpark,
+    size: runtime.settings.primarySpark.size * primarySizeScale,
+  };
   runtime.pointRenderer.render({
     particleState: runtime.particleState,
     target,
     width: state.width,
     height: state.height,
     worldBounds: [0, 0, state.width, state.height],
-    particleSize,
-    sparkLength: runtime.settings.sparkLength,
-    sparkSizeVariability: runtime.settings.sparkSizeVariability,
+    primarySpark,
+    bounceSpark: runtime.settings.bounceSpark,
     renderTier,
-    coreFlashSize: runtime.settings.coreFlashSize,
-    coreFlashVariability: runtime.settings.coreFlashVariability,
-    coreIntensity: runtime.settings.coreIntensity,
-    coreAfterglow: runtime.settings.coreAfterglow,
+    coreFlashSize: runtime.settings.coreSpark.size,
+    coreFlashVariability: runtime.settings.coreSpark.sizeVariability,
+    coreIntensity: runtime.settings.coreSpark.intensity,
+    coreAfterglow: runtime.settings.coreSpark.afterglow,
     glowBias,
     coreAlpha,
     simDepth: runtime.settings.simDepth,
@@ -2179,7 +2263,7 @@ function applyGestures(runtime: SparksRuntime, state: RawWebGL2RenderState, gest
   for (const command of sparksInputCommandsForMode(runtime.mode, syntheticGestures, state.width, state.height)) {
     queueContactBurst(runtime, command.x, command.y, command.dx, command.dy, command.strength, command.burst, command.pattern);
     if (command.burst) {
-      queueCoreFlashBurst(runtime, command.x, command.y, command.dx, command.dy, command.strength, Math.max(1, Math.round(runtime.settings.coreFlashRate * 0.5)), 1.35);
+      queueCoreFlashBurst(runtime, command.x, command.y, command.dx, command.dy, command.strength, Math.max(1, Math.round(runtime.settings.coreSpark.rate * 0.5)), 1.35);
     } else {
       runtime.coreFlashAccumulator = advanceCoreFlashAccumulator(runtime, command.x, command.y, command.dx, command.dy, command.strength, runtime.coreFlashAccumulator, dt);
     }
@@ -2292,7 +2376,6 @@ function getRuntimeDebugStats(runtime: SparksRuntime, state: RawWebGL2RenderStat
     queuedSpawnCommands: runtime.queuedSpawns.length,
     coreFlashes: runtime.coreFlashes.length,
     emittedSparks: runtime.emittedSparks,
-    splitBursts: runtime.splitBursts,
     contactBursts: runtime.contactBursts,
   };
 }
@@ -2331,10 +2414,6 @@ function nextRandom(runtime: SparksRuntime): number {
   t = Math.imul(t ^ (t >>> 15), t | 1);
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-}
-
-function signedRandom(runtime: SparksRuntime): number {
-  return nextRandom(runtime) * 2 - 1;
 }
 
 function numberUniform(uniforms: Record<string, unknown>, key: string, fallback: number): number {

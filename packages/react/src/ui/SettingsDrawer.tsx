@@ -5,9 +5,9 @@
  * controls bar. Opens below the settings button with a slide-down animation.
  * Less blur, less dramatic than a full modal.
  */
-import { Fragment, useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronDown, Check, RotateCcw, Save, PanelRight, PanelRightOpen } from 'lucide-react';
+import { X, ChevronDown, Check, RotateCcw, Save, PanelRight, PanelRightOpen, Info } from 'lucide-react';
 import type { Settings } from '@hooksjam/pixi-lab-core';
 import type { SettingsField } from '@hooksjam/pixi-lab-core';
 import { BottomSheet } from './BottomSheet.js';
@@ -72,6 +72,11 @@ export function SettingsDrawer({
     for (const f of fields) next[f.key] = settings.get(f.key);
     setVals(next);
     if (!sectionFilter) onMaxPixelsChange?.(undefined);
+  };
+
+  const resetField = (key: string) => {
+    settings.reset([key]);
+    setVals((prev) => ({ ...prev, [key]: settings.get(key) }));
   };
 
   const saveVisibleDefaults = async () => {
@@ -144,26 +149,25 @@ export function SettingsDrawer({
       ))}
     </div>
   );
-  const renderFieldSection = (label: string, sectionFields: SettingsField[], first = false) =>
+  const renderFieldSection = (label: string, sectionFields: SettingsField[], index: number) =>
     sectionFields.length > 0 ? (
-      <Fragment key={label}>
-        {!first && <div className="mx-1 my-1 h-px bg-white/8" />}
-        <p className={`${first ? 'px-2 pb-0.5' : 'px-2 pb-1'} text-[9px] font-semibold uppercase tracking-[0.18em] text-white/30`}>{label}</p>
+      <section key={label} className={`rounded-lg py-1.5 ${sectionBackgroundClass(index)}`}>
+        <p className="px-2 pb-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">{label}</p>
         {sectionFields.map((field) => (
           <FieldRow
             key={field.key}
             field={field}
             value={vals[field.key]}
             onChange={(v) => apply(field.key, v)}
+            onReset={() => resetField(field.key)}
           />
         ))}
-      </Fragment>
+      </section>
     ) : null;
 
   const resolutionSection = (
-    <>
-      <div className="mx-1 my-1.5 h-px bg-white/8" />
-      <p className="px-2 pb-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-white/30">Resolution</p>
+    <section className={`rounded-lg py-1.5 ${sectionBackgroundClass(visibleSections.length)}`}>
+      <p className="px-2 pb-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">Resolution</p>
       <div className="grid grid-cols-4 gap-1 px-1 pb-0.5">
         {PIXEL_PRESETS.map(({ label, sub, value }) => (
           <button
@@ -180,11 +184,11 @@ export function SettingsDrawer({
           </button>
         ))}
       </div>
-    </>
+    </section>
   );
 
   const content = (
-    <div className="space-y-0.5 px-2.5 pb-2.5 pt-1.5">
+    <div className="space-y-1.5 px-2.5 pb-2.5 pt-1.5">
       {isMobile && !isLandscape && (
         <div className="flex justify-end gap-1 px-1 pb-1">
           {onSaveDefaults && (
@@ -215,7 +219,7 @@ export function SettingsDrawer({
         </div>
       )}
       {sectionFilters}
-      {visibleSections.map((section, index) => renderFieldSection(section.label, section.fields, index === 0))}
+      {visibleSections.map((section, index) => renderFieldSection(section.label, section.fields, index))}
       {resolutionSection}
     </div>
   );
@@ -325,24 +329,40 @@ export function SettingsDrawer({
   );
 }
 
+function sectionBackgroundClass(index: number): string {
+  return index % 2 === 0 ? 'bg-white/[0.035]' : 'bg-white/[0.015]';
+}
+
 // ── Field row ──────────────────────────────────────────────────────────────────
 
 function FieldRow({
   field,
   value,
   onChange,
+  onReset,
 }: {
   field: SettingsField;
   value: unknown;
   onChange: (v: unknown) => void;
+  onReset: () => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 rounded-lg px-2 py-1.5">
+    <div className="group flex items-start justify-between gap-3 rounded-lg px-2 py-1.5">
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold text-white">{field.label}</p>
-        {field.description && (
-          <p className="mt-0.5 text-[10px] leading-snug text-white/45">{field.description}</p>
-        )}
+        <div className="flex items-center gap-1.5">
+          <p className="min-w-0 text-xs font-semibold text-white">{field.label}</p>
+          {field.description && (
+            <FieldDescriptionTooltip label={field.label} description={field.description} />
+          )}
+          <button
+            type="button"
+            aria-label={`Reset ${field.label}`}
+            onClick={onReset}
+            className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-white/35 opacity-0 transition hover:bg-white/10 hover:text-white/85 focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-cyan-200/50 group-hover:opacity-100 group-focus-within:opacity-100"
+          >
+            <RotateCcw size={10} aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       <div className="shrink-0">
@@ -360,6 +380,65 @@ function FieldRow({
         )}
       </div>
     </div>
+  );
+}
+
+function FieldDescriptionTooltip({ label, description }: { label: string; description: string }) {
+  const tooltipId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [tooltip, setTooltip] = useState<{ left: number; vertical: number; placement: 'top' | 'bottom' } | null>(null);
+
+  const showTooltip = () => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const width = 256;
+    const margin = 12;
+    const left = Math.min(Math.max(rect.left + rect.width / 2 - width / 2, margin), window.innerWidth - margin - width);
+    const openAbove = rect.bottom > window.innerHeight * 0.72;
+    setTooltip({
+      left,
+      vertical: openAbove ? window.innerHeight - rect.top + 8 : rect.bottom + 8,
+      placement: openAbove ? 'top' : 'bottom',
+    });
+  };
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label={`About ${label}`}
+        aria-describedby={tooltip ? tooltipId : undefined}
+        onPointerEnter={showTooltip}
+        onPointerLeave={() => setTooltip(null)}
+        onFocus={showTooltip}
+        onBlur={() => setTooltip(null)}
+        className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-white/40 transition-colors hover:bg-white/10 hover:text-white/80 focus:outline-none focus:ring-1 focus:ring-cyan-200/50"
+      >
+        <Info size={11} aria-hidden="true" />
+      </button>
+      <AnimatePresence>
+        {tooltip && (
+          <motion.div
+            id={tooltipId}
+            role="tooltip"
+            initial={{ opacity: 0, y: tooltip.placement === 'top' ? 4 : -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: tooltip.placement === 'top' ? 4 : -4, scale: 0.98 }}
+            transition={{ duration: 0.1 }}
+            style={{
+              position: 'fixed',
+              left: tooltip.left,
+              ...(tooltip.placement === 'top' ? { bottom: tooltip.vertical } : { top: tooltip.vertical }),
+              width: 256,
+            }}
+            className="pointer-events-none z-[10000] rounded-md border border-white/12 bg-zinc-950 px-2.5 py-2 text-[10px] leading-snug text-white/75 shadow-2xl"
+          >
+            {description}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -403,6 +482,7 @@ function NumberSlider({
   const sliderValue = powerOfTwo ? snapExponent(Math.log2(Math.max(1, num)), minExponent, maxExponent) : num;
   const valueLabel = powerOfTwo ? formatPowerOfTwoSetting(num) : formatNumberSetting(num);
   const tickExponents = powerOfTwo ? powerOfTwoExponents(minExponent, maxExponent) : [];
+  const sliderStep = powerOfTwo ? 1 : numericStepForField(field, num);
   return (
     <div className="flex items-center gap-2">
       <div className="relative w-32 pb-2">
@@ -410,7 +490,7 @@ function NumberSlider({
           type="range"
           min={powerOfTwo ? minExponent : field.min}
           max={powerOfTwo ? maxExponent : field.max}
-          step={powerOfTwo ? 1 : field.step ?? 1}
+          step={sliderStep}
           value={sliderValue}
           aria-valuetext={powerOfTwo ? valueLabel : undefined}
           data-numeric-scale={field.numericScale}
@@ -436,6 +516,12 @@ function NumberSlider({
       </span>
     </div>
   );
+}
+
+function numericStepForField(field: SettingsField, value: number): number {
+  if (typeof field.step === 'number' && Number.isFinite(field.step) && field.step > 0) return field.step;
+  const upperBound = typeof field.max === 'number' ? field.max : Math.abs(value);
+  return upperBound < 10 ? 0.1 : 1;
 }
 
 function formatNumberSetting(value: number): string {

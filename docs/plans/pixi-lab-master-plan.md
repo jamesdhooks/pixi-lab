@@ -296,12 +296,12 @@ Implemented definition includes:
 - raw engine configuration;
 - capabilities for interactivity, ambient behavior, gestures, reset, director mode, stagnation recovery, debug overlay, style export, procedural texture capability, render target pooling, demo, and settings.
 
-Product role: the general-purpose spark engine playground. It validates pointer-driven welding emission, finite-lifespan GPU spark particles, bouncing surface response, split-shard mutation, palette-driven hot/cooling colors, and Basic/Enhanced/Ultra render pipelines.
+Product role: the general-purpose spark engine playground. It validates pointer-driven welding emission, finite-lifespan GPU spark particles, bouncing surface response, secondary bounce bursts, palette-driven hot/cooling colors, and Basic/Enhanced/Ultra render pipelines.
 
 Remaining hardening:
 
 - James' manual demo QA pass;
-- browser visual QA for the welding contact core and bounced split shards;
+- browser visual QA for the welding contact core and secondary bounce sparks;
 - tune palette balance, bloom, and Ultra capacity after live inspection;
 - capture screenshots or clips once the look is approved.
 

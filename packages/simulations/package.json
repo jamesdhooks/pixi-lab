@@ -89,7 +89,26 @@
     "url": "git+ssh://git@github.com/jamesdhooks/pixi-lab.git"
   },
   "files": [
-    "dist",
+    "dist/index.js",
+    "dist/index.js.map",
+    "dist/index.d.ts",
+    "dist/index.d.ts.map",
+    "dist/advanced-physics",
+    "dist/alien-vascular-tree",
+    "dist/chain-rain",
+    "dist/fireworks",
+    "dist/fluid-tank",
+    "dist/harmonic-sand",
+    "dist/lava-lamp",
+    "dist/mycelium",
+    "dist/orbital-shrapnel",
+    "dist/particle-fluid",
+    "dist/shared",
+    "dist/soft-body-blob",
+    "dist/sparks",
+    "dist/splash-mpm",
+    "dist/turing-skin",
+    "dist/water-tank",
     "README.md"
   ],
   "publishConfig": {

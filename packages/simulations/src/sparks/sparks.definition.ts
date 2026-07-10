@@ -46,7 +46,7 @@ export const sparksDefinition: SimulationDefinition = {
   },
   directorEvents: [
     { id: 'white-hot-pass', label: 'White Hot Pass', minIntervalMs: 7000, maxIntervalMs: 14000, intensity: 0.62 },
-    { id: 'split-shard-rain', label: 'Split Shard Rain', minIntervalMs: 9000, maxIntervalMs: 18000, intensity: 0.7 },
+    { id: 'bounce-burst-rain', label: 'Bounce Burst Rain', minIntervalMs: 9000, maxIntervalMs: 18000, intensity: 0.7 },
     { id: 'magnesium-flare', label: 'Magnesium Flare', minIntervalMs: 12000, maxIntervalMs: 24000, intensity: 0.78 },
   ],
   stagnationPolicy: {
@@ -60,7 +60,7 @@ export const sparksDefinition: SimulationDefinition = {
     portability: 'demo-adapter',
     supportedShapes: ['circle', 'box'],
     reusableFor: ['high-count spark effects', 'lifespan-bounded GPU particle motion', 'bouncing contact fragments', 'welding and grinding effects'],
-    caveats: ['Contact emission is CPU-scheduled; spark motion, lifespan, bounce response, shard mutation, secondary bounce bursts, trails, and rendering are GPU-resident.'],
+    caveats: ['Contact emission is CPU-scheduled; spark motion, lifespan, bounce response, secondary bounce bursts, trails, and rendering are GPU-resident.'],
   },
   defaultSeed: 760431,
   factory: () => new RawSparksScene(),

@@ -11,8 +11,6 @@ const PARAM_PRESETS: Array<{
   coreFlashVariability: number;
   coreAfterglow: number;
   bounceRestitution: number;
-  splitChance: number;
-  maxSplits: number;
   gravity: number;
   airDrag: number;
   surfaceFriction: number;
@@ -22,10 +20,10 @@ const PARAM_PRESETS: Array<{
   heatRadius: number;
   coreIntensity: number;
 }> = [
-  { emissionRate: 620, sparkPower: 320, torchRadius: 14, contactHeat: 1.0, coreFlashRate: 2.4, coreFlashSize: 0.82, coreFlashVariability: 0.38, coreAfterglow: 0.28, bounceRestitution: 0.44, splitChance: 0.32, maxSplits: 1, gravity: 540, airDrag: 1.15, surfaceFriction: 0.24, particleSize: 1.22, trailFade: 0.86, bloomStrength: 1.8, heatRadius: 24, coreIntensity: 1.55 },
-  { emissionRate: 940, sparkPower: 430, torchRadius: 18, contactHeat: 1.35, coreFlashRate: 3.1, coreFlashSize: 0.96, coreFlashVariability: 0.5, coreAfterglow: 0.34, bounceRestitution: 0.58, splitChance: 0.48, maxSplits: 2, gravity: 640, airDrag: 0.86, surfaceFriction: 0.18, particleSize: 1.45, trailFade: 0.91, bloomStrength: 2.45, heatRadius: 34, coreIntensity: 2.2 },
-  { emissionRate: 1480, sparkPower: 620, torchRadius: 22, contactHeat: 1.72, coreFlashRate: 4.2, coreFlashSize: 1.08, coreFlashVariability: 0.62, coreAfterglow: 0.42, bounceRestitution: 0.66, splitChance: 0.62, maxSplits: 3, gravity: 760, airDrag: 0.62, surfaceFriction: 0.12, particleSize: 1.72, trailFade: 0.944, bloomStrength: 3.1, heatRadius: 48, coreIntensity: 2.85 },
-  { emissionRate: 2100, sparkPower: 820, torchRadius: 26, contactHeat: 2.05, coreFlashRate: 5.4, coreFlashSize: 1.24, coreFlashVariability: 0.72, coreAfterglow: 0.48, bounceRestitution: 0.74, splitChance: 0.78, maxSplits: 4, gravity: 920, airDrag: 0.42, surfaceFriction: 0.08, particleSize: 1.95, trailFade: 0.966, bloomStrength: 4.0, heatRadius: 68, coreIntensity: 3.55 },
+  { emissionRate: 620, sparkPower: 320, torchRadius: 14, contactHeat: 1.0, coreFlashRate: 2.4, coreFlashSize: 0.82, coreFlashVariability: 0.38, coreAfterglow: 0.28, bounceRestitution: 0.44, gravity: 540, airDrag: 1.15, surfaceFriction: 0.24, particleSize: 1.22, trailFade: 0.86, bloomStrength: 1.8, heatRadius: 24, coreIntensity: 1.55 },
+  { emissionRate: 940, sparkPower: 430, torchRadius: 18, contactHeat: 1.35, coreFlashRate: 3.1, coreFlashSize: 0.96, coreFlashVariability: 0.5, coreAfterglow: 0.34, bounceRestitution: 0.58, gravity: 640, airDrag: 0.86, surfaceFriction: 0.18, particleSize: 1.45, trailFade: 0.91, bloomStrength: 2.45, heatRadius: 34, coreIntensity: 2.2 },
+  { emissionRate: 1480, sparkPower: 620, torchRadius: 22, contactHeat: 1.72, coreFlashRate: 4.2, coreFlashSize: 1.08, coreFlashVariability: 0.62, coreAfterglow: 0.42, bounceRestitution: 0.66, gravity: 760, airDrag: 0.62, surfaceFriction: 0.12, particleSize: 1.72, trailFade: 0.944, bloomStrength: 3.1, heatRadius: 48, coreIntensity: 2.85 },
+  { emissionRate: 2100, sparkPower: 820, torchRadius: 26, contactHeat: 2.05, coreFlashRate: 5.4, coreFlashSize: 1.24, coreFlashVariability: 0.72, coreAfterglow: 0.48, bounceRestitution: 0.74, gravity: 920, airDrag: 0.42, surfaceFriction: 0.08, particleSize: 1.95, trailFade: 0.966, bloomStrength: 4.0, heatRadius: 68, coreIntensity: 3.55 },
 ];
 
 const RENDER_STYLES = ['basic', 'enhanced', 'ultra'] as const;
