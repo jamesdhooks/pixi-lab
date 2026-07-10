@@ -7,6 +7,7 @@ import {
   finiteNumberSetting,
   linkRawWebGL2Program,
   rawGpuMetricsToDebugStats,
+  resolveSideViewPaletteBackdrop,
   type GestureEvent,
   type RawWebGL2RenderState,
 } from '@hooksjam/pixi-lab-core';
@@ -85,6 +86,7 @@ interface SparkParticleRuntimeProfile {
   lifespan: number;
   lifespanVariability: number;
   speedScale: number;
+  speedVariability: number;
   intensity: number;
   afterglow: number;
 }
@@ -94,12 +96,14 @@ interface SparksSettings {
   sparkPower: number;
   sparkDirectionChaos: number;
   torchRadius: number;
+  coreSparkTorchPositionVariability: number;
   buildRadius: number;
   contactHeat: number;
   coreSpark: SparkParticleRuntimeProfile;
   bounceRestitution: number;
   bounceLifeDecay: number;
   bounceBurstChance: number;
+  bounceBurstMinSpeed: number;
   bounceBurstCount: number;
   bounceBurstCountSpeedScale: number;
   bounceBurstImpactSpeedScale: number;
@@ -185,12 +189,14 @@ uniform float uDamping;
 uniform float uRestitution;
 uniform float uBounceLifeDecay;
 uniform float uBounceBurstChance;
+uniform float uBounceBurstMinSpeed;
 uniform float uBounceBurstCount;
 uniform float uBounceBurstCountSpeedScale;
 uniform float uBounceBurstImpactSpeedScale;
 uniform float uBounceBurstSpread;
 uniform float uSparkPower;
 uniform float uBounceSparkSpeedScale;
+uniform float uBounceSparkSpeedVariability;
 uniform float uBounceSparkLifespan;
 uniform float uBounceSparkLifespanVariability;
 uniform float uSurfaceFriction;
@@ -503,17 +509,29 @@ void main() {
       float marker = fract(parentVelocity.z);
       if (parentPosition.w > 0.0 && parentGeneration >= 1.0 && parentGeneration < 1.5 && marker > 0.2 && marker < 0.5) {
         float parentSpeed = length(parentVelocity.xy);
+        if (parentSpeed < max(0.0, uBounceBurstMinSpeed)) continue;
         float impactT = smoothstep(0.0, max(1.0, uSparkPower * 1.35), parentSpeed);
-        float effectiveMaxAttempts = clamp(baseMaxAttempts * (1.0 + impactT * max(0.0, uBounceBurstCountSpeedScale)), 0.0, 48.0);
+        float countRamp = mix(0.16, 1.0 + impactT * max(0.0, uBounceBurstCountSpeedScale), impactT);
+        float effectiveMaxAttempts = clamp(baseMaxAttempts * countRamp, 0.0, 48.0);
         if (float(attempt) >= effectiveMaxAttempts) continue;
         float childOrdinal = float(attempt);
         float probeSeed = parentVelocity.w + float(parentIndex) * 17.31 + childOrdinal * 283.13 + uTime * 23.7;
-        vec2 parentDir = decodeBounceMarker(marker);
+        // The parent state is sampled from the frame immediately after collision, so
+        // its velocity is the actual reflected direction used by the physics pass.
+        vec2 parentDir = length(parentVelocity.xy) > 0.001 ? normalize(parentVelocity.xy) : decodeBounceMarker(marker);
         float spread = clamp(uBounceBurstSpread, 0.0, 3.0);
-        float fanHalfAngle = mix(PI * 0.04, PI * 0.5, smoothstep(0.0, 1.0, spread));
-        float fanAngle = signedHash(probeSeed + 29.0) * fanHalfAngle;
+        float fanHalfAngle = spread * (PI / 6.0);
+        float activeChildCount = max(1.0, ceil(effectiveMaxAttempts));
+        float pairOrdinal = floor(childOrdinal * 0.5);
+        float pairSeed = parentVelocity.w + float(parentIndex) * 17.31 + pairOrdinal * 283.13;
+        float pairAngle = hash(pairSeed + 29.0) * fanHalfAngle;
+        float pairSide = mod(childOrdinal, 2.0) < 0.5 ? -1.0 : 1.0;
+        bool centerChild = mod(activeChildCount, 2.0) > 0.5 && childOrdinal >= activeChildCount - 1.0;
+        float fanAngle = centerChild ? 0.0 : pairSide * pairAngle;
         vec2 burstDir = normalize(rotateVector(parentDir, fanAngle));
-        float speedScale = max(0.0, uBounceSparkSpeedScale) * (1.0 + impactT * max(0.0, uBounceBurstImpactSpeedScale));
+        float speedVariation = mix(max(0.05, 1.0 - uBounceSparkSpeedVariability), 1.0 + uBounceSparkSpeedVariability, hash(probeSeed + 67.0));
+        float speedRamp = mix(0.28, 1.0, impactT);
+        float speedScale = max(0.0, uBounceSparkSpeedScale) * speedRamp * (1.0 + impactT * max(0.0, uBounceBurstImpactSpeedScale)) * speedVariation;
         float inheritedSpeed = parentSpeed * speedScale * mix(0.34, 1.18, hash(probeSeed + 37.0));
         float burstSpeed = max(0.0, uSparkPower) * speedScale * mix(0.18, 1.08, hash(probeSeed + 41.0));
         velocity.xy = burstDir * (inheritedSpeed + burstSpeed) + parentVelocity.xy * mix(0.02, 0.18, hash(probeSeed + 43.0));
@@ -855,7 +873,9 @@ void main() {
   vec3 cooling = vKind < 0.5
     ? paletteColor(vSeed, vKind * 17.0 + floor(uTime * 0.7))
     : paletteSparkColor(vSeed, vKind * 23.0 + floor(uTime * 0.45));
-  vec3 sparkHeat = mix(vec3(1.0, 0.86, 0.5) * min(uCoreIntensity, 2.4), cooling, 0.62);
+  // The weld core stays white-hot, but the outgoing material must immediately
+  // read as the active palette instead of being washed back to a fixed amber.
+  vec3 sparkHeat = mix(cooling, vec3(1.0, 0.86, 0.5) * min(uCoreIntensity, 2.4), 0.22);
   vec3 color = vKind < 0.5
     ? mix(hot * 2.35, cooling, 0.025)
     : mix(sparkHeat, cooling, smoothstep(0.0, 0.24, vLifeT));
@@ -1116,10 +1136,12 @@ void main() {
   float alpha = vAlpha * widthMask * tailGate * mix(0.42, 1.0, hotHead) * uGlowBias;
   if (alpha <= 0.001) discard;
   vec3 palette = paletteSparkColor(vSeed, vKind * 23.0 + floor(uTime * 0.45));
+  // Keep only a narrow hot leading edge. The trail itself should expose the
+  // selected palette rather than looking uniformly yellow-white.
   vec3 hot = vec3(1.0, 0.9, 0.55) * min(uCoreIntensity, 2.6);
-  vec3 color = mix(palette, hot, mix(0.24, 0.72, hotHead) * (1.0 - smoothstep(0.45, 1.0, vLifeT)));
+  vec3 color = mix(palette, hot, mix(0.08, 0.34, hotHead) * (1.0 - smoothstep(0.38, 1.0, vLifeT)));
   if (vKind >= 2.0) color = mix(color, paletteSparkColor(vSeed, 83.0 + floor(uTime * 0.3)), 0.32);
-  color += vec3(1.0, 0.9, 0.42) * widthMask * hotHead * vSpeedT * 0.36;
+  color += vec3(1.0, 0.9, 0.42) * widthMask * hotHead * vSpeedT * 0.08;
   outColor = vec4(color * alpha, alpha);
 }`;
 
@@ -1575,6 +1597,7 @@ function readSparkProfile(state: RawWebGL2RenderState, prefix: string, legacyKey
     lifespan: readProfileSetting(state, prefix, 'lifespan', legacyKeys.lifespan),
     lifespanVariability: readProfileSetting(state, prefix, 'lifespanVariability', legacyKeys.lifespanVariability),
     speedScale: readProfileSetting(state, prefix, 'speedScale', legacyKeys.speedScale),
+    speedVariability: readProfileSetting(state, prefix, 'speedVariability', legacyKeys.speedVariability),
     intensity: readProfileSetting(state, prefix, 'intensity', legacyKeys.intensity),
     afterglow: readProfileSetting(state, prefix, 'afterglow', legacyKeys.afterglow),
   };
@@ -1599,6 +1622,7 @@ function settingsFromState(state: RawWebGL2RenderState): SparksSettings {
     sparkPower: finiteNumberSetting(state.settings, 'sparkPower', SPARKS_DEFAULTS.sparkPower as number),
     sparkDirectionChaos: finiteNumberSetting(state.settings, 'sparkDirectionChaos', SPARKS_DEFAULTS.sparkDirectionChaos as number),
     torchRadius: finiteNumberSetting(state.settings, 'torchRadius', SPARKS_DEFAULTS.torchRadius as number),
+    coreSparkTorchPositionVariability: finiteNumberSetting(state.settings, 'coreSparkTorchPositionVariability', SPARKS_DEFAULTS.coreSparkTorchPositionVariability as number),
     buildRadius: finiteNumberSetting(state.settings, 'buildRadius', SPARKS_DEFAULTS.buildRadius as number),
     contactHeat: finiteNumberSetting(state.settings, 'contactHeat', SPARKS_DEFAULTS.contactHeat as number),
     coreSpark: readSparkProfile(state, 'coreSpark', {
@@ -1611,6 +1635,7 @@ function settingsFromState(state: RawWebGL2RenderState): SparksSettings {
     bounceRestitution: finiteNumberSetting(state.settings, 'bounceRestitution', SPARKS_DEFAULTS.bounceRestitution as number),
     bounceLifeDecay: finiteNumberSetting(state.settings, 'bounceLifeDecay', SPARKS_DEFAULTS.bounceLifeDecay as number),
     bounceBurstChance: finiteNumberSetting(state.settings, 'bounceBurstChance', SPARKS_DEFAULTS.bounceBurstChance as number),
+    bounceBurstMinSpeed: finiteNumberSetting(state.settings, 'bounceBurstMinSpeed', SPARKS_DEFAULTS.bounceBurstMinSpeed as number),
     bounceBurstCount: finiteNumberSetting(state.settings, 'bounceBurstCount', SPARKS_DEFAULTS.bounceBurstCount as number),
     bounceBurstCountSpeedScale: finiteNumberSetting(state.settings, 'bounceBurstCountSpeedScale', SPARKS_DEFAULTS.bounceBurstCountSpeedScale as number),
     bounceBurstImpactSpeedScale: finiteNumberSetting(state.settings, 'bounceBurstImpactSpeedScale', SPARKS_DEFAULTS.bounceBurstImpactSpeedScale as number),
@@ -1855,11 +1880,14 @@ function queueCoreFlashBurst(runtime: SparksRuntime, x: number, y: number, dx: n
   const count = Math.max(0, Math.floor(flashes));
   const variability = clamp(runtime.settings.coreSpark.sizeVariability, 0, 1);
   const jitterRadius = runtime.settings.torchRadius * mix(0.04, 0.32, variability);
+  const positionVariability = runtime.mode === 'welding' ? Math.max(0, runtime.settings.coreSparkTorchPositionVariability) : 0;
   for (let index = 0; index < count; index += 1) {
     const angle = nextRandom(runtime) * Math.PI * 2;
     const radius = jitterRadius * Math.pow(nextRandom(runtime), 1.85);
     const variedStrength = strength * syncBoost * mix(1, mix(0.55, 1.8, nextRandom(runtime)), variability);
-    queueCoreGlow(runtime, x + Math.cos(angle) * radius, y + Math.sin(angle) * radius, dx, dy, variedStrength);
+    const torchOffsetX = (nextRandom(runtime) * 2 - 1) * positionVariability;
+    const torchOffsetY = (nextRandom(runtime) * 2 - 1) * positionVariability;
+    queueCoreGlow(runtime, x + Math.cos(angle) * radius + torchOffsetX, y + Math.sin(angle) * radius + torchOffsetY, dx, dy, variedStrength);
   }
 }
 
@@ -1973,10 +2001,12 @@ function runStepPass(runtime: SparksRuntime, state: RawWebGL2RenderState, dt: nu
       gl.uniform1f(uniform('uRestitution'), runtime.settings.bounceRestitution);
       gl.uniform1f(uniform('uBounceLifeDecay'), runtime.settings.bounceLifeDecay);
       gl.uniform1f(uniform('uBounceBurstChance'), runtime.settings.bounceBurstChance);
+      gl.uniform1f(uniform('uBounceBurstMinSpeed'), runtime.settings.bounceBurstMinSpeed);
       gl.uniform1f(uniform('uBounceBurstCount'), runtime.settings.bounceBurstCount);
       gl.uniform1f(uniform('uBounceBurstCountSpeedScale'), runtime.settings.bounceBurstCountSpeedScale);
       gl.uniform1f(uniform('uBounceBurstImpactSpeedScale'), runtime.settings.bounceBurstImpactSpeedScale);
       gl.uniform1f(uniform('uBounceSparkSpeedScale'), runtime.settings.bounceSpark.speedScale);
+      gl.uniform1f(uniform('uBounceSparkSpeedVariability'), runtime.settings.bounceSpark.speedVariability);
       gl.uniform1f(uniform('uBounceSparkLifespan'), runtime.settings.bounceSpark.lifespan);
       gl.uniform1f(uniform('uBounceSparkLifespanVariability'), runtime.settings.bounceSpark.lifespanVariability);
       gl.uniform1f(uniform('uBounceBurstSpread'), runtime.settings.bounceBurstSpread);
@@ -2008,7 +2038,11 @@ function runStepPass(runtime: SparksRuntime, state: RawWebGL2RenderState, dt: nu
 }
 
 function drawScene(runtime: SparksRuntime, state: RawWebGL2RenderState): void {
-  const background = colorNumberToTriplet(state.style?.background ?? 0x030507);
+  const background = resolveSideViewPaletteBackdrop(
+    state.style,
+    runtime.settings.renderStyle,
+    [0.012, 0.02, 0.028],
+  ).base;
   if (runtime.settings.renderStyle === 'basic') {
     runtime.basicPass.render({
       target: null,
@@ -2431,10 +2465,6 @@ function writePalette(target: Float32Array, palette: readonly number[]): number 
     target[offset + 2] = (color & 255) / 255;
   }
   return count;
-}
-
-function colorNumberToTriplet(color: number): [number, number, number] {
-  return [((color >> 16) & 255) / 255, ((color >> 8) & 255) / 255, (color & 255) / 255];
 }
 
 function clamp(value: number, min: number, max: number): number {

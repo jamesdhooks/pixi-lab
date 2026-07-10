@@ -2,6 +2,7 @@ import {
   RawWebGL2Scene,
   colorNumberToRgb,
   finiteNumberSetting,
+  resolveSideViewPaletteBackdrop,
   type GestureEvent,
   type RawSceneDebugStats,
   type RawWebGL2RenderState,
@@ -1704,8 +1705,13 @@ function renderParticles(state: ParticleMetaballState, preset: ParticleMetaballP
   const gl = state.gl;
   const style = state.style;
   const palette = style?.palette ?? (preset === 'water-tank' ? [0x5ee7ff, 0x0077ff, 0xb8f7ff] : [0xfff4a3, 0xff7a1f, 0x5d1300]);
-  const background = style?.background ?? (preset === 'water-tank' ? 0x04131f : 0x120403);
-  const bg = colorNumberToRgb(background, [0, 0, 0]);
+  const renderStyle = preset === 'lava-lamp' ? lavaRenderStyle(state) : typeof state.settings.renderStyle === 'string' ? state.settings.renderStyle : '';
+  const backdrop = resolveSideViewPaletteBackdrop(
+    style,
+    renderStyle === 'ultra' ? 'ultra' : renderStyle === 'basic' || renderStyle === 'particles' ? 'basic' : 'enhanced',
+    preset === 'water-tank' ? [0.016, 0.075, 0.12] : [0.07, 0.016, 0.012],
+  );
+  const bg = backdrop.base;
   gl.clearColor(bg[0], bg[1], bg[2], 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.disable(gl.DEPTH_TEST);
@@ -1757,7 +1763,6 @@ function renderParticles(state: ParticleMetaballState, preset: ParticleMetaballP
     gl.drawArrays(gl.POINTS, 0, 1);
   }
 
-  const renderStyle = preset === 'lava-lamp' ? lavaRenderStyle(state) : typeof state.settings.renderStyle === 'string' ? state.settings.renderStyle : '';
   if (preset === 'lava-lamp' && (renderStyle === 'enhanced' || renderStyle === 'ultra') && renderLavaSharedLiquidSurface(state, palette, renderStyle)) return;
   if (!state.particleProgram || !state.particleBuffer || state.count <= 0) return;
   if (preset === 'water-tank' && renderStyle !== 'particles' && renderWaterSurface(state, palette, renderStyle)) return;

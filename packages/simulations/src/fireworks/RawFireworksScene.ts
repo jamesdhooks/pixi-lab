@@ -7,6 +7,7 @@ import {
   finiteNumberSetting,
   linkRawWebGL2Program,
   rawGpuMetricsToDebugStats,
+  resolveSideViewPaletteBackdrop,
   type GestureEvent,
   type RawWebGL2RenderState,
 } from '@hooksjam/pixi-lab-core';
@@ -783,7 +784,7 @@ function runStepPass(runtime: FireworksRuntime, state: RawWebGL2RenderState, dt:
 function drawTrailAndComposite(runtime: FireworksRuntime, state: RawWebGL2RenderState): void {
   if (!runtime.trail) return;
   const gl = state.gl;
-  const background = colorNumberToTriplet(state.style?.background ?? 0x050816);
+  const background = resolveSideViewPaletteBackdrop(state.style, 'ultra', [0.02, 0.03, 0.085]).base;
   const uniforms = state.style?.uniforms ?? {};
   const glowBias = numberUniform(uniforms, 'glowBias', 1);
   const colorShift = numberUniform(uniforms, 'colorShift', 0.2);
@@ -1174,10 +1175,6 @@ function writePalette(target: Float32Array, palette: readonly number[]): number 
     target[offset + 2] = (color & 255) / 255;
   }
   return count;
-}
-
-function colorNumberToTriplet(color: number): [number, number, number] {
-  return [((color >> 16) & 255) / 255, ((color >> 8) & 255) / 255, (color & 255) / 255];
 }
 
 function clamp(value: number, min: number, max: number): number {

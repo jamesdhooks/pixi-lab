@@ -91,6 +91,7 @@ function writeStoredStyleId(definition: LabExperience, styleId: string): void {
 }
 
 const RENDER_STYLE_FIELD_KEY = 'renderStyle';
+const COMPACT_TOPBAR_STAGE_WIDTH = 1120;
 const FLUID_BASIC_STYLE_ID = 'bounded-cyan';
 const FLUID_ENHANCED_STYLE_ID = 'webgl-fluid-glow';
 const FLUID_VISUAL_STYLE_MODES = [
@@ -246,6 +247,7 @@ function GameLauncherInner({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsPinned, setSettingsPinned] = useState(false);
   const [settingsSidebarWidth, setSettingsSidebarWidth] = useState(DEFAULT_SETTINGS_SIDEBAR_WIDTH);
+  const [isCompactTopbar, setIsCompactTopbar] = useState(false);
   const [imageUrlEditorOpen, setImageUrlEditorOpen] = useState(false);
   const [imageUrlDraft, setImageUrlDraft] = useState('');
   const [uiHidden, setUiHidden] = useState(autoDemo);
@@ -284,11 +286,28 @@ function GameLauncherInner({
   const [renderedLegacyQuality, setRenderedLegacyQuality] = useState<RenderQuality | undefined>(undefined);
   const [modeId, setModeId] = useState(() => definition.modes?.[0]?.id ?? '');
   const appRef = useRef<GameApp | null>(null);
+  const sceneStageRef = useRef<HTMLDivElement | null>(null);
   /** State mirror of appRef — triggers a re-render when the engine is ready so
    *  SimControlPanel reads the correct stored settings before the intro card is dismissed. */
   const [appInstance, setAppInstance] = useState<GameApp | null>(null);
   /** Bumped each time the demo AI changes a setting — causes SimControlPanel to re-sync. */
   const [settingsVersion, setSettingsVersion] = useState(0);
+
+  useEffect(() => {
+    const stage = sceneStageRef.current;
+    if (!stage || typeof ResizeObserver === 'undefined') return;
+
+    const updateCompactState = (width: number) => {
+      setIsCompactTopbar(width <= COMPACT_TOPBAR_STAGE_WIDTH);
+    };
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) updateCompactState(entry.contentRect.width);
+    });
+
+    updateCompactState(stage.clientWidth);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, []);
 
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
@@ -665,18 +684,40 @@ function GameLauncherInner({
   );
   const colorSchemeControl = definition.styleManifest ? (
     <TopbarSelect
-      label={definition.id === 'fluid-tank' ? 'Palette' : 'Color'}
+      label="Palette"
       value={styleId}
       options={colorSchemeOptions}
       onChange={handleStyleChange}
+      hideLabel
     />
   ) : null;
   const fluidVisualStyleControl = definition.id === 'fluid-tank' ? (
-    <ModeToggle
-      modes={FLUID_VISUAL_STYLE_MODES}
-      value={styleId === FLUID_ENHANCED_STYLE_ID ? FLUID_ENHANCED_STYLE_ID : FLUID_BASIC_STYLE_ID}
-      onChange={handleStyleChange}
-    />
+    isCompactTopbar && !mobilePortrait ? (
+      <TopbarSelect
+        label="Style"
+        value={styleId === FLUID_ENHANCED_STYLE_ID ? FLUID_ENHANCED_STYLE_ID : FLUID_BASIC_STYLE_ID}
+        options={FLUID_VISUAL_STYLE_MODES}
+        onChange={handleStyleChange}
+      />
+    ) : (
+      <ModeToggle
+        modes={FLUID_VISUAL_STYLE_MODES}
+        value={styleId === FLUID_ENHANCED_STYLE_ID ? FLUID_ENHANCED_STYLE_ID : FLUID_BASIC_STYLE_ID}
+        onChange={handleStyleChange}
+      />
+    )
+  ) : null;
+  const inputModeControl = hasModes ? (
+    isCompactTopbar && !mobilePortrait ? (
+      <TopbarSelect
+        label="Input"
+        value={modeId}
+        options={definition.modes!}
+        onChange={handleModeChange}
+      />
+    ) : (
+      <ModeToggle modes={definition.modes!} value={modeId} onChange={handleModeChange} />
+    )
   ) : null;
   const isFieldVisible = useCallback(
     (f: NonNullable<LabExperience['settingsFields']>[number]) =>
@@ -728,6 +769,13 @@ function GameLauncherInner({
         options={renderStyleModes}
         onChange={handleRenderStyleChange}
       />
+    ) : isCompactTopbar ? (
+      <TopbarSelect
+        label="Style"
+        value={renderStyleId}
+        options={renderStyleModes}
+        onChange={handleRenderStyleChange}
+      />
     ) : (
       <ModeToggle modes={renderStyleModes} value={renderStyleId} onChange={handleRenderStyleChange} />
     )
@@ -752,9 +800,7 @@ function GameLauncherInner({
         {renderStyleControl}
         {imageSourceButton}
         {injectPaletteControl}
-        {hasModes && (
-          <ModeToggle modes={definition.modes!} value={modeId} onChange={handleModeChange} />
-        )}
+        {inputModeControl}
       </>
     ) : undefined;
 
@@ -785,7 +831,7 @@ function GameLauncherInner({
   return (
     <div className={`pixi-lab-runtime-shell fixed top-0 left-0 z-50 flex h-full w-full overflow-hidden${transparent ? '' : ' bg-black'}`}>
       <style>{RUNTIME_PERF_CSS}</style>
-      <div className="relative h-full min-w-0 flex-1 overflow-hidden">
+      <div ref={sceneStageRef} className="relative h-full min-w-0 flex-1 overflow-hidden">
         {/* Game canvas — always mounted */}
         <GameRuntime
           definition={definition}
@@ -861,9 +907,7 @@ function GameLauncherInner({
                   {hasRenderStylePicker && !mobilePortrait && renderStyleControl}
                   {imageSourceButton}
                   {injectPaletteControl}
-                  {hasModes && (
-                    <ModeToggle modes={definition.modes!} value={modeId} onChange={handleModeChange} />
-                  )}
+                  {inputModeControl}
                 </div>
               ) : undefined
             }
@@ -871,6 +915,7 @@ function GameLauncherInner({
 
           {/* Top-right controls: engine configuration, reset, settings, hide-ui, demo — adaptive via OverflowMenu */}
           <OverflowMenu
+            compact={isCompactTopbar}
             items={[
               // On mobile portrait, color scheme + mode move from HUD center into the overflow sheet.
               {
@@ -881,18 +926,19 @@ function GameLauncherInner({
                 sectionLabel: 'Color scheme',
                 node: definition.styleManifest ? (
                   <TopbarSelect
-                    label="Color"
+                    label="Palette"
                     value={styleId}
                     options={colorSchemeOptions}
                     listMode
                     onChange={handleStyleChange}
+                    hideLabel
                   />
                 ) : null,
               },
               {
                 key: 'modes',
                 label: 'Mode',
-                hidden: true, // ModeToggle is shown directly in the HUD center
+                hidden: true, // The responsive picker is shown directly in the HUD center.
                 fullWidth: true,
                 sectionLabel: 'Mode',
                 node: hasModes ? (

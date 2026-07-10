@@ -1,6 +1,7 @@
 import {
   colorNumberToRgb,
   finiteNumberSetting,
+  resolveSideViewPaletteBackdrop,
   type RawFramebuffer,
   type RawWebGL2RenderState,
 } from '@hooksjam/pixi-lab-core';
@@ -644,7 +645,11 @@ function renderComposite(params: LiquidSurfaceBaseParams): void {
   const target = renderer.target;
   if (!target) return;
   const colors = palette.palette;
-  const background = colorNumberToRgb(palette.background, [0.0, 0.02, 0.05]);
+  const background = resolveSideViewPaletteBackdrop(
+    { id: 'liquid-surface', palette: colors, background: palette.background ?? 0x00050d },
+    options.renderStyle === 'ultra' || options.renderStyle === 'raw' ? 'ultra' : 'enhanced',
+    [0.0, 0.02, 0.05],
+  ).base;
   const surface = colorNumberToRgb(colors[1] ?? colors[0], [0.28, 0.86, 1]);
   const deep = colorNumberToRgb(colors[2] ?? colors[1] ?? colors[0], [0.02, 0.2, 0.36]);
   const foam = colorNumberToRgb(colors[3] ?? colors[0], [0.92, 1, 1]);

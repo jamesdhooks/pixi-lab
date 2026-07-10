@@ -412,6 +412,13 @@ export {
   type RawWebGL2SceneOptions,
 } from './render/raw/RawWebGL2Scene.js';
 export {
+  renderSideViewPaletteBackdrop,
+  resolveSideViewPaletteBackdrop,
+  type RawSideViewPaletteBackdropOptions,
+  type SideViewBackdropStyle,
+  type SideViewPaletteBackdrop,
+} from './render/raw/RawSideViewPaletteBackdrop.js';
+export {
   RawWebGL2ResourceContext,
   RawPingPongRenderTarget,
   compileRawWebGL2Shader,

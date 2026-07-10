@@ -479,27 +479,86 @@ function NumberSlider({
   const powerOfTwo = field.numericScale === 'powerOfTwo';
   const minExponent = Math.ceil(Math.log2(Math.max(1, field.min ?? 1)));
   const maxExponent = Math.floor(Math.log2(Math.max(1, field.max ?? 1)));
+  const inputRef = useRef<HTMLInputElement>(null);
+  const fineDragRef = useRef<{ pointerId: number; startX: number; startValue: number; active: boolean } | null>(null);
   const sliderValue = powerOfTwo ? snapExponent(Math.log2(Math.max(1, num)), minExponent, maxExponent) : num;
   const valueLabel = powerOfTwo ? formatPowerOfTwoSetting(num) : formatNumberSetting(num);
   const tickExponents = powerOfTwo ? powerOfTwoExponents(minExponent, maxExponent) : [];
   const sliderStep = powerOfTwo ? 1 : numericStepForField(field, num);
+  const sliderMin = powerOfTwo ? minExponent : (field.min ?? 0);
+  const sliderMax = powerOfTwo ? maxExponent : (field.max ?? sliderMin);
+  const applySliderValue = (nextValue: number) => {
+    if (powerOfTwo) {
+      onChange(2 ** snapExponent(nextValue, minExponent, maxExponent));
+      return;
+    }
+    onChange(clampSliderValue(roundToStep(nextValue, fineSliderStep(sliderMin, sliderMax)), sliderMin, sliderMax));
+  };
   return (
     <div className="flex items-center gap-2">
       <div className="relative w-32 pb-2">
         <input
+          ref={inputRef}
           type="range"
-          min={powerOfTwo ? minExponent : field.min}
-          max={powerOfTwo ? maxExponent : field.max}
+          min={sliderMin}
+          max={sliderMax}
           step={sliderStep}
           value={sliderValue}
           aria-valuetext={powerOfTwo ? valueLabel : undefined}
           data-numeric-scale={field.numericScale}
           onChange={(e) => {
+            if (fineDragRef.current?.active) return;
             if (powerOfTwo) {
               onChange(2 ** snapExponent(Number(e.target.value), minExponent, maxExponent));
             } else {
               onChange(Number(e.target.value));
             }
+          }}
+          onPointerDown={(event) => {
+            if (!event.shiftKey) return;
+            fineDragRef.current = {
+              pointerId: event.pointerId,
+              startX: event.clientX,
+              startValue: sliderValue,
+              active: true,
+            };
+            event.currentTarget.setPointerCapture(event.pointerId);
+            event.preventDefault();
+          }}
+          onPointerMove={(event) => {
+            let drag = fineDragRef.current;
+            if (!event.shiftKey) {
+              if (drag?.pointerId === event.pointerId) fineDragRef.current = null;
+              return;
+            }
+            if (!drag) {
+              if ((event.buttons & 1) === 0) return;
+              drag = {
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startValue: sliderValue,
+                active: true,
+              };
+              fineDragRef.current = drag;
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }
+            if (drag.pointerId !== event.pointerId) return;
+            event.preventDefault();
+            const trackWidth = Math.max(1, inputRef.current?.getBoundingClientRect().width ?? 1);
+            const movement = (event.clientX - drag.startX) / trackWidth;
+            applySliderValue(drag.startValue + movement * (sliderMax - sliderMin) * 0.1);
+          }}
+          onPointerUp={(event) => {
+            if (fineDragRef.current?.pointerId === event.pointerId) fineDragRef.current = null;
+          }}
+          onPointerCancel={() => {
+            fineDragRef.current = null;
+          }}
+          onKeyDown={(event) => {
+            if (!event.shiftKey || !['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp'].includes(event.key)) return;
+            event.preventDefault();
+            const direction = event.key === 'ArrowDown' || event.key === 'ArrowLeft' ? -1 : 1;
+            applySliderValue(sliderValue + direction * fineSliderStep(sliderMin, sliderMax));
           }}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/20 accent-white"
         />
@@ -524,9 +583,27 @@ function numericStepForField(field: SettingsField, value: number): number {
   return upperBound < 10 ? 0.1 : 1;
 }
 
+function fineSliderStep(min: number, max: number): number {
+  const range = Math.max(0, max - min);
+  if (range <= 1) return 0.001;
+  if (range <= 10) return 0.005;
+  if (range <= 100) return 0.05;
+  if (range <= 1000) return 0.5;
+  if (range <= 10000) return 1;
+  return 5;
+}
+
+function clampSliderValue(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function roundToStep(value: number, step: number): number {
+  return Math.round(value / step) * step;
+}
+
 function formatNumberSetting(value: number): string {
-  const rounded = Math.round(value * 100) / 100;
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+  const rounded = Math.round(value * 1000) / 1000;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 function formatPowerOfTwoSetting(value: number): string {

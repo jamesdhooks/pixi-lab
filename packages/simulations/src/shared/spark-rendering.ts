@@ -11,6 +11,7 @@ export type SparkProfileSettingKey =
   | 'lifespan'
   | 'lifespanVariability'
   | 'speedScale'
+  | 'speedVariability'
   | 'intensity'
   | 'afterglow';
 
@@ -33,6 +34,7 @@ const SPARK_PROFILE_SETTING_LABELS: Record<SparkProfileSettingKey, string> = {
   lifespan: 'Lifespan',
   lifespanVariability: 'Lifespan Variability',
   speedScale: 'Speed Scale',
+  speedVariability: 'Speed Variability',
   intensity: 'Intensity',
   afterglow: 'Afterglow',
 };
@@ -46,6 +48,7 @@ const SPARK_PROFILE_SETTING_DESCRIPTIONS: Record<SparkProfileSettingKey, string>
   lifespan: 'Scales how long this particle profile survives before fading out.',
   lifespanVariability: 'Varies this profile lifetime from particle to particle.',
   speedScale: 'Scales this particle profile speed from the scene emitter power.',
+  speedVariability: 'Randomly scales each particle speed around its profile speed.',
   intensity: 'Scales this profile brightness without changing particle size.',
   afterglow: 'Controls how long this profile leaves a hot glow after ignition.',
 };
@@ -59,6 +62,7 @@ const SPARK_PROFILE_FIELD_RANGES: Record<SparkProfileSettingKey, { min: number; 
   lifespan: { min: 0, max: 4, step: 0.01 },
   lifespanVariability: { min: 0, max: 1, step: 0.01 },
   speedScale: { min: 0, max: 3, step: 0.01 },
+  speedVariability: { min: 0, max: 2, step: 0.01 },
   intensity: { min: 0, max: 8, step: 0.05 },
   afterglow: { min: 0, max: 1, step: 0.01 },
 };

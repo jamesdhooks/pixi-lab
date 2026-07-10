@@ -22,6 +22,7 @@ import {
   RawGpuKeyIndexSortPass,
   RawWebGL2Scene,
   rawGpuMetricsToDebugStats,
+  renderSideViewPaletteBackdrop,
   resolveAdvancedPhysicsFidelityProfile,
   type AdvancedCollisionStressSettings,
   type AdvancedCollisionStressSpatialNeighborSlotStats,
@@ -1820,8 +1821,13 @@ export class BallPitRawWebGL2Scene extends RawWebGL2Scene {
         }
 
         gl.viewport(0, 0, s.width, s.height);
-        gl.clearColor(0.025, 0.032, 0.075, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        renderSideViewPaletteBackdrop(gl, {
+          width: s.width,
+          height: s.height,
+          style: s.style,
+          renderStyle: 'enhanced',
+          fallbackBackground: [0.025, 0.032, 0.075],
+        });
         s.gpuLiveRendered = false;
         s.gpuLiveRenderSource = 'cpu-live-texture-bridge';
         s.gpuLiveCollisionSource = 'cpu-spatial-neighbor-slots';

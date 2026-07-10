@@ -27,6 +27,7 @@ import {
   RawWebGL2Scene,
   finiteNumberSetting,
   rawGpuMetricsToDebugStats,
+  renderSideViewPaletteBackdrop,
   resolveAdvancedPhysicsFidelityProfile,
   type AdvancedCircleParticleSettings,
   type AdvancedCircleParticleSpatialNeighborSlotStats,
@@ -3676,9 +3677,20 @@ export class AdvancedConstraintParticlesRawScene extends RawWebGL2Scene {
 
         if (gpuDemoActive && ensureGpuConstraintPreviewState(s, kind, preview ? sceneCapacity : GPU_DEMO_CAPACITY) && s.gpuConstraintState) {
           if (s.gpuConstraintNeedsSeed !== false || s.gpuConstraintNeedsTopologySeed !== false) syncGpuConstraintStateFromEngine(s);
-          gl.viewport(0, 0, s.width, s.height);
-          gl.clearColor(0.02, 0.025, 0.055, 1);
-          gl.clear(gl.COLOR_BUFFER_BIT);
+          const previewRenderStyle = renderStyleIsEnhanced(s) ? 'enhanced' : 'basic';
+          if (previewRenderStyle === 'basic') {
+            gl.viewport(0, 0, s.width, s.height);
+            gl.clearColor(0.02, 0.025, 0.055, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+          } else {
+            renderSideViewPaletteBackdrop(gl, {
+              width: s.width,
+              height: s.height,
+              style: s.style,
+              renderStyle: previewRenderStyle,
+              fallbackBackground: [0.02, 0.025, 0.055],
+            });
+          }
           if (renderGpuConstraintPreview(s, kind, size)) {
             s.needsRedraw = false;
             return;
@@ -3704,14 +3716,24 @@ export class AdvancedConstraintParticlesRawScene extends RawWebGL2Scene {
         s.stats = engine.step(s.deltaSeconds);
         if (kind === 'soft-blob') solveSoftBlobAmoebaConstraints(s);
 
-        gl.viewport(0, 0, s.width, s.height);
-        gl.clearColor(0.02, 0.025, 0.055, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        const ultra = kind === 'chain-rain' && renderStyleIsUltra(s);
+        const enhanced = renderStyleIsEnhanced(s);
+        if (ultra || enhanced) {
+          renderSideViewPaletteBackdrop(gl, {
+            width: s.width,
+            height: s.height,
+            style: s.style,
+            renderStyle: ultra ? 'ultra' : 'enhanced',
+            fallbackBackground: [0.02, 0.025, 0.055],
+          });
+        } else {
+          gl.viewport(0, 0, s.width, s.height);
+          gl.clearColor(0.02, 0.025, 0.055, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+        }
         drawInteractionRadius(s, kind, size);
         if (!s.program || !s.vao || !s.centerBuffer || !s.uResolution || !s.uRadius || !s.uPrimary || !s.uSecondary) return;
 
-        const ultra = kind === 'chain-rain' && renderStyleIsUltra(s);
-        const enhanced = renderStyleIsEnhanced(s);
         if (ultra || enhanced) {
           s.liveGpuDensityRendered = false;
           s.liveGpuDensityPointDraws = 0;

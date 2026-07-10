@@ -2,6 +2,7 @@ import {
   RawWebGL2Scene,
   colorNumberToRgb,
   finiteNumberSetting,
+  resolveSideViewPaletteBackdrop,
   type GestureEvent,
   type RawSceneDebugStats,
   type RawWebGL2RenderState,
@@ -1236,7 +1237,11 @@ function renderObstacles(state: SplashMpmState): void {
 function render(state: SplashMpmState): void {
   const gl = state.gl;
   const tier = renderTier(state.settings);
-  const background = colorNumberToRgb(state.style?.background, [0.0, 0.02, 0.05]);
+  const background = resolveSideViewPaletteBackdrop(
+    state.style,
+    tier === 'ultra' ? 'ultra' : tier === 'fluid' ? 'enhanced' : 'basic',
+    [0.0, 0.02, 0.05],
+  ).base;
   gl.disable(gl.DEPTH_TEST);
   gl.clearColor(background[0], background[1], background[2], 1);
   gl.clear(gl.COLOR_BUFFER_BIT);

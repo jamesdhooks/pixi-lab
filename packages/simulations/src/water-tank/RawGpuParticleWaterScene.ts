@@ -3,6 +3,7 @@ import {
   RawWebGL2Scene,
   colorNumberToRgb,
   finiteNumberSetting,
+  resolveSideViewPaletteBackdrop,
   type GestureEvent,
   type RawFramebuffer,
   type RawSceneDebugStats,
@@ -850,9 +851,11 @@ function renderComposite(state: GpuWaterState, densityTarget: RawFramebuffer | n
   const surface = colorNumberToRgb(palette[0], [0.54, 0.95, 1]);
   const deep = colorNumberToRgb(palette[2] ?? palette[1], [0.02, 0.2, 0.36]);
   const renderStyle = typeof state.settings.renderStyle === 'string' ? state.settings.renderStyle : 'enhanced';
-  const background = renderStyle === 'basic' || renderStyle === 'particles'
-    ? colorNumberToRgb(state.style?.background, [0.01, 0.02, 0.04])
-    : [0, 0, 0] as [number, number, number];
+  const background = resolveSideViewPaletteBackdrop(
+    state.style,
+    renderStyle === 'ultra' ? 'ultra' : renderStyle === 'basic' || renderStyle === 'particles' ? 'basic' : 'enhanced',
+    [0.01, 0.02, 0.04],
+  ).base;
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.drawBuffers([gl.BACK]);
   gl.viewport(0, 0, state.width, state.height);
@@ -916,9 +919,11 @@ function renderParticleOverlay(state: GpuWaterState): void {
 function clearParticleBackground(state: GpuWaterState): void {
   const gl = state.gl;
   const renderStyle = typeof state.settings.renderStyle === 'string' ? state.settings.renderStyle : 'enhanced';
-  const background = renderStyle === 'basic' || renderStyle === 'particles'
-    ? colorNumberToRgb(state.style?.background, [0.01, 0.02, 0.04])
-    : [0, 0, 0] as [number, number, number];
+  const background = resolveSideViewPaletteBackdrop(
+    state.style,
+    renderStyle === 'ultra' ? 'ultra' : renderStyle === 'basic' || renderStyle === 'particles' ? 'basic' : 'enhanced',
+    [0.01, 0.02, 0.04],
+  ).base;
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, state.width, state.height);
   gl.disable(gl.BLEND);

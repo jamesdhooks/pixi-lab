@@ -16,9 +16,11 @@ export interface TopbarSelectProps {
   options: TopbarSelectOption[];
   onChange: (value: string) => void;
   listMode?: boolean;
+  /** Preserve the accessible label while omitting the visible control prefix. */
+  hideLabel?: boolean;
 }
 
-export function TopbarSelect({ label, value, options, onChange, listMode = false }: TopbarSelectProps) {
+export function TopbarSelect({ label, value, options, onChange, listMode = false, hideLabel = false }: TopbarSelectProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -89,7 +91,7 @@ export function TopbarSelect({ label, value, options, onChange, listMode = false
         aria-label={label}
         className="flex h-8 min-w-[8rem] items-center gap-1.5 pl-2.5 pr-2 text-xs font-semibold text-white transition-colors hover:bg-white/10"
       >
-        <span className="text-[9px] font-bold uppercase tracking-widest text-white/45">{label}</span>
+        {!hideLabel && <span className="text-[9px] font-bold uppercase tracking-widest text-white/45">{label}</span>}
         <span className="flex min-w-0 items-center gap-1.5">
           {current && <OptionChip option={current} />}
           <span className="whitespace-nowrap">{current?.label ?? value}</span>

@@ -4,6 +4,7 @@ import {
   RawGpuTexturePointSampler,
   RawWebGL2Scene,
   finiteNumberSetting,
+  renderSideViewPaletteBackdrop,
   type GestureEvent,
   type RawWebGL2RenderState,
 } from '@hooksjam/pixi-lab-core';
@@ -967,11 +968,15 @@ export class GpuVascularTreeScene extends RawWebGL2Scene {
         const branchStyleUploadMode = uploadStyle
           ? (state.branchStyleUploadStart === 0 && branchStyleUploadCount >= branchSegmentCount ? 'full' : 'dirty-range')
           : 'none';
-        const bg = background(state);
         const colors = palette(state);
-        gl.viewport(0, 0, state.width, state.height);
-        gl.clearColor(bg[0], bg[1], bg[2], 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        const baseBackground = background(state);
+        renderSideViewPaletteBackdrop(gl, {
+          width: state.width,
+          height: state.height,
+          style: state.style,
+          renderStyle: 'enhanced',
+          fallbackBackground: [baseBackground[0] ?? 0.02, baseBackground[1] ?? 0.025, baseBackground[2] ?? 0.055],
+        });
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         let gpuUploadFloats = 0;
